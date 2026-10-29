@@ -82,7 +82,9 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     with connect("trino://u@h/c/s", "") as source:
         columns = source.dialect.columns('c"at', "it's", "t")
         select = source.dialect.select([source.dialect.longest('c"y')], 't"x')
+        sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
     assert select.endswith('FROM "t""x"')
+    assert sampled.startswith('SELECT "c""y" FROM "t""x" TABLESAMPLE')

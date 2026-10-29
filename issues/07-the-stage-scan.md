@@ -85,3 +85,22 @@ Things to settle on the way:
   which the messages of the source and of `statistics` both need. After a second review,
   `statistics` decides the expressions of each column once and reads the row along them; a counted
   value that is no number is a broken invariant of the dialect, a `TypeError` naming the column.
+
+- **2026-10-29** — Steps 2 and 3 swapped, as agreed with the maintainer: the values of enums go into
+  the workspace, which came with the samples, so the workspace and the samples come first. Step 2
+  done: `Workspace.open` makes the directory with a `.gitignore` of `*` where there is none, and
+  keeps the sample of each table as Parquet in `samples/`; the module `sampling` takes about 10,000
+  rows of a table by `TABLESAMPLE BERNOULLI`, the share computed from the rows counted and capped by
+  a limit, by a query built from the dialect's new building blocks `sampled` and `column`, the
+  pattern `statistics` set. Writing a file whole moved from the profile into `data_profiler.files`,
+  as the workspace writes whole too. `pyarrow` came for Parquet, and `pyarrow-stubs` for mypy - of
+  pyarrow 20, while pyarrow is at 26, which the few functions used do not mind.
+
+- **2026-10-29** — After the review of step 2, as the maintainer decided: a workspace belongs to one
+  schema, as a profile does - the file `schema` names it, and it is not opened for another, whose
+  tables of the same names would have overwritten its samples silently; a sample under
+  `samples/<catalog>.<schema>/` was weighed and not chosen. `write_whole` lets the `OSError` of the
+  file system through, as `pathlib` does, which the guidelines now say. A table whose name would
+  leave `samples/` is refused, and pyarrow's message, which names the values it could not convert,
+  stays in the cause. The move of `write_whole` is committed apart, before the workspace, as a
+  refactoring of its own.

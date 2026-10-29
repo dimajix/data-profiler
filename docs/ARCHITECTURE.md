@@ -23,7 +23,9 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.profile`** - the profile: its format, reading and writing it as YAML, and
     laying overrides over it.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
-    results, which never leaves the machine.
+    results, which never leaves the machine; a sample as Parquet.
+*   **`data_profiler.files`** - files written whole or not at all, for the profile and the
+    workspace.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
     columns of its schema - their metadata - through its dialect, and runs queries in that schema,
@@ -31,6 +33,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     a password; certificates and proxies come from the environment.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
     from the building blocks of the dialect, and whose row it reads back.
+*   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
+    way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enums, samples and detector matches of
     the selected tables, written to a profile.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
@@ -48,8 +52,9 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     without access to the real database. It creates the tables by Trino and fills them by `COPY` in
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
-The stages read and write the profile: `scan` uses `source`, `statistics`, `detect` and `workspace`,
-`describe` uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
+The stages read and write the profile: `scan` uses `source`, `statistics`, `sampling`, `detect` and
+`workspace`, `describe` uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the
+stages.
 
 ## The domain
 
@@ -112,12 +117,12 @@ The design repeats a few decisions; new code follows them.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation
     writes, into its own environment.
 *   **The dialect writes all SQL.** No other part of the tool writes SQL text, so that another
-    database is a new dialect, not a change across the code. What the tables hold is counted by
-    queries that the part that reads their rows builds from the building blocks of the dialect:
-    metadata belongs to the source, counting to the part that counts.
+    database is a new dialect, not a change across the code. What the tables hold is counted or
+    sampled by queries that the part that reads their rows builds from the building blocks of the
+    dialect: metadata belongs to the source, counting and sampling to the parts that do them.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
-    detectors that can be tested; the language model proposes names and descriptions from what
-    they found, and nothing else.
+    detectors that can be tested; the language model proposes names and descriptions from what they
+    found, and nothing else.
 *   **One word per term.** Harmonized names are composed from the glossary, so that the same term
     reads the same in every table.
 *   **The stages share nothing but the profile and the workspace.** Each stage can be run again on

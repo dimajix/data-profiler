@@ -2,11 +2,11 @@
 
 A `Source` sends queries and nothing else, and lists the tables and columns of its schema. Every
 statement it sends is written by its `Dialect`: whole, where it lists them, and of the building
-blocks the dialect offers, where another part counts what the tables hold. A failure is told by the
-database, its endpoint and what was done; what the database said, which may hold a value of it,
-stays in the cause of the error. Trino is reached by HTTPS, whose certificates and proxies come from
-the environment, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's
-own, `NO_PROXY` for a database a proxy does not reach.
+blocks the dialect offers, where another part counts or samples what the tables hold. A failure is
+told by the database, its endpoint and what was done; what the database said, which may hold a value
+of it, stays in the cause of the error. Trino is reached by HTTPS, whose certificates and proxies
+come from the environment, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA
+of one's own, `NO_PROXY` for a database a proxy does not reach.
 """
 
 import logging
@@ -60,6 +60,21 @@ class Dialect(ABC):
     @abstractmethod
     def select(self, expressions: Sequence[str], table: str) -> str:
         """The statement selecting `expressions` from `table` of the schema of the source."""
+
+    @abstractmethod
+    def sampled(self, expressions: Sequence[str], table: str, percent: float, limit: int) -> str:
+        """The statement selecting `expressions` of a share of the rows of `table`, at random.
+
+        Args:
+            expressions: The expressions to select.
+            table: The table, of the schema of the source.
+            percent: The share of the rows, each taken with this chance.
+            limit: The most rows the statement returns.
+        """
+
+    @abstractmethod
+    def column(self, column: str) -> str:
+        """The expression of the values of `column`."""
 
     @abstractmethod
     def rows(self) -> str:
@@ -260,6 +275,17 @@ class _TrinoDialect(Dialect):
     def select(self, expressions: Sequence[str], table: str) -> str:
         """The statement selecting `expressions` from `table` of the schema of the source."""
         return f"SELECT {', '.join(expressions)} FROM {_identifier(table)}"
+
+    def sampled(self, expressions: Sequence[str], table: str, percent: float, limit: int) -> str:
+        """The statement selecting `expressions` of a share of the rows of `table`, at random."""
+        return (
+            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"TABLESAMPLE BERNOULLI ({percent:.10f}) LIMIT {limit}"
+        )
+
+    def column(self, column: str) -> str:
+        """The expression of the values of `column`."""
+        return _identifier(column)
 
     def rows(self) -> str:
         """The expression counting the rows."""
