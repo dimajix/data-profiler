@@ -34,6 +34,12 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [09](09-the-glossary.md) | open | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
 | [10](10-the-stage-describe.md) | open | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
 
+## Report
+
+| No. | Status | Issue |
+|---|---|---|
+| [12](12-the-stage-report.md) | open | What the tool found can only be read as YAML: there is no report a person reads. |
+
 ## Simulation
 
 | No. | Status | Issue |
