@@ -24,8 +24,11 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     laying overrides over it.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine.
-*   **`data_profiler.source`** - the database: the `Source`, which connects and runs queries, and
-    the `Dialect`, which writes every SQL statement the tool sends.
+*   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
+    the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
+    columns of its schema through its dialect and runs queries in that schema, so that another
+    database brings only its connection and its SQL. Trino is reached by HTTPS with a password;
+    certificates and proxies come from the environment.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enums, samples and detector matches of
     the selected tables, written to a profile.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
@@ -50,8 +53,8 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
 
 *   **Stage** - one of `scan`, `describe` and `report`: a step of the work that can be run on its
     own, from what the stages before it left.
-*   **Source** - the database the tool reads, by its URL; **Dialect** - the SQL of one kind of
-    database.
+*   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
+    one kind of database.
 *   **Profile** - the document describing the tables of one schema of a database: its tables and
     columns, what was found about them, and the glossary. It is the only thing the stages hand to
     each other besides the workspace, and it holds no sensitive values (see
