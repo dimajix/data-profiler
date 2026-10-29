@@ -12,6 +12,12 @@ issues are kept is described in [README.md](README.md); those open or in progres
 |---|---|---|
 | [03](03-the-profile.md) | open | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
 
+## Scan
+
+| No. | Status | Issue |
+|---|---|---|
+| [06](06-source-and-dialect-for-trino.md) | open | The tool cannot reach a database: nothing connects to Trino, lists its tables or sends it a query. |
+
 ## Describe
 
 | No. | Status | Issue |

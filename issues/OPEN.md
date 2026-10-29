@@ -10,6 +10,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [03](03-the-profile.md) | open | high | feature | There is no profile yet: the stages have no format in which to hand on what they found about a database. Part of epic [02](02-first-version-epic.md). |
 
+## Scan
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [06](06-source-and-dialect-for-trino.md) | open | high | feature | The tool cannot reach a database: nothing connects to Trino, lists its tables or sends it a query. Part of epic [02](02-first-version-epic.md). |
+
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
