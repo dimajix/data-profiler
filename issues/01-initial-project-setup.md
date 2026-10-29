@@ -138,3 +138,17 @@ remarks of the template that no longer say anything once filled in.
   traceback. Weighed: a database error reduced to its name and query id, its message cut off, so
   that no value is ever logged; or values of the database at `debug`. The maintainer chose the
   latter: the log stays on the machine, as the workspace does.
+
+- **2026-10-29** — Question 5 decided: prose wraps at 100 characters, as ruff's `line-length`.
+  `scripts/wrapping.sh` covers `README.md` and the hooks in `.githooks/` as well, but not
+  `CLAUDE.md`, which only points to `AGENTS.md`. It knows the comments of the project's languages
+  only - `py`, `sh`, `toml`, `yml` and `yaml`; a language is added once the project has a file of
+  it. The lists of the comment markers `//` and `/*` stay, empty, with what reads them: the HTML
+  reports will bring style sheets and scripts, and removing the mechanism now would mean writing it
+  again then. The script now checks the docstrings of Python too, which are its doc comments: ruff
+  checks their length (`E501`), but nothing checked the rule on dashes. A docstring is told apart
+  from another string by where it stands, after the header of a definition or at the top of its
+  module, and by its first line, which begins with `"""` and its summary, as ruff checks with
+  `D212`. The review found that a dash on the hanging indent of an entry under `Args:` went
+  unchecked; a dash further in than the prose of the line before now counts as well. A code block
+  left open in a comment no longer turns off the checks for the rest of the file.

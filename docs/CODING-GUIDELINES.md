@@ -90,9 +90,9 @@ The tools and their settings are in `pyproject.toml`, their versions in `uv.lock
 *   **Consistency:** mirror the comment frequency and style of the module you are editing.
 *   **Comments wrap at 100 characters**, as the Markdown documents do. Older comments are rewrapped
     when they are changed anyway, not on their own.
-*   **Markdown documents** (`docs/`, `issues/`, `AGENTS.md`, `.claude/agents/`) wrap prose at 100
-    characters. Headings, table rows, code blocks and links that would not fit stay on one line;
-    field lines such as `**Status:**` keep a line of their own.
+*   **Markdown documents** (`docs/`, `issues/`, `AGENTS.md`, `README.md`, `.claude/agents/`) wrap
+    prose at 100 characters. Headings, table rows, code blocks and links that would not fit stay on
+    one line; field lines such as `**Status:**` keep a line of their own.
 *   **No line of prose starts with a dash**, in comments as in Markdown documents. To a renderer of
     Markdown and of doc comments, a line that begins with `- ` is a list item, and the sentence it
     goes on with breaks apart; in a plain comment the reader takes it for one - also inside a list
@@ -102,14 +102,15 @@ The tools and their settings are in `pyproject.toml`, their versions in `uv.lock
     its prose begins.
 *   **Wrapping is checked by `scripts/wrapping.sh`**, in the files these rules cover: the Markdown
     documents above, and the comments of the source files whose languages it knows - lines that
-    begin with a comment marker; a comment after code, and a docstring, are not checked. It counts
-    lengths in characters, not bytes, by the exceptions above; a link counts as one word, not broken
-    even in its text. It finds a line beginning with a dash where the prose of the line before
-    begins - after its marker, in a list item -, if that line belongs to the same comment, is no
-    heading or table row, and ends in none of the marks above. Without arguments it checks the lines
-    a change adds or changes, against `HEAD`, and new files whole; given files, it checks those of
-    them the rules cover, whole. The pre-commit hook gives it the files a commit adds or changes.
-    Neither is checked by hand or with another tool: other tools count bytes or know no exceptions.
+    begin with a comment marker, and the lines of a docstring; a comment after code is not checked.
+    It counts lengths in characters, not bytes, by the exceptions above; a link counts as one word,
+    not broken even in its text. It finds a line beginning with a dash where the prose of the line
+    before begins, or further in - after its marker, in a list item -, if that line belongs to the
+    same comment, is no heading or table row, and ends in none of the marks above. Without arguments
+    it checks the lines a change adds or changes, against `HEAD`, and new files whole; given files,
+    it checks those of them the rules cover, whole. The pre-commit hook gives it the files a commit
+    adds or changes. Neither is checked by hand or with another tool: other tools count bytes or
+    know no exceptions.
 
 ### What goes where
 
