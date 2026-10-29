@@ -1,6 +1,6 @@
 # 05 — The simulation environment
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** high
 **Area:** Simulation
@@ -57,3 +57,18 @@ Things to settle on the way:
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-10-29** — Step 1 done: `docker-compose.yml` with PostgreSQL 18.6, Trino 484 and Ollama
+  0.40.13, their versions fixed so that the environment does not change unnoticed. Trino is reached
+  as Starburst is, by HTTPS with a password - the maintainer chose this over plain HTTP without one,
+  so that the way the tool logs in is tried before it meets the real database. Its key and
+  certificate are committed, made for the simulation alone: for `localhost` only and not a CA, which
+  the strict verification of Python 3.13 and urllib3 accepts, as they allow a partial chain - a
+  first certificate that was a CA was replaced after the review, since its key is public and
+  trusting it would have trusted anything it signs. The password file holds bcrypt hashes of the
+  form `$2y$`; how both are made is in `simulation/trino/config.properties`. `.gitattributes` keeps
+  every text file LF on Windows too, where the Linux container could not read the password file
+  otherwise. `scripts/wrapping.sh` covers `yml`, `yaml` and `properties`, and the comments of
+  .gitattributes and .gitignore. Found on the way: where an HTTP proxy is set, `localhost` has to be
+  in `NO_PROXY`, or requests to the simulation go to the proxy; that concerns the client of
+  [06](06-source-and-dialect-for-trino.md).

@@ -35,9 +35,11 @@ The project is at its beginning: the stages above are what it is being built for
 
 ### Prerequisites
 
-[uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where uv
-does not download Python on its own, install it once with `uv python install 3.13`. The commands
-below are the same on Linux, macOS and Windows.
+- [uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where
+  uv does not download Python on its own, install it once with `uv python install 3.13`.
+- [Docker](https://www.docker.com/), for the simulation environment.
+
+The commands below are the same on Linux, macOS and Windows.
 
 ### Building the Project
 
@@ -49,6 +51,26 @@ uv sync
 
 It creates the environment `.venv` with the tool and the test data generator, as `uv.lock` fixes
 their dependencies.
+
+### The Simulation Environment
+
+The simulation environment stands in for the real database in the tests and wherever the tool is
+tried out without access to it: a Trino that is reached as Starburst is, by HTTPS with a password,
+on a PostgreSQL that holds the test data. It is started by
+
+```bash
+docker compose up -d --wait
+```
+
+and stopped by `docker compose down`; its data stays in a volume until
+`docker compose down --volumes`.
+
+- **Trino** answers on `https://localhost:8443`, with the catalog `crm`, to the user `profiler` with
+  the password `profiler`. Its certificate, `simulation/trino/tls/trino.crt`, is made for the
+  simulation alone, as its key beside it.
+- **PostgreSQL** answers on `localhost:5432`: database, user and password are `crm`.
+- **Ollama** is started with the profile `ollama`, on a machine on which none runs already:
+  `docker compose --profile ollama up -d --wait`. Its models stay in a volume.
 
 ### Running Tests
 

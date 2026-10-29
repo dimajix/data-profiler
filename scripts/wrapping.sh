@@ -7,7 +7,8 @@
 #
 # It checks the files the rules cover - the Markdown documents in docs/, issues/ and
 # .claude/agents/, AGENTS.md and README.md, the comments of the source files whose comment markers
-# it knows, by their extensions below, and those of the hooks in .githooks/. Without files, it
+# it knows, by their extensions below, and those of the hooks in .githooks/, of .gitattributes and
+# of .gitignore. Without files, it
 # checks what is changed against HEAD: the lines added or changed, and untracked files whole. With
 # files, it checks those of them the rules cover, whole, and passes over the others.
 #
@@ -34,7 +35,7 @@ max=100
 # lists of `//` and `/*` wait for the style sheets and scripts of the HTML reports.
 slash=''
 block=''
-hash='py sh toml'
+hash='py sh toml yml yaml properties'
 quotes='py'
 
 top=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)
@@ -45,7 +46,7 @@ trap 'rm -f "$checked"' EXIT
 is_covered() {
     case "$1" in
         docs/*.md | issues/*.md | .claude/agents/*.md | AGENTS.md | README.md) return 0 ;;
-        .githooks/*) return 0 ;;
+        .githooks/* | .gitattributes | .gitignore) return 0 ;;
         *.*) ;;
         *) return 1 ;;
     esac
@@ -105,10 +106,10 @@ function extension(file) {
 }
 
 # The style of the comments of `file`, or "" for a Markdown document. The hooks are shell scripts
-# without an extension.
+# without an extension, and the files of git have comments as shell scripts have.
 function style(file) {
     if (file ~ /\.md$/) return ""
-    if (file ~ /(^|\/)\.githooks\//) return "hash"
+    if (file ~ /(^|\/)(\.githooks\/|\.gitattributes$|\.gitignore$)/) return "hash"
     return style_of[extension(file)]
 }
 

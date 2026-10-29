@@ -1,0 +1,52 @@
+# The simulation environment: a Trino reached as Starburst is, by HTTPS with a password, on a
+# PostgreSQL that holds the test data; and Ollama, under the profile `ollama`, for a machine on
+# which none runs already. How it is started is in README.md.
+name: data-profiler
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: crm
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      # Over TCP, as clients connect: while it is set up, PostgreSQL listens on its socket alone.
+      test: ["CMD", "pg_isready", "--host=localhost", "--username=crm", "--dbname=crm"]
+      interval: 2s
+      retries: 30
+
+  # Its health check comes with the image.
+  trino:
+    image: trinodb/trino:484
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./simulation/trino/config.properties:/etc/trino/config.properties:ro
+      - ./simulation/trino/password-authenticator.properties:/etc/trino/password-authenticator.properties:ro
+      - ./simulation/trino/password.db:/etc/trino/password.db:ro
+      - ./simulation/trino/catalog:/etc/trino/catalog:ro
+      - ./simulation/trino/tls:/etc/trino/tls:ro
+
+  ollama:
+    image: ollama/ollama:0.40.13
+    profiles: [ollama]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      retries: 30
+
+volumes:
+  postgres-data:
+  ollama-models:

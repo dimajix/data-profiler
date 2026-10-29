@@ -44,7 +44,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [05](05-the-simulation-environment.md) | open | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. |
+| [05](05-the-simulation-environment.md) | in progress | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. |
 
 ## Architecture
 

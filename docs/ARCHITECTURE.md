@@ -38,8 +38,9 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.cli`** - the command line: it reads the arguments and `.env`, configures the
     log, runs the stages, and alone ends the program, showing users what may be shown of an error.
 *   **`simulation`** - test data: tables generated from a profile and loaded into the simulation
-    environment - Trino with a PostgreSQL catalog, and Ollama under a compose profile of its own -,
-    for tests and for trying the tool without access to the real database.
+    environment - Trino, reached by HTTPS with a password as Starburst is, with a PostgreSQL
+    catalog, and Ollama under a compose profile of its own -, for tests and for trying the tool
+    without access to the real database.
 
 The stages read and write the profile: `scan` uses `source`, `detect` and `workspace`, `describe`
 uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
@@ -117,7 +118,9 @@ The design repeats a few decisions; new code follows them.
 ## The repository
 
 *   **`src/`** - the package `data_profiler`; **`tests/`** - its tests.
-*   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`.
+*   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, and in
+    `simulation/trino/` the configuration of the simulated Trino.
+*   **`docker-compose.yml`** - the simulation environment, started as `README.md` says.
 *   **`docs/`** - the documents of the project: this one, the
     [coding guidelines](CODING-GUIDELINES.md) and one document per subject that outgrew its section
     here (see the list below).

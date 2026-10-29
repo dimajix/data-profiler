@@ -41,7 +41,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [05](05-the-simulation-environment.md) | open | high | feature | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. Part of epic [02](02-first-version-epic.md). |
+| [05](05-the-simulation-environment.md) | in progress | high | feature | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 
