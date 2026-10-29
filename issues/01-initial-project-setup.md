@@ -111,3 +111,15 @@ remarks of the template that no longer say anything once filled in.
   - *Simulation.* There is no access to Starburst where the tool is developed: a Trino in Docker,
     with a PostgreSQL catalog for fast loading, and Ollama under a compose profile of its own,
     since Ollama already runs on the development machine and would collide with it.
+
+- **2026-10-29** — Question 3 decided: `pytest` for the tests, `ruff` as formatter and linter,
+  `mypy` in its strict mode for the types - pyright was weighed and offers nothing more here -, with
+  doc comments in the Google convention; the formatter, the linter and `mypy` run in the pre-commit
+  hook. The lints that check rules of the guidelines are turned on in `pyproject.toml`; the rules
+  name them with question 4. An exception of a named type that is passed over counts as dropped too,
+  and `SIM105` is turned off: it proposes `contextlib.suppress`, which drops it all the same. Tests
+  that need the simulation environment run like every other test: the maintainer starts the
+  environment beforehand, and it is reachable on `localhost` from where the agents run, which cannot
+  start containers themselves. A marker deselecting them was weighed and is not needed; skipping
+  them when the environment is down was rejected, since a skipped test hides that nothing was
+  checked.

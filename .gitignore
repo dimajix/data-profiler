@@ -5,3 +5,8 @@ __pycache__/
 
 # Personal settings of the IDE
 .idea/
+
+# The caches of the checks
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/

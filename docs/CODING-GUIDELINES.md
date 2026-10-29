@@ -5,10 +5,10 @@ Rules that belong to one subject live with the document on it. [ARCHITECTURE.md]
 gives the overall picture, the principles of design are in
 [AGENTS.md](../AGENTS.md#design-principles).
 
-> **TODO (issue 01):** These rules are written for any language. Name the language here, fill in the
-> [checks](#checks), and give each rule below that depends on the language its form in it - the
-> error types, the logging library, how visibility is narrowed, where tests live -, with an example
-> from the code once there is one. Rules that do not apply are deleted, not kept as dead letters.
+> **TODO (issue 01):** These rules are written for any language. Name the language here, and give
+> each rule below that depends on the language its form in it - the error types, the logging
+> library, how visibility is narrowed, where tests live -, with an example from the code once there
+> is one. Rules that do not apply are deleted, not kept as dead letters.
 
 ## Rules for every change
 
@@ -35,7 +35,8 @@ against this list, rule by rule, before it is reported (the self-review of
     ([Comments and documentation](#comments-and-documentation)).
 *   A change comes with its tests, which use what the code offers its callers
     ([Testing](#testing)).
-*   Every [check](#checks) passes: the tests, the formatter, the linter and the wrapping.
+*   Every [check](#checks) passes: the tests, the formatter, the linter, the type checker and the
+    wrapping.
 
 ## Checks
 
@@ -46,23 +47,24 @@ hook in `.githooks` runs them on every commit, once a clone has it enabled
 
 | Check | Command | In the pre-commit hook |
 |---|---|---|
-| The tests | TODO (issue 01) | no - they are run before every report |
-| The layout of the code | TODO (issue 01) | yes, when code is part of the commit |
-| The linter | TODO (issue 01) | yes, when code or its configuration is part of the commit |
+| The tests | `uv run pytest` | no - they are run before every report |
+| The layout of the code | `uv run ruff format --check` | yes, when code or its configuration is part of the commit |
+| The linter | `uv run ruff check` | yes, when code or its configuration is part of the commit |
+| The types | `uv run mypy` | yes, when code or its configuration is part of the commit |
 | The wrapping of prose | `scripts/wrapping.sh` | yes, on the files the commit adds or changes |
 | The issue overviews | `issues/generate.sh --check` | regenerated, when an issue is part of the commit |
 
-> **TODO (issue 01):** The commands of the language, for example `cargo test`,
-> `cargo fmt --all --check` and `cargo clippy --workspace --all-targets -- -D warnings` for Rust;
-> `pytest`, `ruff format --check` and `ruff check` for Python; `go test ./...`, `gofmt -l .` and
-> `go vet ./...` for Go. Add the formatter and the linter to `.githooks/pre-commit`.
+The tools and their settings are in `pyproject.toml`, their versions in `uv.lock`.
 
 *   **Code is laid out by the formatter**, with the settings of its configuration file, and never
     by hand. Where the formatter leaves something as it is written, its layout is the author's,
     within 100 characters as the formatter would lay it out.
 *   **The linter stays silent.** Where a lint is wrong for a case, it is silenced on that item
-    alone, with the reason, and in the form that is noticed once the lint no longer fires where the
-    language offers one (`#[expect(…, reason = "…")]` in Rust).
+    alone, with the reason after it: `# noqa: <code>  # <reason>` for ruff,
+    `# type: ignore[<code>]  # <reason>` for mypy. Both report a silencing that is no longer
+    needed - ruff by `RUF100`, mypy in its strict mode.
+*   **Types are checked strictly.** `mypy` runs in its strict mode: every function is annotated,
+    no untyped function is called, and no function returns `Any` where it declares a type.
 *   **Rules a lint checks.** The configuration of the linter turns on the lints that check rules of
     this document, and the rule names its lint. A rule missed twice gets a lint, a test or a check
     of the hook ([AGENTS.md](../AGENTS.md#corrections-become-rules)).
@@ -238,3 +240,5 @@ visible for it, beyond what a module offers for tests - says that a cut is wrong
 *   **Naming:** a test is named after what it shows, as a sentence:
     `a_document_saved_twice_keeps_both_versions`.
 *   **Assertions** say what was expected, in their message where the assertion alone does not.
+*   **The simulation environment:** a test that needs it expects it to run, and fails if it does
+    not. A test that skips itself hides that nothing was checked.

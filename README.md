@@ -57,7 +57,13 @@ their dependencies.
 
 ### Running Tests
 
-TODO (issue 01): the command that runs the tests.
+```bash
+uv run pytest
+```
+
+Tests that need the simulation environment expect it to run. The other checks, which the
+pre-commit hook runs as well, are listed in
+[docs/CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md#checks).
 
 ### Working on the Repository
 

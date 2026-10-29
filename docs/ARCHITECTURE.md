@@ -122,8 +122,8 @@ The design repeats a few decisions; new code follows them.
     [issues/README.md](../issues/README.md)).
 *   **`scripts/`** - the tools that check the rules of the documents, such as
     `scripts/wrapping.sh`.
-*   **`.githooks/`** - the pre-commit hook, which runs those checks and keeps the issue overviews up
-    to date; enabled per clone with `git config core.hooksPath .githooks`.
+*   **`.githooks/`** - the pre-commit hook, which runs the checks of the coding guidelines and keeps
+    the issue overviews up to date; enabled per clone with `git config core.hooksPath .githooks`.
 *   **`.claude/agents/`** - the agents Claude Code is given for the workflow of
     [AGENTS.md](../AGENTS.md#workflow), such as the `reviewer`.
 *   **`AGENTS.md`** - how we work together; `CLAUDE.md` points Claude Code to it, and the links

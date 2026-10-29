@@ -7,7 +7,12 @@ requires-python = ">=3.13"
 dependencies = []
 
 [dependency-groups]
-dev = ["simulation"]
+dev = [
+    "mypy>=2.4.1",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+    "simulation",
+]
 
 [tool.uv.workspace]
 members = ["simulation"]
@@ -18,3 +23,34 @@ simulation = { workspace = true }
 [build-system]
 requires = ["uv_build>=0.12.24,<0.13"]
 build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "B", "UP", "SIM", "RUF",
+    # The rules of docs/CODING-GUIDELINES.md a lint checks, by their sections there:
+    "D",        # Comments and documentation: module docs and doc comments
+    "PLC0415",  # Imports: at the top of the module
+    "T20",      # Logging: never by printing
+    "BLE001",   # Error handling: no exception caught without telling it apart
+    "S110",     # Error handling: no exception dropped
+    "C901",     # Checks: functions that do more than one thing are split - by their branches
+    "PLR0915",  # Checks: functions that do more than one thing are split - by their length
+    "PGH004",   # Checks: a lint is silenced by its code
+]
+ignore = [
+    "SIM105",   # proposes `contextlib.suppress`, which drops an exception as S110 forbids
+]
+
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+strict = true
+enable_error_code = ["ignore-without-code"]
+files = ["src", "simulation/src"]

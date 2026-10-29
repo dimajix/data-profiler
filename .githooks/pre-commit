@@ -7,9 +7,9 @@
 # - Prose is wrapped by the rules of docs/CODING-GUIDELINES.md: `scripts/wrapping.sh` must find no
 #   line too long, and none beginning with a dash, in the files a commit adds or changes that the
 #   rules cover, read whole from the working tree; files the commit leaves out are not checked.
-# - The code is laid out by the formatter and the linter stays silent, as "Checks" in
-#   docs/CODING-GUIDELINES.md names them: each runs whenever a file it checks is part of a commit,
-#   on the working tree, so that changes that are not staged count too.
+# - The code is laid out by the formatter, and the linter and the type checker stay silent, as
+#   "Checks" in docs/CODING-GUIDELINES.md names them: each runs whenever code or its configuration
+#   is part of a commit, on the working tree, so that changes that are not staged count too.
 #
 # `git commit --no-verify` skips all of them.
 set -eu
@@ -27,19 +27,9 @@ if [ -n "$committed" ]; then
     scripts/wrapping.sh $committed
 fi
 
-# TODO (issue 01): the formatter and the linter of the project's language, for example
-#
-#   if ! git diff --cached --quiet -- '*.rs' '*Cargo.toml' Cargo.lock; then
-#       cargo fmt --all --check
-#       cargo clippy --workspace --all-targets --quiet -- -D warnings
-#   fi
-#
-#   if ! git diff --cached --quiet -- '*.py' pyproject.toml; then
-#       ruff format --check
-#       ruff check
-#   fi
-#
-#   if ! git diff --cached --quiet -- '*.go' go.mod; then
-#       test -z "$(gofmt -l .)"
-#       go vet ./...
-#   fi
+# `--locked` refuses a uv.lock that no longer fits the pyproject.toml files.
+if ! git diff --cached --quiet -- '*.py' '*pyproject.toml' uv.lock; then
+    uv run --locked --quiet ruff format --check
+    uv run --locked --quiet ruff check
+    uv run --locked --quiet mypy
+fi
