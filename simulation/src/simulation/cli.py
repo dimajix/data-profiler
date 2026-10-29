@@ -1,0 +1,47 @@
+"""The command line of the simulation: `simulation [--debug] load PROFILE [--seed N]`.
+
+It loads the tables of a profile into the simulation environment, which has to run, and logs what
+Trino counts of them afterwards. It configures the log, to standard error - at debug level with
+`--debug` -, and ends with the exit code 1 when the load fails.
+"""
+
+import logging
+import sys
+from argparse import ArgumentParser
+from pathlib import Path
+
+from data_profiler.profile import Profile, ProfileError
+from simulation import SimulationError
+from simulation.environment import Environment
+
+_logger = logging.getLogger(__name__)
+
+_FORMAT = "%(levelname)s %(message)s"
+
+
+def main() -> None:
+    """Runs the command given on the command line."""
+    parser = ArgumentParser(prog="simulation", description="The simulation environment.")
+    parser.add_argument("--debug", action="store_true", help="log at debug level")
+    commands = parser.add_subparsers(dest="command", required=True)
+    load = commands.add_parser("load", help="load the tables of a profile, with generated data")
+    load.add_argument("profile", type=Path, help="the file of the profile")
+    load.add_argument("--seed", type=int, default=0, help="the seed of the values (default: 0)")
+    arguments = parser.parse_args()
+    level = logging.DEBUG if arguments.debug else logging.INFO
+    logging.basicConfig(level=level, format=_FORMAT)  # noqa: TID251  # this is the command line
+    try:
+        profile = Profile.read(arguments.profile)
+        with Environment.connect() as environment:
+            environment.load(profile, arguments.seed)
+            for table in profile.tables:
+                rows = environment.count(profile.schema, table.name)
+                _logger.info("Trino counts %s.%s: %d rows", profile.schema, table.name, rows)
+    except (ProfileError, SimulationError) as error:
+        _logger.error("%s", error)
+        _logger.debug("The load failed.", exc_info=True)
+        sys.exit(1)  # noqa: TID251  # this is the command line
+    except Exception:
+        _logger.error("The load failed unexpectedly; with --debug, the log says why.")
+        _logger.debug("The load failed.", exc_info=True)
+        sys.exit(1)  # noqa: TID251  # this is the command line

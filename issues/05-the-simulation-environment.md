@@ -1,6 +1,6 @@
 # 05 — The simulation environment
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Simulation
@@ -72,3 +72,28 @@ Things to settle on the way:
   .gitattributes and .gitignore. Found on the way: where an HTTP proxy is set, `localhost` has to be
   in `NO_PROXY`, or requests to the simulation go to the proxy; that concerns the client of
   [06](06-source-and-dialect-for-trino.md).
+
+- **2026-10-29** — Step 2 done, and with it the issue: `uv run simulation load PROFILE` creates the
+  tables of a profile by Trino, from the types as Trino names them, and fills them by `COPY` in
+  PostgreSQL, with rows that have the statistics of the profile - its rows, nulls, distinct values
+  and the lengths of texts -, the same seed giving the same rows; `simulation/profiles/crm.yml` is
+  the example, of six tables and about 97,000 rows, loaded in about a second. Weighed and decided:
+  no `faker` yet, since what a column holds is known only from the semantic types of
+  [08](08-detection.md) - until then texts are letters of the counted lengths. Trino names tables
+  and columns in lower case, so a profile of Trino or Starburst does too. Found on the way: the
+  import mode `importlib` of pytest took the directory `simulation/` for the package of the same
+  name and hid it, so pytest imports test modules by name again, whose names are unique across both
+  directories; two `conftest.py` work so, but mypy refuses them until `explicit_package_bases` is
+  set, which waits for the first `conftest.py`. The command line of the simulation follows the rules
+  of the tool's: it configures the log, with `--debug` for its tracebacks, and alone ends the
+  program.
+
+- **2026-10-29** — Changed while implementing and after the review, agreed by the maintainer:
+  `SimulationError` lives in the package `simulation`, beside the description it shares, since the
+  module `environment` imports `rows` from `data` and the agreed place would have been a circular
+  import; `Environment` closes its connections as a context manager and counts the rows of a table
+  by Trino, for the command line and the test; `--debug` shows the tracebacks the command line logs.
+  A failure of Trino or PostgreSQL is told by the system, its endpoint and what was done, where the
+  client is called; what the client said - a failed `COPY` names the value it refused - stays in the
+  cause, logged at debug. The principles that the database is only read and that the dialect writes
+  all SQL are the tool's; the simulation writes into its own environment.

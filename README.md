@@ -72,13 +72,25 @@ and stopped by `docker compose down`; its data stays in a volume until
 - **Ollama** is started with the profile `ollama`, on a machine on which none runs already:
   `docker compose --profile ollama up -d --wait`. Its models stay in a volume.
 
+It is filled with the tables of a profile, with generated rows that have the statistics of the
+profile, by
+
+```bash
+uv run simulation load simulation/profiles/crm.yml
+```
+
+where `simulation/profiles/crm.yml` is an example in the manner of a CRM. Only a profile of the
+catalog `crm` is loaded; its schema is created where it does not exist, and its tables replace those
+of the same names.
+
 ### Running Tests
 
 ```bash
 uv run pytest
 ```
 
-The other checks, which the pre-commit hook runs as well, are listed in
+Tests that need the simulation environment expect it to run. The other checks, which the
+pre-commit hook runs as well, are listed in
 [docs/CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md#checks).
 
 ### Working on the Repository

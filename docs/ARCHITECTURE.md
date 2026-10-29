@@ -40,7 +40,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`simulation`** - test data: tables generated from a profile and loaded into the simulation
     environment - Trino, reached by HTTPS with a password as Starburst is, with a PostgreSQL
     catalog, and Ollama under a compose profile of its own -, for tests and for trying the tool
-    without access to the real database.
+    without access to the real database. It creates the tables by Trino and fills them by `COPY` in
+    the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `detect` and `workspace`, `describe`
 uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
@@ -103,9 +104,10 @@ The design repeats a few decisions; new code follows them.
     samples stay in the workspace. A profile can be shared; a workspace cannot.
 *   **No value leaves the machine.** The language model runs locally; no external service gets a
     value, a sample or a profile.
-*   **The database is only read.** The tool sends nothing but queries.
-*   **The dialect writes all SQL.** No other part writes SQL text, so that another database is a
-    new dialect, not a change across the code.
+*   **The database is only read.** The tool sends nothing but queries; only the simulation
+    writes, into its own environment.
+*   **The dialect writes all SQL.** No other part of the tool writes SQL text, so that another
+    database is a new dialect, not a change across the code.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes names and descriptions from what
     they found, and nothing else.
@@ -118,7 +120,8 @@ The design repeats a few decisions; new code follows them.
 ## The repository
 
 *   **`src/`** - the package `data_profiler`; **`tests/`** - its tests.
-*   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, and in
+*   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, its tests
+    in `simulation/tests/`, an example profile in `simulation/profiles/`, and in
     `simulation/trino/` the configuration of the simulated Trino.
 *   **`docker-compose.yml`** - the simulation environment, started as `README.md` says.
 *   **`docs/`** - the documents of the project: this one, the

@@ -237,8 +237,8 @@ log at `debug`.
 
 A file the tool writes - a profile, a sample, a report - is written whole or not at all: into a
 temporary file next to it, which then takes its place (`os.replace`). A run that fails part of the
-way leaves no half-written file behind, and the file of an earlier run intact. The database is never
-written to.
+way leaves no half-written file behind, and the file of an earlier run intact. The tool never writes
+to the database.
 
 ## Logging
 
@@ -277,15 +277,17 @@ underscore, or one made public for it - says that a cut is wrong: it is a
 [finding](../AGENTS.md#findings), and the visibility is not widened for it.
 
 *   **Where tests live:** the tests of a project are in `tests/` beside its `src/` - `tests/` for
-    the tool, `simulation/tests/` for the generator -, one file `test_<module>.py` per module, and
-    a test of every module alike in a file named after what it checks. Pytest imports them by
-    `importlib`, so that the two directories do not collide. A directory of tests is added to
-    `testpaths` of pytest and to `files` of mypy with its first test: neither tool finds it on its
-    own, and a test that does not run checks nothing.
+    the tool, `simulation/tests/` for the generator -, one file `test_<module>.py` per module, and a
+    test of every module alike in a file named after what it checks. Pytest imports a test module by
+    its name, so the names of test modules are unique across both directories; its mode `importlib`,
+    which would not need that, takes the directory `simulation/` for the package of the same name,
+    and hides it. A directory of tests is added to `testpaths` of pytest and to `files` of mypy with
+    its first test: neither tool finds it on its own, and a test that does not run checks nothing.
 *   **Shared fixtures:** what the tests of several modules use lives in one place, as a fixture in
     the `conftest.py` of the directory whose tests share it, built through the interface of the
     module whose things it builds. A test builds what it needs as the code does, from defaults, and
-    writes only what it differs in.
+    writes only what it differs in. With a `conftest.py` in both directories of tests, mypy needs
+    `explicit_package_bases` to tell them apart; it is set with the second one.
 *   **Naming:** a test is named after what it shows, as a sentence after the `test_` pytest asks
     for: `test_a_profile_written_and_read_is_unchanged`. The name is its description: the
     functions of a test module - tests, fixtures, helpers - need no docstring, the module does.

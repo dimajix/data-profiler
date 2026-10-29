@@ -1,0 +1,125 @@
+# An example profile in the manner of a CRM: customers, their addresses and contacts, products,
+# orders and their items, under the abbreviated names such a system has. It is loaded into the
+# simulation environment by `uv run simulation load simulation/profiles/crm.yml`.
+format: 1
+catalog: crm
+schema: sales
+tables:
+- name: cust
+  rows: 5000
+  columns:
+  - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 5000}}
+  - name: cust_no
+    type: varchar(12)
+    statistics: {nulls: 0, distinct: 5000, lengths: {shortest: 10, longest: 10}}
+  - name: cust_nm
+    type: varchar(80)
+    statistics: {nulls: 0, distinct: 4870, lengths: {shortest: 3, longest: 62}}
+  - name: cust_typ_cd
+    type: varchar(2)
+    statistics: {nulls: 0, distinct: 3, lengths: {shortest: 1, longest: 2}}
+  - {name: crt_dt, type: date, statistics: {nulls: 0, distinct: 3100}}
+  - {name: upd_ts, type: timestamp(3), statistics: {nulls: 412, distinct: 4588}}
+  - {name: crdt_lmt_amt, type: "decimal(12,2)", statistics: {nulls: 1200, distinct: 340}}
+  - {name: actv_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}
+  - name: seg_cd
+    type: varchar(4)
+    statistics: {nulls: 250, distinct: 7, lengths: {shortest: 2, longest: 4}}
+- name: cust_addr
+  rows: 6200
+  columns:
+  - {name: addr_id, type: bigint, statistics: {nulls: 0, distinct: 6200}}
+  - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4980}}
+  - name: addr_typ_cd
+    type: varchar(3)
+    statistics: {nulls: 0, distinct: 4, lengths: {shortest: 3, longest: 3}}
+  - name: strt_nm
+    type: varchar(80)
+    statistics: {nulls: 0, distinct: 2900, lengths: {shortest: 4, longest: 38}}
+  - name: hse_no
+    type: varchar(10)
+    statistics: {nulls: 30, distinct: 410, lengths: {shortest: 1, longest: 5}}
+  - name: pst_cd
+    type: varchar(10)
+    statistics: {nulls: 0, distinct: 1800, lengths: {shortest: 5, longest: 5}}
+  - name: cty_nm
+    type: varchar(60)
+    statistics: {nulls: 0, distinct: 1500, lengths: {shortest: 3, longest: 28}}
+  - name: cntry_cd
+    type: varchar(2)
+    statistics: {nulls: 0, distinct: 12, lengths: {shortest: 2, longest: 2}}
+  - {name: vld_frm_dt, type: date, statistics: {nulls: 0, distinct: 2700}}
+  - {name: vld_to_dt, type: date, statistics: {nulls: 5100, distinct: 900}}
+- name: cntct
+  rows: 4100
+  columns:
+  - {name: cntct_id, type: bigint, statistics: {nulls: 0, distinct: 4100}}
+  - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 3500}}
+  - name: cntct_typ_cd
+    type: varchar(5)
+    statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 5}}
+  - name: frst_nm
+    type: varchar(40)
+    statistics: {nulls: 120, distinct: 600, lengths: {shortest: 2, longest: 14}}
+  - name: lst_nm
+    type: varchar(60)
+    statistics: {nulls: 0, distinct: 1900, lengths: {shortest: 2, longest: 22}}
+  - name: tel_no
+    type: varchar(20)
+    statistics: {nulls: 800, distinct: 3290, lengths: {shortest: 9, longest: 16}}
+  - name: eml_adr
+    type: varchar(120)
+    statistics: {nulls: 1300, distinct: 2790, lengths: {shortest: 11, longest: 44}}
+  - {name: brth_dt, type: date, statistics: {nulls: 2200, distinct: 1850}}
+- name: prod
+  rows: 350
+  columns:
+  - {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 350}}
+  - name: prod_cd
+    type: varchar(8)
+    statistics: {nulls: 0, distinct: 350, lengths: {shortest: 8, longest: 8}}
+  - name: prod_nm
+    type: varchar(80)
+    statistics: {nulls: 0, distinct: 348, lengths: {shortest: 6, longest: 48}}
+  - name: prod_grp_cd
+    type: varchar(4)
+    statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
+  - {name: lst_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
+  - {name: vat_rt, type: "decimal(4,2)", statistics: {nulls: 0, distinct: 3}}
+  - {name: dscntd_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}
+- name: ord
+  rows: 20000
+  columns:
+  - {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 20000}}
+  - name: ord_no
+    type: varchar(14)
+    statistics: {nulls: 0, distinct: 20000, lengths: {shortest: 14, longest: 14}}
+  - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4300}}
+  - {name: ord_dt, type: date, statistics: {nulls: 0, distinct: 2900}}
+  - name: ord_sts_cd
+    type: varchar(3)
+    statistics: {nulls: 0, distinct: 6, lengths: {shortest: 2, longest: 3}}
+  - {name: tot_amt, type: "decimal(14,2)", statistics: {nulls: 0, distinct: 15500}}
+  - name: curr_cd
+    type: varchar(3)
+    statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 3}}
+  - {name: dlvr_dt, type: date, statistics: {nulls: 1900, distinct: 2800}}
+  - name: pymt_mthd_cd
+    type: varchar(4)
+    statistics: {nulls: 40, distinct: 5, lengths: {shortest: 2, longest: 4}}
+  - name: crd_no
+    type: varchar(19)
+    statistics: {nulls: 14000, distinct: 5700, lengths: {shortest: 16, longest: 19}}
+  - name: iban
+    type: varchar(34)
+    statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
+- name: ord_itm
+  rows: 61000
+  columns:
+  - {name: ord_itm_id, type: bigint, statistics: {nulls: 0, distinct: 61000}}
+  - {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 19800}}
+  - {name: pos_no, type: smallint, statistics: {nulls: 0, distinct: 9}}
+  - {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 340}}
+  - {name: qty, type: integer, statistics: {nulls: 0, distinct: 25}}
+  - {name: unt_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
+  - {name: dscnt_pct, type: "decimal(5,2)", statistics: {nulls: 52000, distinct: 8}}

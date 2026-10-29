@@ -4,8 +4,19 @@ version = "0.1.0"
 description = "Generates test data from a profile and loads it into the simulation environment."
 license = "Apache-2.0"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "data-profiler",
+    "psycopg[binary]>=3.3.6",
+    "requests>=2.34.2",
+    "trino>=0.340.0",
+]
+
+[project.scripts]
+simulation = "simulation.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.12.24,<0.13"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+data-profiler = { workspace = true }
