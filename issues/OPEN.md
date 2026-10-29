@@ -16,6 +16,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | open | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 
+## Simulation
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [05](05-the-simulation-environment.md) | open | high | feature | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. Part of epic [02](02-first-version-epic.md). |
+
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

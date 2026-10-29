@@ -18,6 +18,12 @@ issues are kept is described in [README.md](README.md); those open or in progres
 |---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | open | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
 
+## Simulation
+
+| No. | Status | Issue |
+|---|---|---|
+| [05](05-the-simulation-environment.md) | open | There is no database to develop and test the tool against: the real Starburst is not reachable where the tool is developed. |
+
 ## Architecture
 
 | No. | Status | Issue |
