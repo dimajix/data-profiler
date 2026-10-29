@@ -35,7 +35,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as HTML.
-*   **`data_profiler.cli`** - the command line: arguments, `.env`, and running the stages.
+*   **`data_profiler.cli`** - the command line: it reads the arguments and `.env`, configures the
+    log, runs the stages, and alone ends the program, showing users what may be shown of an error.
 *   **`simulation`** - test data: tables generated from a profile and loaded into the simulation
     environment - Trino with a PostgreSQL catalog, and Ollama under a compose profile of its own -,
     for tests and for trying the tool without access to the real database.
@@ -113,7 +114,7 @@ The design repeats a few decisions; new code follows them.
 
 ## The repository
 
-*   **`src/`** - the package `data_profiler`.
+*   **`src/`** - the package `data_profiler`; **`tests/`** - its tests.
 *   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`.
 *   **`docs/`** - the documents of the project: this one, the
     [coding guidelines](CODING-GUIDELINES.md) and one document per subject that outgrew its section

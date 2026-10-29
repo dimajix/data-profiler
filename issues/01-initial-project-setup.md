@@ -123,3 +123,18 @@ remarks of the template that no longer say anything once filled in.
   start containers themselves. A marker deselecting them was weighed and is not needed; skipping
   them when the environment is down was rejected, since a skipped test hides that nothing was
   checked.
+
+- **2026-10-29** — Question 4 decided: every rule of `docs/CODING-GUIDELINES.md` has its form in
+  Python, and names its lint where one checks it (`TID252`, `SLF001` and `S112` are new, and
+  `TID251` bans the APIs only `cli` may use, and `typing.Protocol`). Interfaces between parts are
+  abstract classes rather than protocols, so that an implementation says what it implements.
+  "Rolling back" became "Files are written whole", since the tool never writes to the database. The
+  command line reports its progress through the log, so that nothing prints; values of the database
+  are logged at `debug` alone; the rule on ids in spans was deleted, as it belongs to a service, not
+  a command line; and error messages may name files and paths, since they are read on the machine of
+  the user. The first test checks a part of the rule on module descriptions that ruff does not
+  check: that the first paragraph is one sentence. The review found that the cause of a database
+  error may carry a value of the database - `Cannot cast 'Müller' to INTEGER` - and with it the
+  traceback. Weighed: a database error reduced to its name and query id, its message cut off, so
+  that no value is ever logged; or values of the database at `debug`. The maintainer chose the
+  latter: the log stays on the machine, as the workspace does.

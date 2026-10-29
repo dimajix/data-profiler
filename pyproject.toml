@@ -33,9 +33,13 @@ select = [
     # The rules of docs/CODING-GUIDELINES.md a lint checks, by their sections there:
     "D",        # Comments and documentation: module docs and doc comments
     "PLC0415",  # Imports: at the top of the module
+    "TID252",   # Imports: absolute, never relative
+    "SLF001",   # Visibility: a name with an underscore stays in its class
     "T20",      # Logging: never by printing
     "BLE001",   # Error handling: no exception caught without telling it apart
     "S110",     # Error handling: no exception dropped
+    "S112",     # Error handling: no exception dropped
+    "TID251",   # the APIs banned below, each by the rule that bans it
     "C901",     # Checks: functions that do more than one thing are split - by their branches
     "PLR0915",  # Checks: functions that do more than one thing are split - by their length
     "PGH004",   # Checks: a lint is silenced by its code
@@ -44,8 +48,22 @@ ignore = [
     "SIM105",   # proposes `contextlib.suppress`, which drops an exception as S110 forbids
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["D103"]  # Testing: the functions of a test module need no docstring
+
 [tool.ruff.lint.flake8-bandit]
 check-typed-exception = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typing.Protocol".msg = "Interfaces between parts are abstract classes (abc.ABC)."
+"sys.exit".msg = "Only cli ends the program."
+"sys.stdout".msg = "Nothing is printed: log through logging."
+"sys.stderr".msg = "Nothing is printed: log through logging."
+"logging.basicConfig".msg = "Only cli configures where logs go."
+"logging.config".msg = "Only cli configures where logs go."
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -53,4 +71,8 @@ convention = "google"
 [tool.mypy]
 strict = true
 enable_error_code = ["ignore-without-code"]
-files = ["src", "simulation/src"]
+files = ["src", "simulation/src", "tests"]
+
+[tool.pytest]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
