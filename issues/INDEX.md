@@ -6,6 +6,12 @@ pre-commit hook (`.githooks/pre-commit`) or a run of the script brings this file
 issues are kept is described in [README.md](README.md); those open or in progress are listed in
 [OPEN.md](OPEN.md).
 
+## Architecture
+
+| No. | Status | Issue |
+|---|---|---|
+| [02](02-first-version-epic.md) | open | The tool does not exist yet: nothing scans a database, proposes names for its columns or reports what was found. |
+
 ## Tooling and process
 
 | No. | Status | Issue |
