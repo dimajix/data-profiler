@@ -6,6 +6,12 @@ pre-commit hook (`.githooks/pre-commit`) or a run of the script brings this file
 issues are kept is described in [README.md](README.md); those open or in progress are listed in
 [OPEN.md](OPEN.md).
 
+## Profile
+
+| No. | Status | Issue |
+|---|---|---|
+| [03](03-the-profile.md) | open | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
+
 ## Architecture
 
 | No. | Status | Issue |
