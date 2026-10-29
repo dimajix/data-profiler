@@ -8,4 +8,4 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [01](01-initial-project-setup.md) | open | high | feature | The repository is still the generic project template: its documents, checks and issue areas say nothing yet about this project, its language or its tools. |
+| [01](01-initial-project-setup.md) | in progress | high | feature | The repository is still the generic project template: its documents, checks and issue areas say nothing yet about this project, its language or its tools. |

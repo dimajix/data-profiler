@@ -1,7 +1,25 @@
-# TODO (issue 01): Project name
+# data-profiler
 
-> **TODO (issue 01):** Describe the project here: what it is, what it is for and for whom, its main
-> features, how to build, test and run it, and its license.
+data-profiler is a command line tool for data engineers who have to understand an SQL database they
+did not design - tables with dozens or hundreds of columns behind abbreviated names - and build an
+understandable data model of it. Trino and Starburst are the first databases it reads; it writes
+its SQL through a dialect, so that others can follow.
+
+It works in three stages, each of which can be run again on its own:
+
+- **scan** reads the selected tables, by a list or a regular expression, and finds for every
+  column the range of its values, its nulls, whether it is an enum of few values, and what its
+  values are - phone numbers, postal codes, card numbers, dates and more - by deterministic
+  detectors, checked on a sample and, where they can, verified on the whole table.
+- **describe** asks a small language model, running locally in Ollama, for a harmonized English
+  name and a description of every column. The names are composed from one glossary of the terms of
+  the whole database - mostly abbreviations -, so that the same term reads the same in every table.
+- **report** renders the result as HTML.
+
+The result is a profile, a YAML file that holds no sensitive values and can be shared; samples of
+the data stay in a local workspace. No value leaves the machine the tool runs on.
+
+The project is at its beginning: the stages above are what it is being built for.
 
 ## Documentation
 
@@ -17,11 +35,25 @@
 
 ### Prerequisites
 
-TODO (issue 01): the language, its tools and their versions.
+- [uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where
+  uv does not download Python on its own, install it once with `uv python install 3.13`.
+- [Docker](https://www.docker.com/), for the simulation environment, which stands in for the real
+  database in the tests and wherever the tool is tried out without access to it.
+- [Ollama](https://ollama.com/), for the stage `describe`, if it does not run in the simulation
+  environment.
+
+The commands below are the same on Linux, macOS and Windows.
 
 ### Building the Project
 
-TODO (issue 01): the command that builds the project.
+In a clone of the repository:
+
+```bash
+uv sync
+```
+
+It creates the environment `.venv` with the tool and the test data generator, as `uv.lock` fixes
+their dependencies.
 
 ### Running Tests
 

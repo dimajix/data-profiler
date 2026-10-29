@@ -1,6 +1,6 @@
 # 01 — Initial project setup
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** high
 **Area:** Tooling and process
@@ -74,3 +74,40 @@ remarks of the template that no longer say anything once filled in.
 
 - **2026-10-29** — Opened with the template, whose rules and tools are taken from an existing
   project and written for any language.
+
+- **2026-10-29** — Questions 1 and 2 decided with the maintainer, recorded in `README.md` and
+  `docs/ARCHITECTURE.md`. The project stays `data-profiler`: a command line tool for data engineers
+  that profiles the tables of a Trino or Starburst database - a CRM of about 20 tables of up to 200
+  columns is the first case - and proposes readable, harmonized English names for its columns.
+  What was weighed:
+  - *Stages.* One run doing everything, or the stages `scan`, `describe` and `report` sharing
+    nothing but the profile and the workspace: chosen the stages, so that the language model can be
+    run again without querying the database, and every stage but `scan` can be tested without one.
+    The price is that the profile's format is a contract.
+  - *Sensitive data.* The data must not reach an external language model, and the profile must
+    hold nothing under GDPR or PCI; the local model may see values. Hence the profile holds raw
+    values only for columns no detector marks as sensitive, never the range of texts, and samples
+    go into a workspace that keeps itself out of version control - an entry in this repository's
+    `.gitignore` would not protect a workspace elsewhere.
+  - *Where things are counted.* The maintainer proposed distinct counts on a sample, to spare the
+    database a `GROUP BY` on columns such as UUIDs. Chosen instead: `approx_distinct` on the whole
+    table, which needs constant memory, and an exact `GROUP BY` only below the enum threshold - a
+    sample would distort the very count that tells an enum. Detectors check a sample in code
+    (checksums, phone number rules) and verify their findings on the whole table by a pattern in
+    SQL, as the maintainer proposed.
+  - *Semantics and names.* The language model alone, or deterministic detectors deciding the type
+    and the model only naming: chosen the latter, since a model of 1 to 2 billion parameters names
+    well from prepared facts but does not reason reliably. Names are composed from a glossary of
+    the terms of the original names - mostly abbreviations -, so that one term reads the same
+    everywhere and one correction fixes every column; corrections are overrides, a part of a
+    profile laid over it, not a format of their own.
+  - *Other databases.* Kept open by a dialect that writes all SQL, not by an abstraction no second
+    database uses yet.
+  - *Language and layout.* Python 3.13, for its Trino client, `sqlglot` and the libraries for
+    detectors and reports; Rust and the JVM were weighed and lack them. The test data generator is
+    a project of its own in a uv workspace rather than a second package of the tool, so that the
+    tool's package carries neither it nor its dependencies. The tool is run from a clone on the
+    target machine, which runs Windows.
+  - *Simulation.* There is no access to Starburst where the tool is developed: a Trino in Docker,
+    with a PostgreSQL catalog for fast loading, and Ollama under a compose profile of its own,
+    since Ollama already runs on the development machine and would collide with it.

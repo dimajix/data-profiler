@@ -1,0 +1,7 @@
+# What uv and Python generate
+.venv/
+dist/
+__pycache__/
+
+# Personal settings of the IDE
+.idea/
