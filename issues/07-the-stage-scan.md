@@ -1,6 +1,6 @@
 # 07 — The stage scan
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** high
 **Area:** Scan
@@ -57,3 +57,31 @@ Things to settle on the way:
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-10-29** — Step 1 done, as agreed with the maintainer: `scan(source, pattern)` in
+  `data_profiler.scan` makes the profile of the tables a pattern matches, each counted by one query
+  the new `Dialect.statistics` writes - its rows, and for each column its nulls, its distinct values
+  and the range of the lengths of its texts, in a row of fixed form, so that the stage needs no case
+  for the types; the dialect tells which are texts. The ranges of numbers and dates are not counted
+  before [08](08-detection.md) can let them into the profile. The round trip with the example of the
+  simulation found `approx_distinct` 5.7 percent off in one column, at its default standard error of
+  2.3 percent; the dialect asks for half a percent, which costs Trino about 64 KB per column and
+  came out within a quarter of a percent. The fixtures of the simulation moved into
+  `tests/conftest.py`, as two test modules use them now.
+
+- **2026-10-29** — Step 1 changed after the review, as the maintainer decided: the dialect no longer
+  writes the statement of the statistics whole, which left the form of its row described in `source`
+  and read in `scan`, held together by a convention of four values per column. Weighed: a
+  `Source.statistics` that counts and reads, as `tables` and `columns` do - rejected by the
+  maintainer, as tables and columns are metadata, which belong to the source, while what the tables
+  hold is something else. Instead the dialect offers building blocks - `select`, `rows`, `nulls`,
+  `distinct`, `shortest`, `longest`, `is_text` -, and the new module `data_profiler.statistics`
+  builds the query from them and reads its row along the same list of expressions, so that the form
+  of the row has one owner; lengths are asked only of texts. It is a module of its own from the
+  start, so that the pattern is set for the counting to come.
+
+- **2026-10-29** — Step 1 done. The maintainer confirmed half a percent as the standard error of the
+  distinct values, and a method `Source.name` for the name of a table with its catalog and schema,
+  which the messages of the source and of `statistics` both need. After a second review,
+  `statistics` decides the expressions of each column once and reads the row along them; a counted
+  value that is no number is a broken invariant of the dialect, a `TypeError` naming the column.

@@ -26,9 +26,11 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     results, which never leaves the machine.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
-    columns of its schema through its dialect and runs queries in that schema, so that another
-    database brings only its connection and its SQL. Trino is reached by HTTPS with a password;
-    certificates and proxies come from the environment.
+    columns of its schema - their metadata - through its dialect, and runs queries in that schema,
+    so that another database brings only its connection and its SQL. Trino is reached by HTTPS with
+    a password; certificates and proxies come from the environment.
+*   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
+    from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enums, samples and detector matches of
     the selected tables, written to a profile.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
@@ -46,8 +48,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     without access to the real database. It creates the tables by Trino and fills them by `COPY` in
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
-The stages read and write the profile: `scan` uses `source`, `detect` and `workspace`, `describe`
-uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
+The stages read and write the profile: `scan` uses `source`, `statistics`, `detect` and `workspace`,
+`describe` uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
 
 ## The domain
 
@@ -110,7 +112,9 @@ The design repeats a few decisions; new code follows them.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation
     writes, into its own environment.
 *   **The dialect writes all SQL.** No other part of the tool writes SQL text, so that another
-    database is a new dialect, not a change across the code.
+    database is a new dialect, not a change across the code. What the tables hold is counted by
+    queries that the part that reads their rows builds from the building blocks of the dialect:
+    metadata belongs to the source, counting to the part that counts.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes names and descriptions from what
     they found, and nothing else.

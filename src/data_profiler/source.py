@@ -1,14 +1,17 @@
 """The database the tool reads: a schema of it, its tables and columns, and the queries sent to it.
 
-A `Source` sends queries and nothing else; every statement it sends is written by its `Dialect`. A
-failure is told by the database, its endpoint and what was done; what the database said, which
-may hold a value of it, stays in the cause of the error. Trino is reached by HTTPS, whose
-certificates and proxies come from the environment, as `requests` reads them: `REQUESTS_CA_BUNDLE`
-for a certificate of a CA of one's own, `NO_PROXY` for a database a proxy does not reach.
+A `Source` sends queries and nothing else, and lists the tables and columns of its schema. Every
+statement it sends is written by its `Dialect`: whole, where it lists them, and of the building
+blocks the dialect offers, where another part counts what the tables hold. A failure is told by the
+database, its endpoint and what was done; what the database said, which may hold a value of it,
+stays in the cause of the error. Trino is reached by HTTPS, whose certificates and proxies come from
+the environment, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's
+own, `NO_PROXY` for a database a proxy does not reach.
 """
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from re import Pattern
 from types import TracebackType
 from typing import Final, Self
@@ -28,13 +31,23 @@ _PORT: Final = 443
 # The form of a URL of Trino, for the messages of a URL that has another.
 _FORM: Final = "trino://user@host:port/catalog/schema"
 
+# The types of Trino whose values are texts, by how their names begin.
+_TEXTS: Final = ("varchar", "char")
+
+# The standard error of the distinct values Trino counts: half a percent, against its default of
+# 2.3, so that keys and enums can be told by them, for about 64 KB of memory per column.
+_DISTINCT_ERROR: Final = 0.005
+
 
 class SourceError(Exception):
     """A failure of the database: the database by its endpoint, and what was done."""
 
 
 class Dialect(ABC):
-    """The SQL of one kind of database: every statement the tool sends is written here."""
+    """The SQL of one kind of database: the statements and expressions the tool sends.
+
+    Its building blocks take the names of tables and columns as they are, and quote them.
+    """
 
     @abstractmethod
     def tables(self, catalog: str, schema: str) -> str:
@@ -43,6 +56,34 @@ class Dialect(ABC):
     @abstractmethod
     def columns(self, catalog: str, schema: str, table: str) -> str:
         """The statement listing the names and types of the columns of `table`, in order."""
+
+    @abstractmethod
+    def select(self, expressions: Sequence[str], table: str) -> str:
+        """The statement selecting `expressions` from `table` of the schema of the source."""
+
+    @abstractmethod
+    def rows(self) -> str:
+        """The expression counting the rows."""
+
+    @abstractmethod
+    def nulls(self, column: str) -> str:
+        """The expression counting the nulls of `column`."""
+
+    @abstractmethod
+    def distinct(self, column: str) -> str:
+        """The expression counting the distinct values of `column`, approximately."""
+
+    @abstractmethod
+    def shortest(self, column: str) -> str:
+        """The expression of the length of the shortest value of `column`."""
+
+    @abstractmethod
+    def longest(self, column: str) -> str:
+        """The expression of the length of the longest value of `column`."""
+
+    @abstractmethod
+    def is_text(self, kind: str) -> bool:
+        """Whether a column of the type `kind`, as the database names it, holds texts."""
 
 
 class Source(ABC):
@@ -80,6 +121,10 @@ class Source(ABC):
     def close(self) -> None:
         """Closes the connection to the database."""
 
+    def name(self, table: str) -> str:
+        """The name of `table` with the catalog and schema of the source, as messages name it."""
+        return f"{self.catalog}.{self.schema}.{table}"
+
     def tables(self, pattern: Pattern[str]) -> list[str]:
         """The names of the tables of the schema that `pattern` matches whole, sorted.
 
@@ -97,8 +142,7 @@ class Source(ABC):
             SourceError: The schema has no such table, or the database fails to list its columns.
         """
         statement = self.dialect.columns(self.catalog, self.schema, table)
-        name = f"{self.catalog}.{self.schema}.{table}"
-        found = self.query(statement, f"listing the columns of {name}")
+        found = self.query(statement, f"listing the columns of {self.name(table)}")
         if not found:
             raise SourceError(f"{self.catalog}.{self.schema} has no table {table}")
         return {str(column): str(kind) for column, kind in found}
@@ -212,6 +256,34 @@ class _TrinoDialect(Dialect):
             f"WHERE table_schema = {_literal(schema)} AND table_name = {_literal(table)} "
             "ORDER BY ordinal_position"
         )
+
+    def select(self, expressions: Sequence[str], table: str) -> str:
+        """The statement selecting `expressions` from `table` of the schema of the source."""
+        return f"SELECT {', '.join(expressions)} FROM {_identifier(table)}"
+
+    def rows(self) -> str:
+        """The expression counting the rows."""
+        return "count(*)"
+
+    def nulls(self, column: str) -> str:
+        """The expression counting the nulls of `column`."""
+        return f"count(*) - count({_identifier(column)})"
+
+    def distinct(self, column: str) -> str:
+        """The expression counting the distinct values of `column`, approximately."""
+        return f"approx_distinct({_identifier(column)}, {_DISTINCT_ERROR})"
+
+    def shortest(self, column: str) -> str:
+        """The expression of the length of the shortest value of `column`."""
+        return f"min(length({_identifier(column)}))"
+
+    def longest(self, column: str) -> str:
+        """The expression of the length of the longest value of `column`."""
+        return f"max(length({_identifier(column)}))"
+
+    def is_text(self, kind: str) -> bool:
+        """Whether a column of the type `kind` holds texts: a `varchar` or a `char`."""
+        return kind.startswith(_TEXTS)
 
 
 def _identifier(name: str) -> str:
