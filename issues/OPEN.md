@@ -10,6 +10,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [03](03-the-profile.md) | open | high | feature | There is no profile yet: the stages have no format in which to hand on what they found about a database. Part of epic [02](02-first-version-epic.md). |
 
+## Describe
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [04](04-can-a-small-model-name-columns.md) | open | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
+
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

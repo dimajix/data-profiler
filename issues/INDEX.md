@@ -12,6 +12,12 @@ issues are kept is described in [README.md](README.md); those open or in progres
 |---|---|---|
 | [03](03-the-profile.md) | open | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
 
+## Describe
+
+| No. | Status | Issue |
+|---|---|---|
+| [04](04-can-a-small-model-name-columns.md) | open | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
+
 ## Architecture
 
 | No. | Status | Issue |
