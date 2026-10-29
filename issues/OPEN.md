@@ -8,7 +8,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [03](03-the-profile.md) | open | high | feature | There is no profile yet: the stages have no format in which to hand on what they found about a database. Part of epic [02](02-first-version-epic.md). |
 | [11](11-overrides.md) | open | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
 ## Scan

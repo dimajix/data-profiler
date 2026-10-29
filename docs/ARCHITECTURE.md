@@ -6,8 +6,8 @@ the details, where there is one; the list at the end names them all.
 
 data-profiler is a command line tool for data engineers that profiles the tables of an SQL
 database - Trino and Starburst first - to help build an understandable data model of it: what each
-column contains, and a harmonized name for it, composed from one glossary for the whole database.
-It reads the database through generated SQL, recognises the semantic types of columns with
+column contains, and a harmonized name for it, composed from one glossary for the whole schema. It
+reads the database through generated SQL, recognises the semantic types of columns with
 deterministic detectors, and asks a small local language model for names; no value leaves the
 machine it runs on.
 
@@ -20,7 +20,7 @@ The tool is one Python package, `data_profiler`, in `src/`. The test data genera
 its own, `simulation`, in `simulation/`: it uses the tool's profile, but the tool does not depend on
 it, nor on what it needs. Both are one uv workspace, with one lock file and one environment.
 
-*   **`data_profiler.profile`** - the profile: its schema, reading and writing it as YAML, and
+*   **`data_profiler.profile`** - the profile: its format, reading and writing it as YAML, and
     laying overrides over it.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine.
@@ -50,12 +50,14 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
     own, from what the stages before it left.
 *   **Source** - the database the tool reads, by its URL; **Dialect** - the SQL of one kind of
     database.
-*   **Profile** - the document describing one database: its tables and columns, what was found
-    about them, and the glossary. It is the only thing the stages hand to each other besides the
-    workspace, and it holds no sensitive values (see [Principles](#principles)).
+*   **Profile** - the document describing the tables of one schema of a database: its tables and
+    columns, what was found about them, and the glossary. It is the only thing the stages hand to
+    each other besides the workspace, and it holds no sensitive values (see
+    [Principles](#principles)).
 *   **Table** and **Column** - as found in the database, under their original names.
-*   **Statistics** - what is counted of a column on the whole table: rows, nulls, the approximate
-    number of distinct values, the range of numbers and dates, the range of lengths of texts.
+*   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
+    number of its distinct values, the range of numbers and dates, the range of lengths of texts.
+    The rows are counted once per table.
 *   **Enum** - a column with few distinct values, below a threshold; its values with their
     frequencies.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
@@ -66,7 +68,7 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
 *   **Match** - a semantic type found in a column, with the share of values that match it in the
     sample and, once verified, in the whole table.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`.
-*   **Glossary** - the word each term of the database stands for, once for the whole database:
+*   **Glossary** - the word each term of a profile stands for, once for the whole profile:
     `customer` for `CUST`.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
     name composed from the words of the glossary.

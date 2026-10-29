@@ -13,7 +13,7 @@ It works in three stages, each of which can be run again on its own:
   detectors, checked on a sample and, where they can, verified on the whole table.
 - **describe** asks a small language model, running locally in Ollama, for a harmonized English
   name and a description of every column. The names are composed from one glossary of the terms of
-  the whole database - mostly abbreviations -, so that the same term reads the same in every table.
+  the whole schema - mostly abbreviations -, so that the same term reads the same in every table.
 - **report** renders the result as HTML.
 
 The result is a profile, a YAML file that holds no sensitive values and can be shared; samples of

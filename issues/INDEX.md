@@ -10,7 +10,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [03](03-the-profile.md) | open | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
+| [03](03-the-profile.md) | done | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
 | [11](11-overrides.md) | open | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. |
 
 ## Scan
