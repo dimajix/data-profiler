@@ -19,6 +19,12 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [06](06-source-and-dialect-for-trino.md) | open | The tool cannot reach a database: nothing connects to Trino, lists its tables or sends it a query. |
 | [07](07-the-stage-scan.md) | open | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enums - and nothing takes a sample of them. |
 
+## Detection
+
+| No. | Status | Issue |
+|---|---|---|
+| [08](08-detection.md) | open | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. |
+
 ## Describe
 
 | No. | Status | Issue |

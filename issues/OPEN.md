@@ -17,6 +17,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | [06](06-source-and-dialect-for-trino.md) | open | high | feature | The tool cannot reach a database: nothing connects to Trino, lists its tables or sends it a query. Part of epic [02](02-first-version-epic.md). |
 | [07](07-the-stage-scan.md) | open | high | feature | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enums - and nothing takes a sample of them. Part of epic [02](02-first-version-epic.md). |
 
+## Detection
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [08](08-detection.md) | open | high | feature | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. Part of epic [02](02-first-version-epic.md). |
+
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
