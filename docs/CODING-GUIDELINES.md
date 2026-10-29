@@ -236,9 +236,10 @@ log at `debug`.
 ### Files are written whole
 
 A file the tool writes - a profile, a sample, a report - is written whole or not at all: into a
-temporary file next to it, which then takes its place (`os.replace`). A run that fails part of the
-way leaves no half-written file behind, and the file of an earlier run intact. The tool never writes
-to the database.
+temporary file next to it, which then takes its place: `write_whole` of `data_profiler.files`, which
+lets the `OSError` of the file system through, as `pathlib` does, for its callers to translate. A
+run that fails part of the way leaves no half-written file behind, and the file of an earlier run
+intact. The tool never writes to the database.
 
 ## Logging
 
