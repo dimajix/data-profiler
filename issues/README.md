@@ -19,14 +19,14 @@ Every issue file begins with its heading, `# <number> — <title>`, an empty lin
 lines, each on a line of its own:
 
 ```markdown
-# 23 — An import that fails halfway leaves half of its records behind
+# 23 — A scan that fails at one table loses the tables before it
 
 **Status:** open
 **Type:** bug
 **Priority:** medium
-**Area:** Features
-**Epic:** [17](17-import-and-export-epic.md)
-**Summary:** An import that fails part of the way through keeps the records it stored before the failure, and nothing tells which ones they are.
+**Area:** Scan
+**Epic:** [17](17-large-databases-epic.md)
+**Summary:** A scan that fails at one table writes no profile at all, so that the tables it had already read have to be read again.
 ```
 
 - **Status:** `open` · `in progress` · `done` · `rejected`. `rejected` means: looked at and
@@ -37,9 +37,24 @@ lines, each on a line of its own:
   issues and their order, a `question` is to be decided before anything is built. Required while
   an issue is `open` or `in progress`.
 - **Priority:** `high` · `medium` · `low`. Required while an issue is `open` or `in progress`.
-- **Area:** the subject the issue belongs to, one of the sections of INDEX.md: Features ·
-  Architecture · Code structure · Testing · Documentation · Tooling and process. The list and its
-  order are kept in `issues/generate.sh`; a new area is added there, and to this list.
+- **Area:** the part of the project the issue belongs to, one of the sections of INDEX.md, in the
+  order of the parts in [ARCHITECTURE.md](../docs/ARCHITECTURE.md#parts) - what the stages share,
+  the stages in the order they run, the command line that runs them, the simulation -, then the
+  areas across them:
+  - **Profile** - what the stages hand to each other: the profile, with its format, its schema
+    and its overrides, and the workspace.
+  - **Scan** - the stage `scan`: the source, the dialect, statistics, enums, samples.
+  - **Detection** - semantic types, their sensitivity, the detectors.
+  - **Describe** - the stage `describe`: the glossary, the names, the language model.
+  - **Report** - the stage `report`.
+  - **Command line** - `cli`: arguments, `.env`, the log, what users see of an error.
+  - **Simulation** - the simulation environment and the test data generator.
+  - **Architecture** - decisions across parts: their cuts and principles.
+  - **Tooling and process** - how we work: the checks, the hook, the scripts, the issues, and the
+    documents on them.
+
+  A feature, a test or a document belongs to the part it is about. The list and its order are kept
+  in `issues/generate.sh`; a part that fits none of the areas gets one there, and in this list.
 - **Epic:** optional, a link to the epic the issue is part of; it has to be an issue of type
   `epic`. OPEN.md names it after the summary.
 - **Summary:** the line of the issue in the overviews - one sentence, saying what is wrong, not how

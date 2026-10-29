@@ -152,3 +152,9 @@ remarks of the template that no longer say anything once filled in.
   `D212`. The review found that a dash on the hanging indent of an entry under `Args:` went
   unchecked; a dash further in than the prose of the line before now counts as well. A code block
   left open in a comment no longer turns off the checks for the rest of the file.
+
+- **2026-10-29** — Question 6 decided: the areas of issues are the parts of the tool, in the order
+  of the parts in `docs/ARCHITECTURE.md` - Profile, Scan, Detection, Describe, Report, Command line,
+  Simulation -, and Architecture and Tooling and process across them. The generic areas of the
+  template were dropped: a feature, a test or a document belongs to the part it is about, and
+  "Features" would have held most issues.

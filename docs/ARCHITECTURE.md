@@ -119,8 +119,8 @@ The design repeats a few decisions; new code follows them.
 *   **`docs/`** - the documents of the project: this one, the
     [coding guidelines](CODING-GUIDELINES.md) and one document per subject that outgrew its section
     here (see the list below).
-*   **`issues/`** - the issues, one file each, and the overviews generated from them (see
-    [issues/README.md](../issues/README.md)).
+*   **`issues/`** - the issues, one file each, and the overviews generated from them, under areas
+    that follow the parts above (see [issues/README.md](../issues/README.md)).
 *   **`scripts/`** - the tools that check the rules of the documents, such as
     `scripts/wrapping.sh`.
 *   **`.githooks/`** - the pre-commit hook, which runs the checks of the coding guidelines and keeps
