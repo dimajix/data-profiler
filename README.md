@@ -35,14 +35,9 @@ The project is at its beginning: the stages above are what it is being built for
 
 ### Prerequisites
 
-- [uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where
-  uv does not download Python on its own, install it once with `uv python install 3.13`.
-- [Docker](https://www.docker.com/), for the simulation environment, which stands in for the real
-  database in the tests and wherever the tool is tried out without access to it.
-- [Ollama](https://ollama.com/), for the stage `describe`, if it does not run in the simulation
-  environment.
-
-The commands below are the same on Linux, macOS and Windows.
+[uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where uv
+does not download Python on its own, install it once with `uv python install 3.13`. The commands
+below are the same on Linux, macOS and Windows.
 
 ### Building the Project
 
@@ -61,8 +56,7 @@ their dependencies.
 uv run pytest
 ```
 
-Tests that need the simulation environment expect it to run. The other checks, which the
-pre-commit hook runs as well, are listed in
+The other checks, which the pre-commit hook runs as well, are listed in
 [docs/CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md#checks).
 
 ### Working on the Repository
@@ -76,4 +70,4 @@ git config core.hooksPath .githooks
 
 ## License
 
-TODO (issue 01): the license of the project.
+data-profiler is licensed under the [Apache License, Version 2.0](LICENSE).

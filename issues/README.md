@@ -38,9 +38,8 @@ lines, each on a line of its own:
   an issue is `open` or `in progress`.
 - **Priority:** `high` · `medium` · `low`. Required while an issue is `open` or `in progress`.
 - **Area:** the part of the project the issue belongs to, one of the sections of INDEX.md, in the
-  order of the parts in [ARCHITECTURE.md](../docs/ARCHITECTURE.md#parts) - what the stages share,
-  the stages in the order they run, the command line that runs them, the simulation -, then the
-  areas across them:
+  order of the parts in [ARCHITECTURE.md](../docs/ARCHITECTURE.md#parts), then the areas across
+  them:
   - **Profile** - what the stages hand to each other: the profile, with its format, its schema
     and its overrides, and the workspace.
   - **Scan** - the stage `scan`: the source, the dialect, statistics, enums, samples.

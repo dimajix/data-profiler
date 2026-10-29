@@ -10,4 +10,4 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [01](01-initial-project-setup.md) | in progress | The repository is still the generic project template: its documents, checks and issue areas say nothing yet about this project, its language or its tools. |
+| [01](01-initial-project-setup.md) | done | The repository is still the generic project template: its documents, checks and issue areas say nothing yet about this project, its language or its tools. |

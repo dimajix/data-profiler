@@ -7,12 +7,15 @@ a space ends a sentence.
 
 import ast
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
 
 _TOP = Path(__file__).parent.parent
-_SOURCES = ["src", "tests", "simulation/src", "simulation/tests"]
+_CONFIGURATION = tomllib.loads((_TOP / "pyproject.toml").read_text(encoding="utf-8"))
+# The directories of code are those mypy checks, to which every new one is added.
+_SOURCES = _CONFIGURATION["tool"]["mypy"]["files"]
 _MODULES = sorted(module for source in _SOURCES for module in (_TOP / source).rglob("*.py"))
 
 

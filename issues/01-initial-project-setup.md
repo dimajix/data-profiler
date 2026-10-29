@@ -1,6 +1,6 @@
 # 01 — Initial project setup
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Tooling and process
@@ -158,3 +158,12 @@ remarks of the template that no longer say anything once filled in.
   Simulation -, and Architecture and Tooling and process across them. The generic areas of the
   template were dropped: a feature, a test or a document belongs to the part it is about, and
   "Features" would have held most issues.
+
+- **2026-10-29** — Question 7 decided: the Apache License, Version 2.0, as Flowman has it, in
+  `LICENSE` and in both `pyproject.toml`. Question 8: no further documents at the start. Done: no
+  `TODO (issue 01)` is left, and every check passes. `README.md` says how the project is built and
+  tested; how the tool is run, and what the simulation environment and Ollama are needed for, it
+  says once they exist. The final review found that `yml` and `yaml`, decided with question 5, broke
+  the rule decided with them - a language is added once the project has a file of it -, so they were
+  left out until the first such file; and that the order of the areas was not the order of the parts
+  in `docs/ARCHITECTURE.md`, so the parts were put in the order of the areas.

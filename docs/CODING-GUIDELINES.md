@@ -53,7 +53,9 @@ hook in `.githooks` runs them on every commit, once a clone has it enabled
 | The wrapping of prose | `scripts/wrapping.sh` | yes, on the files the commit adds or changes |
 | The issue overviews | `issues/generate.sh --check` | regenerated, when an issue is part of the commit |
 
-The tools and their settings are in `pyproject.toml`, their versions in `uv.lock`.
+The tools and their settings are in `pyproject.toml`, their versions in `uv.lock`. The hook runs
+them by `uv run --locked`, which also refuses a `uv.lock` that no longer fits the `pyproject.toml`
+files.
 
 *   **Code is laid out by the formatter**, with the settings of its configuration file, and never
     by hand. Where the formatter leaves something as it is written, its layout is the author's,

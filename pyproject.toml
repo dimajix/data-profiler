@@ -3,6 +3,8 @@ name = "data-profiler"
 version = "0.1.0"
 description = "Profiles the tables of an SQL database to help build an understandable data model of it."
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = []
 

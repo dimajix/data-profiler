@@ -34,7 +34,7 @@ max=100
 # lists of `//` and `/*` wait for the style sheets and scripts of the HTML reports.
 slash=''
 block=''
-hash='py sh toml yml yaml'
+hash='py sh toml'
 quotes='py'
 
 top=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)

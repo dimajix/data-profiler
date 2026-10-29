@@ -22,14 +22,14 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 
 *   **`data_profiler.profile`** - the profile: its schema, reading and writing it as YAML, and
     laying overrides over it.
-*   **`data_profiler.source`** - the database: the `Source`, which connects and runs queries, and
-    the `Dialect`, which writes every SQL statement the tool sends.
-*   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
-    recognise them.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine.
+*   **`data_profiler.source`** - the database: the `Source`, which connects and runs queries, and
+    the `Dialect`, which writes every SQL statement the tool sends.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enums, samples and detector matches of
     the selected tables, written to a profile.
+*   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
+    recognise them.
 *   **`data_profiler.glossary`** - splitting original names into terms, and composing harmonized
     names from the words of the glossary.
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
