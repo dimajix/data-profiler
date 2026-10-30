@@ -3,7 +3,7 @@
 A document holds the fields of one class, checked by pydantic, and the version of its format in the
 field `format`; a document of another format, or with a field missing, unknown or of the wrong type,
 is refused. The field `format` is the document's own: a class a document holds has none. The
-profile is such a document.
+profile is such a document, and the configuration of a project.
 """
 
 from pathlib import Path

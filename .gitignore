@@ -10,3 +10,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# The variables of a project, which hold passwords
+.env

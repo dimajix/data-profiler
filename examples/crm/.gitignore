@@ -1,0 +1,3 @@
+# The results of the simulation environment, made anew by every trial of the example; a project of
+# its own may commit its profiles, while its workspaces keep themselves out of version control.
+/simulation/

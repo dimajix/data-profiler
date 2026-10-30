@@ -124,3 +124,18 @@ the results of `describe` ([10](10-the-stage-describe.md)) and `report`
   message changes, for the maintainer's review: a file whose content is no mapping now "holds no
   fields", where it "holds no profile" before, since the module does not know what kind of
   document it reads.
+
+- **2026-10-30** — Step 3 done: the module `data_profiler.project` reads the configuration of a
+  project as a document, and resolves an environment by its name, its values `${NAME}` taken from
+  the variables it is given when it is resolved, so that an environment is used without the
+  variables of the others. It refuses, when the project is read, a password written out, a URL
+  with a variable in it - a variable is taken only as the whole value -, an environment whose name
+  is not lower case letters, digits, `-` and `_`, beginning with a letter or a digit - the name of
+  its directory, the same on every system, and never taken for an option on the command line -,
+  and tables that are no regular expression; a list of names becomes an alternation of the names
+  as they are written. The example project `examples/crm/` profiles all tables of the simulation
+  environment, and keeps its results out of version control; `.env` is kept out everywhere.
+  Certificates and proxies now come from "the variables of the process", no longer "from the
+  environment", in `data_profiler.source` and `docs/ARCHITECTURE.md`, since *Environment* is now
+  the word for the environments of a project. `README.md` describes projects with the command
+  line, in step 4.

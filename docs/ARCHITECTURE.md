@@ -25,16 +25,19 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
-*   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the
-    profile among them, each the fields of one class with the version of its format; what is
-    wrong with one is named, field by field.
+*   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
+    profile, and the environments, each by its URL and its password, the password given by a
+    variable -, and the directories of the results of each environment.
+*   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the profile
+    and the configuration of a project among them, each the fields of one class with the version of
+    its format; what is wrong with one is named, field by field.
 *   **`data_profiler.files`** - files written whole or not at all, for documents and the
     workspace.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
     columns of its schema - their metadata - through its dialect, and runs queries in that schema,
     so that another database brings only its connection and its SQL. Trino is reached by HTTPS with
-    a password; certificates and proxies come from the environment.
+    a password; certificates and proxies come from the variables of the process.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
     from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
@@ -64,6 +67,11 @@ profile alone; `cli` runs the stages.
 
 ## The domain
 
+*   **Project** - one database, profiled in environments: a directory of its configuration, which
+    selects the tables, and of the results of each environment.
+*   **Environment** - one of the places the database of a project is found - dev, test, prod, or
+    the simulation environment -, each a schema with a URL and a password of its own; its results,
+    a profile and a workspace, are kept in a directory of its own, named after it.
 *   **Stage** - one of `scan`, `describe` and `report`: a step of the work that can be run on its
     own, from what the stages before it left.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
@@ -97,13 +105,13 @@ profile alone; `cli` runs the stages.
 
 ## How it works
 
-1.  `scan` connects to the database given by its URL, the password taken from `.env`, and selects
-    the tables by a list or a regular expression. For each table it counts the statistics of all
-    columns in one query, the approximate distinct counts included; it counts the values of every
-    column whose distinct count is at most the threshold of an enumeration; and it takes a sample
-    into the workspace. The detectors check the values of the sample; the semantic types they find
-    are verified on the whole table where the detector has a pattern in SQL. The result is the
-    profile.
+1.  `scan` connects to the schema of an environment of a project, the password taken from a
+    variable, and selects the tables the project names, by a list or a regular expression. For each
+    table it counts the statistics of all columns in one query, the approximate distinct counts
+    included; it counts the values of every column whose distinct count is at most the threshold of
+    an enumeration; and it takes a sample into the workspace. The detectors check the values of the
+    sample; the semantic types they find are verified on the whole table where the detector has a
+    pattern in SQL. The result is the profile.
 2.  `describe` splits the original names of all columns into terms, and asks the language model
     for the word of each term, showing it the columns the term appears in. From the glossary and
     from each column's statistics, matches and sample, it asks for the column's name and
@@ -138,6 +146,8 @@ The design repeats a few decisions; new code follows them.
 ## The repository
 
 *   **`src/`** - the package `data_profiler`; **`tests/`** - its tests.
+*   **`examples/`** - example projects of the tool, such as `examples/crm/`, which profiles the
+    simulation environment.
 *   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, its tests
     in `simulation/tests/`, an example profile in `simulation/profiles/`, and in
     `simulation/trino/` the configuration of the simulated Trino.

@@ -1,0 +1,8 @@
+# The example project: the tables of the example CRM, profiled in the simulation environment.
+format: 1
+# The tables to profile: a regular expression matched whole, or a list of their names.
+tables: .*
+environments:
+  simulation:
+    url: trino://profiler@localhost:8443/crm/sales
+    password: ${SIMULATION_PASSWORD}

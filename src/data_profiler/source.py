@@ -5,8 +5,8 @@ statement it sends is written by its `Dialect`: whole, where it lists them, and 
 blocks the dialect offers, where another part counts or samples what the tables hold. A failure is
 told by the database, its endpoint and what was done; what the database said, which may hold a value
 of it, stays in the cause of the error. Trino is reached by HTTPS, whose certificates and proxies
-come from the environment, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA
-of one's own, `NO_PROXY` for a database a proxy does not reach.
+come from the variables of the process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a
+certificate of a CA of one's own, `NO_PROXY` for a database a proxy does not reach.
 """
 
 import logging
