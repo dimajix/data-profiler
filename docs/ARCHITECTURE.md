@@ -55,8 +55,8 @@ environment.
     matches of the selected tables, written to a profile.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
     recognise them.
-*   **`data_profiler.glossary`** - splitting original names into terms, and composing harmonized
-    names from the words of the glossary.
+*   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
+    and composing harmonized names from the words of the glossary, which the profile holds.
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as HTML.
@@ -125,8 +125,9 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
     sample; the semantic types they find are verified on the whole table by the patterns of the
     detectors in SQL. The result is the profile, with the ranges and the values of enumerations of
     the columns of no sensitivity.
-2.  `describe` splits the original names of all columns into terms, and asks the language model
-    for the word of each term, showing it the columns the term appears in. From the glossary and
+2.  `describe` splits the original names of all tables and columns into terms, and asks the
+    language model for the word of each term, showing it the tables and columns the term appears
+    in. From the glossary and
     from each column's statistics, matches and sample, it asks for the column's name and
     description. Overrides are taken as given. The result is the profile, with glossary and
     suggestions.

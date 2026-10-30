@@ -48,6 +48,7 @@ _PROFILE = Profile(
             ),
         ),
     ),
+    glossary={"cust": "customer", "nm": "name"},
 )
 
 
@@ -74,6 +75,11 @@ def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
 def test_a_profile_is_written_with_its_format(tmp_path: Path) -> None:
     content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
     assert content["format"] == FORMAT
+
+
+def test_the_glossary_is_written_as_each_term_with_its_word(tmp_path: Path) -> None:
+    content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
+    assert content["glossary"] == {"cust": "customer", "nm": "name"}
 
 
 def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:

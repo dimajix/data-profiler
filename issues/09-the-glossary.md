@@ -1,6 +1,6 @@
 # 09 — The glossary
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -41,3 +41,19 @@ The interface first, put before the maintainer.
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-10-30** — Done in one step, as agreed with the maintainer. `data_profiler.glossary` splits
+  an original name into its terms - at everything that is no letter and no digit, at changes of
+  case, between letters and digits -, in lower case, a term that appears once included; the names
+  of tables are split as those of columns are, into the same glossary. `occurrences` finds each
+  term of a profile with the tables and columns it appears in, computed whenever it is needed
+  rather than held in the profile; the profile, of format 3, holds the glossary alone, each term
+  with its word. `harmonized` composes the name of a table or a column from the words of its terms
+  in `snake_case`, a term of digits standing for itself, and composes none while a term has no
+  word, rather than letting an abbreviation through. Where the suggestions of the columns are kept
+  is left to [10](10-the-stage-describe.md).
+  After the review: a word is split as a name is, so that `dateOfBirth` and `date of birth` both
+  give `date_of_birth`, and a word of neither letters nor digits is none; `occurrences` leaves out
+  the terms of digits, which need no word; a name is composed to NFC before it is split. One detail
+  differs from the interface agreed, for the maintainer's review: the glossary of the profile is a
+  `Mapping`, not a `dict`, as every collection of the frozen classes of the profile is immutable.

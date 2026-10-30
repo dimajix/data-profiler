@@ -5,7 +5,8 @@ holds no values of the columns found sensitive. It is a document, written as YAM
 below and read back by the same classes.
 """
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
 
@@ -14,7 +15,7 @@ from pydantic import TypeAdapter
 from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.documents import DocumentError, read_document, write_document
 
-FORMAT: Final = 2
+FORMAT: Final = 3
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below: a field added is unknown to the
@@ -155,11 +156,14 @@ class Profile:
         catalog: The catalog of the schema, as Trino names the database it reads.
         schema: The schema whose tables the profile describes.
         tables: The tables that were selected, by their names.
+        glossary: Each term of the names of the tables and columns with the word it stands for,
+            once proposed or given.
     """
 
     catalog: str
     schema: str
     tables: tuple[Table, ...]
+    glossary: Mapping[str, str] = field(default_factory=dict)
 
     @classmethod
     def read(cls, path: Path) -> "Profile":

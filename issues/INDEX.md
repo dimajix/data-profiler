@@ -31,7 +31,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | open | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
-| [09](09-the-glossary.md) | open | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
+| [09](09-the-glossary.md) | done | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
 | [10](10-the-stage-describe.md) | open | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
 
 ## Report
