@@ -1,6 +1,6 @@
 # 08 — Detection
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Detection
@@ -144,3 +144,30 @@ In steps, each reviewed and committed on its own:
   of the simulation has the match of each of its five columns of such a type, and the round trip
   finds each of them again, in the sample and on the whole table, with all their values: the
   patterns find in Trino what they find in Python.
+
+- **2026-10-30** — Step 5 done, and with it the issue, after the interface was agreed with the
+  maintainer: the statistics count the range of every column whose values have an order - the
+  dialect tells which by `is_ordered`, as `min` and `max` of others, such as `json`, would make the
+  query fail - by its new building blocks `smallest` and `largest`, in the same query; the profile
+  writes a range, and each value of an enumeration with its rows, as text. A column has the
+  sensitivity of its first match of a sensitive type, and none without one; the new module
+  `data_profiler.disclosure` keeps the range and the values of the enumeration of a column of no
+  sensitivity, and takes out both of one of a sensitivity, before the table goes into the profile.
+  The range of texts goes into the profile as well, as the maintainer decided. The format of the
+  profile stays 2, which is not in `main` before this issue. After the review: a value of the
+  database is written as text in one place, `source.as_text`, a truth value as the database writes
+  it, `true` or `false`; `varbinary` has no range, which would say nothing; the statistics read
+  each group of their expressions - counts, range, lengths - the same way, an empty group where it
+  is not asked for; and a test asks Trino for the range of every type the dialect takes as ordered.
+  As the maintainer decided after asking why `scan` has to know about sensitivity at all: `scan`
+  judges it by the matches of the detectors alone, as it is the stage that finds them and writes
+  the values into the profile; a column the detectors miss is marked sensitive by an override,
+  which the stages that lay overrides over the profile - `describe` and `report` - apply by
+  `disclose` as well, so that `scan` never reads overrides and a mark needs no scan again. Weighed
+  and not chosen: a `scan` that writes no values into the profile, leaving them to a later stage,
+  which would have had to read the workspace for them. [11](11-overrides.md) records it.
+  As the maintainer decided then, each value `disclose` writes - an end of a range, a value of an
+  enumeration - is checked by the detectors on its own, and withheld alone where it is of a
+  sensitive type, by `detect.is_sensitive`: a phone number at the end of the range of a column of
+  which too few values are phone numbers to be a match, an IBAN of a column whose sample held none.
+  An end of a range that is withheld is None, and a range of which both are, none.

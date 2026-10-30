@@ -6,7 +6,8 @@ is. A column of more values is never grouped by: grouped by a column of keys, a 
 of millions of rows would fill the memory of the database with a group for each. The query groups
 the table by each of the columns on its own, in one pass, and counts the rows of each value; null
 is no value of an enumeration, as the statistics count the nulls. The values are values of the
-database; they go into the workspace alone, never into the profile or the log.
+database; they go into the workspace, never into the log, and into the profile only as the module
+`disclosure` lets them.
 """
 
 import logging

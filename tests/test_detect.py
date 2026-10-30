@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 import pytest
 
-from data_profiler.detect import SemanticType, Sensitivity, detect
+from data_profiler.detect import SemanticType, Sensitivity, detect, is_sensitive
 
 _RECOGNISED = {
     SemanticType.EMAIL: ["anna.schmidt@example.de", "a+b@mail.example.co.uk", "X_1@host.org"],
@@ -98,3 +98,18 @@ def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])
 def test_no_type_is_detected_without_values(values: list[object]) -> None:
     assert detect(values) == {}
+
+
+@pytest.mark.parametrize(
+    ("text", "sensitive"),
+    [
+        ("anna@example.de", True),
+        (" +49 30 1234567 ", True),
+        ("4111111111111111", True),
+        ("10115", False),
+        ("2024-01-31", False),
+        ("Anna", False),
+    ],
+)
+def test_a_text_of_a_type_of_a_sensitivity_is_sensitive(text: str, sensitive: bool) -> None:
+    assert is_sensitive(text) == sensitive

@@ -16,8 +16,9 @@ It works in three stages, each of which can be run again on its own:
   the whole schema - mostly abbreviations -, so that the same term reads the same in every table.
 - **report** renders the result as HTML.
 
-The result is a profile, a YAML file that holds no sensitive values and can be shared; samples of
-the data stay in a local workspace. No value leaves the machine the tool runs on.
+The result is a profile, a YAML file that holds no values of the columns found sensitive - personal
+or payment card data - and can be shared; samples of the data stay in a local workspace. No value
+leaves the machine the tool runs on.
 
 The project is at its beginning: the stages above are what it is being built for.
 

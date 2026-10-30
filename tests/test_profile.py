@@ -13,8 +13,10 @@ from data_profiler.profile import (
     Match,
     Profile,
     ProfileError,
+    Range,
     Statistics,
     Table,
+    Value,
 )
 
 _PROFILE = Profile(
@@ -29,7 +31,13 @@ _PROFILE = Profile(
                 Column(
                     name="CUST_NM",
                     type="varchar(80)",
-                    statistics=Statistics(312, 803455, Lengths(2, 74)),
+                    statistics=Statistics(312, 803455, Lengths(2, 74), Range("Aal", "Zwick")),
+                ),
+                Column(
+                    name="CUST_TYP_CD",
+                    type="varchar(2)",
+                    statistics=Statistics(0, 2, Lengths(1, 1), Range("B", "P")),
+                    values=(Value("P", 1100000), Value("B", 150000)),
                 ),
                 Column(
                     name="CUST_EML",
@@ -70,7 +78,7 @@ def test_a_profile_is_written_with_its_format(tmp_path: Path) -> None:
 
 def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
     content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
-    assert content["tables"][0]["columns"][2]["matches"] == [{"type": "email", "sample": 0.982}]
+    assert content["tables"][0]["columns"][3]["matches"] == [{"type": "email", "sample": 0.982}]
     assert "matches" not in content["tables"][0]["columns"][0], (
         "a column without matches has no field matches"
     )

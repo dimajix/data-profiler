@@ -24,7 +24,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [08](08-detection.md) | in progress | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. |
+| [08](08-detection.md) | done | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. |
 
 ## Describe
 

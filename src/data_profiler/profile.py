@@ -1,8 +1,8 @@
 """The profile: what was found about the tables of one schema of a database.
 
 A profile is what the stages hand to each other, and what a person reads, shares and corrects: it
-holds no sensitive values. It is a document, written as YAML in the format below and read back by
-the same classes.
+holds no values of the columns found sensitive. It is a document, written as YAML in the format
+below and read back by the same classes.
 """
 
 from dataclasses import dataclass
@@ -11,7 +11,7 @@ from typing import Final
 
 from pydantic import TypeAdapter
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.documents import DocumentError, read_document, write_document
 
 FORMAT: Final = 2
@@ -41,6 +41,19 @@ class Lengths:
 
 
 @dataclass(frozen=True)
+class Range:
+    """The smallest and the largest value of a column, as text.
+
+    Attributes:
+        smallest: The smallest value, or None where it is withheld, as of a sensitive type.
+        largest: The largest value, or None where it is withheld, as of a sensitive type.
+    """
+
+    smallest: str | None
+    largest: str | None
+
+
+@dataclass(frozen=True)
 class Statistics:
     """What is counted of a column on the whole table.
 
@@ -49,11 +62,27 @@ class Statistics:
         distinct: The number of distinct values, approximate, as `approx_distinct` counts them.
         lengths: The range of the lengths of the values, or None where none was counted: for a
             column that holds no text, or only nulls.
+        range: The range of the values, or None where none is known: for a column whose values
+            have no order, that holds only nulls, or that is of a sensitivity.
     """
 
     nulls: int
     distinct: int
     lengths: Lengths | None = None
+    range: Range | None = None
+
+
+@dataclass(frozen=True)
+class Value:
+    """A value of an enumeration, as text, with the rows that hold it.
+
+    Attributes:
+        value: The value.
+        rows: The number of the rows that hold it.
+    """
+
+    value: str
+    rows: int
 
 
 @dataclass(frozen=True)
@@ -84,12 +113,23 @@ class Column:
         type: The type of the column as the database names it, such as `varchar(40)`.
         statistics: What is counted of the column.
         matches: The semantic types found in the column, the most frequent first.
+        values: The values of the column, if it is an enumeration of no sensitivity, the most
+            frequent first; none else.
     """
 
     name: str
     type: str
     statistics: Statistics
     matches: tuple[Match, ...] = ()
+    values: tuple[Value, ...] = ()
+
+    @property
+    def sensitivity(self) -> Sensitivity:
+        """The sensitivity of its first match of a sensitive type, or none without one."""
+        for match in self.matches:
+            if match.type.sensitivity is not Sensitivity.NONE:
+                return match.type.sensitivity
+        return Sensitivity.NONE
 
 
 @dataclass(frozen=True)

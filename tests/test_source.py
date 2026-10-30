@@ -5,7 +5,7 @@ import re
 import pytest
 
 from data_profiler.profile import Profile
-from data_profiler.source import Source, SourceError, connect
+from data_profiler.source import Source, SourceError, as_text, connect
 
 
 def test_the_tables_that_a_pattern_matches_whole_are_listed(source: Source) -> None:
@@ -85,6 +85,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
         matching = source.dialect.matching('c"y', "it's")
+        ranged = [source.dialect.smallest('c"y'), source.dialect.largest('c"y')]
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
@@ -94,3 +95,64 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert grouped.endswith('(("c""y"))')
     assert 'try_cast("c""y" AS varchar)' in matching
     assert "'^(?:it''s)$'" in matching
+    assert ranged == ['min("c""y")', 'max("c""y")']
+
+
+@pytest.mark.parametrize(
+    ("kind", "ordered"),
+    [
+        ("varchar(40)", True),
+        ("decimal(12,2)", True),
+        ("timestamp(3) with time zone", True),
+        ("boolean", True),
+        ("json", False),
+        ("map(varchar, integer)", False),
+        ("array(integer)", False),
+        ("varbinary", False),
+    ],
+)
+def test_only_the_types_whose_values_have_an_order_are_ordered(kind: str, ordered: bool) -> None:
+    with connect("trino://u@h/c/s", "") as source:
+        assert source.dialect.is_ordered(kind) == ordered
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "tinyint",
+        "smallint",
+        "integer",
+        "bigint",
+        "real",
+        "double",
+        "decimal(10,2)",
+        "varchar(5)",
+        "char(3)",
+        "date",
+        "time(3)",
+        "timestamp(3)",
+        "timestamp(3) with time zone",
+        "interval day to second",
+        "interval year to month",
+        "boolean",
+        "uuid",
+    ],
+)
+def test_the_database_has_a_range_of_every_type_the_dialect_takes_as_ordered(
+    source: Source, kind: str
+) -> None:
+    assert source.dialect.is_ordered(kind)
+    # The statement is the test's own: a column of each type is had of no table of the simulation.
+    statement = f"SELECT min(CAST(NULL AS {kind})), max(CAST(NULL AS {kind}))"
+    assert source.query(statement, f"ordering {kind}") == [(None, None)]
+
+
+@pytest.mark.parametrize(
+    ("value", "text"),
+    [(True, "true"), (False, "false"), (12, "12"), ("10115", "10115")],
+    ids=str,
+)
+def test_a_value_of_the_database_is_written_as_the_database_writes_it(
+    value: object, text: str
+) -> None:
+    assert as_text(value) == text

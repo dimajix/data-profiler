@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.profile import Match, Profile
 from data_profiler.scan import scan
 from data_profiler.source import Source
@@ -50,6 +50,23 @@ def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     assert matched["crt_dt"] == (Match(SemanticType.DATE, 1.0, 1.0),), "a date is a date as text"
     assert matched["upd_ts"] == (Match(SemanticType.DATE, 1.0, 1.0),), "nulls are not counted"
     assert matched["actv_flg"] == (), "a column of no type has no match"
+
+
+def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
+    source: Source, tmp_path: Path
+) -> None:
+    scanned = scan(source, re.compile("cntct|cust"), Workspace.open(tmp_path, "crm", "sales"))
+    columns = {
+        f"{table.name}.{column.name}": column
+        for table in scanned.tables
+        for column in table.columns
+    }
+    assert columns["cust.cust_typ_cd"].values, "the values of an enumeration of no sensitivity"
+    assert columns["cust.cust_nm"].statistics.range is not None, "a range of texts as well"
+    for name in ("cntct.tel_no", "cntct.eml_adr"):
+        assert columns[name].sensitivity is Sensitivity.PERSONAL, name
+        assert columns[name].statistics.range is None, name
+        assert columns[name].values == (), name
 
 
 def test_only_the_tables_a_pattern_matches_whole_are_scanned(

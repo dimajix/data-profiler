@@ -3,12 +3,14 @@
 Each table is counted by the module `statistics`, by one query; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
 into the workspace. The semantic types of its columns are recognised in the sample, and verified on
-the whole table, by the module `matching`. No value of the database goes into the profile.
+the whole table, by the module `matching`. Which values of the database go into the profile - the
+ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides.
 """
 
 import logging
 from re import Pattern
 
+from data_profiler.disclosure import disclose
 from data_profiler.enumerations import values
 from data_profiler.matching import recognise, verify
 from data_profiler.profile import Profile
@@ -30,7 +32,7 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
 
     Returns:
         The profile: the tables, sorted by name, with their columns, types, statistics and
-        matches.
+        matches, and the ranges and values of enumerations of the columns of no sensitivity.
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
@@ -42,8 +44,9 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
         _logger.info("Scanning %s", name)
         table = count(source, name)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
-        workspace.write_enumerations(name, values(source, table))
+        enumerations = values(source, table)
+        workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        tables.append(verify(source, recognise(table, sample)))
+        tables.append(disclose(verify(source, recognise(table, sample)), enumerations))
     return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables))

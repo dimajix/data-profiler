@@ -34,6 +34,25 @@ _FORM: Final = "trino://user@host:port/catalog/schema"
 # The types of Trino whose values are texts, by how their names begin.
 _TEXTS: Final = ("varchar", "char")
 
+# The types of Trino whose values have an order, by how their names begin - `time` also those of
+# `timestamp` -: those of others, such as `json` or `map`, would make `min` and `max` fail the
+# query they are in; a range of binaries would say nothing.
+_ORDERED: Final = (
+    *_TEXTS,
+    "tinyint",
+    "smallint",
+    "integer",
+    "bigint",
+    "real",
+    "double",
+    "decimal",
+    "date",
+    "time",
+    "interval",
+    "boolean",
+    "uuid",
+)
+
 # The standard error of the distinct values Trino counts: half a percent, against its default of
 # 2.3, so that keys and enumerations can be told by them, for about 64 KB of memory per column.
 _DISTINCT_ERROR: Final = 0.005
@@ -106,6 +125,14 @@ class Dialect(ABC):
         """The expression counting the distinct values of `column`, approximately."""
 
     @abstractmethod
+    def smallest(self, column: str) -> str:
+        """The expression of the smallest value of `column`."""
+
+    @abstractmethod
+    def largest(self, column: str) -> str:
+        """The expression of the largest value of `column`."""
+
+    @abstractmethod
     def shortest(self, column: str) -> str:
         """The expression of the length of the shortest value of `column`."""
 
@@ -124,6 +151,10 @@ class Dialect(ABC):
     @abstractmethod
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind`, as the database names it, holds texts."""
+
+    @abstractmethod
+    def is_ordered(self, kind: str) -> bool:
+        """Whether the values of a column of the type `kind` have an order, and so a range."""
 
 
 class Source(ABC):
@@ -211,6 +242,16 @@ def counted(value: object, where: str) -> int:
     if not isinstance(value, int):
         raise TypeError(f"the query counted something of {where} that is no number")
     return value
+
+
+def as_text(value: object) -> str:
+    """`value`, which a query has read of the database, as text, as the database writes it.
+
+    A truth value is written `true` or `false`; any other, as Python writes it.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
 
 def connect(url: str, password: str) -> Source:
@@ -348,6 +389,14 @@ class _TrinoDialect(Dialect):
         """The expression counting the distinct values of `column`, approximately."""
         return f"approx_distinct({_identifier(column)}, {_DISTINCT_ERROR})"
 
+    def smallest(self, column: str) -> str:
+        """The expression of the smallest value of `column`."""
+        return f"min({_identifier(column)})"
+
+    def largest(self, column: str) -> str:
+        """The expression of the largest value of `column`."""
+        return f"max({_identifier(column)})"
+
     def shortest(self, column: str) -> str:
         """The expression of the length of the shortest value of `column`."""
         return f"min(length({_identifier(column)}))"
@@ -365,6 +414,10 @@ class _TrinoDialect(Dialect):
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind` holds texts: a `varchar` or a `char`."""
         return kind.startswith(_TEXTS)
+
+    def is_ordered(self, kind: str) -> bool:
+        """Whether the values of the type `kind` have an order: texts, numbers, times and a few."""
+        return kind.startswith(_ORDERED)
 
 
 def _identifier(name: str) -> str:

@@ -47,6 +47,8 @@ environment.
 *   **`data_profiler.matching`** - the matches of a table: the semantic types of its columns,
     recognised in its sample by `detect`, and verified on the whole table by one query built the
     same way.
+*   **`data_profiler.disclosure`** - what of the values of a table goes into the profile: the
+    ranges and the values of enumerations of its columns of no sensitivity.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
@@ -70,8 +72,8 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching` and `workspace`, `describe` uses `glossary` and `workspace`, `report` the
-profile alone; `cli` runs the stages.
+`sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary` and `workspace`,
+`report` the profile alone; `cli` runs the stages.
 
 ## The domain
 
@@ -87,11 +89,11 @@ profile alone; `cli` runs the stages.
     one kind of database.
 *   **Profile** - the document describing the tables of one schema of a database: its tables and
     columns, what was found about them, and the glossary. It is the only thing the stages hand to
-    each other besides the workspace, and it holds no sensitive values (see
+    each other besides the workspace, and it holds no values of the columns found sensitive (see
     [Principles](#principles)).
 *   **Table** and **Column** - as found in the database, under their original names.
 *   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
-    number of its distinct values, the range of numbers and dates, the range of lengths of texts.
+    number of its distinct values, the range of its values, the range of lengths of texts.
     The rows are counted once per table.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each.
@@ -121,7 +123,8 @@ profile alone; `cli` runs the stages.
     included; it counts the values of every column whose distinct count is at most the threshold of
     an enumeration; and it takes a sample into the workspace. The detectors check the values of the
     sample; the semantic types they find are verified on the whole table by the patterns of the
-    detectors in SQL. The result is the profile.
+    detectors in SQL. The result is the profile, with the ranges and the values of enumerations of
+    the columns of no sensitivity.
 2.  `describe` splits the original names of all columns into terms, and asks the language model
     for the word of each term, showing it the columns the term appears in. From the glossary and
     from each column's statistics, matches and sample, it asks for the column's name and
@@ -133,9 +136,12 @@ profile alone; `cli` runs the stages.
 
 The design repeats a few decisions; new code follows them.
 
-*   **The profile holds no sensitive values.** Raw values - the values of an enumeration, the range
-    of a column - go into the profile only for columns of no sensitivity, and the range of texts
-    never; samples stay in the workspace. A profile can be shared; a workspace cannot.
+*   **The profile holds no values of the columns found sensitive.** Raw values - the values of an
+    enumeration, the range of a column - go into the profile only for columns of no sensitivity;
+    samples stay in the workspace. A profile can be shared; a workspace cannot. Sensitivity is
+    judged optimistically: a column is sensitive where a sensitive type is one of its matches, and
+    one the detectors miss is to be marked by hand, by an override; each value that goes into the
+    profile is checked on its own all the same, and withheld where it is of a sensitive type.
 *   **No value leaves the machine.** The language model runs locally; no external service gets a
     value, a sample or a profile.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation

@@ -149,6 +149,15 @@ _DATE: Final = Detector(
 )
 
 
+def is_sensitive(text: str) -> bool:
+    """Whether `text`, its spaces at either end cut, is of a semantic type of a sensitivity."""
+    text = text.strip()
+    return any(
+        kind.sensitivity is not Sensitivity.NONE and kind.detector.recognises(text)
+        for kind in SemanticType
+    )
+
+
 def detect(values: Sequence[object]) -> dict[SemanticType, float]:
     """The share of `values` each semantic type is recognised in, of the types one value is of.
 

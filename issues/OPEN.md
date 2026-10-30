@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [11](11-overrides.md) | open | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
-## Detection
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [08](08-detection.md) | in progress | high | feature | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. Part of epic [02](02-first-version-epic.md). |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
