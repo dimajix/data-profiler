@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [08](08-detection.md) | open | high | feature | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. Part of epic [02](02-first-version-epic.md). |
+| [08](08-detection.md) | in progress | high | feature | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. Part of epic [02](02-first-version-epic.md). |
 
 ## Describe
 
