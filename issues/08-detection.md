@@ -171,3 +171,7 @@ In steps, each reviewed and committed on its own:
   sensitive type, by `detect.is_sensitive`: a phone number at the end of the range of a column of
   which too few values are phone numbers to be a match, an IBAN of a column whose sample held none.
   An end of a range that is withheld is None, and a range of which both are, none.
+
+- **2026-10-30** — As the maintainer decided, a value `disclose` writes is cut to 100 characters,
+  its last one `…`, so that the end of the range of a column of free texts does not fill the
+  profile; whether it is of a sensitive type is checked before it is cut.

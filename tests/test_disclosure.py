@@ -70,3 +70,15 @@ def test_a_range_of_which_both_ends_are_withheld_is_none() -> None:
     )
     (disclosed,) = disclose(Table(name="t", rows=2, columns=(column,)), []).columns
     assert disclosed.statistics.range is None
+
+
+def test_a_long_value_is_cut_to_a_hundred_characters() -> None:
+    long = "a" * 150
+    column = Column(
+        name="note", type="varchar(4000)", statistics=Statistics(0, 2, range=Range("b", long))
+    )
+    enumeration = Enumeration(column="note", values=((long, 2), ("b", 1)))
+    (disclosed,) = disclose(Table(name="t", rows=3, columns=(column,)), [enumeration]).columns
+    cut = "a" * 99 + "…"
+    assert disclosed.statistics.range == Range("b", cut)
+    assert disclosed.values == (Value(cut, 2), Value("b", 1))

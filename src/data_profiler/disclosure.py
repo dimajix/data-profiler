@@ -6,16 +6,22 @@ of a sensitive semantic type -, and are taken out of it where it is of one. Sens
 optimistically: a column without such a match is of none. Each value that goes into the profile is
 checked on its own all the same, and withheld where it is of a sensitive type - a phone number at
 the end of the range of a column of which few values are phone numbers, an IBAN of a column whose
-sample held none. Each value is written as text, as the database writes it.
+sample held none. Each value is written as text, as the database writes it, and a long one cut to
+its first characters, ending in `…`, so that the end of the range of a column of free texts
+does not fill the profile.
 """
 
 from collections.abc import Sequence
 from dataclasses import replace
+from typing import Final
 
 from data_profiler.detect import Sensitivity, is_sensitive
 from data_profiler.profile import Column, Range, Table, Value
 from data_profiler.source import as_text
 from data_profiler.workspace import Enumeration
+
+# The most characters of a value the profile holds; a value of more is cut, and its last one is `…`.
+_LONGEST: Final = 100
 
 
 def disclose(table: Table, enumerations: Sequence[Enumeration]) -> Table:
@@ -46,14 +52,16 @@ def _disclosed(column: Column, values: Sequence[tuple[object, int]]) -> Column:
         return replace(column, statistics=replace(statistics, range=None), values=())
     found = statistics.range
     shown = None if found is None else Range(_shown(found.smallest), _shown(found.largest))
-    texts = ((as_text(value), rows) for value, rows in values)
+    texts = ((_shown(as_text(value)), rows) for value, rows in values)
     return replace(
         column,
         statistics=replace(statistics, range=None if shown == Range(None, None) else shown),
-        values=tuple(Value(text, rows) for text, rows in texts if not is_sensitive(text)),
+        values=tuple(Value(text, rows) for text, rows in texts if text is not None),
     )
 
 
 def _shown(text: str | None) -> str | None:
-    """`text`, or None where it is of a sensitive type."""
-    return None if text is None or is_sensitive(text) else text
+    """`text` as the profile holds it: None where it is of a sensitive type, cut where long."""
+    if text is None or is_sensitive(text):
+        return None
+    return text if len(text) <= _LONGEST else text[: _LONGEST - 1] + "…"
