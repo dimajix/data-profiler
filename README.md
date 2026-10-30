@@ -38,7 +38,7 @@ The project is at its beginning: the stages above are what it is being built for
 
 - [uv](https://docs.astral.sh/uv/), which installs Python 3.13 and every dependency itself. Where
   uv does not download Python on its own, install it once with `uv python install 3.13`.
-- [Docker](https://www.docker.com/), for the simulation environment.
+- [Docker](https://www.docker.com/), for the simulation environment and the dev container.
 
 The commands below are the same on Linux, macOS and Windows.
 
@@ -147,6 +147,34 @@ uv run pytest
 Tests that need the simulation environment expect it to run. The other checks, which the
 pre-commit hook runs as well, are listed in
 [docs/CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md#checks).
+
+### The Dev Container
+
+On a machine that reaches the real database - Windows with Docker Desktop, say -, the tool runs in
+a dev container of Visual Studio Code, with Python, uv and the project made in it, and Ollama
+beside it, which it reaches as `http://ollama:11434`. It needs Docker and the extension Dev
+Containers of Visual Studio Code; for a clone in WSL also the extension WSL, and the integration of
+Docker Desktop with that distribution of WSL.
+
+1. Clone the repository. On Windows, a clone in the file system of WSL is mounted into the
+   container much faster than one on `C:`.
+2. Put the certificates of the company into `.devcontainer/certs/`, each in PEM in a file ending
+   in `.crt` - exported from the certificate manager of Windows as "Base-64 encoded X.509" -, the
+   CA of the database among them: in the container, it is trusted from there, and a
+   `REQUESTS_CA_BUNDLE` in the `.env` of a project is passed over, as the container sets it. A
+   certificate added later needs *Rebuild Container*.
+3. Where a proxy is needed, set `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` where Docker Compose
+   runs: as variables of the user of Windows for a clone on `C:`, in the environment of WSL for a
+   clone there. Visual Studio Code is to be started anew after they change. The container takes
+   them over, and reaches Ollama without the proxy.
+4. Open the folder in Visual Studio Code and choose *Reopen in Container*. The container runs
+   `uv sync` once it is made, and enables the pre-commit hook.
+5. Pull a model into Ollama once, from a terminal of the container, for instance
+   `curl http://ollama:11434/api/pull -d '{"model": "qwen3:1.7b"}'`; models stay in a volume,
+   which the simulation environment shares.
+
+The simulation environment is not part of the container: the tests that need it fail in it and run
+outside, the other checks and the tool inside.
 
 ### Working on the Repository
 

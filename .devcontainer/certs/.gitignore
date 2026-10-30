@@ -1,0 +1,4 @@
+# The certificates of the company are not committed: each machine has its own.
+*
+!.gitignore
+!README.md

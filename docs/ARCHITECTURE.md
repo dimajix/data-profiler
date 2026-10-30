@@ -175,6 +175,9 @@ The design repeats a few decisions; new code follows them.
     in `simulation/tests/`, an example profile in `simulation/profiles/`, and in
     `simulation/trino/` the configuration of the simulated Trino.
 *   **`docker-compose.yml`** - the simulation environment, started as `README.md` says.
+*   **`.devcontainer/`** - the dev container of Visual Studio Code, with Ollama beside it, for the
+    machine that reaches the real database; the certificates of the company go into its `certs/`,
+    which keeps them out of version control.
 *   **`docs/`** - the documents of the project: this one, the
     [coding guidelines](CODING-GUIDELINES.md) and one document per subject that outgrew its section
     here (see the list below).

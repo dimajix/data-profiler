@@ -1,0 +1,28 @@
+// The dev container of data-profiler, for Visual Studio Code: Python 3.13, uv and the project,
+// with Ollama beside it. How it is opened is in README.md.
+{
+    "name": "data-profiler",
+    "dockerComposeFile": "compose.yml",
+    "service": "dev",
+    "workspaceFolder": "/workspaces/data-profiler",
+    "remoteUser": "vscode",
+    "postCreateCommand": {
+        "hook": "git config core.hooksPath .githooks",
+        "sync": "uv sync"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "charliermarsh.ruff",
+                "ms-python.mypy-type-checker"
+            ],
+            // The editor checks with the versions of uv.lock, as the hook does.
+            "settings": {
+                "python.defaultInterpreterPath": "/home/vscode/.venv/bin/python",
+                "ruff.importStrategy": "fromEnvironment",
+                "mypy-type-checker.importStrategy": "fromEnvironment"
+            }
+        }
+    }
+}

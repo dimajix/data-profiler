@@ -1,0 +1,52 @@
+# The dev container and the language model beside it, for Visual Studio Code: the clone of the
+# repository mounted into `dev`, Ollama reached from it by its name. The simulation environment is
+# not part of it; it runs outside, as `README.md` says.
+name: data-profiler-dev
+
+services:
+  dev:
+    build: .
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/data-profiler:cached
+    environment:
+      # The proxy of the machine, where it has one, taken over as it is set - unset where it is
+      # not, so that a proxy Docker gives the container is not overridden; never for Ollama.
+      - HTTP_PROXY
+      - HTTPS_PROXY
+      - http_proxy
+      - https_proxy
+      - NO_PROXY=ollama,localhost,${NO_PROXY:-${no_proxy:-}}
+      - no_proxy=ollama,localhost,${NO_PROXY:-${no_proxy:-}}
+      # The certificates of the system, those of the company among them, for uv and for requests.
+      - UV_SYSTEM_CERTS=true
+      - REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+      # The environment of Python out of the clone, apart from one made on Windows.
+      - UV_PROJECT_ENVIRONMENT=/home/vscode/.venv
+      # A clone on C: appears owned by root in the container, and git refuses such a repository
+      # unless told that it is safe; told so here, so that no `.gitconfig` is written before the
+      # one of the machine is copied in.
+      - GIT_CONFIG_COUNT=1
+      - GIT_CONFIG_KEY_0=safe.directory
+      - GIT_CONFIG_VALUE_0=/workspaces/data-profiler
+
+  # As in ../docker-compose.yml, of the same version, but started with the container rather than
+  # by a profile, reached by its name rather than a port, and trusting the certificates of the
+  # company, to pull models through the proxy; its models are those of the simulation environment.
+  # Its image is the one for AMD GPUs, less than half the size of the one for NVIDIA, as the
+  # machine it is made for has neither: Ollama runs on its CPU with either, and this one is for
+  # amd64 alone.
+  ollama:
+    image: ollama/ollama:0.40.13-rocm
+    volumes:
+      - ollama-models:/root/.ollama
+      - ./certs:/certs:ro
+    environment:
+      - HTTPS_PROXY
+      - https_proxy
+      - NO_PROXY=localhost,${NO_PROXY:-${no_proxy:-}}
+      - SSL_CERT_DIR=/etc/ssl/certs:/certs
+
+volumes:
+  ollama-models:
+    name: data-profiler_ollama-models
