@@ -69,11 +69,11 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "typing.Protocol".msg = "Interfaces between parts are abstract classes (abc.ABC)."
-"sys.exit".msg = "Only cli ends the program."
+"sys.exit".msg = "Only commands ends the program."
 "sys.stdout".msg = "Nothing is printed: log through logging."
 "sys.stderr".msg = "Nothing is printed: log through logging."
-"logging.basicConfig".msg = "Only cli configures where logs go."
-"logging.config".msg = "Only cli configures where logs go."
+"logging.basicConfig".msg = "Only commands configures where logs go."
+"logging.config".msg = "Only commands configures where logs go."
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

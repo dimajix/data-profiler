@@ -207,14 +207,13 @@ Errors carry what failed, and only what may be shown goes to users.
     what the caller can distinguish - what may be shown, a refusal, a failure of a backend.
 *   An exception of a library is translated where the library is called, into the exception of
     the interface, keeping its cause: `raise SourceError("…") from error`.
-*   `except Exception` is written only where errors are gathered and passed on - in `cli`, which
-    logs them -, not at the boundary to implementations of others. Ruff reports it unless the
-    handler raises again or logs the traceback (`BLE001`); in `cli` it is silenced, with its
-    reason.
+*   `except Exception` is written only where errors are gathered and passed on - in `commands`,
+    which logs them -, not at the boundary to implementations of others. Ruff reports it unless
+    the handler raises again or logs the traceback (`BLE001`).
 *   An expected failure never ends the program and is never silently dropped: it is passed on or
     handled. Ruff reports an exception passed over by `pass` or `continue`, of whatever class
     (`S110`, `S112`). Ending the program is for broken invariants alone; `sys.exit` is called in
-    `cli` alone, and reported everywhere else (`TID251`).
+    `commands` alone, and reported everywhere else (`TID251`).
 
 ### Messages name what failed
 
@@ -229,9 +228,9 @@ Errors carry what failed, and only what may be shown goes to users.
 ### What users see
 
 What users may see of an error is the message of an exception class of the project, `str(error)`,
-decided by whoever defines the class, in one place each, not by each caller. `cli` shows users that
-message alone; of any other exception, that the run failed unexpectedly. The traceback goes to the
-log at `debug`.
+decided by whoever defines the class, in one place each, not by each caller. `commands` shows users
+that message alone, of the classes the command line names; of any other exception, that the run
+failed unexpectedly. The traceback goes to the log at `debug`.
 
 ### Files are written whole
 
@@ -248,10 +247,10 @@ intact. The tool never writes to the database.
 *   Every module logs through `logging` of the standard library, by a logger of its own name:
     `_logger = logging.getLogger(__name__)`. Nothing is printed - not by `print`, nor to
     `sys.stdout` or `sys.stderr`; ruff reports either (`T20`, `TID251`).
-*   Only `cli` configures where logs go, in one place: to standard error. Ruff reports the
-    configuration of the log anywhere else (`TID251`). `cli` reports the progress of a run through
-    the log as well, at `info`; the command line has no output of its own besides the files it
-    writes.
+*   Only `commands` configures where logs go, in one place: to standard error. Ruff reports the
+    configuration of the log anywhere else (`TID251`). The command line reports the progress of a
+    run through the log as well, at `info`; the command line has no output of its own besides the
+    files it writes.
 
 ### Levels
 
@@ -280,10 +279,12 @@ underscore, or one made public for it - says that a cut is wrong: it is a
 *   **Where tests live:** the tests of a project are in `tests/` beside its `src/` - `tests/` for
     the tool, `simulation/tests/` for the generator -, one file `test_<module>.py` per module, and a
     test of every module alike in a file named after what it checks. Pytest imports a test module by
-    its name, so the names of test modules are unique across both directories; its mode `importlib`,
-    which would not need that, takes the directory `simulation/` for the package of the same name,
-    and hides it. A directory of tests is added to `testpaths` of pytest and to `files` of mypy with
-    its first test: neither tool finds it on its own, and a test that does not run checks nothing.
+    its name, so the names of test modules are unique across both directories - where a module of
+    the generator has the name of one of the tool, its test takes the name of the package as well,
+    `test_simulation_cli.py` -; its mode `importlib`, which would not need that, takes the directory
+    `simulation/` for the package of the same name, and hides it. A directory of tests is added to
+    `testpaths` of pytest and to `files` of mypy with its first test: neither tool finds it on its
+    own, and a test that does not run checks nothing.
 *   **Shared fixtures:** what the tests of several modules use lives in one place, as a fixture in
     the `conftest.py` of the directory whose tests share it, built through the interface of the
     module whose things it builds. A test builds what it needs as the code does, from defaults, and

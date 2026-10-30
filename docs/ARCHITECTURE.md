@@ -53,8 +53,11 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as HTML.
-*   **`data_profiler.cli`** - the command line: it reads the arguments and `.env`, configures the
-    log, runs the stages, and alone ends the program, showing users what may be shown of an error.
+*   **`data_profiler.cli`** - the command line: it reads the arguments and `.env`, and runs the
+    stages through `commands`.
+*   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
+    as well, runs its work in: it alone configures the log and ends the program, showing users
+    what may be shown of an error.
 *   **`simulation`** - test data: tables generated from a profile and loaded into the simulation
     environment - Trino, reached by HTTPS with a password as Starburst is, with a PostgreSQL
     catalog, and Ollama under a compose profile of its own -, for tests and for trying the tool

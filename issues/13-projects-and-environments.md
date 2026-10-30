@@ -85,7 +85,10 @@ In steps, each reviewed and committed on its own:
    own, `data_profiler.documents`, a refactoring for the project to read its configuration the
    same way.
 3. The module `data_profiler.project`, the example project, and the documents.
-4. The command line, as step 4 of [07](07-the-stage-scan.md), which builds on the steps before.
+4. The command line, as step 4 of [07](07-the-stage-scan.md), which builds on the steps before,
+   in two: first, a refactoring, what every command line of the project does around its work -
+   the log configured, the program ended when the work fails - moves from `simulation.cli` into
+   `data_profiler.commands.run`; then the command `scan` of the tool runs through it.
 
 To be settled in their issues: overrides ([11](11-overrides.md)) and the glossary
 ([09](09-the-glossary.md)) likely belong to the project, the same for all its environments, while
@@ -139,3 +142,15 @@ the results of `describe` ([10](10-the-stage-describe.md)) and `report`
   environment", in `data_profiler.source` and `docs/ARCHITECTURE.md`, since *Environment* is now
   the word for the environments of a project. `README.md` describes projects with the command
   line, in step 4.
+
+- **2026-10-30** — Step 4 is made on this branch, as the maintainer agreed: the steps of
+  [07](07-the-stage-scan.md) before it are in `main` already. Its first part done, a refactoring:
+  the function `run` of a module of its own, `data_profiler.commands`, runs the work of a command
+  with the log configured to standard error, and ends the program with the exit code 1 when the
+  work fails, showing the message of the error classes it is given; `simulation.cli` runs its load
+  through it, so that the log is configured in one place. The module is its own, as the maintainer
+  decided, not a part of `data_profiler.cli`, which is the command line of the tool alone. The
+  messages of a failure no longer name the load, but "the command", since `run` does not know what
+  the work is. The tests of `simulation.cli` move to `test_simulation_cli.py`, so that those of
+  `data_profiler.cli` will be in `test_cli.py`, as `docs/CODING-GUIDELINES.md` now says for
+  modules of the same name.
