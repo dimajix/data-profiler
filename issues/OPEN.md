@@ -36,6 +36,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [12](12-the-stage-report.md) | open | medium | feature | What the tool found can only be read as YAML: there is no report a person reads. Part of epic [02](02-first-version-epic.md). |
 
+## Command line
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [13](13-projects-and-environments.md) | open | high | feature | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. Part of epic [02](02-first-version-epic.md). |
+
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |
