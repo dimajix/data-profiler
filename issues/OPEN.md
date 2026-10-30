@@ -40,7 +40,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [13](13-projects-and-environments.md) | open | high | feature | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. Part of epic [02](02-first-version-epic.md). |
+| [13](13-projects-and-environments.md) | in progress | high | feature | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 

@@ -12,7 +12,7 @@ from pathlib import Path
 
 from data_profiler.profile import Profile, ProfileError
 from simulation import SimulationError
-from simulation.environment import Environment
+from simulation.environment import Simulation
 
 _logger = logging.getLogger(__name__)
 
@@ -32,10 +32,10 @@ def main() -> None:
     logging.basicConfig(level=level, format=_FORMAT)  # noqa: TID251  # this is the command line
     try:
         profile = Profile.read(arguments.profile)
-        with Environment.connect() as environment:
-            environment.load(profile, arguments.seed)
+        with Simulation.connect() as simulation:
+            simulation.load(profile, arguments.seed)
             for table in profile.tables:
-                rows = environment.count(profile.schema, table.name)
+                rows = simulation.count(profile.schema, table.name)
                 _logger.info("Trino counts %s.%s: %d rows", profile.schema, table.name, rows)
     except (ProfileError, SimulationError) as error:
         _logger.error("%s", error)

@@ -27,7 +27,7 @@ from simulation.data import rows
 
 _logger = logging.getLogger(__name__)
 
-# The environment as docker-compose.yml starts it.
+# The simulation as docker-compose.yml starts it.
 _CATALOG: Final = "crm"
 _TRINO: Final = "Trino at https://localhost:8443"
 _TRINO_PORT: Final = 8443
@@ -41,11 +41,11 @@ _POSTGRES_CONNECTION: Final = "host=localhost port=5432 dbname=crm user=crm pass
 _CERTIFICATE: Final = Path(__file__).parents[2] / "trino" / "tls" / "trino.crt"
 
 
-class Environment:
+class Simulation:
     """The database of the simulation environment, reached by Trino and PostgreSQL."""
 
     def __init__(self, trino: dbapi.Connection, postgres: psycopg.Connection) -> None:
-        """Takes the connections to the Trino and the PostgreSQL of the environment.
+        """Takes the connections to the Trino and the PostgreSQL of the simulation.
 
         Args:
             trino: The connection to Trino.
@@ -56,17 +56,17 @@ class Environment:
 
     @classmethod
     def connect(cls) -> Self:
-        """Connects to the environment as docker-compose.yml starts it.
+        """Connects to the simulation as docker-compose.yml starts it.
 
-        It is reached on `localhost`, by the users of the environment, trusting its certificate
+        It is reached on `localhost`, by the users of the simulation, trusting its certificate
         and passing by any proxy, which would not reach it. Trino is asked first when a statement
         is sent to it.
 
         Returns:
-            The environment.
+            The simulation.
 
         Raises:
-            SimulationError: The PostgreSQL of the environment cannot be reached.
+            SimulationError: The PostgreSQL of the simulation cannot be reached.
         """
         session = Session()
         session.trust_env = False
@@ -86,7 +86,7 @@ class Environment:
         return cls(trino, postgres)
 
     def __enter__(self) -> Self:
-        """Returns the environment, whose connections are closed at the end of the block."""
+        """Returns the simulation, whose connections are closed at the end of the block."""
         return self
 
     def __exit__(
@@ -95,7 +95,7 @@ class Environment:
         error: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        """Closes the connections to the environment."""
+        """Closes the connections to the simulation."""
         self._trino.close()  # type: ignore[no-untyped-call]  # the client has no annotations
         self._postgres.close()
 
@@ -116,7 +116,7 @@ class Environment:
         """
         if profile.catalog != _CATALOG:
             raise SimulationError(
-                f"the profile is of the catalog {profile.catalog}, the environment has {_CATALOG}"
+                f"the profile is of the catalog {profile.catalog}, the simulation has {_CATALOG}"
             )
         random = Random(seed)
         tables = [(table, rows(table, random)) for table in profile.tables]

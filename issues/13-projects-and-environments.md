@@ -1,6 +1,6 @@
 # 13 — Projects and environments
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** high
 **Area:** Command line
@@ -97,3 +97,8 @@ the results of `describe` ([10](10-the-stage-describe.md)) and `report`
   maintainer asked to think in projects and environments rather than in arguments. The interface of
   `data_profiler.project` is put before the maintainer before it is built; step 4 of
   [07](07-the-stage-scan.md) builds on it.
+
+- **2026-10-30** — Step 1 done: the class `simulation.environment.Environment` is renamed
+  `Simulation`, and the variables that held one with it, so that *Environment* is free for the
+  environments of a project. The module keeps its name: it is the database of the simulation
+  environment, which is one environment in the new sense.

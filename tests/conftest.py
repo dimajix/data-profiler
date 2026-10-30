@@ -7,7 +7,7 @@ import pytest
 
 from data_profiler.profile import Profile
 from data_profiler.source import Source, connect
-from simulation.environment import Environment
+from simulation.environment import Simulation
 
 _TOP = Path(__file__).parents[1]
 
@@ -16,8 +16,8 @@ _TOP = Path(__file__).parents[1]
 def example() -> Profile:
     """The example profile of the simulation, loaded into its environment once."""
     profile = Profile.read(_TOP / "simulation" / "profiles" / "crm.yml")
-    with Environment.connect() as environment:
-        environment.load(profile)
+    with Simulation.connect() as simulation:
+        simulation.load(profile)
     return profile
 
 
