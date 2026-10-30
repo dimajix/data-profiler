@@ -35,7 +35,7 @@ _FORM: Final = "trino://user@host:port/catalog/schema"
 _TEXTS: Final = ("varchar", "char")
 
 # The standard error of the distinct values Trino counts: half a percent, against its default of
-# 2.3, so that keys and enums can be told by them, for about 64 KB of memory per column.
+# 2.3, so that keys and enumerations can be told by them, for about 64 KB of memory per column.
 _DISTINCT_ERROR: Final = 0.005
 
 
@@ -73,8 +73,25 @@ class Dialect(ABC):
         """
 
     @abstractmethod
+    def grouped(self, expressions: Sequence[str], table: str, columns: Sequence[str]) -> str:
+        """The statement selecting `expressions` from `table`, grouped by each of `columns` alone.
+
+        The table is read once for all the columns. A row of the statement belongs to the groups
+        of one of them, which `grouping` tells; the others are null in it.
+
+        Args:
+            expressions: The expressions to select.
+            table: The table, of the schema of the source.
+            columns: The columns to group by, each on its own.
+        """
+
+    @abstractmethod
     def column(self, column: str) -> str:
         """The expression of the values of `column`."""
+
+    @abstractmethod
+    def grouping(self, column: str) -> str:
+        """The expression that is 0 in the rows grouped by `column`, and 1 in the others."""
 
     @abstractmethod
     def rows(self) -> str:
@@ -295,9 +312,21 @@ class _TrinoDialect(Dialect):
             f"TABLESAMPLE BERNOULLI ({percent:.10f}) LIMIT {limit}"
         )
 
+    def grouped(self, expressions: Sequence[str], table: str, columns: Sequence[str]) -> str:
+        """The statement selecting `expressions` from `table`, grouped by each of `columns`."""
+        sets = ", ".join(f"({_identifier(column)})" for column in columns)
+        return (
+            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"GROUP BY GROUPING SETS ({sets})"
+        )
+
     def column(self, column: str) -> str:
         """The expression of the values of `column`."""
         return _identifier(column)
+
+    def grouping(self, column: str) -> str:
+        """The expression that is 0 in the rows grouped by `column`, and 1 in the others."""
+        return f"grouping({_identifier(column)})"
 
     def rows(self) -> str:
         """The expression counting the rows."""

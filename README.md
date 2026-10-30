@@ -7,8 +7,8 @@ its SQL through a dialect, so that others can follow.
 
 It works in three stages, each of which can be run again on its own:
 
-- **scan** reads the selected tables, by a list or a regular expression, and finds for every
-  column the range of its values, its nulls, whether it is an enum of few values, and what its
+- **scan** reads the selected tables, by a list or a regular expression, and finds for every column
+  the range of its values, its nulls, whether it is an enumeration of few values, and what its
   values are - phone numbers, postal codes, card numbers, dates and more - by deterministic
   detectors, checked on a sample and, where they can, verified on the whole table.
 - **describe** asks a small language model, running locally in Ollama, for a harmonized English

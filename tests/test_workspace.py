@@ -1,4 +1,4 @@
-"""Tests of the workspace: kept out of version control, holding the samples of tables."""
+"""Tests of the workspace: kept out of version control, holding samples and enumerations."""
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from data_profiler.workspace import Sample, Workspace, WorkspaceError
+from data_profiler.workspace import Enumeration, Sample, Workspace, WorkspaceError
 
 _SAMPLE = Sample(
     columns={
@@ -18,6 +18,13 @@ _SAMPLE = Sample(
         "flg": [True, False, None],
     }
 )
+
+_ENUMERATIONS = [
+    Enumeration(column="cd", values=(("a", 3), ("b", 1))),
+    Enumeration(column="amt", values=((Decimal("1.50"), 2), (Decimal("2.00"), 1))),
+    Enumeration(column="dt", values=((date(2026, 1, 1), 5),)),
+    Enumeration(column="flg", values=((True, 4), (False, 4))),
+]
 
 
 def test_a_workspace_keeps_itself_out_of_version_control(tmp_path: Path) -> None:
@@ -36,6 +43,24 @@ def test_a_sample_written_and_read_is_unchanged(tmp_path: Path) -> None:
     workspace = Workspace.open(tmp_path, "crm", "sales")
     workspace.write_sample("t", _SAMPLE)
     assert workspace.read_sample("t") == _SAMPLE
+
+
+def test_enumerations_written_and_read_are_unchanged(tmp_path: Path) -> None:
+    workspace = Workspace.open(tmp_path, "crm", "sales")
+    workspace.write_enumerations("t", _ENUMERATIONS)
+    assert workspace.read_enumerations("t") == _ENUMERATIONS
+
+
+def test_enumerations_written_take_the_place_of_earlier_ones(tmp_path: Path) -> None:
+    workspace = Workspace.open(tmp_path, "crm", "sales")
+    workspace.write_enumerations("t", _ENUMERATIONS)
+    workspace.write_enumerations("t", [])
+    assert workspace.read_enumerations("t") == []
+
+
+def test_enumerations_that_were_not_counted_are_named(tmp_path: Path) -> None:
+    with pytest.raises(WorkspaceError, match="holds no enumerations of t"):
+        Workspace.open(tmp_path, "crm", "sales").read_enumerations("t")
 
 
 def test_a_sample_that_was_not_taken_is_named(tmp_path: Path) -> None:
@@ -71,6 +96,14 @@ def test_a_sample_that_is_no_parquet_cannot_be_read(tmp_path: Path) -> None:
     (tmp_path / "samples" / "t.parquet").write_text("no parquet", encoding="utf-8")
     with pytest.raises(WorkspaceError, match="cannot be read"):
         workspace.read_sample("t")
+
+
+def test_enumerations_of_another_form_cannot_be_read(tmp_path: Path) -> None:
+    workspace = Workspace.open(tmp_path, "crm", "sales")
+    workspace.write_sample("t", _SAMPLE)
+    (tmp_path / "samples" / "t.parquet").rename(tmp_path / "enumerations" / "t.parquet")
+    with pytest.raises(WorkspaceError, match="not of the form they are written in"):
+        workspace.read_enumerations("t")
 
 
 @pytest.mark.parametrize("table", ["../t", "a/b", ".hidden", ""])

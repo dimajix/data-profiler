@@ -264,10 +264,10 @@ intact. The tool never writes to the database.
 
 ### Content
 
-*   **Values of the database are logged at `debug` alone** - those of a sample, an enum or a range,
-    and those in the message of a database error or in a traceback. The log stays on the machine,
-    as the workspace does. Above `debug`, what is logged is the names of tables and columns,
-    counts, sizes and durations.
+*   **Values of the database are logged at `debug` alone** - those of a sample, an enumeration or a
+    range, and those in the message of a database error or in a traceback. The log stays on the
+    machine, as the workspace does. Above `debug`, what is logged is the names of tables and
+    columns, counts, sizes and durations.
 *   SQL statements are logged at `debug`.
 *   Credentials and passwords are never logged, at any level.
 

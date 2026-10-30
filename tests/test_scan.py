@@ -44,3 +44,5 @@ def test_only_the_tables_a_pattern_matches_whole_are_scanned(
     assert (scanned.catalog, scanned.schema) == (example.catalog, example.schema)
     sample = workspace.read_sample("prod")
     assert len(sample.columns["prod_id"]) == 350, "the sample of each table is in the workspace"
+    enumerations = [enumeration.column for enumeration in workspace.read_enumerations("prod")]
+    assert "prod_grp_cd" in enumerations, "the enumerations of each table are in the workspace"

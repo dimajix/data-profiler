@@ -18,7 +18,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [06](06-source-and-dialect-for-trino.md) | done | The tool cannot reach a database: nothing connects to Trino, lists its tables or sends it a query. |
-| [07](07-the-stage-scan.md) | in progress | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enums - and nothing takes a sample of them. |
+| [07](07-the-stage-scan.md) | in progress | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enumerations - and nothing takes a sample of them. |
 
 ## Detection
 
