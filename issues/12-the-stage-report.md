@@ -1,6 +1,6 @@
 # 12 — The stage report
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Report
@@ -38,3 +38,26 @@ profile is for the tool and for whoever corrects it.
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-10-30** — Done, after the sketch and the interface were agreed with the maintainer: the
+  module `data_profiler.report` renders a profile as one HTML document, from a Jinja2 template
+  that escapes what it shows, with its styles inside and no script; each table with its
+  harmonized name and its rows, each column with its original and harmonized names, type, nulls,
+  distinct values, lengths, range, semantic types with their shares and its sensitivity, found or
+  marked, the values of an enumeration below it; and the glossary, each term with its word and
+  where it appears. The command `data-profiler report ENVIRONMENT [--project DIR]` lays the
+  overrides of the project over the profile of the environment and writes `report.html` beside
+  it, whole or not at all. `css` is checked by `scripts/wrapping.sh`. Two details differ from the
+  interface agreed, for the maintainer's review: beside `render`, a function `write_report` with an
+  exception class of its own, `ReportError`, as a file that cannot be written has to be told by
+  the class of the stage; and the name of the environment is not in the report, which `render`,
+  given the profile alone, does not know. Descriptions of the columns come with
+  [10](10-the-stage-describe.md).
+  After the review: the style sheet is included by the template, not escaped as a value; an end of
+  a range is said to be withheld only where it is None, so that an empty text is shown as one; a
+  mark of no sensitivity is shown beside the matches it overrules; the template is laid out within
+  100 characters.
+  As the maintainer decided then: an environment of a project resolves its URL and password when
+  they are asked for, so that `report`, which does not reach the database, needs neither its
+  password nor the variable of it; and a column tells by `Column.sensitive` whether it is of a
+  sensitivity, which `disclosure`, `report` and its template asked each in a way of their own.

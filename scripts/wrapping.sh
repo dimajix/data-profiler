@@ -32,9 +32,9 @@ max=100
 # The extensions of the source files whose comments are checked, by their comment markers: `//`,
 # `///` and `//!`; also `/*`, `/**` and the `*` that begins every further line of a block; `#`; and
 # the docstrings, by `"""`. A language is added to its lists once the project has a file of it; the
-# lists of `//` and `/*` wait for the style sheets and scripts of the HTML reports.
+# list of `//` waits for a language of the project that has it.
 slash=''
-block=''
+block='css'
 hash='py sh toml yml yaml properties'
 quotes='py'
 

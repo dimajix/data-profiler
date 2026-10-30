@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from data_profiler.project import Environment, Project, ProjectError
+from data_profiler.project import Project, ProjectError
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
@@ -43,13 +43,18 @@ def test_the_tables_of_a_project_are_matched_by_its_list_of_names(tmp_path: Path
 
 
 def test_an_environment_is_resolved_from_the_variables_it_names(tmp_path: Path) -> None:
-    project = _project(tmp_path, DEV_PASSWORD="secret")  # those of prod are not needed
-    assert project.environment("dev") == Environment(
-        name="dev",
-        url="trino://profiler@dev:8443/crm/sales",
-        directory=tmp_path / "dev",
-        password="secret",
-    )
+    environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
+    assert environment.name == "dev"
+    assert environment.url == "trino://profiler@dev:8443/crm/sales"
+    assert environment.directory == tmp_path / "dev"
+    assert environment.password == "secret", "those of prod are not needed"
+
+
+def test_an_environment_needs_its_variables_only_when_they_are_asked_for(tmp_path: Path) -> None:
+    environment = _project(tmp_path).environment("prod")
+    assert environment.report == tmp_path / "prod" / "report.html"
+    with pytest.raises(ProjectError, match="the url of the environment prod is the variable"):
+        assert environment.url
 
 
 def test_the_url_of_an_environment_may_be_a_variable(tmp_path: Path) -> None:
@@ -66,6 +71,7 @@ def test_an_environment_keeps_its_results_in_its_directory(tmp_path: Path) -> No
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
     assert environment.profile == tmp_path / "dev" / "profile.yml"
     assert environment.workspace == tmp_path / "dev" / "workspace"
+    assert environment.report == tmp_path / "dev" / "report.html"
 
 
 def test_the_password_of_an_environment_is_not_shown(tmp_path: Path) -> None:
@@ -80,7 +86,7 @@ def test_an_environment_whose_variable_is_not_set_is_refused_naming_it(tmp_path:
         r" neither the process sets nor .*\.env$"
     )
     with pytest.raises(ProjectError, match=problem):
-        project.environment("prod")
+        assert project.environment("prod").password
 
 
 def test_the_variables_are_completed_by_those_of_the_project(tmp_path: Path) -> None:

@@ -1,0 +1,108 @@
+/*
+ * The styles of the report: plain, so that it reads on a screen and prints on paper alike.
+ */
+:root {
+    --text: #1d2125;
+    --muted: #5f6770;
+    --line: #d8dde2;
+    --head: #f2f4f6;
+    --sensitive: #fbeaea;
+    --accent: #8a1c1c;
+}
+
+body {
+    margin: 0 auto;
+    max-width: 1200px;
+    padding: 24px 16px;
+    color: var(--text);
+    background: #ffffff;
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+h2 {
+    margin: 32px 0 8px;
+    font-size: 18px;
+}
+
+.summary,
+.rows,
+.harmonized {
+    color: var(--muted);
+    font-weight: normal;
+}
+
+.rows {
+    float: right;
+    font-size: 14px;
+}
+
+nav a {
+    color: inherit;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: var(--head);
+}
+
+.number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.original,
+.type,
+.value {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.sensitive {
+    background: var(--sensitive);
+}
+
+.sensitivity {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.match {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.values td {
+    border-bottom: none;
+}
+
+section {
+    break-inside: avoid-page;
+}
+
+@media print {
+    body {
+        max-width: none;
+        padding: 0;
+        font-size: 11px;
+    }
+
+    nav {
+        display: none;
+    }
+}

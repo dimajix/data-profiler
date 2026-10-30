@@ -4,18 +4,19 @@ A project is a directory. Its configuration, `project.yml`, is a document that n
 profile, for the whole project, and the environments the database is profiled in - dev, test, prod
 -, each by the URL of its schema and its password; beside it, `overrides.yml` gives by hand what
 the profiles of all environments take as given. Each environment keeps its results in a directory
-of its own, named after it: its profile and its workspace.
+of its own, named after it: its profile, its workspace and its report.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
 variables are those of the process, completed by the `.env` of the project, which is not
-committed and does not override what the process sets. They are resolved when an environment is,
-so that an environment can be used without those of the others being set.
+committed and does not override what the process sets. They are resolved when the URL or the
+password of an environment is asked for, so that an environment can be used without those of the
+others being set, and its results without its own.
 """
 
 import re
 from collections.abc import Mapping, MutableMapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern, PatternError
 from typing import Final, Self
@@ -42,20 +43,51 @@ class ProjectError(Exception):
 
 
 @dataclass(frozen=True)
+class _Settings:
+    """How an environment is reached, as the configuration gives it: values or `${NAME}`."""
+
+    url: str
+    password: str
+
+
 class Environment:
     """An environment of a project: the schema it profiles, and the directory of its results.
 
+    Its URL and password are resolved when they are asked for, so that a stage that does not reach
+    the database, such as `report`, needs neither.
+
     Attributes:
         name: The name of the environment, such as `dev` or `prod`.
-        url: The schema the environment profiles, as `source.connect` takes it.
         directory: The directory of its results, in the directory of the project.
-        password: The password of the user the URL names; never shown.
     """
 
-    name: str
-    url: str
-    directory: Path
-    password: str = field(repr=False)
+    def __init__(
+        self, name: str, file: Path, settings: _Settings, variables: Mapping[str, str]
+    ) -> None:
+        """Takes what the project `file` gives of the environment, and the variables of it."""
+        self.name = name
+        self.directory = file.parent / name
+        self._file = file
+        self._settings = settings
+        self._variables = variables
+
+    @property
+    def url(self) -> str:
+        """The schema the environment profiles, as `source.connect` takes it.
+
+        Raises:
+            ProjectError: The URL is a variable that is not set.
+        """
+        return self._resolved("url", self._settings.url)
+
+    @property
+    def password(self) -> str:
+        """The password of the user the URL names; never shown.
+
+        Raises:
+            ProjectError: The password is a variable that is not set.
+        """
+        return self._resolved("password", self._settings.password)
 
     @property
     def profile(self) -> Path:
@@ -67,13 +99,24 @@ class Environment:
         """The directory of the workspace of the environment."""
         return self.directory / "workspace"
 
+    @property
+    def report(self) -> Path:
+        """The file of the report of the environment."""
+        return self.directory / "report.html"
 
-@dataclass(frozen=True)
-class _Settings:
-    """How an environment is reached, as the configuration gives it: values or `${NAME}`."""
-
-    url: str
-    password: str
+    def _resolved(self, setting: str, value: str) -> str:
+        """`value` of `setting`, or the variable it names."""
+        variable = _VARIABLE.fullmatch(value)
+        if variable is None:
+            return value
+        found = self._variables.get(variable[1])
+        if found is None:
+            raise ProjectError(
+                f"{self._file}: the {setting} of the environment {self.name} is the variable"
+                f" {variable[1]}, which neither the process sets nor"
+                f" {self._file.parent / _VARIABLES}"
+            )
+        return found
 
 
 @dataclass(frozen=True)
@@ -164,7 +207,7 @@ class Project:
         return self._file.parent / "overrides.yml"
 
     def environment(self, name: str) -> Environment:
-        """The environment `name`, its values taken from the variables where they name one.
+        """The environment `name`, its values taken from the variables when they are asked for.
 
         Args:
             name: The name of the environment.
@@ -173,33 +216,13 @@ class Project:
             The environment.
 
         Raises:
-            ProjectError: The project has no environment `name`, or a variable it names is not
-                set.
+            ProjectError: The project has no environment `name`.
         """
         settings = self._environments.get(name)
         if settings is None:
             known = ", ".join(sorted(self._environments)) or "none"
             raise ProjectError(f"{self._file} has no environment {name}; it has: {known}")
-        return Environment(
-            name=name,
-            url=self._resolved(name, "url", settings.url),
-            directory=self._file.parent / name,
-            password=self._resolved(name, "password", settings.password),
-        )
-
-    def _resolved(self, name: str, setting: str, value: str) -> str:
-        """`value` of the setting of the environment `name`, or the variable it names."""
-        variable = _VARIABLE.fullmatch(value)
-        if variable is None:
-            return value
-        found = self._variables.get(variable[1])
-        if found is None:
-            raise ProjectError(
-                f"{self._file}: the {setting} of the environment {name} is the variable"
-                f" {variable[1]}, which neither the process sets nor"
-                f" {self._file.parent / _VARIABLES}"
-            )
-        return found
+        return Environment(name, self._file, settings, self._variables)
 
 
 def _complete(variables: MutableMapping[str, str], path: Path) -> None:

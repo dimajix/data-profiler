@@ -38,7 +38,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [12](12-the-stage-report.md) | open | What the tool found can only be read as YAML: there is no report a person reads. |
+| [12](12-the-stage-report.md) | done | What the tool found can only be read as YAML: there is no report a person reads. |
 
 ## Command line
 

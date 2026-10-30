@@ -61,7 +61,8 @@ environment.
     and composing harmonized names from the words of the glossary, which the profile holds.
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
     names and descriptions, proposed by the language model.
-*   **`data_profiler.report`** - the stage `report`: the profile rendered as HTML.
+*   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
+    its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
     environment of a project through `commands`.
 *   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
@@ -75,7 +76,8 @@ environment.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary`, `overrides` and
-`workspace`, `report` the profile and `overrides` alone; `cli` runs the stages.
+`workspace`, `report` the profile alone, and `glossary` for its names; `cli` runs the stages, and
+lays the overrides over the profile they read.
 
 ## The domain
 
@@ -84,7 +86,7 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
     overrides, and of the results of each environment.
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL and a password of its own; its results,
-    a profile and a workspace, are kept in a directory of its own, named after it.
+    a profile, a workspace and a report, are kept in a directory of its own, named after it.
 *   **Stage** - one of `scan`, `describe` and `report`: a step of the work that can be run on its
     own, from what the stages before it left.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of

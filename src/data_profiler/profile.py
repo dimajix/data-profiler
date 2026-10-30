@@ -137,6 +137,11 @@ class Column:
                 return match.type.sensitivity
         return Sensitivity.NONE
 
+    @property
+    def sensitive(self) -> bool:
+        """Whether the column is of a sensitivity, so that the profile holds none of its values."""
+        return self.sensitivity is not Sensitivity.NONE
+
 
 @dataclass(frozen=True)
 class Table:

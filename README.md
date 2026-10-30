@@ -114,8 +114,8 @@ environments:
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
   word of a term, and the sensitivity of a column the detectors miss, such as the names of
-  persons. `examples/crm/overrides.yml` shows both; the stages `describe` and `report` will lay
-  them over the profile, once they are made.
+  persons. `examples/crm/overrides.yml` shows both; `report` lays them over the profile, and so
+  will `describe`, once it is made.
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -128,6 +128,15 @@ of the tables to the workspace `examples/crm/simulation/workspace/`, which keeps
 version control. Without `--project`, the project is the current directory. The progress goes to
 standard error; with `--debug` before the command, the log holds the statements sent and the
 values of the database, and stays on the machine.
+
+The profile is rendered as a report by
+
+```bash
+uv run data-profiler report simulation --project examples/crm
+```
+
+which lays the overrides of the project over it and writes `examples/crm/simulation/report.html`:
+one file, which a browser shows and prints on its own, without the database.
 
 ### Running Tests
 

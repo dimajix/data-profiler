@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ profile.catalog }}.{{ profile.schema }} - Profile</title>
+<style>
+{% include "report.css" %}
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ profile.catalog }}.{{ profile.schema }}</h1>
+  <p class="summary">
+    {{ "{:,}".format(profile.tables | length) }} tables ·
+    {{ "{:,}".format(column_count) }} columns ·
+    {{ "{:,}".format(sensitive_count) }} columns sensitive
+  </p>
+  <nav>
+    {% for table in profile.tables %}
+    <a href="#table-{{ table.name }}">{{ table.name }}</a> ·
+    {% endfor %}
+    <a href="#glossary">Glossary</a>
+  </nav>
+</header>
+
+<main>
+{% for table in profile.tables %}
+<section id="table-{{ table.name }}">
+  <h2>
+    {{ table.name }}
+    {% set name = harmonized(table.name) %}
+    {% if name %}<span class="harmonized">→ {{ name }}</span>{% endif %}
+    <span class="rows">{{ "{:,}".format(table.rows) }} rows</span>
+  </h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Column</th><th>Name</th><th>Type</th><th class="number">Nulls</th>
+        <th class="number">Distinct</th><th>Lengths</th><th>Range</th><th>Semantic type</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for column in table.columns %}
+      {% set statistics = column.statistics %}
+      <tr{% if column.sensitive %} class="sensitive"{% endif %}>
+        <td class="original">{{ column.name }}</td>
+        <td>{{ harmonized(column.name) or "–" }}</td>
+        <td class="type">{{ column.type }}</td>
+        <td class="number">
+          {% if table.rows %}
+          {{ "{:.0%}".format(statistics.nulls / table.rows) }}
+          {% else %}
+          –
+          {% endif %}
+        </td>
+        <td class="number">{{ "{:,}".format(statistics.distinct) }}</td>
+        <td>
+          {% if statistics.lengths %}
+          {{ statistics.lengths.shortest }} … {{ statistics.lengths.longest }}
+          {% else %}
+          –
+          {% endif %}
+        </td>
+        <td class="value">
+          {% if column.sensitive %}
+          <span class="sensitivity">
+            {{ column.sensitivity.value }}{% if column.marked is not none %} (marked){% endif %}
+          </span>
+          {% elif statistics.range %}
+          {{ end(statistics.range.smallest) }} … {{ end(statistics.range.largest) }}
+          {% else %}
+          –
+          {% endif %}
+        </td>
+        <td>
+          {% for match in column.matches %}
+          <span class="match">
+            {{ match.type.value }} {{ "{:.0%}".format(match.sample) }}
+            {% if match.table is not none %} / {{ "{:.0%}".format(match.table) }}{% endif %}
+          </span>
+          {% else %}
+          –
+          {% endfor %}
+          {% if column.marked is not none and not column.sensitive %}
+          <span class="match">none (marked)</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% if column.values %}
+      <tr class="values">
+        <td></td>
+        <td colspan="7">
+          <details>
+            <summary>{{ column.values | length }} values</summary>
+            {% for value in column.values %}
+            <span class="value">{{ value.value }}</span> {{ "{:,}".format(value.rows) }}
+            {% if not loop.last %} · {% endif %}
+            {% endfor %}
+          </details>
+        </td>
+      </tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endfor %}
+
+<section id="glossary">
+  <h2>Glossary</h2>
+  <table>
+    <thead>
+      <tr><th>Term</th><th>Word</th><th>Appears in</th></tr>
+    </thead>
+    <tbody>
+    {% for term, names in terms.items() %}
+      <tr>
+        <td class="original">{{ term }}</td>
+        <td>{{ profile.glossary.get(term, "—") }}</td>
+        <td>
+          {{ names[:places] | join(", ") }}
+          {% if names | length > places %}, … ({{ names | length }}){% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+</main>
+</body>
+</html>

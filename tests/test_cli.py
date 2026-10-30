@@ -57,3 +57,24 @@ def test_the_password_is_not_logged_when_the_scan_fails(
     assert command_line(main, "--debug", "scan", "simulation", "--project", str(project)) == 1
     assert caplog.records, "the failure is logged"
     assert "not-the-password" not in caplog.text
+
+
+def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    shutil.copy(_EXAMPLE / "overrides.yml", project)
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile.yml")
+    assert command_line(main, "report", "simulation", "--project", str(project)) == 0
+    page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
+    assert "<h1>crm.sales</h1>" in page
+    assert "personal (marked)" in page, "the overrides of the project are laid over"
+
+
+def test_the_profile_of_an_environment_is_reported_without_its_password(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / ".env").unlink()
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile.yml")
+    assert command_line(main, "report", "simulation", "--project", str(project)) == 0

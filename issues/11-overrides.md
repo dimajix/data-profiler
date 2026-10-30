@@ -89,3 +89,6 @@ As decided with the maintainer:
   that writes the profile it laid the overrides over keeps their marks in it, so that a mark taken
   out of `overrides.yml` stays until the next `scan`, unless the stage lays them over the profile
   `scan` wrote.
+
+- **2026-10-30** — `report` ([12](12-the-stage-report.md)) lays the overrides of the project over
+  the profile it renders; what is left is `describe` ([10](10-the-stage-describe.md)).

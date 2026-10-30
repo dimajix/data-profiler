@@ -43,12 +43,14 @@ def test_a_column_of_a_sensitivity_keeps_neither_its_range_nor_its_values() -> N
 
 def test_a_column_marked_sensitive_keeps_neither_its_range_nor_its_values() -> None:
     column = _disclosed(_code(marked=Sensitivity.PERSONAL))
+    assert column.sensitive
     assert (column.statistics.range, column.values) == (None, ())
 
 
 def test_a_mark_comes_before_the_matches() -> None:
     column = _code(Match(SemanticType.PHONE, 1.0, 1.0), marked=Sensitivity.NONE)
     assert column.sensitivity is Sensitivity.NONE
+    assert not column.sensitive
     assert _disclosed(column).values == _VALUES
 
 

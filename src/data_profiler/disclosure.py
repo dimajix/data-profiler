@@ -15,7 +15,7 @@ cannot.
 from dataclasses import replace
 from typing import Final
 
-from data_profiler.detect import Sensitivity, is_sensitive
+from data_profiler.detect import is_sensitive
 from data_profiler.profile import Column, Range, Table, Value
 
 # The most characters of a value the profile holds; a value of more is cut, and its last one is `…`.
@@ -38,7 +38,7 @@ def disclose(table: Table) -> Table:
 def _disclosed(column: Column) -> Column:
     """`column` with what it may keep of its range and values: nothing where it is sensitive."""
     statistics = column.statistics
-    if column.sensitivity is not Sensitivity.NONE:
+    if column.sensitive:
         return replace(column, statistics=replace(statistics, range=None), values=())
     found = statistics.range
     shown = None if found is None else Range(_shown(found.smallest), _shown(found.largest))
