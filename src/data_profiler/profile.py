@@ -1,19 +1,17 @@
 """The profile: what was found about the tables of one schema of a database.
 
 A profile is what the stages hand to each other, and what a person reads, shares and corrects: it
-holds no sensitive values. It is written as YAML, with the version of its format in the field
-`format`, and read back by the same classes; a profile of another format, or with a field missing,
-unknown or of the wrong type, is refused.
+holds no sensitive values. It is a document, written as YAML in the format below and read back by
+the same classes.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final
+from typing import Final
 
-from pydantic import ConfigDict, TypeAdapter, ValidationError, with_config
-from yaml import YAMLError, safe_dump, safe_load
+from pydantic import TypeAdapter
 
-from data_profiler.files import write_whole
+from data_profiler.documents import DocumentError, read_document, write_document
 
 FORMAT: Final = 1
 """The version of the format a profile is written in.
@@ -23,15 +21,11 @@ version before, a field removed or renamed is missing for the version after. A p
 format is refused; whether older formats are read again is decided when the format first changes.
 """
 
-# A field a class does not know is refused, not passed over.
-_STRICT: Final = ConfigDict(extra="forbid")
-
 
 class ProfileError(Exception):
     """A profile that cannot be read or written: its file, and what is wrong with it."""
 
 
-@with_config(_STRICT)
 @dataclass(frozen=True)
 class Lengths:
     """The range of the lengths of the values of a text column.
@@ -45,7 +39,6 @@ class Lengths:
     longest: int
 
 
-@with_config(_STRICT)
 @dataclass(frozen=True)
 class Statistics:
     """What is counted of a column on the whole table.
@@ -62,7 +55,6 @@ class Statistics:
     lengths: Lengths | None = None
 
 
-@with_config(_STRICT)
 @dataclass(frozen=True)
 class Column:
     """A column of a table, under its original name and type, and what was found about it.
@@ -78,7 +70,6 @@ class Column:
     statistics: Statistics
 
 
-@with_config(_STRICT)
 @dataclass(frozen=True)
 class Table:
     """A table of the schema, under its original name, and what was found about it.
@@ -94,7 +85,6 @@ class Table:
     columns: tuple[Column, ...]
 
 
-@with_config(_STRICT)
 @dataclass(frozen=True)
 class Profile:
     """What was found about the tables of one schema of a database.
@@ -120,28 +110,13 @@ class Profile:
             The profile.
 
         Raises:
-            ProfileError: The file cannot be read, is no YAML, is of another format, or a field
-                is missing, unknown or of the wrong type.
+            ProfileError: The file cannot be read, is no YAML, holds no fields, is of another
+                format, or a field is missing, unknown or of the wrong type.
         """
         try:
-            with path.open(encoding="utf-8") as file:
-                content = safe_load(file)
-        except OSError as error:
-            raise ProfileError(f"{path} cannot be read: {error.strerror}") from error
-        except YAMLError as error:
-            raise ProfileError(f"{path} is no YAML: {error}") from error
-        if not isinstance(content, dict):
-            raise ProfileError(f"{path} holds no profile")
-        version = content.pop("format", None)
-        if version is None:
-            raise ProfileError(f"{path} names no format")
-        if type(version) is not int or version != FORMAT:
-            raise ProfileError(f"{path} is of format {version!r}, but only format {FORMAT} is read")
-        try:
-            return _ADAPTER.validate_python(content)
-        except ValidationError as error:
-            problems = "; ".join(_problem(detail) for detail in error.errors())
-            raise ProfileError(f"{path}: {problems}") from error
+            return read_document(path, _ADAPTER, FORMAT)
+        except DocumentError as error:
+            raise ProfileError(str(error)) from error
 
     def write(self, path: Path) -> None:
         """Writes the profile to `path`, whole or not at all.
@@ -152,18 +127,10 @@ class Profile:
         Raises:
             ProfileError: The file cannot be written.
         """
-        content = {"format": FORMAT, **_ADAPTER.dump_python(self, mode="json", exclude_none=True)}
         try:
-            text = safe_dump(content, sort_keys=False, allow_unicode=True)
-            write_whole(path, text.encode("utf-8"))
-        except OSError as error:
-            raise ProfileError(f"{path} cannot be written: {error.strerror}") from error
+            write_document(path, _ADAPTER, FORMAT, self)
+        except DocumentError as error:
+            raise ProfileError(str(error)) from error
 
 
 _ADAPTER: Final = TypeAdapter(Profile)
-
-
-def _problem(detail: Any) -> str:
-    """The field a detail of a `ValidationError` is about, and what is wrong with it."""
-    field = ".".join(str(part) for part in detail["loc"])
-    return f"{field}: {detail['msg']}"

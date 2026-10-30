@@ -78,6 +78,15 @@ As decided with the maintainer:
   not made before someone needs them: `REQUESTS_CA_BUNDLE` and `NO_PROXY` come from the `.env` of
   the project, for all its environments.
 
+In steps, each reviewed and committed on its own:
+
+1. The class of the simulation is renamed `Simulation`.
+2. Reading and writing YAML in a format moves from `data_profiler.profile` into a module of its
+   own, `data_profiler.documents`, a refactoring for the project to read its configuration the
+   same way.
+3. The module `data_profiler.project`, the example project, and the documents.
+4. The command line, as step 4 of [07](07-the-stage-scan.md), which builds on the steps before.
+
 To be settled in their issues: overrides ([11](11-overrides.md)) and the glossary
 ([09](09-the-glossary.md)) likely belong to the project, the same for all its environments, while
 the results of `describe` ([10](10-the-stage-describe.md)) and `report`
@@ -102,3 +111,16 @@ the results of `describe` ([10](10-the-stage-describe.md)) and `report`
   `Simulation`, and the variables that held one with it, so that *Environment* is free for the
   environments of a project. The module keeps its name: it is the database of the simulation
   environment, which is one environment in the new sense.
+
+- **2026-10-30** — Issue [07](07-the-stage-scan.md) is merged into `main` without its step 4, and
+  this branch rebased onto it, so that the project builds on `data_profiler.files`. Step 2 done, a
+  refactoring without a change of behaviour: reading and writing YAML in a format moves from
+  `data_profiler.profile` into a module of its own, `data_profiler.documents`, for the project to
+  read its configuration the same way; `Profile.read` and `Profile.write` translate its
+  `DocumentError` into `ProfileError`. With it move the tests of what is refused in any document.
+  Unknown fields are refused by `read_document` for every class it reads, nested ones included,
+  rather than by a configuration that each class has to carry, so that the classes of the profile
+  lose theirs. The field `format` is the document's own; a class a document holds has none. One
+  message changes, for the maintainer's review: a file whose content is no mapping now "holds no
+  fields", where it "holds no profile" before, since the module does not know what kind of
+  document it reads.

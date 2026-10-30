@@ -20,12 +20,15 @@ The tool is one Python package, `data_profiler`, in `src/`. The test data genera
 its own, `simulation`, in `simulation/`: it uses the tool's profile, but the tool does not depend on
 it, nor on what it needs. Both are one uv workspace, with one lock file and one environment.
 
-*   **`data_profiler.profile`** - the profile: its format, reading and writing it as YAML, and
-    laying overrides over it.
+*   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
+    and written as a document, and laying overrides over it.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
-*   **`data_profiler.files`** - files written whole or not at all, for the profile and the
+*   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the
+    profile among them, each the fields of one class with the version of its format; what is
+    wrong with one is named, field by field.
+*   **`data_profiler.files`** - files written whole or not at all, for documents and the
     workspace.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
