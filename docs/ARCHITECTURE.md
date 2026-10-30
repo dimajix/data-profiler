@@ -169,6 +169,8 @@ The design repeats a few decisions; new code follows them.
 ## The repository
 
 *   **`src/`** - the package `data_profiler`; **`tests/`** - its tests.
+*   **`work/`** - scripts of trials, such as that of issue 04: not a part of the tool, run by hand,
+    checked as its code is; what holds is built into the tool by an issue of its own.
 *   **`examples/`** - example projects of the tool, such as `examples/crm/`, which profiles the
     simulation environment.
 *   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, its tests
