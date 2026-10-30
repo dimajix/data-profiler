@@ -104,3 +104,17 @@ In steps, each reviewed and committed on its own:
   none; a number written without its leading zero is not recognised. On the whole table, the
   share of a type with a check, which SQL does not make, is that of its pattern: at most the share
   the check would give - to be said in step 3.
+
+- **2026-10-30** — Step 2 done: a column of the profile has its matches, each a semantic type
+  with the share of the values of the sample that are of it, written by the name of the type and
+  to three digits, the most frequent first; the format of the profile is 2, and the example of the
+  simulation with it. The new module `data_profiler.matching` recognises the types of the
+  columns of a table in its sample, beside `statistics`, `enumerations` and `sampling`, which
+  `scan` calls in the same way; a type is a match where it is recognised in half of the values of
+  the sample that are not null, or more. The module, which step 3 extends by the verification on
+  the whole table, is a proposal of the review, for the maintainer's. A document leaves out a field
+  that has its default rather than one that is None, so that a column without matches has no
+  `matches: []`. The share on the whole table comes with step 3, in the same format, since no
+  profile of format 2 is in `main` before then. In the simulation, every column of dates and times
+  is a `date`, and `ord_itm.pos_no`, whose generated numbers are mostly of five digits, a
+  `postal-code` - a hypothesis, as the maintainer wants them.

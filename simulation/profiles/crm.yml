@@ -1,7 +1,7 @@
 # An example profile in the manner of a CRM: customers, their addresses and contacts, products,
 # orders and their items, under the abbreviated names such a system has. It is loaded into the
 # simulation environment by `uv run simulation load simulation/profiles/crm.yml`.
-format: 1
+format: 2
 catalog: crm
 schema: sales
 tables:

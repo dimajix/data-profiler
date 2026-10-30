@@ -2,8 +2,9 @@
 
 A document holds the fields of one class, checked by pydantic, and the version of its format in the
 field `format`; a document of another format, or with a field missing, unknown or of the wrong type,
-is refused. The field `format` is the document's own: a class a document holds has none. The
-profile is such a document, and the configuration of a project.
+is refused. The field `format` is the document's own: a class a document holds has none. A field
+that has its default is not written: a document holds what differs from the defaults.
+The profile is such a document, and the configuration of a project.
 """
 
 from pathlib import Path
@@ -67,7 +68,7 @@ def write_document[T](path: Path, adapter: TypeAdapter[T], version: int, value: 
     Raises:
         DocumentError: The file cannot be written.
     """
-    content = {"format": version, **adapter.dump_python(value, mode="json", exclude_none=True)}
+    content = {"format": version, **adapter.dump_python(value, mode="json", exclude_defaults=True)}
     try:
         text = safe_dump(content, sort_keys=False, allow_unicode=True)
         write_whole(path, text.encode("utf-8"))

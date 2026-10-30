@@ -11,9 +11,10 @@ from typing import Final
 
 from pydantic import TypeAdapter
 
+from data_profiler.detect import SemanticType
 from data_profiler.documents import DocumentError, read_document, write_document
 
-FORMAT: Final = 1
+FORMAT: Final = 2
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below: a field added is unknown to the
@@ -56,6 +57,20 @@ class Statistics:
 
 
 @dataclass(frozen=True)
+class Match:
+    """A semantic type found in a column, with the share of its values that are of it.
+
+    Attributes:
+        type: The semantic type.
+        sample: The share of the values of the sample, nulls aside, that are of the type, from 0
+            to 1.
+    """
+
+    type: SemanticType
+    sample: float
+
+
+@dataclass(frozen=True)
 class Column:
     """A column of a table, under its original name and type, and what was found about it.
 
@@ -63,11 +78,13 @@ class Column:
         name: The name of the column in the database.
         type: The type of the column as the database names it, such as `varchar(40)`.
         statistics: What is counted of the column.
+        matches: The semantic types found in the column, the most frequent first.
     """
 
     name: str
     type: str
     statistics: Statistics
+    matches: tuple[Match, ...] = ()
 
 
 @dataclass(frozen=True)

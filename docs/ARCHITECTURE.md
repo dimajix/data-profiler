@@ -43,6 +43,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
     query built the same way.
+*   **`data_profiler.matching`** - the matches of a table: the semantic types of its columns,
+    recognised in its sample by `detect`.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector

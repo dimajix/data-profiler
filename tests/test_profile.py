@@ -5,7 +5,17 @@ from pathlib import Path
 import pytest
 from yaml import safe_dump, safe_load
 
-from data_profiler.profile import FORMAT, Column, Lengths, Profile, ProfileError, Statistics, Table
+from data_profiler.detect import SemanticType
+from data_profiler.profile import (
+    FORMAT,
+    Column,
+    Lengths,
+    Match,
+    Profile,
+    ProfileError,
+    Statistics,
+    Table,
+)
 
 _PROFILE = Profile(
     catalog="crm",
@@ -20,6 +30,12 @@ _PROFILE = Profile(
                     name="CUST_NM",
                     type="varchar(80)",
                     statistics=Statistics(312, 803455, Lengths(2, 74)),
+                ),
+                Column(
+                    name="CUST_EML",
+                    type="varchar(120)",
+                    statistics=Statistics(0, 1100000, Lengths(9, 96)),
+                    matches=(Match(SemanticType.EMAIL, 0.982),),
                 ),
             ),
         ),
@@ -50,6 +66,14 @@ def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
 def test_a_profile_is_written_with_its_format(tmp_path: Path) -> None:
     content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
     assert content["format"] == FORMAT
+
+
+def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
+    content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
+    assert content["tables"][0]["columns"][2]["matches"] == [{"type": "email", "sample": 0.982}]
+    assert "matches" not in content["tables"][0]["columns"][0], (
+        "a column without matches has no field matches"
+    )
 
 
 @pytest.mark.parametrize(

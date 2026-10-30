@@ -3,7 +3,8 @@
 import re
 from pathlib import Path
 
-from data_profiler.profile import Profile
+from data_profiler.detect import SemanticType
+from data_profiler.profile import Match, Profile
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace
@@ -33,6 +34,17 @@ def test_a_scanned_profile_has_the_statistics_its_tables_were_made_with(
             assert abs(found.distinct - statistics.distinct) <= _TOLERANCE * statistics.distinct, (
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
             )
+
+
+def test_the_semantic_types_of_the_columns_are_recognised_in_their_samples(
+    source: Source, tmp_path: Path
+) -> None:
+    scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"))
+    (table,) = scanned.tables
+    matched = {column.name: column.matches for column in table.columns}
+    assert matched["crt_dt"] == (Match(SemanticType.DATE, 1.0),), "a date is a date as text"
+    assert matched["upd_ts"] == (Match(SemanticType.DATE, 1.0),), "nulls are not counted"
+    assert matched["actv_flg"] == (), "a column of no type has no match"
 
 
 def test_only_the_tables_a_pattern_matches_whole_are_scanned(

@@ -23,7 +23,7 @@ class _Whole:
     """A class a document holds."""
 
     name: str
-    parts: tuple[_Part, ...]
+    parts: tuple[_Part, ...] = ()
 
 
 _ADAPTER: Final = TypeAdapter(_Whole)
@@ -55,6 +55,13 @@ def test_a_document_is_written_with_its_format_first(tmp_path: Path) -> None:
     content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
     assert list(content) == ["format", "name", "parts"]
     assert content["format"] == _VERSION
+
+
+def test_a_field_that_has_its_default_is_not_written(tmp_path: Path) -> None:
+    path = tmp_path / "document.yml"
+    write_document(path, _ADAPTER, _VERSION, _Whole(name="whole"))
+    assert safe_load(path.read_text(encoding="utf-8")) == {"format": _VERSION, "name": "whole"}
+    assert read_document(path, _ADAPTER, _VERSION) == _Whole(name="whole")
 
 
 def test_a_document_written_over_another_replaces_it(tmp_path: Path) -> None:

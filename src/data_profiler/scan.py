@@ -2,13 +2,15 @@
 
 Each table is counted by the module `statistics`, by one query; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
-into the workspace. No value of the database goes into the profile.
+into the workspace. The semantic types of its columns are recognised in the sample, by the module
+`matching`. No value of the database goes into the profile.
 """
 
 import logging
 from re import Pattern
 
 from data_profiler.enumerations import values
+from data_profiler.matching import recognise
 from data_profiler.profile import Profile
 from data_profiler.sampling import take
 from data_profiler.source import Source
@@ -27,7 +29,8 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
         workspace: Where the enumerations and the samples of the tables are kept.
 
     Returns:
-        The profile: the tables, sorted by name, with their columns, types and statistics.
+        The profile: the tables, sorted by name, with their columns, types, statistics and
+        matches.
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
@@ -40,6 +43,7 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
         table = count(source, name)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
         workspace.write_enumerations(name, values(source, table))
-        workspace.write_sample(name, take(source, table))
-        tables.append(table)
+        sample = take(source, table)
+        workspace.write_sample(name, sample)
+        tables.append(recognise(table, sample))
     return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables))
