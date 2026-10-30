@@ -27,7 +27,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
     profile, and the environments, each by its URL and its password, the password given by a
-    variable -, and the directories of the results of each environment.
+    variable -, its variables in `.env`, which complete those of the process, and the directories
+    of the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the profile
     and the configuration of a project among them, each the fields of one class with the version of
     its format; what is wrong with one is named, field by field.
@@ -53,8 +54,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as HTML.
-*   **`data_profiler.cli`** - the command line: it reads the arguments and `.env`, and runs the
-    stages through `commands`.
+*   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
+    environment of a project through `commands`.
 *   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
     as well, runs its work in: it alone configures the log and ends the program, showing users
     what may be shown of an error.
@@ -71,7 +72,8 @@ profile alone; `cli` runs the stages.
 ## The domain
 
 *   **Project** - one database, profiled in environments: a directory of its configuration, which
-    selects the tables, and of the results of each environment.
+    selects the tables, of its variables, which hold the passwords and are not shared, and of the
+    results of each environment.
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL and a password of its own; its results,
     a profile and a workspace, are kept in a directory of its own, named after it.

@@ -288,8 +288,9 @@ underscore, or one made public for it - says that a cut is wrong: it is a
 *   **Shared fixtures:** what the tests of several modules use lives in one place, as a fixture in
     the `conftest.py` of the directory whose tests share it, built through the interface of the
     module whose things it builds. A test builds what it needs as the code does, from defaults, and
-    writes only what it differs in. With a `conftest.py` in both directories of tests, mypy needs
-    `explicit_package_bases` to tell them apart; it is set with the second one.
+    writes only what it differs in. What the tests of both directories use lives in the
+    `conftest.py` of the root, such as the fixture `command_line`; mypy tells the `conftest.py`
+    files apart by `explicit_package_bases`.
 *   **Naming:** a test is named after what it shows, as a sentence after the `test_` pytest asks
     for: `test_a_profile_written_and_read_is_unchanged`. The name is its description: the
     functions of a test module - tests, fixtures, helpers - need no docstring, the module does.

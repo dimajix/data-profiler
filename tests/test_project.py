@@ -71,9 +71,28 @@ def test_the_password_of_an_environment_is_not_shown(tmp_path: Path) -> None:
 
 def test_an_environment_whose_variable_is_not_set_is_refused_naming_it(tmp_path: Path) -> None:
     project = _project(tmp_path, PROD_URL="trino://profiler@prod:8443/crm/sales")
-    problem = r"project\.yml: the password of the environment prod is the variable PROD_PASSWORD"
+    problem = (
+        r"project\.yml: the password of the environment prod is the variable PROD_PASSWORD, which"
+        r" neither the process sets nor .*\.env$"
+    )
     with pytest.raises(ProjectError, match=problem):
         project.environment("prod")
+
+
+def test_the_variables_are_completed_by_those_of_the_project(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("# The password of dev\nDEV_PASSWORD=secret\n", encoding="utf-8")
+    assert _project(tmp_path).environment("dev").password == "secret"
+
+
+def test_a_variable_given_is_not_overridden_by_the_project(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("DEV_PASSWORD=secret\n", encoding="utf-8")
+    assert _project(tmp_path, DEV_PASSWORD="given").environment("dev").password == "given"
+
+
+def test_variables_of_the_project_that_are_no_text_are_refused(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_bytes(b"DEV_PASSWORD=\xff\xfe\n")
+    with pytest.raises(ProjectError, match=r"\.env is no text in UTF-8$"):
+        _project(tmp_path)
 
 
 def test_an_environment_the_project_does_not_have_is_refused_naming_those_it_has(

@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [11](11-overrides.md) | open | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
-## Scan
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [07](07-the-stage-scan.md) | in progress | high | feature | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enumerations - and nothing takes a sample of them. Part of epic [02](02-first-version-epic.md). |
-
 ## Detection
 
 | No. | Status | Priority | Type | Issue |
@@ -35,12 +29,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [12](12-the-stage-report.md) | open | medium | feature | What the tool found can only be read as YAML: there is no report a person reads. Part of epic [02](02-first-version-epic.md). |
-
-## Command line
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [13](13-projects-and-environments.md) | in progress | high | feature | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 

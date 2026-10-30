@@ -1,6 +1,6 @@
 # 13 — Projects and environments
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Command line
@@ -154,3 +154,18 @@ the results of `describe` ([10](10-the-stage-describe.md)) and `report`
   the work is. The tests of `simulation.cli` move to `test_simulation_cli.py`, so that those of
   `data_profiler.cli` will be in `test_cli.py`, as `docs/CODING-GUIDELINES.md` now says for
   modules of the same name.
+
+- **2026-10-30** — Step 4 done, and with it the issue and [07](07-the-stage-scan.md): the module
+  `data_profiler.cli` is the command line of the tool, `data-profiler [--debug] scan ENVIRONMENT
+  [--project DIR]`, registered as a script of the project. It runs the stage through
+  `data_profiler.commands.run`, showing the messages of the errors of the project, the source, the
+  workspace and the profile. After the review, as the maintainer decided: `Project.read` completes
+  the variables it is given - those of the process - by the `.env` of the project, overriding none,
+  since `requests` reads the certificate and the proxies from there; the project owns its whole
+  layout, a `.env` that cannot be read is an error of the project, and a variable that is not set
+  is named with both places it could be set in. The tests of both command lines run them through
+  one fixture, `command_line`, in a `conftest.py` of the root, which mypy tells apart from that of
+  `tests/` by `explicit_package_bases`. The tool now
+  names `trino` among its dependencies, which it imported without, reaching it only through the
+  simulation in the environment of development, and `python-dotenv` for `.env`. `README.md` says
+  how a project is made and scanned.

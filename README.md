@@ -83,6 +83,46 @@ where `simulation/profiles/crm.yml` is an example in the manner of a CRM. Only a
 catalog `crm` is loaded; its schema is created where it does not exist, and its tables replace those
 of the same names.
 
+### Profiling a Database
+
+The tool works on a project: a directory with its configuration `project.yml`, its variables in
+`.env`, and the results of each of its environments - dev, test, prod - in a directory named after
+the environment. `examples/crm/` is a project for the simulation environment:
+
+```yaml
+format: 1
+tables: .*
+environments:
+  simulation:
+    url: trino://profiler@localhost:8443/crm/sales
+    password: ${SIMULATION_PASSWORD}
+```
+
+- **`tables`** selects the tables of the whole project: a regular expression matched whole, or a
+  list of their names.
+- **`environments`** names each environment by the URL of its schema,
+  `trino://user@host:port/catalog/schema`, and the password of its user. A value `${NAME}` is taken
+  from the variable `NAME`; the password is given only so, never written out, so that
+  `project.yml` can be committed and shared.
+- **`.env`** holds the variables, and is never committed: the passwords, and what reaches the
+  database - `REQUESTS_CA_BUNDLE`, the certificate of a CA of one's own, and `NO_PROXY`, for a
+  database no proxy reaches. A variable the process sets is not overridden by it - a `no_proxy` the
+  shell sets, for one, has to name the database itself. For the example, copy
+  `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
+  of the simulation in it.
+
+With the simulation environment loaded, as above, the example is scanned by
+
+```bash
+uv run data-profiler scan simulation --project examples/crm
+```
+
+which writes the profile to `examples/crm/simulation/profile.yml`, and the samples and enumerations
+of the tables to the workspace `examples/crm/simulation/workspace/`, which keeps itself out of
+version control. Without `--project`, the project is the current directory. The progress goes to
+standard error; with `--debug` before the command, the log holds the statements sent and the
+values of the database, and stays on the machine.
+
 ### Running Tests
 
 ```bash

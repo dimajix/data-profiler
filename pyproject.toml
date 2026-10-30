@@ -9,8 +9,13 @@ requires-python = ">=3.13"
 dependencies = [
     "pyarrow>=26.0.0",
     "pydantic>=2.14.2",
+    "python-dotenv>=1.2.4",
     "pyyaml>=6.0.3",
+    "trino>=0.340.0",
 ]
+
+[project.scripts]
+data-profiler = "data_profiler.cli:main"
 
 [dependency-groups]
 dev = [
@@ -81,7 +86,11 @@ convention = "google"
 [tool.mypy]
 strict = true
 enable_error_code = ["ignore-without-code"]
-files = ["src", "tests", "simulation/src", "simulation/tests"]
+files = ["conftest.py", "src", "tests", "simulation/src", "simulation/tests"]
+# Modules are named by their path from these directories or the root, so that the conftest.py of
+# the root and that of tests/ are told apart.
+explicit_package_bases = true
+mypy_path = ["src", "simulation/src"]
 
 [tool.pytest]
 testpaths = ["tests", "simulation/tests"]

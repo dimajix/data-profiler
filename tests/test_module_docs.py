@@ -14,9 +14,14 @@ import pytest
 
 _TOP = Path(__file__).parent.parent
 _CONFIGURATION = tomllib.loads((_TOP / "pyproject.toml").read_text(encoding="utf-8"))
-# The directories of code are those mypy checks, to which every new one is added.
-_SOURCES = _CONFIGURATION["tool"]["mypy"]["files"]
-_MODULES = sorted(module for source in _SOURCES for module in (_TOP / source).rglob("*.py"))
+# The code is what mypy checks - directories, and modules of their own -, to which every new one is
+# added.
+_SOURCES = [_TOP / source for source in _CONFIGURATION["tool"]["mypy"]["files"]]
+_MODULES = sorted(
+    module
+    for source in _SOURCES
+    for module in ([source] if source.is_file() else source.rglob("*.py"))
+)
 
 
 @pytest.mark.parametrize("module", _MODULES, ids=lambda module: str(module.relative_to(_TOP)))

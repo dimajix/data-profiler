@@ -1,6 +1,6 @@
 # 07 — The stage scan
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Scan
@@ -125,3 +125,11 @@ Things to settle on the way:
   convention on nulls, which would break once a null is counted as a value; a row grouped by other
   than one column is a broken invariant of the dialect, a `TypeError` naming the table. The function
   that reads a counted number is named `counted`, which says more where it is called than `number`.
+
+- **2026-10-30** — Steps 1 to 3 merged into `main` without step 4, as the maintainer agreed, so that
+  [13](13-projects-and-environments.md) could build on them: the maintainer asked to think of the
+  command line in projects and environments rather than in arguments, and step 4 became step 4 of
+  [13](13-projects-and-environments.md), made on its branch. Done with it: `data-profiler scan
+  ENVIRONMENT [--project DIR]` scans an environment of a project into its profile and workspace,
+  the URL, the password and the selection of tables taken from the project rather than from
+  arguments.

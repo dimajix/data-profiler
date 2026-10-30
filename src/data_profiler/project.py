@@ -7,17 +7,19 @@ directory of its own, named after it: its profile and its workspace.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
-variables are resolved when an environment is, so that an environment can be used without those of
-the others being set.
+variables are those of the process, completed by the `.env` of the project, which is not
+committed and does not override what the process sets. They are resolved when an environment is,
+so that an environment can be used without those of the others being set.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from re import Pattern, PatternError
 from typing import Final, Self
 
+from dotenv import dotenv_values
 from pydantic import TypeAdapter
 
 from data_profiler.documents import DocumentError, read_document
@@ -28,6 +30,8 @@ FORMAT: Final = 1
 # The name of an environment, which is the name of its directory, the same on every system, and an
 # argument of the command line, never taken for an option there.
 _NAME: Final = re.compile(r"[a-z0-9][a-z0-9_-]*")
+# The file of the variables of a project, which completes those of the process.
+_VARIABLES: Final = ".env"
 # A value taken from a variable, by its name.
 _VARIABLE: Final = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
@@ -103,19 +107,21 @@ class Project:
         self._variables = variables
 
     @classmethod
-    def read(cls, directory: Path, variables: Mapping[str, str]) -> Self:
+    def read(cls, directory: Path, variables: MutableMapping[str, str]) -> Self:
         """The project in `directory`, as its configuration `project.yml` describes it.
 
         Args:
             directory: The directory of the project.
-            variables: The variables the values `${NAME}` are taken from, when an environment is
-                resolved.
+            variables: The variables of the process, which the `.env` of the project completes,
+                where there is one, and which the values `${NAME}` are taken from when an
+                environment is resolved.
 
         Returns:
             The project.
 
         Raises:
-            ProjectError: The configuration cannot be read, is no document of the format, names
+            ProjectError: The configuration or the `.env` cannot be read, the configuration is
+                no document of the format, names
                 an environment other than in lower case letters, digits, `-` and `_`, beginning
                 with a letter or a digit, gives a password other than by a variable, a URL with a
                 variable in it rather than as a whole, or its tables by no regular expression.
@@ -148,6 +154,7 @@ class Project:
             )
         except PatternError as error:
             raise ProjectError(f"{file}: tables is no regular expression: {error}") from error
+        _complete(variables, directory / _VARIABLES)
         return cls(file, pattern, configuration.environments, variables)
 
     def environment(self, name: str) -> Environment:
@@ -183,6 +190,21 @@ class Project:
         if found is None:
             raise ProjectError(
                 f"{self._file}: the {setting} of the environment {name} is the variable"
-                f" {variable[1]}, which is not set"
+                f" {variable[1]}, which neither the process sets nor"
+                f" {self._file.parent / _VARIABLES}"
             )
         return found
+
+
+def _complete(variables: MutableMapping[str, str], path: Path) -> None:
+    """Completes `variables` by those of the file `path`, where there is one, overriding none."""
+    try:
+        found = dotenv_values(path)
+    except OSError as error:
+        raise ProjectError(f"{path} cannot be read: {error.strerror}") from error
+    except UnicodeDecodeError as error:
+        # Its message holds the bytes it failed on, which may be of a password.
+        raise ProjectError(f"{path} is no text in UTF-8") from error
+    for name, value in found.items():
+        if value is not None:
+            variables.setdefault(name, value)
