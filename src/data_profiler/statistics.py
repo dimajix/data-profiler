@@ -9,7 +9,7 @@ its form is known in this module alone. No value of the database is counted into
 from itertools import chain
 
 from data_profiler.profile import Column, Lengths, Statistics, Table
-from data_profiler.source import Source
+from data_profiler.source import Source, counted
 
 
 def count(source: Source, table: str) -> Table:
@@ -37,30 +37,23 @@ def count(source: Source, table: str) -> Table:
     )
     (row,) = source.query(statement, f"counting the statistics of {source.name(table)}")
     values = iter(row)
-    rows = _number(next(values), table)
+    rows = counted(next(values), table)
     columns = []
     for name, kind, expressions in asked:
-        counted = [next(values) for _ in expressions]
-        statistics = _statistics(counted, f"{table}.{name}")
+        found = [next(values) for _ in expressions]
+        statistics = _statistics(found, f"{table}.{name}")
         columns.append(Column(name=name, type=kind, statistics=statistics))
     return Table(name=table, rows=rows, columns=tuple(columns))
 
 
-def _statistics(counted: list[object], where: str) -> Statistics:
+def _statistics(found: list[object], where: str) -> Statistics:
     """The statistics of the column `where`, from what its expressions counted, in their order."""
-    nulls, distinct, *lengths = counted
+    nulls, distinct, *lengths = found
     shortest, longest = lengths or (None, None)
     return Statistics(
-        nulls=_number(nulls, where),
-        distinct=_number(distinct, where),
+        nulls=counted(nulls, where),
+        distinct=counted(distinct, where),
         lengths=None
         if shortest is None
-        else Lengths(_number(shortest, where), _number(longest, where)),
+        else Lengths(counted(shortest, where), counted(longest, where)),
     )
-
-
-def _number(value: object, where: str) -> int:
-    """`value`, which the query has counted of `where`, as a number."""
-    if not isinstance(value, int):
-        raise TypeError(f"the query counted something of {where} that is no number")
-    return value
