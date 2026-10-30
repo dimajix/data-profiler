@@ -4,7 +4,8 @@ from random import Random
 
 import pytest
 
-from data_profiler.profile import Column, Lengths, Statistics, Table
+from data_profiler.detect import SemanticType
+from data_profiler.profile import Column, Lengths, Match, Statistics, Table
 from simulation import SimulationError
 from simulation.data import rows
 
@@ -32,6 +33,12 @@ _TABLE = _table(
     _column("qty", "integer", 0, 25),
     _column("pos", "smallint", 0, 9),
     _column("flg", "boolean", 10, 2),
+    Column(
+        name="iban",
+        type="varchar(34)",
+        statistics=Statistics(400, 500, Lengths(22, 27)),
+        matches=(Match(SemanticType.IBAN, 1.0),),
+    ),
 )
 
 
@@ -73,3 +80,40 @@ def test_a_column_that_cannot_be_generated_is_refused_naming_it(
 ) -> None:
     with pytest.raises(SimulationError, match=f"t.x: .*{problem}"):
         rows(_table(column), Random(0))
+
+
+@pytest.mark.parametrize(
+    ("kind", "shortest", "longest"),
+    [
+        (SemanticType.EMAIL, 11, 44),
+        (SemanticType.PHONE, 9, 16),
+        (SemanticType.POSTAL_CODE, 5, 5),
+        (SemanticType.IBAN, 22, 27),
+        (SemanticType.CARD_NUMBER, 13, 19),
+        (SemanticType.DATE, 10, 19),
+    ],
+    ids=str,
+)
+def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
+    kind: SemanticType, shortest: int, longest: int
+) -> None:
+    column = Column(
+        name="v",
+        type="varchar(60)",
+        statistics=Statistics(0, 200, Lengths(shortest, longest)),
+        matches=(Match(kind, 1.0),),
+    )
+    values = [str(value) for (value,) in rows(_table(column, count=500), Random(0))]
+    assert all(kind.detector.recognises(value) for value in values)
+    assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
+
+
+def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(10)",
+        statistics=Statistics(0, 10, Lengths(4, 6)),
+        matches=(Match(SemanticType.POSTAL_CODE, 1.0),),
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: no postal-code of 4 characters can be made"):
+        rows(_table(column, count=10), Random(0))

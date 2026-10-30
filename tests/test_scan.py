@@ -14,7 +14,7 @@ from data_profiler.workspace import Workspace
 _TOLERANCE = 0.02
 
 
-def test_a_scanned_profile_has_the_statistics_its_tables_were_made_with(
+def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = scan(source, re.compile(".*"), Workspace.open(tmp_path, "crm", "sales"))
@@ -34,6 +34,11 @@ def test_a_scanned_profile_has_the_statistics_its_tables_were_made_with(
             assert abs(found.distinct - statistics.distinct) <= _TOLERANCE * statistics.distinct, (
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
             )
+            scanned_matches = {match.type: match for match in column.matches}
+            for match in wanted.matches:
+                assert scanned_matches.get(match.type) == match, (
+                    f"{where}: its {match.type.value} is found again, in sample and on table"
+                )
 
 
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(

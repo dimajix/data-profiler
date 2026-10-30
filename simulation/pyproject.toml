@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "data-profiler",
     "psycopg[binary]>=3.3.6",
+    "python-stdnum>=2.2",
     "requests>=2.34.2",
     "trino>=0.340.0",
 ]

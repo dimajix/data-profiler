@@ -133,3 +133,14 @@ In steps, each reviewed and committed on its own:
   since a type under the share of a match in the sample is no match, whatever the table says, and
   nothing would show its share. A test sends the pattern of every type to Trino, which reads them
   all; that they find there what they find in Python, the round trip of step 4 shows.
+
+- **2026-10-30** — Step 4 done: the generator makes the texts of a column with a match as values of
+  its first semantic type, of the lengths of its statistics, and keeps only those its detector
+  recognises - German phone numbers of Berlin, Hamburg and Munich, e-mail addresses, postal codes,
+  German IBANs with their check digits, alone or in groups of four, card numbers of Visa and
+  Mastercard with theirs, dates as text in ISO or German form; a length no value of the type has is
+  refused, naming the column. The shares of a match are not made: all values of such a column are of
+  its type. `simulation` names `python-stdnum` among its dependencies, which it imports. The example
+  of the simulation has the match of each of its five columns of such a type, and the round trip
+  finds each of them again, in the sample and on the whole table, with all their values: the
+  patterns find in Trino what they find in Python.

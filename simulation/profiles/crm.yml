@@ -1,6 +1,7 @@
 # An example profile in the manner of a CRM: customers, their addresses and contacts, products,
-# orders and their items, under the abbreviated names such a system has. It is loaded into the
-# simulation environment by `uv run simulation load simulation/profiles/crm.yml`.
+# orders and their items, under the abbreviated names such a system has; its texts of a semantic
+# type have their match, by which they are generated. It is loaded into the simulation environment
+# by `uv run simulation load simulation/profiles/crm.yml`.
 format: 2
 catalog: crm
 schema: sales
@@ -42,6 +43,7 @@ tables:
   - name: pst_cd
     type: varchar(10)
     statistics: {nulls: 0, distinct: 1800, lengths: {shortest: 5, longest: 5}}
+    matches: [{type: postal-code, sample: 1.0, table: 1.0}]
   - name: cty_nm
     type: varchar(60)
     statistics: {nulls: 0, distinct: 1500, lengths: {shortest: 3, longest: 28}}
@@ -67,9 +69,11 @@ tables:
   - name: tel_no
     type: varchar(20)
     statistics: {nulls: 800, distinct: 3290, lengths: {shortest: 9, longest: 16}}
+    matches: [{type: phone, sample: 1.0, table: 1.0}]
   - name: eml_adr
     type: varchar(120)
     statistics: {nulls: 1300, distinct: 2790, lengths: {shortest: 11, longest: 44}}
+    matches: [{type: email, sample: 1.0, table: 1.0}]
   - {name: brth_dt, type: date, statistics: {nulls: 2200, distinct: 1850}}
 - name: prod
   rows: 350
@@ -110,9 +114,11 @@ tables:
   - name: crd_no
     type: varchar(19)
     statistics: {nulls: 14000, distinct: 5700, lengths: {shortest: 16, longest: 19}}
+    matches: [{type: card-number, sample: 1.0, table: 1.0}]
   - name: iban
     type: varchar(34)
     statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
+    matches: [{type: iban, sample: 1.0, table: 1.0}]
 - name: ord_itm
   rows: 61000
   columns:

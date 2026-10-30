@@ -17,8 +17,9 @@ code one by one.
 ## Parts
 
 The tool is one Python package, `data_profiler`, in `src/`. The test data generator is a project of
-its own, `simulation`, in `simulation/`: it uses the tool's profile, but the tool does not depend on
-it, nor on what it needs. Both are one uv workspace, with one lock file and one environment.
+its own, `simulation`, in `simulation/`: it uses the tool's profile and its detectors, but the tool
+does not depend on it, nor on what it needs. Both are one uv workspace, with one lock file and one
+environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
     and written as a document, and laying overrides over it.

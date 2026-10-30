@@ -73,7 +73,7 @@ and stopped by `docker compose down`; its data stays in a volume until
   `docker compose --profile ollama up -d --wait`. Its models stay in a volume.
 
 It is filled with the tables of a profile, with generated rows that have the statistics of the
-profile, by
+profile and, in the texts of a column with a match, the values of its semantic type, by
 
 ```bash
 uv run simulation load simulation/profiles/crm.yml

@@ -894,6 +894,7 @@ source = { editable = "simulation" }
 dependencies = [
     { name = "data-profiler" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "python-stdnum" },
     { name = "requests" },
     { name = "trino" },
 ]
@@ -902,6 +903,7 @@ dependencies = [
 requires-dist = [
     { name = "data-profiler", editable = "." },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
+    { name = "python-stdnum", specifier = ">=2.2" },
     { name = "requests", specifier = ">=2.34.2" },
     { name = "trino", specifier = ">=0.340.0" },
 ]
