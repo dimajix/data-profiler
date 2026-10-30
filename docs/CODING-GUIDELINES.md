@@ -236,9 +236,10 @@ log at `debug`.
 ### Files are written whole
 
 A file the tool writes - a profile, a sample, a report - is written whole or not at all: into a
-temporary file next to it, which then takes its place (`os.replace`). A run that fails part of the
-way leaves no half-written file behind, and the file of an earlier run intact. The tool never writes
-to the database.
+temporary file next to it, which then takes its place: `write_whole` of `data_profiler.files`, which
+lets the `OSError` of the file system through, as `pathlib` does, for its callers to translate. A
+run that fails part of the way leaves no half-written file behind, and the file of an earlier run
+intact. The tool never writes to the database.
 
 ## Logging
 
@@ -263,10 +264,10 @@ to the database.
 
 ### Content
 
-*   **Values of the database are logged at `debug` alone** - those of a sample, an enum or a range,
-    and those in the message of a database error or in a traceback. The log stays on the machine,
-    as the workspace does. Above `debug`, what is logged is the names of tables and columns,
-    counts, sizes and durations.
+*   **Values of the database are logged at `debug` alone** - those of a sample, an enumeration or a
+    range, and those in the message of a database error or in a traceback. The log stays on the
+    machine, as the workspace does. Above `debug`, what is logged is the names of tables and
+    columns, counts, sizes and durations.
 *   SQL statements are logged at `debug`.
 *   Credentials and passwords are never logged, at any level.
 

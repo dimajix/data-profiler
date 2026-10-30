@@ -30,7 +30,7 @@ of these questions, in the order in which the later ones rest on the earlier.
 - [05](05-the-simulation-environment.md) - Trino, PostgreSQL and Ollama in Docker, and test data
   generated from a profile, since the real database is not reachable where the tool is developed.
 - [06](06-source-and-dialect-for-trino.md) - the connection to Trino and the SQL it is sent.
-- [07](07-the-stage-scan.md) - the stage `scan`: statistics, enums, samples, and with it the
+- [07](07-the-stage-scan.md) - the stage `scan`: statistics, enumerations, samples, and with it the
   command line.
 - [08](08-detection.md) - semantic types, their sensitivity, and the detectors.
 - [09](09-the-glossary.md) - original names split into terms, and harmonized names composed from

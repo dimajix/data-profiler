@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [07](07-the-stage-scan.md) | open | high | feature | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enums - and nothing takes a sample of them. Part of epic [02](02-first-version-epic.md). |
+| [07](07-the-stage-scan.md) | in progress | high | feature | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enumerations - and nothing takes a sample of them. Part of epic [02](02-first-version-epic.md). |
 
 ## Detection
 

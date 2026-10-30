@@ -23,14 +23,23 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.profile`** - the profile: its format, reading and writing it as YAML, and
     laying overrides over it.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
-    results, which never leaves the machine.
+    results, which never leaves the machine; the samples and the enumerations of tables as
+    Parquet.
+*   **`data_profiler.files`** - files written whole or not at all, for the profile and the
+    workspace.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
-    columns of its schema through its dialect and runs queries in that schema, so that another
-    database brings only its connection and its SQL. Trino is reached by HTTPS with a password;
-    certificates and proxies come from the environment.
-*   **`data_profiler.scan`** - the stage `scan`: statistics, enums, samples and detector matches of
-    the selected tables, written to a profile.
+    columns of its schema - their metadata - through its dialect, and runs queries in that schema,
+    so that another database brings only its connection and its SQL. Trino is reached by HTTPS with
+    a password; certificates and proxies come from the environment.
+*   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
+    from the building blocks of the dialect, and whose row it reads back.
+*   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
+    query built the same way.
+*   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
+    way.
+*   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
+    matches of the selected tables, written to a profile.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
     recognise them.
 *   **`data_profiler.glossary`** - splitting original names into terms, and composing harmonized
@@ -46,8 +55,9 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     without access to the real database. It creates the tables by Trino and fills them by `COPY` in
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
-The stages read and write the profile: `scan` uses `source`, `detect` and `workspace`, `describe`
-uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stages.
+The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
+`sampling`, `detect` and `workspace`, `describe` uses `glossary` and `workspace`, `report` the
+profile alone; `cli` runs the stages.
 
 ## The domain
 
@@ -63,8 +73,8 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
 *   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
     number of its distinct values, the range of numbers and dates, the range of lengths of texts.
     The rows are counted once per table.
-*   **Enum** - a column with few distinct values, below a threshold; its values with their
-    frequencies.
+*   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
+    in one row alone; its values with the rows of each.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
 *   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date. Each has
     a **sensitivity**: personal data (GDPR), payment card data (PCI), or none.
@@ -87,9 +97,9 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
 1.  `scan` connects to the database given by its URL, the password taken from `.env`, and selects
     the tables by a list or a regular expression. For each table it counts the statistics of all
     columns in one query, the approximate distinct counts included; it counts the values of every
-    column whose distinct count is below the enum threshold; and it takes a sample into the
-    workspace. The detectors check the values of the sample; the semantic types they find are
-    verified on the whole table where the detector has a pattern in SQL. The result is the
+    column whose distinct count is at most the threshold of an enumeration; and it takes a sample
+    into the workspace. The detectors check the values of the sample; the semantic types they find
+    are verified on the whole table where the detector has a pattern in SQL. The result is the
     profile.
 2.  `describe` splits the original names of all columns into terms, and asks the language model
     for the word of each term, showing it the columns the term appears in. From the glossary and
@@ -102,18 +112,20 @@ uses `glossary` and `workspace`, `report` the profile alone; `cli` runs the stag
 
 The design repeats a few decisions; new code follows them.
 
-*   **The profile holds no sensitive values.** Raw values - the values of an enum, the range of a
-    column - go into the profile only for columns of no sensitivity, and the range of texts never;
-    samples stay in the workspace. A profile can be shared; a workspace cannot.
+*   **The profile holds no sensitive values.** Raw values - the values of an enumeration, the range
+    of a column - go into the profile only for columns of no sensitivity, and the range of texts
+    never; samples stay in the workspace. A profile can be shared; a workspace cannot.
 *   **No value leaves the machine.** The language model runs locally; no external service gets a
     value, a sample or a profile.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation
     writes, into its own environment.
 *   **The dialect writes all SQL.** No other part of the tool writes SQL text, so that another
-    database is a new dialect, not a change across the code.
+    database is a new dialect, not a change across the code. What the tables hold is counted or
+    sampled by queries that the part that reads their rows builds from the building blocks of the
+    dialect: metadata belongs to the source, counting and sampling to the parts that do them.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
-    detectors that can be tested; the language model proposes names and descriptions from what
-    they found, and nothing else.
+    detectors that can be tested; the language model proposes names and descriptions from what they
+    found, and nothing else.
 *   **One word per term.** Harmonized names are composed from the glossary, so that the same term
     reads the same in every table.
 *   **The stages share nothing but the profile and the workspace.** Each stage can be run again on

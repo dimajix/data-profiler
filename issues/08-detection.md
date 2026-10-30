@@ -35,9 +35,9 @@ The interface first, put before the maintainer: `SemanticType`, `Sensitivity`, `
 - **Verifying on the whole table.** The share of matching values over all rows by the pattern in
   SQL, for the types found in the sample; a detector without a pattern says that its match rests
   on the sample alone.
-- **Raw values into the profile.** Enum values and ranges of columns of no sensitivity move from
-  the workspace into the profile; a column no detector recognises counts as of no sensitivity, and
-  the range of a text is never written.
+- **Raw values into the profile.** The values of enumerations and the ranges of columns of no
+  sensitivity move from the workspace into the profile; a column no detector recognises counts as of
+  no sensitivity, and the range of a text is never written.
 - **The generator.** [05](05-the-simulation-environment.md) learns to generate values of each
   semantic type, so that the round trip of [07](07-the-stage-scan.md) covers the detectors.
 

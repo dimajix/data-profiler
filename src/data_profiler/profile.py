@@ -9,10 +9,11 @@ unknown or of the wrong type, is refused.
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
-from uuid import uuid4
 
 from pydantic import ConfigDict, TypeAdapter, ValidationError, with_config
 from yaml import YAMLError, safe_dump, safe_load
+
+from data_profiler.files import write_whole
 
 FORMAT: Final = 1
 """The version of the format a profile is written in.
@@ -153,7 +154,8 @@ class Profile:
         """
         content = {"format": FORMAT, **_ADAPTER.dump_python(self, mode="json", exclude_none=True)}
         try:
-            _replace(path, safe_dump(content, sort_keys=False, allow_unicode=True))
+            text = safe_dump(content, sort_keys=False, allow_unicode=True)
+            write_whole(path, text.encode("utf-8"))
         except OSError as error:
             raise ProfileError(f"{path} cannot be written: {error.strerror}") from error
 
@@ -165,22 +167,3 @@ def _problem(detail: Any) -> str:
     """The field a detail of a `ValidationError` is about, and what is wrong with it."""
     field = ".".join(str(part) for part in detail["loc"])
     return f"{field}: {detail['msg']}"
-
-
-def _replace(path: Path, text: str) -> None:
-    """Replaces the file `path` by `text`, whole or not at all.
-
-    The text is written to a new file next to `path`, which then takes its place, so that a
-    failure, or an interruption, leaves the file that was there before. The new file is made as
-    any file is, with the permissions the user gives new files.
-
-    Raises:
-        OSError: The file cannot be written.
-    """
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}")
-    try:
-        with temporary.open("x", encoding="utf-8") as file:
-            file.write(text)
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)

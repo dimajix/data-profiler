@@ -30,8 +30,8 @@ real database; the data stays there.
 1.  Pick about 20 columns of the CRM, among them several dates and several columns whose names
     share abbreviations.
 2.  Write down the facts for each as `describe` would give them: table name, column name, type,
-    null share, distinct count, the values of an enum, what a detector would find, the names of
-    the columns beside it, a few sample values.
+    null share, distinct count, the values of an enumeration, what a detector would find, the
+    names of the columns beside it, a few sample values.
 3.  Ask each model, through Ollama with a JSON schema as `format`, first for the word of each
     abbreviation, shown the columns it appears in, then for the name and description of each
     column, given the words.
