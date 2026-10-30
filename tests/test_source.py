@@ -84,6 +84,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         select = source.dialect.select([source.dialect.longest('c"y')], 't"x')
         sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
+        matching = source.dialect.matching('c"y', "it's")
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
@@ -91,3 +92,5 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert sampled.startswith('SELECT "c""y" FROM "t""x" TABLESAMPLE')
     assert grouped.startswith('SELECT grouping("c""y") FROM "t""x" GROUP BY')
     assert grouped.endswith('(("c""y"))')
+    assert 'try_cast("c""y" AS varchar)' in matching
+    assert "'^(?:it''s)$'" in matching

@@ -44,7 +44,8 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
     query built the same way.
 *   **`data_profiler.matching`** - the matches of a table: the semantic types of its columns,
-    recognised in its sample by `detect`.
+    recognised in its sample by `detect`, and verified on the whole table by one query built the
+    same way.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
@@ -68,7 +69,7 @@ it, nor on what it needs. Both are one uv workspace, with one lock file and one 
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `detect` and `workspace`, `describe` uses `glossary` and `workspace`, `report` the
+`sampling`, `matching` and `workspace`, `describe` uses `glossary` and `workspace`, `report` the
 profile alone; `cli` runs the stages.
 
 ## The domain
@@ -118,8 +119,8 @@ profile alone; `cli` runs the stages.
     table it counts the statistics of all columns in one query, the approximate distinct counts
     included; it counts the values of every column whose distinct count is at most the threshold of
     an enumeration; and it takes a sample into the workspace. The detectors check the values of the
-    sample; every semantic type one of them is of is verified on the whole table by the pattern of
-    its detector in SQL. The result is the profile.
+    sample; the semantic types they find are verified on the whole table by the patterns of the
+    detectors in SQL. The result is the profile.
 2.  `describe` splits the original names of all columns into terms, and asks the language model
     for the word of each term, showing it the columns the term appears in. From the glossary and
     from each column's statistics, matches and sample, it asks for the column's name and

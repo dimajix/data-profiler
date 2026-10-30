@@ -64,10 +64,15 @@ class Match:
         type: The semantic type.
         sample: The share of the values of the sample, nulls aside, that are of the type, from 0
             to 1.
+        table: The share of the values of the whole table, nulls aside, that the pattern of the
+            detector of the type matches, from 0 to 1, or None where it was not verified. Where
+            the detector checks more than its pattern, it is at least the share the check would
+            give.
     """
 
     type: SemanticType
     sample: float
+    table: float | None = None
 
 
 @dataclass(frozen=True)

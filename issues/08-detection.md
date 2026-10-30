@@ -118,3 +118,18 @@ In steps, each reviewed and committed on its own:
   profile of format 2 is in `main` before then. In the simulation, every column of dates and times
   is a `date`, and `ord_itm.pos_no`, whose generated numbers are mostly of five digits, a
   `postal-code` - a hypothesis, as the maintainer wants them.
+
+- **2026-10-30** — Step 3 done. As the maintainer agreed with step 2, the share in the sample, of
+  the precise check, decides what a match is and in which order, and the share on the whole table is
+  told beside it: SQL tries only the pattern, so that the share on the table of a type whose
+  detector checks more - a phone number, an IBAN, a card number, a date - is at least the one its
+  check would give. A match has its share on the table, `table`, of the values that are not null;
+  the dialect counts the values a pattern matches whole by the building block `matching`, each as
+  text with its spaces cut, a value that cannot be cast to text matching nothing, and
+  `data_profiler.matching.verify` asks for all matches of a table in one query, with the values of
+  each column that are not null, so that a table written to in between gives no share above 1, and
+  sends none where the table has no match. One detail differs from what How says, for the
+  maintainer's review: only the matches are verified, not every type one value of the sample is of,
+  since a type under the share of a match in the sample is no match, whatever the table says, and
+  nothing would show its share. A test sends the pattern of every type to Trino, which reads them
+  all; that they find there what they find in Python, the round trip of step 4 shows.

@@ -114,6 +114,14 @@ class Dialect(ABC):
         """The expression of the length of the longest value of `column`."""
 
     @abstractmethod
+    def matching(self, column: str, pattern: str) -> str:
+        """The expression counting the values of `column` that `pattern` matches whole.
+
+        Each value is matched as text, its spaces at either end cut, whatever the type of the
+        column; `pattern` is a regular expression of what Python and the database share.
+        """
+
+    @abstractmethod
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind`, as the database names it, holds texts."""
 
@@ -347,6 +355,12 @@ class _TrinoDialect(Dialect):
     def longest(self, column: str) -> str:
         """The expression of the length of the longest value of `column`."""
         return f"max(length({_identifier(column)}))"
+
+    def matching(self, column: str, pattern: str) -> str:
+        """The expression counting the values of `column` that `pattern` matches whole."""
+        # A value that cannot be cast, such as a JSON array, is no text, and matches nothing.
+        text = f"trim(try_cast({_identifier(column)} AS varchar))"
+        return f"count_if(regexp_like({text}, {_literal(f'^(?:{pattern})$')}))"
 
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind` holds texts: a `varchar` or a `char`."""

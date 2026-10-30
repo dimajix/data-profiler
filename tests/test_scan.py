@@ -36,14 +36,14 @@ def test_a_scanned_profile_has_the_statistics_its_tables_were_made_with(
             )
 
 
-def test_the_semantic_types_of_the_columns_are_recognised_in_their_samples(
+def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     source: Source, tmp_path: Path
 ) -> None:
     scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"))
     (table,) = scanned.tables
     matched = {column.name: column.matches for column in table.columns}
-    assert matched["crt_dt"] == (Match(SemanticType.DATE, 1.0),), "a date is a date as text"
-    assert matched["upd_ts"] == (Match(SemanticType.DATE, 1.0),), "nulls are not counted"
+    assert matched["crt_dt"] == (Match(SemanticType.DATE, 1.0, 1.0),), "a date is a date as text"
+    assert matched["upd_ts"] == (Match(SemanticType.DATE, 1.0, 1.0),), "nulls are not counted"
     assert matched["actv_flg"] == (), "a column of no type has no match"
 
 
