@@ -28,7 +28,14 @@ The interface first, put before the maintainer.
 - **How it is laid over.** By the keys of tables, columns and terms; what an override names that
   the profile does not have is an error, naming it.
 - **What may be overridden.** At first the words of terms and the suggestions of columns - what a
-  person corrects; more once someone needs it.
+  person corrects -, and the sensitivity of a column the detectors miss ([08](08-detection.md));
+  more once someone needs it.
+- **Sensitivity, decided with the maintainer during [08](08-detection.md).** `scan` judges the
+  sensitivity of a column by the matches of the detectors alone, and never reads overrides. A
+  column an override marks sensitive loses its values - its range, the values of its enumeration -
+  where the override is laid over the profile, by `describe` as by `report`, through
+  `data_profiler.disclosure`, the one place that decides what of the values goes into the profile;
+  a mark needs no scan again.
 
 ## Done when
 
@@ -41,3 +48,7 @@ The interface first, put before the maintainer.
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-10-30** — The sensitivity of a column added to what may be overridden, as the maintainer
+  decided while [08](08-detection.md) was made: applied by the stages that lay overrides over the
+  profile, not by `scan`.
