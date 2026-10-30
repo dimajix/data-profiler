@@ -2,8 +2,9 @@
 
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
 profile, for the whole project, and the environments the database is profiled in - dev, test, prod
--, each by the URL of its schema and its password. Each environment keeps its results in a
-directory of its own, named after it: its profile and its workspace.
+-, each by the URL of its schema and its password; beside it, `overrides.yml` gives by hand what
+the profiles of all environments take as given. Each environment keeps its results in a directory
+of its own, named after it: its profile and its workspace.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
@@ -156,6 +157,11 @@ class Project:
             raise ProjectError(f"{file}: tables is no regular expression: {error}") from error
         _complete(variables, directory / _VARIABLES)
         return cls(file, pattern, configuration.environments, variables)
+
+    @property
+    def overrides(self) -> Path:
+        """The file of the overrides of the project, the same for all its environments."""
+        return self._file.parent / "overrides.yml"
 
     def environment(self, name: str) -> Environment:
         """The environment `name`, its values taken from the variables where they name one.

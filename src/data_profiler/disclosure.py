@@ -1,62 +1,52 @@
-"""Disclosure: what of the values of a table goes into the profile.
+"""Disclosure: what of the values of a table the profile may hold.
 
-The profile holds no values of the columns found sensitive. The range of a column and the values
-of its enumeration go into it where the column is of no sensitivity - where none of its matches is
-of a sensitive semantic type -, and are taken out of it where it is of one. Sensitivity is judged
-optimistically: a column without such a match is of none. Each value that goes into the profile is
-checked on its own all the same, and withheld where it is of a sensitive type - a phone number at
-the end of the range of a column of which few values are phone numbers, an IBAN of a column whose
-sample held none. Each value is written as text, as the database writes it, and a long one cut to
-its first characters, ending in `…`, so that the end of the range of a column of free texts
-does not fill the profile.
+The profile holds no values of the columns found sensitive. A column keeps its range and the values
+of its enumeration where it is of no sensitivity, and loses both where it is of one: by the mark
+given by hand where there is one, else by its matches - where one is of a sensitive semantic type.
+Sensitivity is judged optimistically: a column without a mark or such a match is of none. Each
+value a column keeps is checked on its own all the same, and withheld where it is of a sensitive
+type - a phone number at the end of the range of a column of which few values are phone numbers,
+an IBAN of a column whose sample held none -, and a long one is cut to its first characters, ending
+in `…`, so that the end of the range of a column of free texts does not fill the profile. A table
+disclosed again is disclosed as before, or loses more: what a mark of none would give back, it
+cannot.
 """
 
-from collections.abc import Sequence
 from dataclasses import replace
 from typing import Final
 
 from data_profiler.detect import Sensitivity, is_sensitive
 from data_profiler.profile import Column, Range, Table, Value
-from data_profiler.source import as_text
-from data_profiler.workspace import Enumeration
 
 # The most characters of a value the profile holds; a value of more is cut, and its last one is `…`.
 _LONGEST: Final = 100
 
 
-def disclose(table: Table, enumerations: Sequence[Enumeration]) -> Table:
+def disclose(table: Table) -> Table:
     """`table` as the profile may hold it: the values of its columns of no sensitivity, none else.
 
     Args:
-        table: The table, its columns with their statistics and matches.
-        enumerations: The enumerations of the table, as the workspace holds them.
+        table: The table, its columns with their statistics, matches, marks and values.
 
     Returns:
-        The table, each column of no sensitivity with its range and the values of its
-        enumeration, each column of a sensitivity without either.
+        The table, each column of no sensitivity with what it keeps of its range and values, each
+        column of a sensitivity without either.
     """
-    values = {enumeration.column: enumeration.values for enumeration in enumerations}
-    return replace(
-        table,
-        columns=tuple(_disclosed(column, values.get(column.name, ())) for column in table.columns),
-    )
+    return replace(table, columns=tuple(_disclosed(column) for column in table.columns))
 
 
-def _disclosed(column: Column, values: Sequence[tuple[object, int]]) -> Column:
-    """`column` with its range and `values`, or without either where it is of a sensitivity.
-
-    Of a column of no sensitivity, a value that is of a sensitive type is withheld all the same.
-    """
+def _disclosed(column: Column) -> Column:
+    """`column` with what it may keep of its range and values: nothing where it is sensitive."""
     statistics = column.statistics
     if column.sensitivity is not Sensitivity.NONE:
         return replace(column, statistics=replace(statistics, range=None), values=())
     found = statistics.range
     shown = None if found is None else Range(_shown(found.smallest), _shown(found.largest))
-    texts = ((_shown(as_text(value)), rows) for value, rows in values)
+    values = ((_shown(value.value), value.rows) for value in column.values)
     return replace(
         column,
         statistics=replace(statistics, range=None if shown == Range(None, None) else shown),
-        values=tuple(Value(text, rows) for text, rows in texts if text is not None),
+        values=tuple(Value(text, rows) for text, rows in values if text is not None),
     )
 
 

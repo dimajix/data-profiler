@@ -87,8 +87,9 @@ of the same names.
 ### Profiling a Database
 
 The tool works on a project: a directory with its configuration `project.yml`, its variables in
-`.env`, and the results of each of its environments - dev, test, prod - in a directory named after
-the environment. `examples/crm/` is a project for the simulation environment:
+`.env`, what is given by hand in `overrides.yml`, and the results of each of its environments - dev,
+test, prod - in a directory named after the environment. `examples/crm/` is a project for the
+simulation environment:
 
 ```yaml
 format: 1
@@ -111,6 +112,10 @@ environments:
   shell sets, for one, has to name the database itself. For the example, copy
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
+- **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
+  word of a term, and the sensitivity of a column the detectors miss, such as the names of
+  persons. `examples/crm/overrides.yml` shows both; the stages `describe` and `report` will lay
+  them over the profile, once they are made.
 
 With the simulation environment loaded, as above, the example is scanned by
 

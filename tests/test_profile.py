@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from yaml import safe_dump, safe_load
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.profile import (
     FORMAT,
     Column,
@@ -31,7 +31,8 @@ _PROFILE = Profile(
                 Column(
                     name="CUST_NM",
                     type="varchar(80)",
-                    statistics=Statistics(312, 803455, Lengths(2, 74), Range("Aal", "Zwick")),
+                    statistics=Statistics(312, 803455, Lengths(2, 74)),
+                    marked=Sensitivity.PERSONAL,
                 ),
                 Column(
                     name="CUST_TYP_CD",

@@ -62,6 +62,7 @@ def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
         for column in table.columns
     }
     assert columns["cust.cust_typ_cd"].values, "the values of an enumeration of no sensitivity"
+    assert columns["cust.actv_flg"].values[0].value in ("true", "false"), "as the database writes"
     assert columns["cust.cust_nm"].statistics.range is not None, "a range of texts as well"
     for name in ("cntct.tel_no", "cntct.eml_adr"):
         assert columns[name].sensitivity is Sensitivity.PERSONAL, name

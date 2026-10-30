@@ -1,8 +1,8 @@
 """The profile: what was found about the tables of one schema of a database.
 
-A profile is what the stages hand to each other, and what a person reads, shares and corrects: it
-holds no values of the columns found sensitive. It is a document, written as YAML in the format
-below and read back by the same classes.
+A profile is what the stages hand to each other, and what a person reads and shares - corrected by
+the overrides of the project, laid over it: it holds no values of the columns found sensitive. It is
+a document, written as YAML in the format below and read back by the same classes.
 """
 
 from collections.abc import Mapping
@@ -15,7 +15,7 @@ from pydantic import TypeAdapter
 from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.documents import DocumentError, read_document, write_document
 
-FORMAT: Final = 3
+FORMAT: Final = 4
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below: a field added is unknown to the
@@ -116,6 +116,8 @@ class Column:
         matches: The semantic types found in the column, the most frequent first.
         values: The values of the column, if it is an enumeration of no sensitivity, the most
             frequent first; none else.
+        marked: The sensitivity of the column given by hand, by an override, or None where none
+            is given.
     """
 
     name: str
@@ -123,10 +125,13 @@ class Column:
     statistics: Statistics
     matches: tuple[Match, ...] = ()
     values: tuple[Value, ...] = ()
+    marked: Sensitivity | None = None
 
     @property
     def sensitivity(self) -> Sensitivity:
-        """The sensitivity of its first match of a sensitive type, or none without one."""
+        """The sensitivity given by hand, else of its first match of a sensitive type, else none."""
+        if self.marked is not None:
+            return self.marked
         for match in self.matches:
             if match.type.sensitivity is not Sensitivity.NONE:
                 return match.type.sensitivity

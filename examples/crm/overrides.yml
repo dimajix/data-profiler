@@ -1,0 +1,14 @@
+# What is given by hand of the profiles of the example project, the same for all its environments:
+# the word of a term, and the sensitivity of a column the detectors miss - here the names of
+# persons, which no detector recognises.
+format: 1
+glossary:
+  cust: customer
+tables:
+  cust:
+    columns:
+      cust_nm: {sensitivity: personal}
+  cntct:
+    columns:
+      frst_nm: {sensitivity: personal}
+      lst_nm: {sensitivity: personal}

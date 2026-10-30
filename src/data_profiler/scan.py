@@ -8,16 +8,18 @@ ranges and enumerations of the columns of no sensitivity -, the module `disclosu
 """
 
 import logging
+from collections.abc import Sequence
+from dataclasses import replace
 from re import Pattern
 
 from data_profiler.disclosure import disclose
 from data_profiler.enumerations import values
 from data_profiler.matching import recognise, verify
-from data_profiler.profile import Profile
+from data_profiler.profile import Profile, Table, Value
 from data_profiler.sampling import take
-from data_profiler.source import Source
+from data_profiler.source import Source, as_text
 from data_profiler.statistics import count
-from data_profiler.workspace import Workspace
+from data_profiler.workspace import Enumeration, Workspace
 
 _logger = logging.getLogger(__name__)
 
@@ -48,5 +50,21 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        tables.append(disclose(verify(source, recognise(table, sample)), enumerations))
+        found = verify(source, recognise(table, sample))
+        tables.append(disclose(_valued(found, enumerations)))
     return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables))
+
+
+def _valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:
+    """`table`, each column of an enumeration with its values, as text, the most frequent first."""
+    values = {enumeration.column: enumeration.values for enumeration in enumerations}
+    columns = (
+        replace(
+            column,
+            values=tuple(Value(as_text(value), rows) for value, rows in values[column.name]),
+        )
+        if column.name in values
+        else column
+        for column in table.columns
+    )
+    return replace(table, columns=tuple(columns))

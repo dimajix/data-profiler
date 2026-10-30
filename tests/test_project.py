@@ -58,6 +58,10 @@ def test_the_url_of_an_environment_may_be_a_variable(tmp_path: Path) -> None:
     assert project.environment("prod").url == url
 
 
+def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None:
+    assert _project(tmp_path).overrides == tmp_path / "overrides.yml"
+
+
 def test_an_environment_keeps_its_results_in_its_directory(tmp_path: Path) -> None:
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
     assert environment.profile == tmp_path / "dev" / "profile.yml"

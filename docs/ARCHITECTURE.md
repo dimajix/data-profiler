@@ -22,14 +22,16 @@ does not depend on it, nor on what it needs. Both are one uv workspace, with one
 environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
-    and written as a document, and laying overrides over it.
+    and written as a document.
+*   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over a
+    profile, refused where they name what it does not have.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
     profile, and the environments, each by its URL and its password, the password given by a
-    variable -, its variables in `.env`, which complete those of the process, and the directories
-    of the results of each environment.
+    variable -, its variables in `.env`, which complete those of the process, its overrides in
+    `overrides.yml`, and the directories of the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the profile
     and the configuration of a project among them, each the fields of one class with the version of
     its format; what is wrong with one is named, field by field.
@@ -72,14 +74,14 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary` and `workspace`,
-`report` the profile alone; `cli` runs the stages.
+`sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary`, `overrides` and
+`workspace`, `report` the profile and `overrides` alone; `cli` runs the stages.
 
 ## The domain
 
 *   **Project** - one database, profiled in environments: a directory of its configuration, which
-    selects the tables, of its variables, which hold the passwords and are not shared, and of the
-    results of each environment.
+    selects the tables, of its variables, which hold the passwords and are not shared, of its
+    overrides, and of the results of each environment.
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL and a password of its own; its results,
     a profile and a workspace, are kept in a directory of its own, named after it.
@@ -110,8 +112,9 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
     `customer` for `CUST`.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
     name composed from the words of the glossary.
-*   **Override** - a part of a profile, written by hand, laid over the generated profile: what it
-    sets is taken as given, by `describe` as by `report`.
+*   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
+    laid over a generated profile: the word of a term, the sensitivity of a column. What it gives
+    is taken as given, by `describe` as by `report`; `scan` never reads it.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -140,9 +143,10 @@ The design repeats a few decisions; new code follows them.
 *   **The profile holds no values of the columns found sensitive.** Raw values - the values of an
     enumeration, the range of a column - go into the profile only for columns of no sensitivity;
     samples stay in the workspace. A profile can be shared; a workspace cannot. Sensitivity is
-    judged optimistically: a column is sensitive where a sensitive type is one of its matches, and
-    one the detectors miss is to be marked by hand, by an override; each value that goes into the
-    profile is checked on its own all the same, and withheld where it is of a sensitive type.
+    judged optimistically: a column is sensitive where a sensitive type is one of its matches, or
+    where an override marks it so - the mark comes first, and marks what the detectors miss -;
+    each value that goes into the profile is checked on its own all the same, and withheld where it
+    is of a sensitive type.
 *   **No value leaves the machine.** The language model runs locally; no external service gets a
     value, a sample or a profile.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation
