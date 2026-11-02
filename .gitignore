@@ -13,3 +13,6 @@ __pycache__/
 
 # The variables of a project, which hold passwords
 .env
+
+# The projects profiled with the tool, a repository of their own
+/projects/

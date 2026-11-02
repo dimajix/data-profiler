@@ -181,6 +181,11 @@ The design repeats a few decisions; new code follows them.
     checked as its code is; what holds is built into the tool by an issue of its own.
 *   **`examples/`** - example projects of the tool, such as `examples/crm/`, which profiles the
     simulation environment.
+*   **`projects/`** - the projects profiled with the tool, in a repository of their own, cloned or
+    made there apart from this one, which ignores it; it does not depend on this one, and lies here
+    so that the dev container reaches it. That repository keeps its projects with the results of
+    their environments, the work done; it ignores their `.env`, and their workspaces keep
+    themselves out of version control.
 *   **`simulation/`** - the project `simulation`, with its package in `simulation/src/`, its tests
     in `simulation/tests/`, an example profile in `simulation/profiles/`, and in
     `simulation/trino/` the configuration of the simulated Trino.
