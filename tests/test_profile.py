@@ -1,6 +1,7 @@
 """Tests of the profile: written and read as a directory of documents, refused where it is not."""
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,7 @@ from data_profiler.profile import (
     Profile,
     ProfileError,
     Range,
+    Run,
     Statistics,
     Table,
     Value,
@@ -53,6 +55,11 @@ _PROFILE = Profile(
     ),
     glossary={"cust": "customer", "nm": "name"},
 )
+
+# The start of a run of scan in the past, in UTC, as a profile reads it back.
+_STARTED = datetime(2026, 1, 2, 9, 30, 0, 123456, tzinfo=UTC)
+# The start of the scan that updates a profile, after it.
+_NOW = datetime(2026, 1, 3, 8, 0, tzinfo=UTC)
 
 
 def _written(tmp_path: Path, change: dict[str, object] | None = None) -> Path:
@@ -226,23 +233,37 @@ def test_a_restricted_profile_has_the_tables_named_alone() -> None:
     assert profile.restricted(["CUST", "ORD"]) == profile
 
 
-def test_a_scan_updates_an_empty_profile_where_there_is_none(tmp_path: Path) -> None:
+def test_a_scan_updates_an_empty_profile_of_a_new_run_where_there_is_none(tmp_path: Path) -> None:
     (tmp_path / "tables").mkdir()
-    empty = Profile(catalog="crm", schema="sales", tables=())
-    assert Profile.updating(tmp_path / "missing", "crm", "sales", ()) == empty
-    assert Profile.updating(tmp_path, "crm", "sales", ()) == empty, "nor without profile.yml"
+    for directory in (tmp_path / "missing", tmp_path):
+        updating = Profile.updating(directory, "crm", "sales", (), _NOW)
+        assert updating.tables == (), f"{directory} holds no profile"
+        assert updating.run == Run(started=_NOW), "a new run is begun"
 
 
-def test_a_scan_updates_the_profile_there_is(tmp_path: Path) -> None:
+def test_a_scan_updates_the_profile_there_is_in_a_new_run(tmp_path: Path) -> None:
     _PROFILE.write(tmp_path)
-    assert Profile.updating(tmp_path, "crm", "sales", ()) == _PROFILE
+    updating = Profile.updating(tmp_path, "crm", "sales", (), _NOW)
+    assert replace(updating, run=None) == _PROFILE
+    assert updating.run is not None, "the profile of no run is scanned in a new one"
+
+
+def test_a_run_that_did_not_finish_is_resumed_and_one_that_did_followed_by_a_new_one(
+    tmp_path: Path,
+) -> None:
+    resumed = replace(_PROFILE, run=Run(started=_STARTED))
+    resumed.write(tmp_path)
+    assert Profile.updating(tmp_path, "crm", "sales", (), _NOW) == resumed
+    resumed.finished(_NOW).write(tmp_path)
+    later = datetime(2026, 1, 4, tzinfo=UTC)
+    assert Profile.updating(tmp_path, "crm", "sales", (), later).run == Run(started=later)
 
 
 def test_a_scan_with_other_types_updates_the_profile_without_its_tables(
     tmp_path: Path, account_number: SemanticType
 ) -> None:
     _PROFILE.write(tmp_path)
-    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,))
+    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,), _NOW)
     assert (updating.tables, updating.types) == ((), (account_number,))
     assert updating.glossary == _PROFILE.glossary, "the glossary is kept"
 
@@ -250,4 +271,39 @@ def test_a_scan_with_other_types_updates_the_profile_without_its_tables(
 def test_a_scan_of_another_schema_refuses_the_profile(tmp_path: Path) -> None:
     _PROFILE.write(tmp_path)
     with pytest.raises(ProfileError, match=r"is of crm\.sales, not of crm\.billing"):
-        Profile.updating(tmp_path, "crm", "billing", ())
+        Profile.updating(tmp_path, "crm", "billing", (), _NOW)
+
+
+def test_a_profile_with_its_run_and_the_runs_of_its_tables_is_written_and_read_unchanged(
+    tmp_path: Path,
+) -> None:
+    run = Run(started=_STARTED, finished=datetime(2026, 1, 2, 11, 0, tzinfo=UTC))
+    profile = replace(_PROFILE, run=run).updated(replace(_PROFILE.tables[0], rows=1))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+    table = _content(tmp_path / "tables" / "CUST.yml")
+    assert list(table)[:3] == ["format", "name", "run"], "the run of a table follows its name"
+
+
+def test_a_table_updated_is_counted_by_the_run_of_the_profile() -> None:
+    profile = replace(_PROFILE, run=Run(started=_STARTED))
+    assert not profile.is_counted("CUST"), "a table of another run"
+    updated = profile.updated(_PROFILE.tables[0])
+    assert updated.tables[0].run == _STARTED
+    assert updated.is_counted("CUST")
+    assert not updated.is_counted("ORD"), "a table the profile does not have"
+    assert not _PROFILE.updated(_PROFILE.tables[0]).is_counted("CUST"), "a profile of no run"
+
+
+def test_a_finished_run_keeps_its_start() -> None:
+    finished = replace(_PROFILE, run=Run(started=_STARTED)).finished(_NOW)
+    assert finished.run == Run(started=_STARTED, finished=_NOW)
+    assert _PROFILE.finished(_NOW) == _PROFILE, "a profile of no run is left as it is"
+
+
+def test_a_run_that_did_not_finish_of_other_types_is_followed_by_a_new_one(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    replace(_PROFILE, run=Run(started=_STARTED)).write(tmp_path)
+    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,), _NOW)
+    assert updating.run == Run(started=_NOW), "a new run, as the tables are counted anew"

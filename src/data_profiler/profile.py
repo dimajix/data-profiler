@@ -10,11 +10,16 @@ same classes: `profile.yml` holds the profile but its tables, and `tables/` a fi
 named after it, so that a person finds a table in a file of its own, and its changes in a diff of
 their own. A file of a table is read with the semantic types of `profile.yml`, which its matches
 name.
+
+A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
+`Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
+each table names the run that counted it, so that a run resumed skips it.
 """
 
 import logging
 from collections.abc import Collection, Iterable, Mapping
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -235,13 +240,33 @@ class Table:
 
     Attributes:
         name: The name of the table in the database.
+        run: When the run of scan that counted the table started, or None where no scan did.
         rows: The number of its rows, counted exactly.
         columns: Its columns, in the order of the table.
     """
 
     name: str
+    # Given by its name, but written after the name, where a person reading the file finds it.
+    run: datetime | None = field(default=None, kw_only=True)
     rows: int
     columns: tuple[Column, ...]
+
+
+@dataclass(frozen=True)
+class Run:
+    """A run of the stage scan over the selected tables of a profile, which may take several scans.
+
+    A scan begins a run, and a run that did not finish, failing at a table or interrupted, is
+    resumed by the next scan; it finishes once every selected table is counted.
+
+    Attributes:
+        started: When it started, in UTC; it tells the run apart, and names it in the tables it
+            counted.
+        finished: When it had counted every selected table, or None while it has not.
+    """
+
+    started: datetime
+    finished: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -256,6 +281,7 @@ class Profile:
             once proposed or given.
         types: The semantic types of the project the tables were scanned with, beside those of
             the tool.
+        run: The last run of scan, or None where no scan wrote the profile.
     """
 
     catalog: str
@@ -263,6 +289,7 @@ class Profile:
     tables: tuple[Table, ...]
     glossary: Mapping[str, str] = field(default_factory=dict)
     types: SemanticTypes = ()
+    run: Run | None = None
 
     @classmethod
     def read(cls, directory: Path) -> "Profile":
@@ -292,32 +319,41 @@ class Profile:
             tables=_sorted(tables),
             glossary=head.glossary,
             types=head.types,
+            run=head.run,
         )
 
     @classmethod
     def updating(
-        cls, directory: Path, catalog: str, schema: str, types: tuple[SemanticType, ...]
+        cls,
+        directory: Path,
+        catalog: str,
+        schema: str,
+        types: tuple[SemanticType, ...],
+        started: datetime,
     ) -> "Profile":
         """The profile in `directory` that a scan of `schema` of `catalog` with `types` updates.
 
         A directory without `profile.yml` holds no profile, so that one left by an interrupted
         first write is no profile either. A profile scanned with other semantic types loses its
-        tables, as their matches may name a type it no longer has, and keeps its glossary.
+        tables, as their matches may name a type it no longer has, and keeps its glossary. The run
+        of the profile is resumed where it did not finish, and a new run begun else.
 
         Args:
             directory: The directory of the profile.
             catalog: The catalog of the schema scanned.
             schema: The schema scanned.
             types: The semantic types of the project the scan recognises.
+            started: When the scan started, in UTC: the start of a new run, where it begins one.
 
         Returns:
             The profile in `directory`, without its tables where it was scanned with other types;
-            an empty one of `types` where there is none.
+            an empty one of `types` where there is none; with its run resumed, or a new one.
 
         Raises:
             ProfileError: The profile cannot be read, as `read` says, or is of another schema.
         """
-        empty = cls(catalog=catalog, schema=schema, tables=(), types=types)
+        begun = Run(started=started)
+        empty = cls(catalog=catalog, schema=schema, tables=(), types=types, run=begun)
         if not (directory / _HEAD).exists():
             return empty
         profile = cls.read(directory)
@@ -329,7 +365,10 @@ class Profile:
         if profile.types != types:
             _logger.info("The semantic types changed: the tables of %s are scanned anew", directory)
             return replace(empty, glossary=profile.glossary)
-        return profile
+        if profile.run is not None and profile.run.finished is None:
+            _logger.info("Resuming the scan of %s begun at %s", directory, profile.run.started)
+            return profile
+        return replace(profile, run=begun)
 
     def write(self, directory: Path) -> None:
         """Writes the profile to `directory`, each of its files whole or not at all.
@@ -359,7 +398,13 @@ class Profile:
                     path.unlink()
         except OSError as error:
             raise ProfileError(f"{directory} cannot be written: {error.strerror}") from error
-        head = _Head(self.catalog, self.schema, self.glossary, self.types)
+        head = _Head(
+            catalog=self.catalog,
+            schema=self.schema,
+            run=self.run,
+            glossary=self.glossary,
+            types=self.types,
+        )
         try:
             write_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT, head)
             for table in self.tables:
@@ -368,16 +413,45 @@ class Profile:
             raise ProfileError(str(error)) from error
 
     def updated(self, table: Table) -> "Profile":
-        """The profile with `table` in place of its table of the same name, or beside its tables.
+        """The profile with `table`, counted by its run, in place of its table of the same name.
 
         Args:
             table: The table, as it was found anew.
 
         Returns:
-            The profile, its tables sorted by their names.
+            The profile, `table` in place of its table of the same name, or beside its tables,
+            sorted by their names, and named counted by the run of the profile.
         """
+        counted = replace(table, run=None if self.run is None else self.run.started)
         others = (kept for kept in self.tables if kept.name != table.name)
-        return replace(self, tables=_sorted((*others, table)))
+        return replace(self, tables=_sorted((*others, counted)))
+
+    def is_counted(self, name: str) -> bool:
+        """Whether the profile has the table `name`, counted by the run of the profile.
+
+        Args:
+            name: The name of the table.
+
+        Returns:
+            True where the table was counted by the run of the profile, False where the profile
+            has no run, no table `name`, or one counted by another run.
+        """
+        return self.run is not None and any(
+            table.name == name and table.run == self.run.started for table in self.tables
+        )
+
+    def finished(self, at: datetime) -> "Profile":
+        """The profile, its run finished, once it has counted every selected table.
+
+        Args:
+            at: When the run finished, in UTC.
+
+        Returns:
+            The profile, its run finished at `at`; as it is where it has no run.
+        """
+        if self.run is None:
+            return self
+        return replace(self, run=replace(self.run, finished=at))
 
     def restricted(self, names: Collection[str]) -> "Profile":
         """The profile with those of its tables alone that `names` names.
@@ -397,6 +471,7 @@ class _Head:
 
     catalog: str
     schema: str
+    run: Run | None = None
     glossary: Mapping[str, str] = field(default_factory=dict)
     types: SemanticTypes = ()
 

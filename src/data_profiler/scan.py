@@ -8,7 +8,11 @@ values of the database go into the profile - the ranges and enumerations of the 
 sensitivity -, the module `disclosure` decides, by the same types.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
-it. A scan updates the profile there is rather than replacing it: it drops the tables no longer
+it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
+which skips the tables the run counted; a run that finished is followed by a new one, which counts
+every table anew.
+
+A scan updates the profile there is rather than replacing it: it drops the tables no longer
 selected - deleted, or no longer matched by the pattern -, keeps the others until it counts them
 anew, and keeps the glossary. A profile scanned with other semantic types loses its tables, as
 their matches may name a type it no longer has; a profile of another schema, or one that cannot be
@@ -18,6 +22,7 @@ read, is refused rather than overwritten.
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from re import Pattern
 
@@ -61,11 +66,15 @@ def scan(
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
     """
-    profile = Profile.updating(directory, source.catalog, source.schema, types)
+    started = datetime.now(UTC)
+    profile = Profile.updating(directory, source.catalog, source.schema, types, started)
     names = source.tables(pattern)
     profile = profile.restricted(names)
     profile.write(directory)
     for name in names:
+        if profile.is_counted(name):
+            _logger.info("Skipping %s, counted by the run resumed", name)
+            continue
         _logger.info("Scanning %s", name)
         table = count(source, name)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
@@ -76,6 +85,7 @@ def scan(
         found = verify(source, recognise(table, sample, types))
         profile = profile.updated(disclose(_valued(found, enumerations), types))
         profile.write(directory)
+    profile.finished(datetime.now(UTC)).write(directory)
 
 
 def _valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:

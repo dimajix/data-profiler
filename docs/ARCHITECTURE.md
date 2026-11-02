@@ -22,8 +22,9 @@ does not depend on it, nor on what it needs. Both are one uv workspace, with one
 environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
-    and written as a directory of documents, one of the schema and one of each table; and the form
-    the semantic types of a project take in a document, which `project` reads them in as well.
+    and written as a directory of documents, one of the schema and one of each table; the profile
+    a scan starts from, in its run, resumed or new; and the form the semantic types of a project
+    take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over a
     profile, refused where they name what it does not have.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
@@ -95,6 +96,10 @@ lays the overrides over the profile they read. The semantic types of a project r
     it.
 *   **Stage** - one of `scan`, `describe` and `report`: a step of the work that can be run on its
     own, from what the stages before it left.
+*   **Run** - the counting of the selected tables of an environment, which may take several
+    scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
+    interrupted -, and it finishes once every selected table is counted. It is told apart by when
+    it started, which each table it counted names.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
     one kind of database.
 *   **Profile** - the documents describing the tables of one schema of a database: its tables and
@@ -140,10 +145,11 @@ lays the overrides over the profile they read. The semantic types of a project r
     values of the sample; the semantic types they find are verified on the whole table by the
     patterns of the detectors in SQL. The result is the profile, with the ranges and the values of
     enumerations of the columns of no sensitivity, written after every table: a scan that fails
-    keeps the tables before it. It updates the profile there is: the tables no longer selected are
-    dropped, the others kept until they are counted anew, and the glossary is kept; a profile
-    scanned with other semantic types loses its tables. A profile that cannot be read, or one of
-    another schema, is refused and never overwritten: it may be the work of hours.
+    keeps the tables before it, and the next scan resumes its run, skipping the tables it
+    counted. It updates the profile there is: the tables no longer selected are dropped, the
+    others kept until they are counted anew, and the glossary is kept; a profile scanned with
+    other semantic types loses its tables. A profile that cannot be read, or one of another
+    schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
     language model for the word of each term, showing it the tables and columns the term appears
     in. From the glossary and

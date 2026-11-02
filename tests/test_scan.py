@@ -1,6 +1,7 @@
 """Tests of the stage scan, against the simulation environment, which has to run."""
 
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -170,3 +171,36 @@ def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
     with pytest.raises(ProfileError, match="only format"):
         _scanned(source, "cust", tmp_path)
     assert (tmp_path / "profile" / "profile.yml").read_text(encoding="utf-8") == "format: 5\n"
+
+
+def test_a_run_that_failed_is_resumed_counting_only_the_tables_it_did_not(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    assert failed.run is not None
+    assert failed.run.finished is None, "a run that failed did not finish"
+    (cust,) = failed.tables
+    # Its rows told apart from those a scan counts, to see that it is not counted again.
+    failed.updated(replace(cust, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    resumed = _scanned(source, "cust|prod", tmp_path)
+    assert [table.rows for table in resumed.tables if table.name == "cust"] == [-1]
+    assert [table.name for table in resumed.tables] == ["cust", "prod"]
+    assert resumed.run is not None
+    assert resumed.run.started == failed.run.started, "the same run"
+    assert resumed.run.finished is not None
+    assert all(table.run == resumed.run.started for table in resumed.tables)
+
+
+def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(
+    source: Source, tmp_path: Path
+) -> None:
+    first = _scanned(source, "cust", tmp_path)
+    second = _scanned(source, "cust", tmp_path)
+    assert first.run is not None
+    assert second.run is not None
+    assert second.run.started > first.run.started, "a new run"
+    assert second.tables[0].run == second.run.started, "the table is counted anew"

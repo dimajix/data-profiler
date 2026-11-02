@@ -1,6 +1,6 @@
 # 18 — A scan written table by table
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Scan
@@ -108,3 +108,13 @@ In steps, each reviewed and committed on its own:
   `profile.yml` for none, so that an interrupted first write does not block the next scan. Two
   tables whose names differ in case alone are left to
   [19](19-names-of-tables-that-differ-in-case-alone.md).
+
+- **2026-11-02** — Step 3 done, and with it the issue: the profile holds its `Run` - when it
+  started, and when it finished -, and each table the start of the run that counted it, written
+  after its name. `Profile.updating` resumes a run that did not finish, and begins a new one else;
+  `Profile.updated` names a table counted by the run of the profile, `Profile.is_counted` tells
+  whether it was, and `Profile.finished` finishes the run, once `scan` has counted every selected
+  table. `scan` reads the clock and gives the times to the profile, which reads none. The format
+  stays 6, as the format 6 of step 1 has never been in `main`; a profile of steps 1 and 2, without
+  runs, is read, and scanned in a new run. As the maintainer decided after the review, *run* is
+  the run of a scan alone: the coding guidelines say *invocation* for a run of the tool.
