@@ -92,3 +92,10 @@ The interface is put before the maintainer before it is built: the names `column
   it is kept: `detect` returns the types whose share reaches the threshold of their detector
   alone, so that `matching.recognise` no longer reaches into the detector, and no share below
   the threshold leaves `detect.py`.
+
+- **2026-11-02** — Changed with [21](21-a-detector-of-free-text.md), as the maintainer decided:
+  the condition of a column is `Callable[[Sequence[str], Sequence[str]], bool]`, given all texts
+  of the column and those of them the detector recognises. The condition of free text needs the
+  latter, so as not to recognise them again by a pattern of its own; the pairs of
+  [20](20-detectors-of-boolean-pairs.md) need the former, as a column of `0`, `1` and `2` has two
+  distinct values its detector recognises, and three in all.

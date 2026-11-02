@@ -9,6 +9,7 @@ from data_profiler.detect import (
     CARD_NUMBER,
     DATE,
     EMAIL,
+    FREE_TEXT,
     IBAN,
     PHONE,
     POSTAL_CODE,
@@ -101,6 +102,7 @@ _LENGTHS = {
     CARD_NUMBER: (13, 19),
     DATE: (10, 19),
     UUID: (36, 36),
+    FREE_TEXT: (12, 60),
 }
 
 
@@ -115,14 +117,16 @@ def test_every_semantic_type_of_the_tool_is_made() -> None:
 def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     kind: SemanticType, shortest: int, longest: int
 ) -> None:
+    # As many distinct values as rows, as the condition of free text wants half of its values of
+    # words distinct.
     column = Column(
         name="v",
         type="varchar(60)",
-        statistics=Statistics(0, 200, Lengths(shortest, longest)),
+        statistics=Statistics(0, 500, Lengths(shortest, longest)),
         matches=(Match(kind, 1.0),),
     )
     values = [str(value) for (value,) in rows(_table(column, count=500), Random(0))]
-    assert all(kind.detector.recognises(value) for value in values)
+    assert kind.detector.share(values) == 1.0, "every text is of the type, and so is the column"
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
 
 
@@ -135,6 +139,17 @@ def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: Seman
     )
     with pytest.raises(SimulationError, match=r"t\.v: no account-number is made"):
         rows(_table(column, count=10), Random(0))
+
+
+def test_a_column_whose_values_fail_the_condition_of_their_type_together_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(60)",
+        statistics=Statistics(0, 10, Lengths(12, 60)),
+        matches=(Match(FREE_TEXT, 1.0),),
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: 10 distinct values of 500 are no free-text"):
+        rows(_table(column, count=500), Random(0))
 
 
 def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() -> None:

@@ -48,8 +48,9 @@ class Detector:
         check: Whether a value the pattern matches is of the type, where the pattern does not
             say enough; None where it does.
         column: Whether the texts of a column, together, are of the type, where no value says it
-            alone; None where each value does. It is judged on a sample, never on the table, and
-            only where the detector recognises one of its texts or more.
+            alone; None where each value does. It is given all texts of the column, and those of
+            them the detector recognises, one or more: it is asked only where there is one. It is
+            judged on a sample, never on the table.
         threshold: The share of the values of a sample the detector has to recognise for its
             type to be a match of their column; half of them unless another is given, a low
             share, as more hypotheses are better than fewer.
@@ -57,7 +58,7 @@ class Detector:
 
     pattern: re.Pattern[str]
     check: Callable[[str], bool] | None = None
-    column: Callable[[Sequence[str]], bool] | None = None
+    column: Callable[[Sequence[str], Sequence[str]], bool] | None = None
     threshold: float = 0.5
 
     def recognises(self, value: str) -> bool:
@@ -68,10 +69,10 @@ class Detector:
 
     def share(self, texts: Sequence[str]) -> float:
         """The share of `texts` of the type, from 0 to 1; 0 where the texts together are not."""
-        recognised = sum(1 for text in texts if self.recognises(text))
-        if not recognised or (self.column is not None and not self.column(texts)):
+        recognised = [text for text in texts if self.recognises(text)]
+        if not recognised or (self.column is not None and not self.column(texts, recognised)):
             return 0.0
-        return recognised / len(texts)
+        return len(recognised) / len(texts)
 
 
 # The region of a phone number written without its country code.
@@ -102,6 +103,43 @@ def _date(value: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+# A value of words: two words or more, one of them after the first beginning in lower case, as free
+# text has many of; the classes other than of a space let a word hold a line break, which `.` does
+# not match.
+_OF_WORDS: Final = re.compile(r"[^ ]+( +[^ ]+)* +[a-zäöüß][^ ]*( +[^ ]+)*")
+
+# A word in lower case, as the pattern of a value of words takes it: one that begins with a letter
+# of its class.
+_LOWER: Final = re.compile("[a-zäöüß]")
+
+# Of free text: the share of the words after the first of their value that are in lower case, the
+# share of letters among the characters other than spaces, and the share of distinct values among
+# the values of words, each at least.
+_LOWER_CASE: Final = 0.3
+_LETTERS: Final = 0.7
+_DISTINCT: Final = 0.5
+
+
+def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
+    """Whether `texts`, of which `of_words` are values of words, are free text.
+
+    The words in lower case tell prose from names, addresses and products, of capitals mostly, in
+    German as in English; the letters tell it from codes and numbers; and the values of words that
+    are distinct tell it from categories of several words, whatever short values repeat beside
+    them.
+    """
+    # Words are what stands between spaces, as the pattern of a value of words takes them.
+    words = [word for text in texts for word in text.split(" ")[1:] if word]
+    lower = sum(1 for word in words if _LOWER.match(word))
+    characters = [character for text in texts for character in text if character != " "]
+    letters = sum(1 for character in characters if character.isalpha())
+    return (
+        lower >= _LOWER_CASE * len(words)
+        and letters >= _LETTERS * len(characters)
+        and len(set(of_words)) >= _DISTINCT * len(of_words)
+    )
 
 
 @dataclass(frozen=True)
@@ -168,8 +206,14 @@ UUID: Final = SemanticType(
     Detector(re.compile(r"[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}")),
 )
 """A UUID, written as text in the form of RFC 9562."""
+# Values of words, of a column of free text; a fifth of the values is enough, as a column of
+# comments holds many short ones too.
+FREE_TEXT: Final = SemanticType(
+    "free-text", Sensitivity.NONE, Detector(_OF_WORDS, column=_free_text, threshold=0.2)
+)
+"""Free text, such as a comment, a note or a description, of words and sentences."""
 
-BUILT_IN: Final = (EMAIL, PHONE, POSTAL_CODE, IBAN, CARD_NUMBER, DATE, UUID)
+BUILT_IN: Final = (EMAIL, PHONE, POSTAL_CODE, IBAN, CARD_NUMBER, DATE, UUID, FREE_TEXT)
 """The semantic types of the tool."""
 
 # The name of a semantic type of a project, of lower case letters, digits and `-`, as the names of

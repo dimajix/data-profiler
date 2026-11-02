@@ -37,12 +37,12 @@ def test_every_type_recognised_in_half_of_the_values_is_a_match() -> None:
 
 
 def test_a_type_recognised_in_the_threshold_of_its_detector_is_a_match() -> None:
-    comment = SemanticType(
-        "comment", Sensitivity.NONE, Detector(re.compile("[a-z]+ [a-z]+"), threshold=0.25)
+    pair = SemanticType(
+        "pair", Sensitivity.NONE, Detector(re.compile("[0-9]+ [0-9]+"), threshold=0.25)
     )
-    values: list[object] = ["ok", "ok", "ok", "call back"]
-    assert _matches(values, comment) == (Match(comment, 0.25),)
-    assert _matches(["ok", *values], comment) == (), "a fifth is less than a quarter"
+    values: list[object] = ["ok", "ok", "ok", "1 2"]
+    assert _matches(values, pair) == (Match(pair, 0.25),)
+    assert _matches(["ok", *values], pair) == (), "a fifth is less than a quarter"
 
 
 def test_a_type_of_the_project_is_recognised(account_number: SemanticType) -> None:

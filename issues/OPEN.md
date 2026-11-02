@@ -21,7 +21,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [20](20-detectors-of-boolean-pairs.md) | open | medium | feature | Nothing recognises a column of flags written as `true`/`false`, `yes`/`no` or `0`/`1`, so that a flag is told to the language model as nothing but a text or a number. |
-| [21](21-a-detector-of-free-text.md) | open | medium | feature | Nothing recognises a column of free text - comments, notes, descriptions -, so that it is told to the language model as a text like any other, and its values are disclosed like those of a code. |
 
 ## Describe
 
