@@ -1,15 +1,15 @@
 """Tests of disclosure: the values of a table the profile may hold, of a table made by hand."""
 
-from data_profiler.detect import PHONE, POSTAL_CODE, Sensitivity
+from data_profiler.detect import PHONE, POSTAL_CODE, SemanticType, Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.profile import Column, Match, Range, Statistics, Table, Value
 
 _VALUES = (Value("10115", 7), Value("99998", 3))
 
 
-def _disclosed(column: Column) -> Column:
-    """`column`, as the profile may hold it."""
-    (disclosed,) = disclose(Table(name="t", rows=10, columns=(column,))).columns
+def _disclosed(column: Column, *types: SemanticType) -> Column:
+    """`column`, as the profile of a project of `types` may hold it."""
+    (disclosed,) = disclose(Table(name="t", rows=10, columns=(column,)), types).columns
     return disclosed
 
 
@@ -91,4 +91,18 @@ def test_a_long_value_is_cut_to_a_hundred_characters() -> None:
 
 def test_a_table_disclosed_again_is_disclosed_as_before() -> None:
     table = Table(name="t", rows=10, columns=(_code(), _code(marked=Sensitivity.PERSONAL)))
-    assert disclose(disclose(table)) == disclose(table)
+    assert disclose(disclose(table, ()), ()) == disclose(table, ())
+
+
+def test_a_value_of_a_sensitive_type_of_the_project_is_withheld(
+    account_number: SemanticType,
+) -> None:
+    column = Column(
+        name="ref",
+        type="varchar(11)",
+        statistics=Statistics(0, 2, range=Range("A0123456789", "x")),
+        values=(Value("A0123456789", 1), Value("x", 1)),
+    )
+    disclosed = _disclosed(column, account_number)
+    assert disclosed.statistics.range == Range(None, "x")
+    assert disclosed.values == (Value("x", 1),)

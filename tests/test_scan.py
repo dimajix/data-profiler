@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from data_profiler.detect import DATE, Sensitivity
+from data_profiler.detect import DATE, Detector, SemanticType, Sensitivity
 from data_profiler.profile import Match, Profile
 from data_profiler.scan import scan
 from data_profiler.source import Source
@@ -17,7 +17,7 @@ _TOLERANCE = 0.02
 def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile(".*"), Workspace.open(tmp_path, "crm", "sales"))
+    scanned = scan(source, re.compile(".*"), Workspace.open(tmp_path, "crm", "sales"), ())
     made = {table.name: table for table in example.tables}
     assert [table.name for table in scanned.tables] == sorted(made)
     for table in scanned.tables:
@@ -44,7 +44,7 @@ def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_w
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     source: Source, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"))
+    scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"), ())
     (table,) = scanned.tables
     matched = {column.name: column.matches for column in table.columns}
     assert matched["crt_dt"] == (Match(DATE, 1.0, 1.0),), "a date is a date as text"
@@ -55,7 +55,7 @@ def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
 def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
     source: Source, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile("cntct|cust"), Workspace.open(tmp_path, "crm", "sales"))
+    scanned = scan(source, re.compile("cntct|cust"), Workspace.open(tmp_path, "crm", "sales"), ())
     columns = {
         f"{table.name}.{column.name}": column
         for table in scanned.tables
@@ -74,10 +74,25 @@ def test_only_the_tables_a_pattern_matches_whole_are_scanned(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     workspace = Workspace.open(tmp_path, "crm", "sales")
-    scanned = scan(source, re.compile("prod|ord"), workspace)
+    scanned = scan(source, re.compile("prod|ord"), workspace, ())
     assert [table.name for table in scanned.tables] == ["ord", "prod"]
     assert (scanned.catalog, scanned.schema) == (example.catalog, example.schema)
     sample = workspace.read_sample("prod")
     assert len(sample.columns["prod_id"]) == 350, "the sample of each table is in the workspace"
     enumerations = [enumeration.column for enumeration in workspace.read_enumerations("prod")]
     assert "prod_grp_cd" in enumerations, "the enumerations of each table are in the workspace"
+
+
+def test_a_semantic_type_of_the_project_is_recognised_verified_and_kept_sensitive(
+    source: Source, tmp_path: Path
+) -> None:
+    # The numbers of orders of the simulation are fourteen letters in lower case.
+    order = SemanticType("order-number", Sensitivity.PERSONAL, Detector(re.compile("[a-z]{14}")))
+    workspace = Workspace.open(tmp_path, "crm", "sales")
+    scanned = scan(source, re.compile("ord"), workspace, (order,))
+    assert scanned.types == (order,), "the profile holds the types of its project"
+    (table,) = scanned.tables
+    (column,) = [column for column in table.columns if column.name == "ord_no"]
+    assert column.matches == (Match(order, 1.0, 1.0),)
+    assert column.sensitivity is Sensitivity.PERSONAL
+    assert (column.statistics.range, column.values) == (None, ())

@@ -126,6 +126,17 @@ def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
 
 
+def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: SemanticType) -> None:
+    column = Column(
+        name="v",
+        type="varchar(11)",
+        statistics=Statistics(0, 10, Lengths(11, 11)),
+        matches=(Match(account_number, 1.0),),
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: no account-number is made"):
+        rows(_table(column, count=10), Random(0))
+
+
 def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() -> None:
     column = Column(
         name="v",

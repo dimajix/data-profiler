@@ -5,6 +5,8 @@ from collections.abc import Callable
 
 import pytest
 
+from data_profiler.detect import SemanticType, Sensitivity, project_type
+
 
 @pytest.fixture
 def command_line(monkeypatch: pytest.MonkeyPatch) -> Callable[..., int]:
@@ -22,3 +24,9 @@ def command_line(monkeypatch: pytest.MonkeyPatch) -> Callable[..., int]:
         return 0
 
     return run
+
+
+@pytest.fixture
+def account_number() -> SemanticType:
+    """A semantic type of a project: an account number, `A` and ten digits, of personal data."""
+    return project_type("account-number", Sensitivity.PERSONAL, "A[0-9]{10}")

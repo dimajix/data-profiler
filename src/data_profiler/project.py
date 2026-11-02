@@ -1,8 +1,9 @@
 """Projects: a database profiled in environments, its configuration and results in one place.
 
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
-profile, for the whole project, and the environments the database is profiled in - dev, test, prod
--, each by the URL of its schema and its password; beside it, `overrides.yml` gives by hand what
+profile, for the whole project, the semantic types of its own its columns are checked for beside
+those of the tool, and the environments the database is profiled in - dev, test, prod -, each by
+the URL of its schema and its password; beside it, `overrides.yml` gives by hand what
 the profiles of all environments take as given. Each environment keeps its results in a directory
 of its own, named after it: its profile, its workspace and its report.
 
@@ -24,9 +25,11 @@ from typing import Final, Self
 from dotenv import dotenv_values
 from pydantic import TypeAdapter
 
+from data_profiler.detect import SemanticType
 from data_profiler.documents import DocumentError, read_document
+from data_profiler.profile import SemanticTypes
 
-FORMAT: Final = 1
+FORMAT: Final = 2
 """The version of the format of the configuration of a project, raised as `profile.FORMAT` is."""
 
 # The name of an environment, which is the name of its directory, the same on every system, and an
@@ -125,6 +128,9 @@ class _Configuration:
 
     tables: str | tuple[str, ...]
     environments: Mapping[str, _Settings]
+    # Checked by its validator, not after it as the others are, as the profile holds the types too
+    # and checks them the same way.
+    types: SemanticTypes = ()
 
 
 _ADAPTER: Final = TypeAdapter(_Configuration)
@@ -135,17 +141,20 @@ class Project:
 
     Attributes:
         tables: The names of the tables to profile, matched whole.
+        types: The semantic types of the project, beside those of the tool.
     """
 
     def __init__(
         self,
         file: Path,
         tables: Pattern[str],
+        types: tuple[SemanticType, ...],
         environments: Mapping[str, _Settings],
         variables: Mapping[str, str],
     ) -> None:
         """Takes what `read` has read of `file`, and the variables to resolve its values by."""
         self.tables = tables
+        self.types = types
         self._file = file
         self._environments = environments
         self._variables = variables
@@ -168,7 +177,8 @@ class Project:
                 no document of the format, names
                 an environment other than in lower case letters, digits, `-` and `_`, beginning
                 with a letter or a digit, gives a password other than by a variable, a URL with a
-                variable in it rather than as a whole, or its tables by no regular expression.
+                variable in it rather than as a whole, its tables by no regular expression, or a
+                semantic type of its own that cannot be made, as `detect.project_type` says.
         """
         file = directory / "project.yml"
         try:
@@ -199,7 +209,7 @@ class Project:
         except PatternError as error:
             raise ProjectError(f"{file}: tables is no regular expression: {error}") from error
         _complete(variables, directory / _VARIABLES)
-        return cls(file, pattern, configuration.environments, variables)
+        return cls(file, pattern, configuration.types, configuration.environments, variables)
 
     @property
     def overrides(self) -> Path:

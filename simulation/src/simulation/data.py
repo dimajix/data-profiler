@@ -4,7 +4,8 @@ The values of a column are drawn from a pool of as many distinct values as its s
 each of them used at least once, and its nulls are spread over the rows at random. What the values
 are follows from the type of the column: texts are letters of the counted lengths, and where the
 column has a match, values of its first semantic type, of those lengths, which its detector
-recognises - all of them, whatever the shares of the match.
+recognises - all of them, whatever the shares of the match. Values are made of the semantic types of
+the tool alone, not of those of a project.
 """
 
 import re
@@ -130,16 +131,21 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
         raise SimulationError(f"{table.name}.{column.name}: a text column without its lengths")
     wanted = iter([lengths.shortest, lengths.longest])
     kind = column.matches[0].type if column.matches else None
+    typed = None if kind is None else _TYPED.get(kind)
+    if kind is not None and typed is None:
+        raise SimulationError(
+            f"{table.name}.{column.name}: no {kind.name} is made, a semantic type of a project"
+        )
 
     def draw() -> str:
         given = next(wanted, None)
-        if kind is None:
+        if kind is None or typed is None:
             return _letters(_length(given, lengths, random), random)
         # Each try of a length of its own, as not every length between the shortest and the
         # longest is one of a value of the type.
         for _ in range(_ATTEMPTS):
             length = _length(given, lengths, random)
-            text = _TYPED[kind](length, random)
+            text = typed(length, random)
             if len(text) == length and kind.detector.recognises(text):
                 return text
         within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"

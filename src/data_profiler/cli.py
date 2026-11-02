@@ -68,7 +68,7 @@ def _scan(directory: Path, name: str) -> None:
     environment = project.environment(name)
     with connect(environment.url, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
-        profile = scan(source, project.tables, workspace)
+        profile = scan(source, project.tables, workspace, project.types)
     profile.write(environment.profile)
     _logger.info("Wrote the profile of %s to %s", name, environment.profile)
 

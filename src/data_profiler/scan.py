@@ -2,9 +2,10 @@
 
 Each table is counted by the module `statistics`, by one query; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
-into the workspace. The semantic types of its columns are recognised in the sample, and verified on
-the whole table, by the module `matching`. Which values of the database go into the profile - the
-ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides.
+into the workspace. The semantic types of its columns, those of the tool and those of the project,
+are recognised in the sample, and verified on the whole table, by the module `matching`. Which
+values of the database go into the profile - the ranges and enumerations of the columns of no
+sensitivity -, the module `disclosure` decides, by the same types.
 """
 
 import logging
@@ -12,6 +13,7 @@ from collections.abc import Sequence
 from dataclasses import replace
 from re import Pattern
 
+from data_profiler.detect import SemanticType
 from data_profiler.disclosure import disclose
 from data_profiler.enumerations import values
 from data_profiler.matching import recognise, verify
@@ -24,17 +26,24 @@ from data_profiler.workspace import Enumeration, Workspace
 _logger = logging.getLogger(__name__)
 
 
-def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile:
+def scan(
+    source: Source,
+    pattern: Pattern[str],
+    workspace: Workspace,
+    types: tuple[SemanticType, ...],
+) -> Profile:
     """The profile of the tables of `source` that `pattern` matches whole.
 
     Args:
         source: The schema whose tables are scanned.
         pattern: The names of the tables to scan, matched whole.
         workspace: Where the enumerations and the samples of the tables are kept.
+        types: The semantic types of the project, recognised beside those of the tool.
 
     Returns:
         The profile: the tables, sorted by name, with their columns, types, statistics and
-        matches, and the ranges and values of enumerations of the columns of no sensitivity.
+        matches, and the ranges and values of enumerations of the columns of no sensitivity; and
+        the types of the project.
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
@@ -50,9 +59,9 @@ def scan(source: Source, pattern: Pattern[str], workspace: Workspace) -> Profile
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        found = verify(source, recognise(table, sample))
-        tables.append(disclose(_valued(found, enumerations)))
-    return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables))
+        found = verify(source, recognise(table, sample, types))
+        tables.append(disclose(_valued(found, enumerations), types))
+    return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables), types=types)
 
 
 def _valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:

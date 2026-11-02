@@ -10,14 +10,14 @@ values where they are laid over, by the module `disclosure`, so that a mark need
 An override that names what the profile does not have is refused, naming it.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Final
 
 from pydantic import TypeAdapter
 
-from data_profiler.detect import Sensitivity
+from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.documents import DocumentError, read_document
 from data_profiler.glossary import occurrences
@@ -113,7 +113,7 @@ class Overrides:
                 f"the overrides name tables the profile does not have: {', '.join(missing)}"
             )
         for name, given in self.tables.items():
-            tables[name] = _laid_over(given, tables[name])
+            tables[name] = _laid_over(given, tables[name], profile.types)
         return replace(
             profile,
             tables=tuple(tables[table.name] for table in profile.tables),
@@ -124,7 +124,7 @@ class Overrides:
 _ADAPTER: Final = TypeAdapter(Overrides)
 
 
-def _laid_over(given: TableOverride, table: Table) -> Table:
+def _laid_over(given: TableOverride, table: Table, types: Sequence[SemanticType]) -> Table:
     """`table` with what `given` gives of its columns, and its values disclosed again."""
     columns = {column.name: column for column in table.columns}
     missing = sorted(set(given.columns) - set(columns))
@@ -135,4 +135,4 @@ def _laid_over(given: TableOverride, table: Table) -> Table:
     for name, column in given.columns.items():
         if column.sensitivity is not None:
             columns[name] = replace(columns[name], marked=column.sensitivity)
-    return disclose(replace(table, columns=tuple(columns.values())))
+    return disclose(replace(table, columns=tuple(columns.values())), types)

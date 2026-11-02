@@ -2,26 +2,44 @@
 
 A profile is what the stages hand to each other, and what a person reads and shares - corrected by
 the overrides of the project, laid over it: it holds no values of the columns found sensitive. It is
-a document, written as YAML in the format below and read back by the same classes.
+a document, written as YAML in the format below and read back by the same classes. A match names
+its semantic type by its name, of a type of the tool or of the project, whose types the profile
+holds in the form `project.yml` gives them, so that it is read without its project.
 """
 
 from collections.abc import Mapping
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Final
 
-from pydantic import PlainSerializer, PlainValidator, TypeAdapter
+from pydantic import (
+    PlainSerializer,
+    PlainValidator,
+    TypeAdapter,
+    ValidationError,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    WrapValidator,
+)
 from pydantic_core import PydanticCustomError
 
-from data_profiler.detect import BUILT_IN, SemanticType, Sensitivity, semantic_type
+from data_profiler.detect import (
+    SemanticType,
+    SemanticTypeError,
+    Sensitivity,
+    all_types,
+    project_type,
+    semantic_type,
+)
 from data_profiler.documents import DocumentError, read_document, write_document
 
-FORMAT: Final = 4
+FORMAT: Final = 5
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below: a field added is unknown to the
 version before, a field removed or renamed is missing for the version after. A profile of another
-format is refused; whether older formats are read again is decided when the format first changes.
+format is refused, an older one as well: it is scanned again, not converted.
 """
 
 
@@ -29,12 +47,57 @@ class ProfileError(Exception):
     """A profile that cannot be read or written: its file, and what is wrong with it."""
 
 
-def _semantic_type(name: object) -> SemanticType:
-    """The semantic type named `name` in a profile."""
-    kind = semantic_type(name) if isinstance(name, str) else None
+# The key of the semantic types of a project in the context of the validation of a document.
+_TYPES: Final = "types"
+
+
+@dataclass(frozen=True)
+class _Definition:
+    """A semantic type of a project, as a document gives it under its name."""
+
+    pattern: str
+    sensitivity: Sensitivity
+
+
+_DEFINITIONS: Final = TypeAdapter(dict[str, _Definition])
+
+
+def _semantic_types(value: object) -> tuple[SemanticType, ...]:
+    """The semantic types of a project that a document gives by `value`, each under its name."""
+    definitions = _DEFINITIONS.validate_python(value, extra="forbid")
+    try:
+        return tuple(
+            project_type(name, definition.sensitivity, definition.pattern)
+            for name, definition in definitions.items()
+        )
+    except SemanticTypeError as error:
+        raise PydanticCustomError("semantic_type", "{problem}", {"problem": str(error)}) from error
+
+
+def _definitions(types: tuple[SemanticType, ...]) -> dict[str, dict[str, str]]:
+    """`types` as a document gives them, each under its name."""
+    return {
+        kind.name: {"pattern": kind.detector.pattern.pattern, "sensitivity": kind.sensitivity.value}
+        for kind in types
+    }
+
+
+type SemanticTypes = Annotated[
+    tuple[SemanticType, ...], PlainValidator(_semantic_types), PlainSerializer(_definitions)
+]
+"""The semantic types of a project in a document: each under its name, its pattern and sensitivity.
+
+What `detect.project_type` refuses is refused, naming the field.
+"""
+
+
+def _semantic_type(name: object, info: ValidationInfo) -> SemanticType:
+    """The semantic type named `name`, of the tool or of the project the document gives."""
+    types = info.context.get(_TYPES, ()) if info.context is not None else ()
+    kind = semantic_type(name, types) if isinstance(name, str) else None
     if kind is not None:
         return kind
-    *others, last = (repr(kind.name) for kind in BUILT_IN)
+    *others, last = (repr(kind.name) for kind in all_types(types))
     expected = f"{', '.join(others)} or {last}"
     raise PydanticCustomError("semantic_type", "Input should be {expected}", {"expected": expected})
 
@@ -185,12 +248,15 @@ class Profile:
         tables: The tables that were selected, by their names.
         glossary: Each term of the names of the tables and columns with the word it stands for,
             once proposed or given.
+        types: The semantic types of the project the tables were scanned with, beside those of
+            the tool.
     """
 
     catalog: str
     schema: str
     tables: tuple[Table, ...]
     glossary: Mapping[str, str] = field(default_factory=dict)
+    types: SemanticTypes = ()
 
     @classmethod
     def read(cls, path: Path) -> "Profile":
@@ -204,7 +270,9 @@ class Profile:
 
         Raises:
             ProfileError: The file cannot be read, is no YAML, holds no fields, is of another
-                format, or a field is missing, unknown or of the wrong type.
+                format, a field is missing, unknown or of the wrong type, a semantic type of the
+                project cannot be made, as `detect.project_type` says, or a match names a type
+                neither of the tool nor of the project.
         """
         try:
             return read_document(path, _ADAPTER, FORMAT)
@@ -226,4 +294,16 @@ class Profile:
             raise ProfileError(str(error)) from error
 
 
-_ADAPTER: Final = TypeAdapter(Profile)
+def _with_types(
+    value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+) -> Profile:
+    """The profile `value`, its semantic types read first, as its matches name them."""
+    if isinstance(value, dict) and info.context is not None:
+        # Wrong types are refused where the field `types` is validated, naming the field.
+        with suppress(ValidationError, PydanticCustomError):
+            info.context[_TYPES] = _semantic_types(value.get("types", {}))
+    profile: Profile = handler(value)
+    return profile
+
+
+_ADAPTER: Final = TypeAdapter(Annotated[Profile, WrapValidator(_with_types)])

@@ -8,6 +8,9 @@ pattern alone is tried, it lets few values pass that the check would refuse. A d
 value as text, its spaces at either end cut, whatever the type of its column, so that every column
 is checked. The patterns use what Python and the regular expressions of the databases share:
 classes, repetitions, groups and alternatives, and no other escapes than of a character.
+
+The types of the tool are the constants below; a project gives types of its own, each by its name,
+its sensitivity and a pattern alone, which a value is checked for beside those of the tool.
 """
 
 import re
@@ -15,6 +18,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import Enum
+from re import PatternError
 from typing import Final
 
 from phonenumbers import NumberParseException, is_valid_number, parse
@@ -150,26 +154,79 @@ UUID: Final = SemanticType(
 BUILT_IN: Final = (EMAIL, PHONE, POSTAL_CODE, IBAN, CARD_NUMBER, DATE, UUID)
 """The semantic types of the tool."""
 
+# The name of a semantic type of a project, of lower case letters, digits and `-`, as the names of
+# the types of the tool are.
+_NAME: Final = re.compile(r"[a-z0-9][a-z0-9-]*")
 
-def semantic_type(name: str) -> SemanticType | None:
-    """The semantic type of the tool named `name`, or None where it has none of that name."""
-    return next((kind for kind in BUILT_IN if kind.name == name), None)
+
+class SemanticTypeError(Exception):
+    """A semantic type of a project that cannot be made: its name, and what is wrong with it."""
 
 
-def is_sensitive(text: str) -> bool:
-    """Whether `text`, its spaces at either end cut, is of a semantic type of a sensitivity."""
+def project_type(name: str, sensitivity: Sensitivity, pattern: str) -> SemanticType:
+    """A semantic type of a project, recognised by its pattern alone.
+
+    Args:
+        name: The name of the type.
+        sensitivity: The rules the values of the type fall under.
+        pattern: The regular expression every value of the type matches whole.
+
+    Returns:
+        The semantic type.
+
+    Raises:
+        SemanticTypeError: The name is one of a type of the tool, or of other characters than
+            lower case letters, digits and `-`, or the pattern is no regular expression of Python.
+    """
+    if not _NAME.fullmatch(name):
+        raise SemanticTypeError(
+            f"{name!r} is named other than in lower case letters, digits and '-', beginning with"
+            " a letter or a digit"
+        )
+    if semantic_type(name, ()) is not None:
+        raise SemanticTypeError(f"{name} is a semantic type of the tool")
+    try:
+        compiled = re.compile(pattern)
+    except PatternError as error:
+        raise SemanticTypeError(
+            f"the pattern of {name} is no regular expression: {error}"
+        ) from error
+    return SemanticType(name, sensitivity, Detector(compiled))
+
+
+def all_types(types: Sequence[SemanticType]) -> tuple[SemanticType, ...]:
+    """The semantic types the values of a project are checked for: the tool's, then `types`."""
+    return (*BUILT_IN, *types)
+
+
+def semantic_type(name: str, types: Sequence[SemanticType]) -> SemanticType | None:
+    """The semantic type named `name`, of the tool or of `types`, a project's; None if none is."""
+    return next((kind for kind in all_types(types) if kind.name == name), None)
+
+
+def is_sensitive(text: str, types: Sequence[SemanticType]) -> bool:
+    """Whether `text`, its spaces at either end cut, is of a type of a sensitivity.
+
+    Args:
+        text: The text.
+        types: The semantic types of the project, checked beside those of the tool.
+
+    Returns:
+        Whether a type of the tool or of the project of a sensitivity recognises the text.
+    """
     text = text.strip()
     return any(
         kind.sensitivity is not Sensitivity.NONE and kind.detector.recognises(text)
-        for kind in BUILT_IN
+        for kind in all_types(types)
     )
 
 
-def detect(values: Sequence[object]) -> dict[SemanticType, float]:
+def detect(values: Sequence[object], types: Sequence[SemanticType]) -> dict[SemanticType, float]:
     """The share of `values` each semantic type is recognised in, of the types one value is of.
 
     Args:
         values: The values of a column, as a sample holds them; None is a null, and not counted.
+        types: The semantic types of the project, checked beside those of the tool.
 
     Returns:
         The share of the values that are not null each type is recognised in, from 0 to 1, by
@@ -177,7 +234,7 @@ def detect(values: Sequence[object]) -> dict[SemanticType, float]:
     """
     texts = [str(value).strip() for value in values if value is not None]
     shares = {}
-    for kind in BUILT_IN:
+    for kind in all_types(types):
         recognised = sum(1 for text in texts if kind.detector.recognises(text))
         if recognised:
             shares[kind] = recognised / len(texts)

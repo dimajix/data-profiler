@@ -92,7 +92,7 @@ test, prod - in a directory named after the environment. `examples/crm/` is a pr
 simulation environment:
 
 ```yaml
-format: 1
+format: 2
 tables: .*
 environments:
   simulation:
@@ -102,6 +102,19 @@ environments:
 
 - **`tables`** selects the tables of the whole project: a regular expression matched whole, or a
   list of their names.
+- **`types`**, where there are any, gives the semantic types of the project, beside those of the
+  tool, each under its name - lower case letters, digits and `-` -, by a pattern its values match
+  whole, and its sensitivity, `none`, `personal` or `payment-card`:
+
+  ```yaml
+  types:
+    account-number:
+      pattern: "A[0-9]{10}"
+      sensitivity: personal
+  ```
+
+  The pattern is read by Python and by the database alike, so it uses what both share: classes,
+  repetitions, groups and alternatives, and no other escapes than of a character.
 - **`environments`** names each environment by the URL of its schema,
   `trino://user@host:port/catalog/schema`, and the password of its user. A value `${NAME}` is taken
   from the variable `NAME`; the password is given only so, never written out, so that

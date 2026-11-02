@@ -31,9 +31,13 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_an_environment_is_scanned_into_its_directory(
     project: Path, example: Profile, command_line: Callable[..., int]
 ) -> None:
+    # The numbers of orders of the simulation are fourteen letters in lower case.
+    with (project / "project.yml").open("a", encoding="utf-8") as file:
+        file.write("types:\n  order-number: {pattern: '[a-z]{14}', sensitivity: personal}\n")
     assert command_line(main, "scan", "simulation", "--project", str(project)) == 0
     scanned = Profile.read(project / "simulation" / "profile.yml")
     assert [table.name for table in scanned.tables] == sorted(t.name for t in example.tables)
+    assert [kind.name for kind in scanned.types] == ["order-number"], "of project.yml"
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
 
 

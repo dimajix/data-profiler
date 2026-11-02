@@ -22,16 +22,18 @@ does not depend on it, nor on what it needs. Both are one uv workspace, with one
 environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
-    and written as a document.
+    and written as a document; and the form the semantic types of a project take in a document,
+    which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over a
     profile, refused where they name what it does not have.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
-    profile, and the environments, each by its URL and its password, the password given by a
-    variable -, its variables in `.env`, which complete those of the process, its overrides in
-    `overrides.yml`, and the directories of the results of each environment.
+    profile, the semantic types of its own, and the environments, each by its URL and its
+    password, the password given by a variable -, its variables in `.env`, which complete those of
+    the process, its overrides in `overrides.yml`, and the directories of the results of each
+    environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the profile
     and the configuration of a project among them, each the fields of one class with the version of
     its format; what is wrong with one is named, field by field.
@@ -77,7 +79,8 @@ environment.
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary`, `overrides` and
 `workspace`, `report` the profile alone, and `glossary` for its names; `cli` runs the stages, and
-lays the overrides over the profile they read.
+lays the overrides over the profile they read. The semantic types of a project reach `scan` from
+`project`, and every stage after it from the profile.
 
 ## The domain
 
@@ -92,9 +95,9 @@ lays the overrides over the profile they read.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
     one kind of database.
 *   **Profile** - the document describing the tables of one schema of a database: its tables and
-    columns, what was found about them, and the glossary. It is the only thing the stages hand to
-    each other besides the workspace, and it holds no values of the columns found sensitive (see
-    [Principles](#principles)).
+    columns, what was found about them, the glossary, and the semantic types of its project. It is
+    the only thing the stages hand to each other besides the workspace, and it holds no values of
+    the columns found sensitive (see [Principles](#principles)).
 *   **Table** and **Column** - as found in the database, under their original names.
 *   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
     number of its distinct values, the range of its values, the range of lengths of texts.
@@ -103,7 +106,9 @@ lays the overrides over the profile they read.
     in one row alone; its values with the rows of each.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
 *   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date. Each has
-    a **sensitivity**: personal data (GDPR), payment card data (PCI), or none.
+    a **sensitivity**: personal data (GDPR), payment card data (PCI), or none. The tool brings its
+    types; a project gives types of its own, each by a pattern alone, which the profile holds, so
+    that it is read without its project.
 *   **Detector** - recognises one semantic type: by a pattern every value of the type matches - in
     the values of a sample, and on the whole table in SQL -, and by a check of a value where the
     pattern does not say enough, such as a checksum.

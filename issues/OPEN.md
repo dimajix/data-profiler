@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [11](11-overrides.md) | in progress | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
-## Detection
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [16](16-semantic-types-of-a-project.md) | in progress | medium | feature | The semantic types are fixed in the code, so that a pattern of one database alone - an account number `A` and ten digits - cannot be recognised without changing the tool. |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |

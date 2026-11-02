@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pytest
 
+from data_profiler.detect import SemanticType
 from data_profiler.project import Project, ProjectError
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
 _CONFIGURATION = """\
-format: 1
+format: 2
 tables: cust.*
 environments:
   dev:
@@ -40,6 +41,37 @@ def test_the_tables_of_a_project_are_matched_by_its_list_of_names(tmp_path: Path
     assert tables.fullmatch("ord.itm")
     assert not tables.fullmatch("ord_itm"), "a name is matched as it is written"
     assert not tables.fullmatch("cust_addr")
+
+
+_TYPES = """\
+types:
+  {name}:
+    pattern: "{pattern}"
+    sensitivity: personal
+"""
+
+
+def test_the_semantic_types_of_a_project_are_read_with_their_patterns(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    configuration = _CONFIGURATION + _TYPES.format(name="account-number", pattern="A[0-9]{10}")
+    assert _project(tmp_path, configuration).types == (account_number,)
+
+
+def test_a_project_without_semantic_types_of_its_own_has_none(tmp_path: Path) -> None:
+    assert _project(tmp_path).types == ()
+
+
+def test_a_semantic_type_of_a_project_that_cannot_be_is_refused_naming_it(tmp_path: Path) -> None:
+    configuration = _CONFIGURATION + _TYPES.format(name="email", pattern="A[0-9]{10}")
+    with pytest.raises(ProjectError, match=r"project\.yml: types: email is a semantic type of the"):
+        _project(tmp_path, configuration)
+
+
+def test_a_semantic_type_of_a_project_without_its_sensitivity_is_refused(tmp_path: Path) -> None:
+    configuration = _CONFIGURATION + "types:\n  account:\n    pattern: A[0-9]\n"
+    with pytest.raises(ProjectError, match=r"types\.account\.sensitivity: .*required"):
+        _project(tmp_path, configuration)
 
 
 def test_an_environment_is_resolved_from_the_variables_it_names(tmp_path: Path) -> None:
@@ -147,8 +179,8 @@ def test_tables_that_are_no_regular_expression_are_refused(tmp_path: Path) -> No
 
 
 def test_a_configuration_that_is_no_document_of_a_project_is_refused(tmp_path: Path) -> None:
-    configuration = _CONFIGURATION.replace("format: 1", "format: 2")
-    with pytest.raises(ProjectError, match=r"project\.yml is of format 2"):
+    configuration = _CONFIGURATION.replace("format: 2", "format: 1")
+    with pytest.raises(ProjectError, match=r"project\.yml is of format 1"):
         _project(tmp_path, configuration)
 
 

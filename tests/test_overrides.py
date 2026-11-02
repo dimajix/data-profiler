@@ -1,10 +1,11 @@
 """Tests of overrides: read from a document, laid over a profile, refused where they name amiss."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from data_profiler.detect import Sensitivity
+from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
 from data_profiler.profile import Column, Profile, Range, Statistics, Table, Value
 
@@ -49,6 +50,17 @@ def test_a_column_marked_sensitive_loses_its_values() -> None:
     assert marked.sensitivity is Sensitivity.PERSONAL
     assert (marked.statistics.range, marked.values) == (None, ())
     assert other == _PROFILE.tables[0].columns[1], "a column not marked keeps what it has"
+
+
+def test_a_value_of_a_sensitive_type_of_the_project_is_withheld_where_laid_over(
+    account_number: SemanticType,
+) -> None:
+    (table,) = _PROFILE.tables
+    other = replace(table.columns[1], values=(Value("A0123456789", 1), Value("TEL", 1)))
+    table = replace(table, columns=(table.columns[0], other))
+    profile = replace(_PROFILE, tables=(table,), types=(account_number,))
+    (laid,) = _marked("frst_nm").laid_over(profile).tables
+    assert laid.columns[1].values == (Value("TEL", 1),), "checked by the types of the profile"
 
 
 def test_the_words_of_the_overrides_are_taken_as_given() -> None:

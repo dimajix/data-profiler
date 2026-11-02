@@ -3,7 +3,9 @@
 A document holds the fields of one class, checked by pydantic, and the version of its format in the
 field `format`; a document of another format, or with a field missing, unknown or of the wrong type,
 is refused. The field `format` is the document's own: a class a document holds has none. A field
-that has its default is not written: a document holds what differs from the defaults.
+that has its default is not written: a document holds what differs from the defaults. The
+validators of a document share a context, a dict made anew for each document read, by which a
+field is checked against another that holds what it names.
 The profile is such a document, and the configuration of a project.
 """
 
@@ -50,7 +52,7 @@ def read_document[T](path: Path, adapter: TypeAdapter[T], version: int) -> T:
     if type(found) is not int or found != version:
         raise DocumentError(f"{path} is of format {found!r}, but only format {version} is read")
     try:
-        return adapter.validate_python(content, extra="forbid")
+        return adapter.validate_python(content, extra="forbid", context={})
     except ValidationError as error:
         problems = "; ".join(_problem(detail) for detail in error.errors())
         raise DocumentError(f"{path}: {problems}") from error

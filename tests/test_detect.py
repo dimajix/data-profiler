@@ -1,5 +1,6 @@
 """Tests of detection: each detector on values of its type and on values that are not."""
 
+import re
 from datetime import date, datetime
 
 import pytest
@@ -13,9 +14,12 @@ from data_profiler.detect import (
     POSTAL_CODE,
     UUID,
     SemanticType,
+    SemanticTypeError,
     Sensitivity,
     detect,
     is_sensitive,
+    project_type,
+    semantic_type,
 )
 
 _RECOGNISED = {
@@ -116,21 +120,21 @@ def test_every_semantic_type_has_its_sensitivity(
 
 def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
     values = ["10115", "01067", None, "anna@example.de", "nothing", None]
-    assert detect(values) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
+    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:
-    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)]) == {DATE: 1.0}
-    assert detect([10115, 99998]) == {POSTAL_CODE: 1.0}
+    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)], ()) == {DATE: 1.0}
+    assert detect([10115, 99998], ()) == {POSTAL_CODE: 1.0}
 
 
 def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
-    assert detect([" 10115", "10115   "]) == {POSTAL_CODE: 1.0}
+    assert detect([" 10115", "10115   "], ()) == {POSTAL_CODE: 1.0}
 
 
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])
 def test_no_type_is_detected_without_values(values: list[object]) -> None:
-    assert detect(values) == {}
+    assert detect(values, ()) == {}
 
 
 @pytest.mark.parametrize(
@@ -145,4 +149,45 @@ def test_no_type_is_detected_without_values(values: list[object]) -> None:
     ],
 )
 def test_a_text_of_a_type_of_a_sensitivity_is_sensitive(text: str, sensitive: bool) -> None:
-    assert is_sensitive(text) == sensitive
+    assert is_sensitive(text, ()) == sensitive
+
+
+def test_a_type_of_a_project_is_detected_beside_those_of_the_tool(
+    account_number: SemanticType,
+) -> None:
+    values = ["A0123456789", "10115"]
+    assert detect(values, (account_number,)) == {POSTAL_CODE: 0.5, account_number: 0.5}
+
+
+def test_a_text_of_a_type_of_a_project_of_a_sensitivity_is_sensitive(
+    account_number: SemanticType,
+) -> None:
+    assert is_sensitive("A0123456789", (account_number,))
+    assert not is_sensitive("A0123456789", ()), "a type of no project is not checked"
+
+
+def test_a_semantic_type_is_found_by_its_name(account_number: SemanticType) -> None:
+    assert semantic_type("uuid", ()) is UUID
+    assert semantic_type("account-number", (account_number,)) is account_number
+    assert semantic_type("account-number", ()) is None
+
+
+def test_a_type_of_a_project_is_recognised_by_its_pattern(account_number: SemanticType) -> None:
+    assert account_number.detector.recognises("A0123456789")
+    assert not account_number.detector.recognises("A012345678")
+
+
+@pytest.mark.parametrize(
+    ("name", "pattern", "problem"),
+    [
+        ("email", "A[0-9]{10}", "email is a semantic type of the tool"),
+        ("Account", "A[0-9]{10}", "'Account' is named other than in lower case letters"),
+        ("account", "A[0-9", "the pattern of account is no regular expression"),
+    ],
+    ids=["a name of the tool", "a name in capitals", "no regular expression"],
+)
+def test_a_type_of_a_project_that_cannot_be_is_refused_naming_it(
+    name: str, pattern: str, problem: str
+) -> None:
+    with pytest.raises(SemanticTypeError, match=re.escape(problem)):
+        project_type(name, Sensitivity.PERSONAL, pattern)

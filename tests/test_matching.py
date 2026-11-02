@@ -10,11 +10,11 @@ from data_profiler.statistics import count
 from data_profiler.workspace import Sample
 
 
-def _matches(values: list[object]) -> tuple[Match, ...]:
-    """The matches of a column of `values`, as its sample holds them."""
+def _matches(values: list[object], *types: SemanticType) -> tuple[Match, ...]:
+    """The matches of a column of `values`, as its sample holds them, in a project of `types`."""
     column = Column(name="value", type="varchar(40)", statistics=Statistics(0, len(values)))
     table = Table(name="table", rows=len(values), columns=(column,))
-    (matched,) = recognise(table, Sample(columns={"value": values})).columns
+    (matched,) = recognise(table, Sample(columns={"value": values}), types).columns
     return matched.matches
 
 
@@ -33,6 +33,10 @@ def test_the_nulls_of_a_sample_are_not_counted() -> None:
 def test_every_type_recognised_in_half_of_the_values_is_a_match() -> None:
     matches = _matches(["10115", "2024-01-31"])
     assert sorted(match.type.name for match in matches) == ["date", "postal-code"]
+
+
+def test_a_type_of_the_project_is_recognised(account_number: SemanticType) -> None:
+    assert _matches(["A0123456789", "A9876543210"], account_number) == (Match(account_number, 1.0),)
 
 
 def test_a_share_is_written_with_three_digits() -> None:

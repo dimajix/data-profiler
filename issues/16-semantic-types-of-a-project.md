@@ -1,6 +1,6 @@
 # 16 — Semantic types of a project
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -98,3 +98,26 @@ Open for that interface:
   its name and resolves it when it is read, refusing an unknown name with the message pydantic gave
   for the enumeration. `pydantic-core`, whose error that message is raised by, is named among the
   dependencies, as every package imported is.
+
+- **2026-11-02** — Step 2 done: `project.yml` gives the types of a project under `types`, each by
+  its name with its pattern and its sensitivity; `detect.project_type` makes one, refusing a name of
+  the tool, a name other than of lower case letters, digits and `-`, and a pattern Python does not
+  compile, by `SemanticTypeError`; `detect.all_types` names the types the values of a project are
+  checked for, those of the tool and its own. `detect`, `is_sensitive` and `semantic_type` take the
+  types of the project, which `scan` passes to `recognise` and `disclose` and writes into the
+  profile, of format 5, in the form of `project.yml`; `Overrides.laid_over` discloses by the types
+  of the profile. As the maintainer chose, the names of the matches are resolved by a context of
+  the validation: `read_document` gives each document a context of its own, into which the profile
+  reads its types before its fields are checked; the field `types` checks them again, and refuses
+  them naming the field. The generator of the simulation refuses a match of a type of a project.
+  Differing from the interface agreed: the format of `project.yml` is raised to 2, as its version is
+  raised with every field added, as that of the profile is; and the form of the types in a
+  document, `profile.SemanticTypes`, lives with the profile, which is read without its project,
+  and `project` reads its types by it. A pattern is checked by Python alone; whether the database
+  reads it shows only in `scan`.
+
+- **2026-11-02** — Done, as the maintainer accepted step 2 and decided: a `project.yml` of format 1
+  is refused as an older profile is, though it would read as one of format 2 without types; the
+  types are read twice for the context of the validation, as chosen. The documentation of
+  `profile.FORMAT`, which left open whether older formats are read again, now says that they are
+  refused, and a profile is scanned again.

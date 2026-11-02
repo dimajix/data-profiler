@@ -1,11 +1,12 @@
 """Tests of the profile: written and read as a document, refused where it is not one."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 from yaml import safe_dump, safe_load
 
-from data_profiler.detect import EMAIL, Sensitivity
+from data_profiler.detect import EMAIL, SemanticType, Sensitivity
 from data_profiler.profile import (
     FORMAT,
     Column,
@@ -109,6 +110,50 @@ def test_a_profile_with_a_wrong_field_is_refused_naming_the_field(
 ) -> None:
     path = _written(tmp_path, change)
     with pytest.raises(ProfileError, match=problem):
+        Profile.read(path)
+
+
+def _of_a_project(account_number: SemanticType) -> Profile:
+    """`_PROFILE`, of a project of the type `account_number`, which its first column is of."""
+    table = _PROFILE.tables[0]
+    column = replace(table.columns[0], matches=(Match(account_number, 1.0, 1.0),))
+    table = replace(table, columns=(column, *table.columns[1:]))
+    return replace(_PROFILE, tables=(table, *_PROFILE.tables[1:]), types=(account_number,))
+
+
+def test_a_profile_with_the_types_of_its_project_is_written_and_read_unchanged(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    profile = _of_a_project(account_number)
+    path = tmp_path / "profile.yml"
+    profile.write(path)
+    assert Profile.read(path) == profile
+    content = safe_load(path.read_text(encoding="utf-8"))
+    assert content["types"] == {
+        "account-number": {"pattern": "A[0-9]{10}", "sensitivity": "personal"}
+    }, "as the project gives them"
+    assert content["tables"][0]["columns"][0]["matches"][0]["type"] == "account-number"
+
+
+def test_a_match_of_a_type_neither_of_the_tool_nor_of_the_project_is_refused(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    path = tmp_path / "profile.yml"
+    _of_a_project(account_number).write(path)
+    content = safe_load(path.read_text(encoding="utf-8"))
+    content["types"] = {"customer-number": content["types"]["account-number"]}
+    path.write_text(safe_dump(content), encoding="utf-8")
+    with pytest.raises(ProfileError, match=r"type: Input should be .*'uuid' or 'customer-number'"):
+        Profile.read(path)
+
+
+def test_a_profile_with_a_wrong_type_of_its_project_is_refused_naming_it(tmp_path: Path) -> None:
+    path = tmp_path / "profile.yml"
+    _PROFILE.write(path)
+    content = safe_load(path.read_text(encoding="utf-8"))
+    content["types"] = {"date": {"pattern": "[0-9]+", "sensitivity": "none"}}
+    path.write_text(safe_dump(content), encoding="utf-8")
+    with pytest.raises(ProfileError, match="types: date is a semantic type of the tool"):
         Profile.read(path)
 
 
