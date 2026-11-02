@@ -120,8 +120,12 @@ def test_every_semantic_type_has_its_sensitivity(
 
 
 def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
-    values = ["10115", "01067", None, "anna@example.de", "nothing", None]
-    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
+    values = ["10115", "01067", None, "anna@example.de", "otto@example.de", None]
+    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.5}
+
+
+def test_a_type_recognised_in_less_than_the_threshold_of_its_detector_is_not_detected() -> None:
+    assert detect(["10115", "anna", "otto"], ()) == {}, "a third is less than half"
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:

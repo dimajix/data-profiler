@@ -87,3 +87,8 @@ The interface is put before the maintainer before it is built: the names `column
   `matching.recognise` compares a share with the threshold of its detector, and `_MATCHING` is
   gone. No type of the tool has a condition or another threshold yet; the tests pass unchanged,
   the round trip with the simulation environment among them.
+
+- **2026-11-02** — As the review found and the maintainer decided, the threshold is applied where
+  it is kept: `detect` returns the types whose share reaches the threshold of their detector
+  alone, so that `matching.recognise` no longer reaches into the detector, and no share below
+  the threshold leaves `detect.py`.

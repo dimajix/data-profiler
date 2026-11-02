@@ -240,7 +240,7 @@ def is_sensitive(text: str, types: Sequence[SemanticType]) -> bool:
 
 
 def detect(values: Sequence[object], types: Sequence[SemanticType]) -> dict[SemanticType, float]:
-    """The share of `values` each semantic type is recognised in, of the types they are of.
+    """The share of `values` each semantic type is recognised in, of the types they are a match of.
 
     Args:
         values: The values of a column, as a sample holds them; None is a null, and not counted.
@@ -248,9 +248,9 @@ def detect(values: Sequence[object], types: Sequence[SemanticType]) -> dict[Sema
 
     Returns:
         The share of the values that are not null each type is recognised in, from 0 to 1, by
-        type; a type no value is of, or whose condition of the column the values fail, is left
-        out, and so is every type where all values are null.
+        type, of the types whose share reaches the threshold of their detector; every other type
+        is left out, and so is every type where all values are null.
     """
     texts = [str(value).strip() for value in values if value is not None]
     shares = {kind: kind.detector.share(texts) for kind in all_types(types)}
-    return {kind: share for kind, share in shares.items() if share}
+    return {kind: share for kind, share in shares.items() if share >= kind.detector.threshold}
