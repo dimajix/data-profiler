@@ -151,7 +151,8 @@ Of the column:
     [20](20-detectors-of-boolean-pairs.md), and the sensitivity of free text.
 
 - **2026-11-02** — Decided with the maintainer: the condition of a column and the threshold of a
-  type become one concept for this issue and [20](20-detectors-of-boolean-pairs.md), built as a
-  refactoring of its own before either; and free text is, for now, of the sensitivity none -
+  type become one concept for this issue and [20](20-detectors-of-boolean-pairs.md), built before
+  either as the refactoring of [22](22-a-condition-of-a-column.md); and free text is, for now, of
+  the sensitivity none -
   public -, an override marking a column of free text that holds personal data, so that
   `is_sensitive` withholds no value of words.
