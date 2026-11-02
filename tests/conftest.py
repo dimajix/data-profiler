@@ -37,12 +37,12 @@ def user_environment(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(scope="session")
 def url(example: Profile) -> str:
-    """The URL of the schema of the example profile, as the user of the simulation reads it."""
-    return f"trino://profiler@localhost:8443/{example.catalog}/{example.schema}"
+    """The URL of the schema of the example profile, in the simulation environment."""
+    return f"trino://localhost:8443/{example.catalog}/{example.schema}"
 
 
 @pytest.fixture
 def source(user_environment: None, url: str) -> Iterator[Source]:
     """The schema of the example profile, read by the user of the simulation."""
-    with connect(url, "profiler") as source:
+    with connect(url, "profiler", "profiler") as source:
         yield source

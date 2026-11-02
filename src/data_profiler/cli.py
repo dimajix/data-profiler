@@ -66,7 +66,7 @@ def _scan(directory: Path, name: str) -> None:
     """Scans the environment `name` of the project in `directory` into its results."""
     project = Project.read(directory, os.environ)
     environment = project.environment(name)
-    with connect(environment.url, environment.password) as source:
+    with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
         profile = scan(source, project.tables, workspace, project.types)
     profile.write(environment.profile)

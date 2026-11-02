@@ -29,7 +29,7 @@ _logger = logging.getLogger(__name__)
 _PORT: Final = 443
 
 # The form of a URL of Trino, for the messages of a URL that has another.
-_FORM: Final = "trino://user@host:port/catalog/schema"
+_FORM: Final = "trino://host:port/catalog/schema"
 
 # The types of Trino whose values are texts, by how their names begin.
 _TEXTS: Final = ("varchar", "char")
@@ -254,27 +254,29 @@ def as_text(value: object) -> str:
     return str(value)
 
 
-def connect(url: str, password: str) -> Source:
-    """Connects to the schema `url` names.
+def connect(url: str, user: str, password: str) -> Source:
+    """Connects to the schema `url` names, as `user`.
 
     Args:
-        url: The schema, as `trino://user@host:port/catalog/schema`; the port is 443 if none is
-            given. Trino is reached by HTTPS.
+        url: The schema, as `trino://host:port/catalog/schema`; the port is 443 if none is given.
+            Trino is reached by HTTPS.
+        user: The user the schema is read as.
         password: The password of the user.
 
     Returns:
         The source; the database is reached first when a statement is sent to it.
 
     Raises:
-        SourceError: The URL is not of Trino, holds a password, a query or a fragment, or lacks
-            the user, the host, the catalog or the schema. The message never repeats the URL,
-            which may hold a password.
+        SourceError: The URL is not of Trino, holds a user, a password, a query or a fragment, or
+            lacks the host, the catalog or the schema, or the user is empty. The message never
+            repeats the URL, which may hold a password.
     """
     parts = urlsplit(url)
     if parts.scheme != "trino":
         raise SourceError(f"only a URL of Trino is read, {_FORM}, not of {parts.scheme or 'none'}")
-    if parts.password is not None:
-        raise SourceError("the URL holds a password, which is given apart from it")
+    # A URL that holds a password holds a user too, if an empty one.
+    if parts.username is not None:
+        raise SourceError("the URL holds a user or a password, which are given apart from it")
     if parts.query or parts.fragment:
         raise SourceError(
             f"the URL has a query or a fragment, which a URL of Trino has not: {_FORM}"
@@ -284,15 +286,17 @@ def connect(url: str, password: str) -> Source:
     except ValueError as error:
         raise SourceError("the port of the URL is no number from 0 to 65535") from error
     path = parts.path.strip("/").split("/")
-    if not parts.username or not parts.hostname or len(path) != 2 or not all(path):
-        raise SourceError(f"the URL lacks user, host, catalog or schema: {_FORM}")
+    if not parts.hostname or len(path) != 2 or not all(path):
+        raise SourceError(f"the URL lacks host, catalog or schema: {_FORM}")
+    if not user:
+        raise SourceError("the user to read the schema as is empty")
     catalog, schema = path
     connection: Connection = dbapi.connect(  # type: ignore[no-untyped-call]  # no annotations
         host=parts.hostname,
         port=port,
         http_scheme="https",
-        user=parts.username,
-        auth=BasicAuthentication(parts.username, password),
+        user=user,
+        auth=BasicAuthentication(user, password),
         catalog=catalog,
         schema=schema,
     )

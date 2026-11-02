@@ -92,11 +92,12 @@ test, prod - in a directory named after the environment. `examples/crm/` is a pr
 simulation environment:
 
 ```yaml
-format: 2
+format: 3
 tables: .*
 environments:
   simulation:
-    url: trino://profiler@localhost:8443/crm/sales
+    url: trino://localhost:8443/crm/sales
+    user: profiler
     password: ${SIMULATION_PASSWORD}
 ```
 
@@ -116,13 +117,14 @@ environments:
   The pattern is read by Python and by the database alike, so it uses what both share: classes,
   repetitions, groups and alternatives, and no other escapes than of a character.
 - **`environments`** names each environment by the URL of its schema,
-  `trino://user@host:port/catalog/schema`, and the password of its user. A value `${NAME}` is taken
-  from the variable `NAME`; the password is given only so, never written out, so that
-  `project.yml` can be committed and shared.
-- **`.env`** holds the variables, and is never committed: the passwords, and what reaches the
-  database - `REQUESTS_CA_BUNDLE`, the certificate of a CA of one's own, and `NO_PROXY`, for a
-  database no proxy reaches. A variable the process sets is not overridden by it - a `no_proxy` the
-  shell sets, for one, has to name the database itself. For the example, copy
+  `trino://host:port/catalog/schema`, and the user and the password it is reached as. A value
+  `${NAME}` is taken from the variable `NAME`; the password is given only so, never written out, so
+  that `project.yml` can be committed and shared.
+- **`.env`** holds the variables, and is never committed: the passwords, the users where they
+  differ from one person to the next, and what reaches the database - `REQUESTS_CA_BUNDLE`, the
+  certificate of a CA of one's own, and `NO_PROXY`, for a database no proxy reaches. A variable the
+  process sets is not overridden by it - a `no_proxy` the shell sets, for one, has to name the
+  database itself. For the example, copy
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
