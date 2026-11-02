@@ -4,8 +4,9 @@ The values of a column are drawn from a pool of as many distinct values as its s
 each of them used at least once, and its nulls are spread over the rows at random. What the values
 are follows from the type of the column: texts are letters of the counted lengths, and where the
 column has a match, values of its first semantic type, of those lengths, which its detector
-recognises - all of them, whatever the shares of the match. Values are made of the semantic types of
-the tool alone, not of those of a project.
+recognises - all of them, whatever the shares of the match -, and which meet the condition of its
+column together, where the detector has one. Values are made of the semantic types of the tool
+alone, not of those of a project.
 """
 
 import re
@@ -24,6 +25,7 @@ from data_profiler.detect import (
     CARD_NUMBER,
     DATE,
     EMAIL,
+    FREE_TEXT,
     IBAN,
     PHONE,
     POSTAL_CODE,
@@ -47,6 +49,14 @@ _INTEGERS: Final = {"smallint": 2**15 - 1, "integer": 2**31 - 1, "bigint": 10**1
 
 # How phone numbers begin: within Germany, by the zero of a call within it, or from abroad.
 _PHONES: Final = ("030 ", "040 ", "089 ", "+49 30 ")
+
+# The words of a comment: the first of its words, and those after it, most of them in lower case.
+_FIRST: Final = ("Kunde", "Rechnung", "Lieferung", "Rückruf", "Termin", "Zahlung", "Bitte")
+_WORDS: Final = (
+    *("bittet", "um", "am", "an", "die", "der", "wegen", "nicht", "noch", "ist", "wurde", "und"),
+    *("später", "erhalten", "geändert", "geklärt", "offen", "gemäß", "telefonisch", "per"),
+    *("Montag", "Freitag", "Adresse", "Ware", "Ersatz", "Mail"),
+)
 
 # The forms of a date as text, by their lengths, as `datetime.strftime` writes them.
 _DATES: Final = {
@@ -84,6 +94,15 @@ def _values(table: Table, column: Column, random: Random) -> list[object]:
         )
     pool = _pool(table, column, random)
     values: list[object] = [*pool, *random.choices(pool, k=present - len(pool))]
+    # The condition of a column is met by the values as they repeat, not by the pool alone.
+    if column.matches:
+        kind = column.matches[0].type
+        texts = [str(value) for value in values]
+        if kind.detector.share(texts) < kind.detector.threshold:
+            raise SimulationError(
+                f"{table.name}.{column.name}: {statistics.distinct} distinct values of"
+                f" {present} are no {kind.name} together"
+            )
     values += [None] * statistics.nulls
     random.shuffle(values)
     return values
@@ -205,6 +224,14 @@ def _uuid(_: int, random: Random) -> str:
     return str(uuid.UUID(int=random.getrandbits(128), version=4))
 
 
+def _free_text(length: int, random: Random) -> str:
+    """A comment in German of `length` characters, its last word cut where it is too long."""
+    words = [random.choice(_FIRST)]
+    while sum(map(len, words)) + len(words) - 1 < length:
+        words.append(random.choice(_WORDS))
+    return " ".join(words)[:length]
+
+
 # How a text is made that may be of a semantic type of the tool and of a length, which the caller
 # is to tell: making test data is no concern of the tool.
 _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
@@ -215,6 +242,7 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     CARD_NUMBER: _card_number,
     DATE: _date,
     UUID: _uuid,
+    FREE_TEXT: _free_text,
 }
 
 

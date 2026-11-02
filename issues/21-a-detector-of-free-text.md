@@ -1,6 +1,6 @@
 # 21 — A detector of free text
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -155,3 +155,35 @@ Of the column:
   either as the refactoring of [22](22-a-condition-of-a-column.md); and free text is, for now, of
   the sensitivity none - public -, an override marking a column of free text that holds personal
   data, so that `is_sensitive` withholds no value of words.
+
+- **2026-11-02** — Made as planned, on the condition of a column and the threshold of a detector of
+  [22](22-a-condition-of-a-column.md): the semantic type `free-text`, of no sensitivity, its values
+  of words recognised by their pattern, a fifth of them enough, and its column judged by the words
+  in lower case after the first of their value, at least 0.3 of them, and the letters among the
+  characters other than spaces, at least 0.7. A word and its case are those of the pattern: what
+  stands between spaces, in lower case where it begins with a letter of `[a-zäöüß]`. The pattern
+  is of classes other than of a space, not of `.`, so that a value of more than one line is
+  recognised. One measure differs from the plan: the share of distinct values, at least one half,
+  is counted among the values of words alone, not among all values, as the short values of a
+  column of comments - `ok`, `-` - repeat, and the test of the generator showed that a column of
+  them failed the measure counted over all.
+
+  The generator makes comments in German of a vocabulary of its own, and refuses a column whose
+  values fail the condition of the column of their type together, naming it. The example of the
+  simulation has the column `cntct.cntct_nt` of them, which the round trip finds again, in the
+  sample and on the whole table. The columns of names, addresses and products of several words
+  that the simulation was to have beside it are not made: the generator makes a text column
+  without a match of lower case letters alone, and has no way of giving it another form; that a
+  column of words is no free text is tested by the tests of the detector alone. The thresholds are
+  first values: of the columns of those tests that are no free text, one of products fails the
+  words in lower case narrowly, 0.27 of them; they are to be checked on the real database.
+
+- **2026-11-02** — As the review found and the maintainer decided, as work ahead of
+  [20](20-detectors-of-boolean-pairs.md): the condition of a column is given the texts its
+  detector recognises beside all of them, so that `_free_text` counts the distinct values among
+  the values of words without recognising them a second time, and counts those the detector
+  recognises, whatever check it may be given.
+
+- **2026-11-02** — Done: the maintainer decided that the tests of the detector are enough to show
+  that a column of names, addresses or products is no free text, without columns of them in the
+  simulation.
