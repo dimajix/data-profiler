@@ -1,6 +1,6 @@
 # 22 — A condition of a column and a threshold of a type
 
-**Status:** open
+**Status:** done
 **Type:** refactoring
 **Priority:** medium
 **Area:** Detection
@@ -76,3 +76,19 @@ The interface is put before the maintainer before it is built: the names `column
 - **2026-11-02** — Opened as the maintainer decided that the condition of a column and the
   threshold of a type become one concept for [20](20-detectors-of-boolean-pairs.md) and
   [21](21-a-detector-of-free-text.md), built before either.
+
+- **2026-11-02** — Decided with the maintainer: the threshold is of the detector, not of the
+  semantic type, as the condition of the column and the threshold together say when a detector
+  recognises its type in a column; the names `column` and `threshold` as proposed.
+
+- **2026-11-02** — Done as decided: `Detector` has the fields `column`, a condition of the column
+  judged on the texts of a sample, called only where the detector recognises one of them or more,
+  and `threshold`, one half unless another is given, and the method `share`, which `detect` asks;
+  `matching.recognise` compares a share with the threshold of its detector, and `_MATCHING` is
+  gone. No type of the tool has a condition or another threshold yet; the tests pass unchanged,
+  the round trip with the simulation environment among them.
+
+- **2026-11-02** — As the review found and the maintainer decided, the threshold is applied where
+  it is kept: `detect` returns the types whose share reaches the threshold of their detector
+  alone, so that `matching.recognise` no longer reaches into the detector, and no share below
+  the threshold leaves `detect.py`.

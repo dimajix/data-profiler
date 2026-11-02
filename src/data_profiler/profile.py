@@ -187,8 +187,8 @@ class Match:
             to 1.
         table: The share of the values of the whole table, nulls aside, that the pattern of the
             detector of the type matches, from 0 to 1, or None where it was not verified. Where
-            the detector checks more than its pattern, it is at least the share the check would
-            give.
+            the detector checks a value by more than its pattern, it is at least the share the
+            check would give; a condition of the column is judged on the sample alone.
     """
 
     type: _Named

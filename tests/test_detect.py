@@ -13,6 +13,7 @@ from data_profiler.detect import (
     PHONE,
     POSTAL_CODE,
     UUID,
+    Detector,
     SemanticType,
     SemanticTypeError,
     Sensitivity,
@@ -119,8 +120,12 @@ def test_every_semantic_type_has_its_sensitivity(
 
 
 def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
-    values = ["10115", "01067", None, "anna@example.de", "nothing", None]
-    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
+    values = ["10115", "01067", None, "anna@example.de", "otto@example.de", None]
+    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.5}
+
+
+def test_a_type_recognised_in_less_than_the_threshold_of_its_detector_is_not_detected() -> None:
+    assert detect(["10115", "anna", "otto"], ()) == {}, "a third is less than half"
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:
@@ -135,6 +140,32 @@ def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])
 def test_no_type_is_detected_without_values(values: list[object]) -> None:
     assert detect(values, ()) == {}
+
+
+# Recognises digits, of a column of at most two distinct values.
+_PAIR = Detector(re.compile("[0-9]"), column=lambda texts: len(set(texts)) <= 2)
+
+
+def test_a_detector_shares_the_texts_it_recognises() -> None:
+    assert Detector(re.compile("[0-9]+")).share(["1", "22", "a", "b"]) == 0.5
+
+
+def test_a_detector_shares_nothing_of_no_texts() -> None:
+    assert Detector(re.compile("[0-9]+")).share([]) == 0.0
+
+
+def test_a_detector_shares_the_texts_of_a_column_that_meets_its_condition() -> None:
+    assert _PAIR.share(["0", "1", "0", "1"]) == 1.0
+
+
+def test_a_detector_shares_nothing_of_a_column_that_fails_its_condition() -> None:
+    assert _PAIR.share(["0", "1", "2", "1"]) == 0.0, "three distinct values are no pair"
+
+
+def test_a_type_whose_condition_of_the_column_fails_is_not_detected() -> None:
+    pair = SemanticType("pair", Sensitivity.NONE, _PAIR)
+    assert detect(["0", "1"], (pair,)) == {pair: 1.0}
+    assert detect(["0", "1", "2"], (pair,)) == {}
 
 
 @pytest.mark.parametrize(
