@@ -46,10 +46,10 @@ def test_the_terms_of_the_example_are_found_with_their_tables_and_columns(
     example_profile: Profile,
 ) -> None:
     found = occurrences(example_profile)
-    assert found["cust"][:3] == ["cust", "cust.cust_id", "cust.cust_no"]
+    assert found["cust"][:3] == ["cntct.cust_id", "cust", "cust.cust_id"]
     assert "cust_addr" in found["addr"], "the terms of the names of tables are found as well"
     assert found["iban"] == ["ord.iban"]
-    assert list(found)[:4] == ["cust", "id", "no", "nm"], "in the order they first appear"
+    assert list(found)[:4] == ["cntct", "id", "cust", "typ"], "in the order they first appear"
 
 
 def test_a_harmonized_name_is_composed_of_the_words_of_its_terms() -> None:

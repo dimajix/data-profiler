@@ -1,23 +1,44 @@
 """Tests of the stage scan, against the simulation environment, which has to run."""
 
 import re
+from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from data_profiler.detect import DATE, Detector, SemanticType, Sensitivity
-from data_profiler.profile import Match, Profile
+from data_profiler.profile import Match, Profile, ProfileError, Table
 from data_profiler.scan import scan
 from data_profiler.source import Source
-from data_profiler.workspace import Workspace
+from data_profiler.workspace import Workspace, WorkspaceError
 
 # How far the approximate number of distinct values may lie from the true one: four times the
 # standard error the dialect asks for.
 _TOLERANCE = 0.02
 
 
+def _scanned(
+    source: Source, pattern: str, tmp_path: Path, types: tuple[SemanticType, ...] = ()
+) -> Profile:
+    """The profile of the tables `pattern` matches, scanned into `tmp_path` with `types`."""
+    scan(source, re.compile(pattern), _workspace(tmp_path), types, tmp_path / "profile")
+    return Profile.read(tmp_path / "profile")
+
+
+def _workspace(tmp_path: Path) -> Workspace:
+    """The workspace of a scan into `tmp_path`."""
+    return Workspace.open(tmp_path / "workspace", "crm", "sales")
+
+
+def _failing_at(tmp_path: Path, table: str) -> None:
+    """Makes the sample of `table` in the workspace of `tmp_path` one that cannot be written."""
+    (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
+
+
 def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile(".*"), Workspace.open(tmp_path, "crm", "sales"), ())
+    scanned = _scanned(source, ".*", tmp_path)
     made = {table.name: table for table in example.tables}
     assert [table.name for table in scanned.tables] == sorted(made)
     for table in scanned.tables:
@@ -44,7 +65,7 @@ def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_w
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     source: Source, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"), ())
+    scanned = _scanned(source, "cust", tmp_path)
     (table,) = scanned.tables
     matched = {column.name: column.matches for column in table.columns}
     assert matched["crt_dt"] == (Match(DATE, 1.0, 1.0),), "a date is a date as text"
@@ -55,7 +76,7 @@ def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
 def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
     source: Source, tmp_path: Path
 ) -> None:
-    scanned = scan(source, re.compile("cntct|cust"), Workspace.open(tmp_path, "crm", "sales"), ())
+    scanned = _scanned(source, "cntct|cust", tmp_path)
     columns = {
         f"{table.name}.{column.name}": column
         for table in scanned.tables
@@ -73,8 +94,8 @@ def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
 def test_only_the_tables_a_pattern_matches_whole_are_scanned(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
-    workspace = Workspace.open(tmp_path, "crm", "sales")
-    scanned = scan(source, re.compile("prod|ord"), workspace, ())
+    scanned = _scanned(source, "prod|ord", tmp_path)
+    workspace = _workspace(tmp_path)
     assert [table.name for table in scanned.tables] == ["ord", "prod"]
     assert (scanned.catalog, scanned.schema) == (example.catalog, example.schema)
     sample = workspace.read_sample("prod")
@@ -88,11 +109,98 @@ def test_a_semantic_type_of_the_project_is_recognised_verified_and_kept_sensitiv
 ) -> None:
     # The numbers of orders of the simulation are fourteen letters in lower case.
     order = SemanticType("order-number", Sensitivity.PERSONAL, Detector(re.compile("[a-z]{14}")))
-    workspace = Workspace.open(tmp_path, "crm", "sales")
-    scanned = scan(source, re.compile("ord"), workspace, (order,))
+    scanned = _scanned(source, "ord", tmp_path, (order,))
     assert scanned.types == (order,), "the profile holds the types of its project"
     (table,) = scanned.tables
     (column,) = [column for column in table.columns if column.name == "ord_no"]
     assert column.matches == (Match(order, 1.0, 1.0),)
     assert column.sensitivity is Sensitivity.PERSONAL
     assert (column.statistics.range, column.values) == (None, ())
+
+
+def test_a_scan_that_fails_at_a_table_keeps_those_before_and_the_tables_it_had(
+    source: Source, example_profile: Profile, tmp_path: Path
+) -> None:
+    (prod,) = [table for table in example_profile.tables if table.name == "prod"]
+    Profile(catalog="crm", schema="sales", tables=(prod,)).write(tmp_path / "profile")
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    cust, kept = Profile.read(tmp_path / "profile").tables
+    assert cust.name == "cust", "the table before the failure is written"
+    assert kept == prod, "a table is kept until it is counted anew"
+
+
+def test_a_scan_keeps_the_glossary_and_drops_the_tables_no_longer_selected(
+    source: Source, tmp_path: Path
+) -> None:
+    gone = Table(name="gone", rows=0, columns=())
+    Profile(catalog="crm", schema="sales", tables=(gone,), glossary={"cust": "customer"}).write(
+        tmp_path / "profile"
+    )
+    scanned = _scanned(source, "cust", tmp_path)
+    assert [table.name for table in scanned.tables] == ["cust"]
+    assert scanned.glossary == {"cust": "customer"}
+    assert not (tmp_path / "profile" / "tables" / "gone.yml").exists()
+
+
+def test_a_profile_scanned_with_other_types_loses_its_tables(
+    source: Source, example_profile: Profile, account_number: SemanticType, tmp_path: Path
+) -> None:
+    Profile(
+        catalog="crm",
+        schema="sales",
+        tables=example_profile.tables,
+        glossary={"cust": "customer"},
+        types=(account_number,),
+    ).write(tmp_path / "profile")
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    profile = Profile.read(tmp_path / "profile")
+    assert [table.name for table in profile.tables] == ["cust"], "only what is counted anew"
+    assert profile.types == ()
+    assert profile.glossary == {"cust": "customer"}, "the glossary is kept all the same"
+
+
+def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
+    source: Source, tmp_path: Path
+) -> None:
+    (tmp_path / "profile").mkdir()
+    (tmp_path / "profile" / "profile.yml").write_text("format: 5\n", encoding="utf-8")
+    with pytest.raises(ProfileError, match="only format"):
+        _scanned(source, "cust", tmp_path)
+    assert (tmp_path / "profile" / "profile.yml").read_text(encoding="utf-8") == "format: 5\n"
+
+
+def test_a_run_that_failed_is_resumed_counting_only_the_tables_it_did_not(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    assert failed.run is not None
+    assert failed.run.finished is None, "a run that failed did not finish"
+    (cust,) = failed.tables
+    # Its rows told apart from those a scan counts, to see that it is not counted again.
+    failed.updated(replace(cust, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    resumed = _scanned(source, "cust|prod", tmp_path)
+    assert [table.rows for table in resumed.tables if table.name == "cust"] == [-1]
+    assert [table.name for table in resumed.tables] == ["cust", "prod"]
+    assert resumed.run is not None
+    assert resumed.run.started == failed.run.started, "the same run"
+    assert resumed.run.finished is not None
+    assert all(table.run == resumed.run.started for table in resumed.tables)
+
+
+def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(
+    source: Source, tmp_path: Path
+) -> None:
+    first = _scanned(source, "cust", tmp_path)
+    second = _scanned(source, "cust", tmp_path)
+    assert first.run is not None
+    assert second.run is not None
+    assert second.run.started > first.run.started, "a new run"
+    assert second.tables[0].run == second.run.started, "the table is counted anew"

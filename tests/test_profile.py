@@ -1,7 +1,9 @@
-"""Tests of the profile: written and read as a document, refused where it is not one."""
+"""Tests of the profile: written and read as a directory of documents, refused where it is not."""
 
 from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from yaml import safe_dump, safe_load
@@ -15,6 +17,7 @@ from data_profiler.profile import (
     Profile,
     ProfileError,
     Range,
+    Run,
     Statistics,
     Table,
     Value,
@@ -53,54 +56,83 @@ _PROFILE = Profile(
     glossary={"cust": "customer", "nm": "name"},
 )
 
+# The start of a run of scan in the past, in UTC, as a profile reads it back.
+_STARTED = datetime(2026, 1, 2, 9, 30, 0, 123456, tzinfo=UTC)
+# The start of the scan that updates a profile, after it.
+_NOW = datetime(2026, 1, 3, 8, 0, tzinfo=UTC)
+
 
 def _written(tmp_path: Path, change: dict[str, object] | None = None) -> Path:
-    """The file of `_PROFILE`, with the fields of its first column changed as `change` says."""
-    path = tmp_path / "profile.yml"
-    _PROFILE.write(path)
+    """The directory of `_PROFILE`, with the fields of its first column changed as `change` says."""
+    _PROFILE.write(tmp_path)
     if change is not None:
+        path = tmp_path / "tables" / "CUST.yml"
         content = safe_load(path.read_text(encoding="utf-8"))
-        column = content["tables"][0]["columns"][0]
+        column = content["columns"][0]
         for field, value in change.items():
             if value is None:
                 del column[field]
             else:
                 column[field] = value
         path.write_text(safe_dump(content), encoding="utf-8")
-    return path
+    return tmp_path
+
+
+def _content(path: Path) -> Any:
+    """What the document `path` holds."""
+    return safe_load(path.read_text(encoding="utf-8"))
 
 
 def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     assert Profile.read(_written(tmp_path)) == _PROFILE
 
 
-def test_a_profile_is_written_with_its_format(tmp_path: Path) -> None:
-    content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
-    assert content["format"] == FORMAT
+def test_a_profile_is_written_as_its_head_and_a_file_of_each_table(tmp_path: Path) -> None:
+    _written(tmp_path)
+    head, table = _content(tmp_path / "profile.yml"), _content(tmp_path / "tables" / "CUST.yml")
+    assert (head["format"], table["format"]) == (FORMAT, FORMAT), "each with its format"
+    assert "tables" not in head
+    assert (table["name"], table["rows"]) == ("CUST", 1250000)
+
+
+def test_the_files_of_tables_the_profile_does_not_have_are_removed(tmp_path: Path) -> None:
+    replace(_PROFILE, tables=(replace(_PROFILE.tables[0], name="ORD"), *_PROFILE.tables)).write(
+        tmp_path
+    )
+    _PROFILE.write(tmp_path)
+    assert [path.name for path in (tmp_path / "tables").iterdir()] == ["CUST.yml"]
+    assert Profile.read(tmp_path) == _PROFILE
+
+
+def test_the_tables_are_read_sorted_by_name(tmp_path: Path) -> None:
+    names = ("a", "a.b", "B")
+    profile = replace(
+        _PROFILE, tables=tuple(replace(_PROFILE.tables[0], name=name) for name in names)
+    )
+    profile.write(tmp_path)
+    assert [table.name for table in Profile.read(tmp_path).tables] == sorted(names)
 
 
 def test_the_glossary_is_written_as_each_term_with_its_word(tmp_path: Path) -> None:
-    content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
+    content = _content(_written(tmp_path) / "profile.yml")
     assert content["glossary"] == {"cust": "customer", "nm": "name"}
 
 
 def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
-    content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
-    assert content["tables"][0]["columns"][3]["matches"] == [{"type": "email", "sample": 0.982}]
-    assert "matches" not in content["tables"][0]["columns"][0], (
-        "a column without matches has no field matches"
-    )
+    content = _content(_written(tmp_path) / "tables" / "CUST.yml")
+    assert content["columns"][3]["matches"] == [{"type": "email", "sample": 0.982}]
+    assert "matches" not in content["columns"][0], "a column without matches has no field matches"
 
 
 @pytest.mark.parametrize(
     ("change", "problem"),
     [
-        ({"statistics": None}, r"tables\.0\.columns\.0\.statistics: .*required"),
-        ({"colour": "blue"}, r"tables\.0\.columns\.0\.colour: Unexpected"),
-        ({"name": ["CUST", "ID"]}, r"tables\.0\.columns\.0\.name: .*string"),
+        ({"statistics": None}, r"CUST\.yml: columns\.0\.statistics: .*required"),
+        ({"colour": "blue"}, r"CUST\.yml: columns\.0\.colour: Unexpected"),
+        ({"name": ["CUST", "ID"]}, r"CUST\.yml: columns\.0\.name: .*string"),
         (
             {"matches": [{"type": "account", "sample": 1.0}]},
-            r"tables\.0\.columns\.0\.matches\.0\.type: Input should be 'email', .* or 'uuid'",
+            r"CUST\.yml: columns\.0\.matches\.0\.type: Input should be 'email', .* or 'uuid'",
         ),
     ],
     ids=["a field missing", "a field unknown", "a field of the wrong type", "a type unknown"],
@@ -108,9 +140,24 @@ def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
 def test_a_profile_with_a_wrong_field_is_refused_naming_the_field(
     tmp_path: Path, change: dict[str, object], problem: str
 ) -> None:
-    path = _written(tmp_path, change)
+    directory = _written(tmp_path, change)
     with pytest.raises(ProfileError, match=problem):
-        Profile.read(path)
+        Profile.read(directory)
+
+
+def test_a_file_of_a_table_of_another_name_is_refused(tmp_path: Path) -> None:
+    _written(tmp_path)
+    (tmp_path / "tables" / "CUST.yml").rename(tmp_path / "tables" / "ORD.yml")
+    with pytest.raises(ProfileError, match=r"ORD\.yml holds the table 'CUST'"):
+        Profile.read(tmp_path)
+
+
+@pytest.mark.parametrize("name", ["../CUST", "con", ".hidden"])
+def test_a_table_whose_name_is_no_name_of_a_file_is_refused(tmp_path: Path, name: str) -> None:
+    profile = replace(_PROFILE, tables=(replace(_PROFILE.tables[0], name=name),))
+    with pytest.raises(ProfileError, match="no name of a file"):
+        profile.write(tmp_path)
+    assert not tmp_path.joinpath("profile.yml").exists(), "nothing is written"
 
 
 def _of_a_project(account_number: SemanticType) -> Profile:
@@ -125,43 +172,138 @@ def test_a_profile_with_the_types_of_its_project_is_written_and_read_unchanged(
     tmp_path: Path, account_number: SemanticType
 ) -> None:
     profile = _of_a_project(account_number)
-    path = tmp_path / "profile.yml"
-    profile.write(path)
-    assert Profile.read(path) == profile
-    content = safe_load(path.read_text(encoding="utf-8"))
-    assert content["types"] == {
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+    assert _content(tmp_path / "profile.yml")["types"] == {
         "account-number": {"pattern": "A[0-9]{10}", "sensitivity": "personal"}
     }, "as the project gives them"
-    assert content["tables"][0]["columns"][0]["matches"][0]["type"] == "account-number"
+    table = _content(tmp_path / "tables" / "CUST.yml")
+    assert table["columns"][0]["matches"][0]["type"] == "account-number"
 
 
 def test_a_match_of_a_type_neither_of_the_tool_nor_of_the_project_is_refused(
     tmp_path: Path, account_number: SemanticType
 ) -> None:
+    _of_a_project(account_number).write(tmp_path)
     path = tmp_path / "profile.yml"
-    _of_a_project(account_number).write(path)
-    content = safe_load(path.read_text(encoding="utf-8"))
+    content = _content(path)
     content["types"] = {"customer-number": content["types"]["account-number"]}
     path.write_text(safe_dump(content), encoding="utf-8")
     with pytest.raises(ProfileError, match=r"type: Input should be .*'uuid' or 'customer-number'"):
-        Profile.read(path)
+        Profile.read(tmp_path)
 
 
 def test_a_profile_with_a_wrong_type_of_its_project_is_refused_naming_it(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
     path = tmp_path / "profile.yml"
-    _PROFILE.write(path)
-    content = safe_load(path.read_text(encoding="utf-8"))
+    content = _content(path)
     content["types"] = {"date": {"pattern": "[0-9]+", "sensitivity": "none"}}
     path.write_text(safe_dump(content), encoding="utf-8")
     with pytest.raises(ProfileError, match="types: date is a semantic type of the tool"):
-        Profile.read(path)
+        Profile.read(tmp_path)
 
 
 def test_a_profile_that_cannot_be_read_is_refused(tmp_path: Path) -> None:
     with pytest.raises(ProfileError, match="cannot be read"):
-        Profile.read(tmp_path / "profile.yml")
+        Profile.read(tmp_path)
+
+
+def test_a_profile_is_written_into_a_directory_it_makes(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path / "environment" / "profile")
+    assert Profile.read(tmp_path / "environment" / "profile") == _PROFILE
 
 
 def test_a_profile_that_cannot_be_written_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "profile").write_text("a file, not a directory", encoding="utf-8")
     with pytest.raises(ProfileError, match="cannot be written"):
-        _PROFILE.write(tmp_path / "missing" / "profile.yml")
+        _PROFILE.write(tmp_path / "profile")
+
+
+def test_an_updated_profile_has_the_table_in_place_of_its_own_or_beside_them_sorted() -> None:
+    cust = _PROFILE.tables[0]
+    counted = replace(cust, rows=1)
+    assert _PROFILE.updated(counted).tables == (counted,), "in place of the table of its name"
+    added = replace(cust, name="ADDR")
+    assert _PROFILE.updated(added).tables == (added, cust), "beside them, sorted by name"
+
+
+def test_a_restricted_profile_has_the_tables_named_alone() -> None:
+    profile = _PROFILE.updated(replace(_PROFILE.tables[0], name="ORD"))
+    assert [table.name for table in profile.restricted({"ORD", "PROD"}).tables] == ["ORD"]
+    assert profile.restricted(["CUST", "ORD"]) == profile
+
+
+def test_a_scan_updates_an_empty_profile_of_a_new_run_where_there_is_none(tmp_path: Path) -> None:
+    (tmp_path / "tables").mkdir()
+    for directory in (tmp_path / "missing", tmp_path):
+        updating = Profile.updating(directory, "crm", "sales", (), _NOW)
+        assert updating.tables == (), f"{directory} holds no profile"
+        assert updating.run == Run(started=_NOW), "a new run is begun"
+
+
+def test_a_scan_updates_the_profile_there_is_in_a_new_run(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
+    updating = Profile.updating(tmp_path, "crm", "sales", (), _NOW)
+    assert replace(updating, run=None) == _PROFILE
+    assert updating.run is not None, "the profile of no run is scanned in a new one"
+
+
+def test_a_run_that_did_not_finish_is_resumed_and_one_that_did_followed_by_a_new_one(
+    tmp_path: Path,
+) -> None:
+    resumed = replace(_PROFILE, run=Run(started=_STARTED))
+    resumed.write(tmp_path)
+    assert Profile.updating(tmp_path, "crm", "sales", (), _NOW) == resumed
+    resumed.finished(_NOW).write(tmp_path)
+    later = datetime(2026, 1, 4, tzinfo=UTC)
+    assert Profile.updating(tmp_path, "crm", "sales", (), later).run == Run(started=later)
+
+
+def test_a_scan_with_other_types_updates_the_profile_without_its_tables(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    _PROFILE.write(tmp_path)
+    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,), _NOW)
+    assert (updating.tables, updating.types) == ((), (account_number,))
+    assert updating.glossary == _PROFILE.glossary, "the glossary is kept"
+
+
+def test_a_scan_of_another_schema_refuses_the_profile(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
+    with pytest.raises(ProfileError, match=r"is of crm\.sales, not of crm\.billing"):
+        Profile.updating(tmp_path, "crm", "billing", (), _NOW)
+
+
+def test_a_profile_with_its_run_and_the_runs_of_its_tables_is_written_and_read_unchanged(
+    tmp_path: Path,
+) -> None:
+    run = Run(started=_STARTED, finished=datetime(2026, 1, 2, 11, 0, tzinfo=UTC))
+    profile = replace(_PROFILE, run=run).updated(replace(_PROFILE.tables[0], rows=1))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+    table = _content(tmp_path / "tables" / "CUST.yml")
+    assert list(table)[:3] == ["format", "name", "run"], "the run of a table follows its name"
+
+
+def test_a_table_updated_is_counted_by_the_run_of_the_profile() -> None:
+    profile = replace(_PROFILE, run=Run(started=_STARTED))
+    assert not profile.is_counted("CUST"), "a table of another run"
+    updated = profile.updated(_PROFILE.tables[0])
+    assert updated.tables[0].run == _STARTED
+    assert updated.is_counted("CUST")
+    assert not updated.is_counted("ORD"), "a table the profile does not have"
+    assert not _PROFILE.updated(_PROFILE.tables[0]).is_counted("CUST"), "a profile of no run"
+
+
+def test_a_finished_run_keeps_its_start() -> None:
+    finished = replace(_PROFILE, run=Run(started=_STARTED)).finished(_NOW)
+    assert finished.run == Run(started=_STARTED, finished=_NOW)
+    assert _PROFILE.finished(_NOW) == _PROFILE, "a profile of no run is left as it is"
+
+
+def test_a_run_that_did_not_finish_of_other_types_is_followed_by_a_new_one(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    replace(_PROFILE, run=Run(started=_STARTED)).write(tmp_path)
+    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,), _NOW)
+    assert updating.run == Run(started=_NOW), "a new run, as the tables are counted anew"

@@ -1,0 +1,27 @@
+format: 6
+name: cust_addr
+rows: 6200
+columns:
+- {name: addr_id, type: bigint, statistics: {nulls: 0, distinct: 6200}}
+- {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4980}}
+- name: addr_typ_cd
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 4, lengths: {shortest: 3, longest: 3}}
+- name: strt_nm
+  type: varchar(80)
+  statistics: {nulls: 0, distinct: 2900, lengths: {shortest: 4, longest: 38}}
+- name: hse_no
+  type: varchar(10)
+  statistics: {nulls: 30, distinct: 410, lengths: {shortest: 1, longest: 5}}
+- name: pst_cd
+  type: varchar(10)
+  statistics: {nulls: 0, distinct: 1800, lengths: {shortest: 5, longest: 5}}
+  matches: [{type: postal-code, sample: 1.0, table: 1.0}]
+- name: cty_nm
+  type: varchar(60)
+  statistics: {nulls: 0, distinct: 1500, lengths: {shortest: 3, longest: 28}}
+- name: cntry_cd
+  type: varchar(2)
+  statistics: {nulls: 0, distinct: 12, lengths: {shortest: 2, longest: 2}}
+- {name: vld_frm_dt, type: date, statistics: {nulls: 0, distinct: 2700}}
+- {name: vld_to_dt, type: date, statistics: {nulls: 5100, distinct: 900}}

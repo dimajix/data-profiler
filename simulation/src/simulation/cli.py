@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument("--debug", action="store_true", help="log at debug level")
     commands = parser.add_subparsers(dest="command", required=True)
     load = commands.add_parser("load", help="load the tables of a profile, with generated data")
-    load.add_argument("profile", type=Path, help="the file of the profile")
+    load.add_argument("profile", type=Path, help="the directory of the profile")
     load.add_argument("--seed", type=int, default=0, help="the seed of the values (default: 0)")
     arguments = parser.parse_args()
     run(lambda: _load(arguments.profile, arguments.seed), arguments.debug, _SHOWN)

@@ -1,0 +1,21 @@
+format: 6
+name: cust
+rows: 5000
+columns:
+- {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 5000}}
+- name: cust_no
+  type: varchar(12)
+  statistics: {nulls: 0, distinct: 5000, lengths: {shortest: 10, longest: 10}}
+- name: cust_nm
+  type: varchar(80)
+  statistics: {nulls: 0, distinct: 4870, lengths: {shortest: 3, longest: 62}}
+- name: cust_typ_cd
+  type: varchar(2)
+  statistics: {nulls: 0, distinct: 3, lengths: {shortest: 1, longest: 2}}
+- {name: crt_dt, type: date, statistics: {nulls: 0, distinct: 3100}}
+- {name: upd_ts, type: timestamp(3), statistics: {nulls: 412, distinct: 4588}}
+- {name: crdt_lmt_amt, type: "decimal(12,2)", statistics: {nulls: 1200, distinct: 340}}
+- {name: actv_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}
+- name: seg_cd
+  type: varchar(4)
+  statistics: {nulls: 250, distinct: 7, lengths: {shortest: 2, longest: 4}}

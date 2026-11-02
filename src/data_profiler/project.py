@@ -104,8 +104,8 @@ class Environment:
 
     @property
     def profile(self) -> Path:
-        """The file of the profile of the environment."""
-        return self.directory / "profile.yml"
+        """The directory of the profile of the environment."""
+        return self.directory / "profile"
 
     @property
     def workspace(self) -> Path:

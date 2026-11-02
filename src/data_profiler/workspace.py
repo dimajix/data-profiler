@@ -20,7 +20,7 @@ from pyarrow import ArrowException
 from pyarrow import Table as ArrowTable
 from pyarrow.parquet import read_table, write_table
 
-from data_profiler.files import write_whole
+from data_profiler.files import is_file_name, write_whole
 
 # What keeps the workspace out of version control: everything in it.
 _IGNORED: Final = b"# The workspace of data-profiler, which may hold values of the database.\n*\n"
@@ -233,7 +233,7 @@ class Workspace:
             ) from error
 
     def _file(self, kind: _Kind, table: str) -> Path:
-        """The file of `kind` of `table`, refused where the name would leave its directory."""
-        if not table or table.startswith(".") or "/" in table or "\\" in table:
+        """The file of `kind` of `table`, refused where the name of the table is no file name."""
+        if not is_file_name(table):
             raise WorkspaceError(f"the table {table!r} has a name that is no name of a file")
         return self._path / kind.directory / f"{table}.parquet"

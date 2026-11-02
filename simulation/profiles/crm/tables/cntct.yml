@@ -1,0 +1,24 @@
+format: 6
+name: cntct
+rows: 4100
+columns:
+- {name: cntct_id, type: bigint, statistics: {nulls: 0, distinct: 4100}}
+- {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 3500}}
+- name: cntct_typ_cd
+  type: varchar(5)
+  statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 5}}
+- name: frst_nm
+  type: varchar(40)
+  statistics: {nulls: 120, distinct: 600, lengths: {shortest: 2, longest: 14}}
+- name: lst_nm
+  type: varchar(60)
+  statistics: {nulls: 0, distinct: 1900, lengths: {shortest: 2, longest: 22}}
+- name: tel_no
+  type: varchar(20)
+  statistics: {nulls: 800, distinct: 3290, lengths: {shortest: 9, longest: 16}}
+  matches: [{type: phone, sample: 1.0, table: 1.0}]
+- name: eml_adr
+  type: varchar(120)
+  statistics: {nulls: 1300, distinct: 2790, lengths: {shortest: 11, longest: 44}}
+  matches: [{type: email, sample: 1.0, table: 1.0}]
+- {name: brth_dt, type: date, statistics: {nulls: 2200, distinct: 1850}}

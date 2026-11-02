@@ -1,0 +1,33 @@
+format: 6
+name: ord
+rows: 20000
+columns:
+- {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 20000}}
+- name: ord_no
+  type: varchar(14)
+  statistics: {nulls: 0, distinct: 20000, lengths: {shortest: 14, longest: 14}}
+- {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4300}}
+- {name: ord_dt, type: date, statistics: {nulls: 0, distinct: 2900}}
+- name: ord_sts_cd
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 6, lengths: {shortest: 2, longest: 3}}
+- {name: tot_amt, type: "decimal(14,2)", statistics: {nulls: 0, distinct: 15500}}
+- name: curr_cd
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 3}}
+- {name: dlvr_dt, type: date, statistics: {nulls: 1900, distinct: 2800}}
+- name: pymt_mthd_cd
+  type: varchar(4)
+  statistics: {nulls: 40, distinct: 5, lengths: {shortest: 2, longest: 4}}
+- name: pymt_ref_id
+  type: varchar(36)
+  statistics: {nulls: 40, distinct: 19960, lengths: {shortest: 36, longest: 36}}
+  matches: [{type: uuid, sample: 1.0, table: 1.0}]
+- name: crd_no
+  type: varchar(19)
+  statistics: {nulls: 14000, distinct: 5700, lengths: {shortest: 16, longest: 19}}
+  matches: [{type: card-number, sample: 1.0, table: 1.0}]
+- name: iban
+  type: varchar(34)
+  statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
+  matches: [{type: iban, sample: 1.0, table: 1.0}]

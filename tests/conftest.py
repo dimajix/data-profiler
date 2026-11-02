@@ -14,8 +14,8 @@ _TOP = Path(__file__).parents[1]
 
 @pytest.fixture(scope="session")
 def example_profile() -> Profile:
-    """The example profile of the simulation, as its file holds it."""
-    return Profile.read(_TOP / "simulation" / "profiles" / "crm.yml")
+    """The example profile of the simulation, as its files hold it."""
+    return Profile.read(_TOP / "simulation" / "profiles" / "crm")
 
 
 @pytest.fixture(scope="session")

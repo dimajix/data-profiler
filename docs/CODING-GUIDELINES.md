@@ -229,16 +229,18 @@ Errors carry what failed, and only what may be shown goes to users.
 
 What users may see of an error is the message of an exception class of the project, `str(error)`,
 decided by whoever defines the class, in one place each, not by each caller. `commands` shows users
-that message alone, of the classes the command line names; of any other exception, that the run
-failed unexpectedly. The traceback goes to the log at `debug`.
+that message alone, of the classes the command line names; of any other exception, that the
+invocation failed unexpectedly. The traceback goes to the log at `debug`.
 
 ### Files are written whole
 
-A file the tool writes - a profile, a sample, a report - is written whole or not at all: into a
-temporary file next to it, which then takes its place: `write_whole` of `data_profiler.files`, which
-lets the `OSError` of the file system through, as `pathlib` does, for its callers to translate. A
-run that fails part of the way leaves no half-written file behind, and the file of an earlier run
-intact. The tool never writes to the database.
+A file the tool writes - a document of a profile, a sample, a report - is written whole or not at
+all: into a temporary file next to it, which then takes its place: `write_whole` of
+`data_profiler.files`, which lets the `OSError` of the file system through, as `pathlib` does, for
+its callers to translate. An invocation that fails part of the way leaves no half-written file
+behind, and each file of an earlier one either intact or replaced whole. A name of a table becomes
+a name of a file only where `is_file_name` of the same module takes it. The tool never writes to
+the database.
 
 ## Logging
 
@@ -248,16 +250,16 @@ intact. The tool never writes to the database.
     `_logger = logging.getLogger(__name__)`. Nothing is printed - not by `print`, nor to
     `sys.stdout` or `sys.stderr`; ruff reports either (`T20`, `TID251`).
 *   Only `commands` configures where logs go, in one place: to standard error. Ruff reports the
-    configuration of the log anywhere else (`TID251`). The command line reports the progress of a
-    run through the log as well, at `info`; the command line has no output of its own besides the
-    files it writes.
+    configuration of the log anywhere else (`TID251`). The command line reports the progress of an
+    invocation through the log as well, at `info`; the command line has no output of its own
+    besides the files it writes.
 
 ### Levels
 
 *   **error** only for failures that abort an operation.
 *   **warning** for degraded but continuing operation: a table that cannot be read, a detector that
     fails on a column.
-*   **info** for the progress of a run: a stage or a table starting and finishing.
+*   **info** for the progress of an invocation: a stage or a table starting and finishing.
 *   **debug** for detail: the SQL statements sent, the steps per column, the traceback of an error
     shown to users, values of the database. Python has no level below it.
 

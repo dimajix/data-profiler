@@ -22,8 +22,9 @@ does not depend on it, nor on what it needs. Both are one uv workspace, with one
 environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
-    and written as a document; and the form the semantic types of a project take in a document,
-    which `project` reads them in as well.
+    and written as a directory of documents, one of the schema and one of each table; the profile
+    a scan starts from, in its run, resumed or new; and the form the semantic types of a project
+    take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over a
     profile, refused where they name what it does not have.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
@@ -34,11 +35,11 @@ environment.
     its password, the password given by a variable -, its variables in `.env`, which complete those
     of the process, its overrides in `overrides.yml`, and the directories of the results of each
     environment.
-*   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, the profile
-    and the configuration of a project among them, each the fields of one class with the version of
-    its format; what is wrong with one is named, field by field.
+*   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, those of
+    the profile and the configuration of a project among them, each the fields of one class with
+    the version of its format; what is wrong with one is named, field by field.
 *   **`data_profiler.files`** - files written whole or not at all, for documents and the
-    workspace.
+    workspace, under names every system takes - the names of tables among them.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
     columns of its schema - their metadata - through its dialect, and runs queries in that schema,
@@ -57,7 +58,7 @@ environment.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
-    matches of the selected tables, written to a profile.
+    matches of the selected tables, written to the profile table by table.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
     recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
@@ -95,12 +96,18 @@ lays the overrides over the profile they read. The semantic types of a project r
     it.
 *   **Stage** - one of `scan`, `describe` and `report`: a step of the work that can be run on its
     own, from what the stages before it left.
+*   **Run** - the counting of the selected tables of an environment, which may take several
+    scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
+    interrupted -, and it finishes once every selected table is counted. It is told apart by when
+    it started, which each table it counted names.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
     one kind of database.
-*   **Profile** - the document describing the tables of one schema of a database: its tables and
-    columns, what was found about them, the glossary, and the semantic types of its project. It is
-    the only thing the stages hand to each other besides the workspace, and it holds no values of
-    the columns found sensitive (see [Principles](#principles)).
+*   **Profile** - the documents describing the tables of one schema of a database: its tables and
+    columns, what was found about them, the glossary, and the semantic types of its project; a
+    directory of a document of the schema and a document of each table, so that a person reads a
+    table in a file of its own. It is the only thing the stages hand to each other besides the
+    workspace, and it holds no values of the columns found sensitive (see
+    [Principles](#principles)).
 *   **Table** and **Column** - as found in the database, under their original names.
 *   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
     number of its distinct values, the range of its values, the range of lengths of texts.
@@ -137,7 +144,12 @@ lays the overrides over the profile they read. The semantic types of a project r
     threshold of an enumeration; and it takes a sample into the workspace. The detectors check the
     values of the sample; the semantic types they find are verified on the whole table by the
     patterns of the detectors in SQL. The result is the profile, with the ranges and the values of
-    enumerations of the columns of no sensitivity.
+    enumerations of the columns of no sensitivity, written after every table: a scan that fails
+    keeps the tables before it, and the next scan resumes its run, skipping the tables it
+    counted. It updates the profile there is: the tables no longer selected are dropped, the
+    others kept until they are counted anew, and the glossary is kept; a profile scanned with
+    other semantic types loses its tables. A profile that cannot be read, or one of another
+    schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
     language model for the word of each term, showing it the tables and columns the term appears
     in. From the glossary and

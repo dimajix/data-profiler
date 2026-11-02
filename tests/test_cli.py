@@ -35,7 +35,7 @@ def test_an_environment_is_scanned_into_its_directory(
     with (project / "project.yml").open("a", encoding="utf-8") as file:
         file.write("types:\n  order-number: {pattern: '[a-z]{14}', sensitivity: personal}\n")
     assert command_line(main, "scan", "simulation", "--project", str(project)) == 0
-    scanned = Profile.read(project / "simulation" / "profile.yml")
+    scanned = Profile.read(project / "simulation" / "profile")
     assert [table.name for table in scanned.tables] == sorted(t.name for t in example.tables)
     assert [kind.name for kind in scanned.types] == ["order-number"], "of project.yml"
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
@@ -68,7 +68,7 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
 ) -> None:
     shutil.copy(_EXAMPLE / "overrides.yml", project)
     (project / "simulation").mkdir()
-    example_profile.write(project / "simulation" / "profile.yml")
+    example_profile.write(project / "simulation" / "profile")
     assert command_line(main, "report", "simulation", "--project", str(project)) == 0
     page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
     assert "<h1>crm.sales</h1>" in page
@@ -80,5 +80,5 @@ def test_the_profile_of_an_environment_is_reported_without_its_password(
 ) -> None:
     (project / ".env").unlink()
     (project / "simulation").mkdir()
-    example_profile.write(project / "simulation" / "profile.yml")
+    example_profile.write(project / "simulation" / "profile")
     assert command_line(main, "report", "simulation", "--project", str(project)) == 0
