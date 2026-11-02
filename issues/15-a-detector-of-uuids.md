@@ -1,6 +1,6 @@
 # 15 — A detector of UUIDs
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -50,3 +50,14 @@ As decided with the maintainer:
 
 - **2026-11-02** — Opened as the maintainer asked for a detector of UUIDs, with the sensitivity,
   the forms and the column of the simulation decided.
+
+- **2026-11-02** — Made as decided: the semantic type `uuid`, of the sensitivity none, recognised
+  by its pattern alone - 32 hexadecimal digits in groups of 8, 4, 4, 4 and 12, in upper or lower
+  case, their version and variant not checked -; the generator makes random UUIDs of version 4,
+  and the example of the simulation has the column `ord.pymt_ref_id` of them. The round trip and
+  the test that sends every pattern to Trino were not run where the change was made, which has no
+  simulation environment; the issue is done once they pass.
+
+- **2026-11-02** — Done: the maintainer ran the tests with the simulation environment, the round
+  trip and the test that sends every pattern to Trino among them, and all of them passed; the
+  column `ord.pymt_ref_id` is found again, in the sample and on the whole table.

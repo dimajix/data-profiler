@@ -26,6 +26,11 @@ _RECOGNISED = {
         "2024-01-31 12:00:00.000 UTC",
         "2024-01-31T12:00:00Z",
     ],
+    SemanticType.UUID: [
+        "123e4567-e89b-12d3-a456-426614174000",
+        "F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6",
+        "00000000-0000-0000-0000-000000000000",
+    ],
 }
 
 _NOT_RECOGNISED = {
@@ -41,6 +46,13 @@ _NOT_RECOGNISED = {
         "2024-01-31 24:00",
         "20240131",
         "2024/01/31",
+    ],
+    SemanticType.UUID: [
+        "123e4567e89b12d3a456426614174000",
+        "{123e4567-e89b-12d3-a456-426614174000}",
+        "123e4567-e89b-12d3-a456-42661417400",
+        "123e4567-e89b-12d3-a456-42661417400g",
+        "123e4567-e89b-12d3a456-426614174000",
     ],
 }
 
@@ -72,6 +84,7 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
         (SemanticType.IBAN, Sensitivity.PERSONAL),
         (SemanticType.CARD_NUMBER, Sensitivity.PAYMENT_CARD),
         (SemanticType.DATE, Sensitivity.NONE),
+        (SemanticType.UUID, Sensitivity.NONE),
     ],
     ids=str,
 )

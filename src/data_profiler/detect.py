@@ -66,6 +66,8 @@ class SemanticType(Enum):
     CARD_NUMBER = "card-number"
     DATE = "date"
     """A date, with or without a time of day and a time zone, written as text."""
+    UUID = "uuid"
+    """A UUID, written as text in the form of RFC 9562."""
 
     @property
     def sensitivity(self) -> Sensitivity:
@@ -75,7 +77,7 @@ class SemanticType(Enum):
                 return Sensitivity.PERSONAL
             case SemanticType.CARD_NUMBER:
                 return Sensitivity.PAYMENT_CARD
-            case SemanticType.POSTAL_CODE | SemanticType.DATE:
+            case SemanticType.POSTAL_CODE | SemanticType.DATE | SemanticType.UUID:
                 return Sensitivity.NONE
 
     @property
@@ -94,6 +96,8 @@ class SemanticType(Enum):
                 return _CARD_NUMBER
             case SemanticType.DATE:
                 return _DATE
+            case SemanticType.UUID:
+                return _UUID
 
 
 # The region of a phone number written without its country code.
@@ -147,6 +151,9 @@ _DATE: Final = Detector(
     ),
     _date,
 )
+# 32 hexadecimal digits in groups of 8, 4, 4, 4 and 12; their version and variant are not checked,
+# so that a UUID of any kind is recognised, as the groups alone say enough.
+_UUID: Final = Detector(re.compile(r"[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}"))
 
 
 def is_sensitive(text: str) -> bool:

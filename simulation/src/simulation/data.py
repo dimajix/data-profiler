@@ -14,6 +14,7 @@ from decimal import Decimal
 from random import Random
 from string import ascii_lowercase, digits
 from typing import Final
+from uuid import UUID
 
 from stdnum.iban import calc_check_digits
 from stdnum.luhn import calc_check_digit
@@ -173,6 +174,8 @@ def _typed(kind: SemanticType, length: int, random: Random) -> str:
         case SemanticType.DATE:
             moment = _START + timedelta(seconds=random.randrange(_DAYS * 86400))
             return moment.strftime(random.choice(_DATES.get(length, ("",))))
+        case SemanticType.UUID:
+            return str(UUID(int=random.getrandbits(128), version=4))
 
 
 def _letters(length: int, random: Random) -> str:
