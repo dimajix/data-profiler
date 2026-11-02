@@ -25,10 +25,13 @@ services:
       - UV_PROJECT_ENVIRONMENT=/home/vscode/.venv
       # A clone on C: appears owned by root in the container, and git refuses such a repository
       # unless told that it is safe; told so here, so that no `.gitconfig` is written before the
-      # one of the machine is copied in.
-      - GIT_CONFIG_COUNT=1
+      # one of the machine is copied in. Git asks so of every repository, also of the projects in
+      # `projects/`, a repository of their own.
+      - GIT_CONFIG_COUNT=2
       - GIT_CONFIG_KEY_0=safe.directory
       - GIT_CONFIG_VALUE_0=/workspaces/data-profiler
+      - GIT_CONFIG_KEY_1=safe.directory
+      - GIT_CONFIG_VALUE_1=/workspaces/data-profiler/projects
 
   # As in ../docker-compose.yml, of the same version, but started with the container rather than
   # by a profile, reached by its name rather than a port, and trusting the certificates of the

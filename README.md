@@ -172,7 +172,9 @@ Containers of Visual Studio Code; for a clone in WSL also the extension WSL, and
 Docker Desktop with that distribution of WSL.
 
 1. Clone the repository. On Windows, a clone in the file system of WSL is mounted into the
-   container much faster than one on `C:`.
+   container much faster than one on `C:`. The container reaches only what lies in the clone, so
+   the projects to profile go into its `projects/`, a repository of their own that this one
+   ignores.
 2. Put the certificates of the company into `.devcontainer/certs/`, each in PEM in a file ending
    in `.crt` - exported from the certificate manager of Windows as "Base-64 encoded X.509" -, the
    CA of the database among them: in the container, it is trusted from there, and a
