@@ -62,3 +62,8 @@ of any of them.
 
 - **2026-11-02** — Opened as the maintainer asked for three detectors of boolean pairs:
   `true`/`false`, `yes`/`no` and `0`/`1`.
+
+- **2026-11-02** — Decided with the maintainer: the condition of a column and the threshold of a
+  type, which options 2 and 3 of a value not being a pair need, become one concept for this issue
+  and [21](21-a-detector-of-free-text.md), built before either as the refactoring of
+  [22](22-a-condition-of-a-column.md). Which of the options the pairs take is still to be decided.
