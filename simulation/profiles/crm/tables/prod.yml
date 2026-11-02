@@ -1,0 +1,17 @@
+format: 6
+name: prod
+rows: 350
+columns:
+- {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 350}}
+- name: prod_cd
+  type: varchar(8)
+  statistics: {nulls: 0, distinct: 350, lengths: {shortest: 8, longest: 8}}
+- name: prod_nm
+  type: varchar(80)
+  statistics: {nulls: 0, distinct: 348, lengths: {shortest: 6, longest: 48}}
+- name: prod_grp_cd
+  type: varchar(4)
+  statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
+- {name: lst_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
+- {name: vat_rt, type: "decimal(4,2)", statistics: {nulls: 0, distinct: 3}}
+- {name: dscntd_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}

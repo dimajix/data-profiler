@@ -234,11 +234,12 @@ failed unexpectedly. The traceback goes to the log at `debug`.
 
 ### Files are written whole
 
-A file the tool writes - a profile, a sample, a report - is written whole or not at all: into a
-temporary file next to it, which then takes its place: `write_whole` of `data_profiler.files`, which
-lets the `OSError` of the file system through, as `pathlib` does, for its callers to translate. A
-run that fails part of the way leaves no half-written file behind, and the file of an earlier run
-intact. The tool never writes to the database.
+A file the tool writes - a document of a profile, a sample, a report - is written whole or not at
+all: into a temporary file next to it, which then takes its place: `write_whole` of
+`data_profiler.files`, which lets the `OSError` of the file system through, as `pathlib` does, for
+its callers to translate. A run that fails part of the way leaves no half-written file behind, and
+each file of an earlier run either intact or replaced whole. A name of a table becomes a name of a
+file only where `is_file_name` of the same module takes it. The tool never writes to the database.
 
 ## Logging
 

@@ -106,7 +106,7 @@ def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None
 
 def test_an_environment_keeps_its_results_in_its_directory(tmp_path: Path) -> None:
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
-    assert environment.profile == tmp_path / "dev" / "profile.yml"
+    assert environment.profile == tmp_path / "dev" / "profile"
     assert environment.workspace == tmp_path / "dev" / "workspace"
     assert environment.report == tmp_path / "dev" / "report.html"
 

@@ -8,7 +8,7 @@ from data_profiler.profile import Column, Lengths, Profile, Statistics, Table
 from simulation import SimulationError
 from simulation.environment import Simulation
 
-_EXAMPLE = Path(__file__).parents[1] / "profiles" / "crm.yml"
+_EXAMPLE = Path(__file__).parents[1] / "profiles" / "crm"
 
 
 def test_the_example_profile_is_loaded_and_trino_counts_its_rows() -> None:

@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [18](18-a-scan-written-table-by-table.md) | open | high | feature | A scan writes its profile only once it has counted every table, so that a run that fails or is interrupted at one table loses all the tables before it, and a new scan replaces the profile whole. |
+| [18](18-a-scan-written-table-by-table.md) | in progress | high | feature | A scan writes its profile only once it has counted every table, so that a run that fails or is interrupted at one table loses all the tables before it, and a new scan replaces the profile whole. |
 
 ## Describe
 

@@ -1,27 +1,23 @@
 """The profile: what was found about the tables of one schema of a database.
 
 A profile is what the stages hand to each other, and what a person reads and shares - corrected by
-the overrides of the project, laid over it: it holds no values of the columns found sensitive. It is
-a document, written as YAML in the format below and read back by the same classes. A match names
-its semantic type by its name, of a type of the tool or of the project, whose types the profile
-holds in the form `project.yml` gives them, so that it is read without its project.
+the overrides of the project, laid over it: it holds no values of the columns found sensitive. A
+match names its semantic type by its name, of a type of the tool or of the project, whose types the
+profile holds in the form `project.yml` gives them, so that it is read without its project.
+
+A profile is a directory of documents, written as YAML in the format below and read back by the
+same classes: `profile.yml` holds the profile but its tables, and `tables/` a file of each table,
+named after it, so that a person finds a table in a file of its own, and its changes in a diff of
+their own. A file of a table is read with the semantic types of `profile.yml`, which its matches
+name.
 """
 
 from collections.abc import Mapping
-from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Final
 
-from pydantic import (
-    PlainSerializer,
-    PlainValidator,
-    TypeAdapter,
-    ValidationError,
-    ValidationInfo,
-    ValidatorFunctionWrapHandler,
-    WrapValidator,
-)
+from pydantic import PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
 from pydantic_core import PydanticCustomError
 
 from data_profiler.detect import (
@@ -33,13 +29,15 @@ from data_profiler.detect import (
     semantic_type,
 )
 from data_profiler.documents import DocumentError, read_document, write_document
+from data_profiler.files import is_file_name
 
-FORMAT: Final = 5
+FORMAT: Final = 6
 """The version of the format a profile is written in.
 
-It is raised with every change to the fields of the classes below: a field added is unknown to the
-version before, a field removed or renamed is missing for the version after. A profile of another
-format is refused, an older one as well: it is scanned again, not converted.
+It is raised with every change to the fields of the classes below, or to the files they are
+written to: a field added is unknown to the version before, a field removed or renamed is missing
+for the version after. A profile of another format is refused, an older one as well: it is scanned
+again, not converted.
 """
 
 
@@ -49,6 +47,11 @@ class ProfileError(Exception):
 
 # The key of the semantic types of a project in the context of the validation of a document.
 _TYPES: Final = "types"
+# The file of the profile but its tables, the directory of the files of its tables, and the
+# extension of every file of a profile.
+_HEAD: Final = "profile.yml"
+_TABLES: Final = "tables"
+_EXTENSION: Final = ".yml"
 
 
 @dataclass(frozen=True)
@@ -245,7 +248,7 @@ class Profile:
     Attributes:
         catalog: The catalog of the schema, as Trino names the database it reads.
         schema: The schema whose tables the profile describes.
-        tables: The tables that were selected, by their names.
+        tables: The tables that were selected, sorted by their names.
         glossary: Each term of the names of the tables and columns with the word it stands for,
             once proposed or given.
         types: The semantic types of the project the tables were scanned with, beside those of
@@ -259,51 +262,104 @@ class Profile:
     types: SemanticTypes = ()
 
     @classmethod
-    def read(cls, path: Path) -> "Profile":
-        """Reads the profile written to `path`.
+    def read(cls, directory: Path) -> "Profile":
+        """Reads the profile written to `directory`.
 
         Args:
-            path: The file of the profile.
+            directory: The directory of the profile.
 
         Returns:
-            The profile.
+            The profile, its tables sorted by name.
 
         Raises:
-            ProfileError: The file cannot be read, is no YAML, holds no fields, is of another
+            ProfileError: A file cannot be read, is no YAML, holds no fields, is of another
                 format, a field is missing, unknown or of the wrong type, a semantic type of the
-                project cannot be made, as `detect.project_type` says, or a match names a type
-                neither of the tool nor of the project.
+                project cannot be made, as `detect.project_type` says, a match names a type
+                neither of the tool nor of the project, or the file of a table holds a table of
+                another name.
         """
         try:
-            return read_document(path, _ADAPTER, FORMAT)
+            head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
+            tables = [_read_table(path, head.types) for path in _files(directory)]
         except DocumentError as error:
             raise ProfileError(str(error)) from error
+        return cls(
+            catalog=head.catalog,
+            schema=head.schema,
+            tables=tuple(sorted(tables, key=lambda table: table.name)),
+            glossary=head.glossary,
+            types=head.types,
+        )
 
-    def write(self, path: Path) -> None:
-        """Writes the profile to `path`, whole or not at all.
+    def write(self, directory: Path) -> None:
+        """Writes the profile to `directory`, each of its files whole or not at all.
+
+        The files of the tables the profile does not have are removed first, then `profile.yml`
+        is written, then the tables, so that an interruption leaves no file of a table the profile
+        does not have. What it leaves can be read where the types of the profile are those of the
+        profile it replaces, or more: a table not yet written again may name any of those.
 
         Args:
-            path: The file of the profile.
+            directory: The directory of the profile, made where it does not exist.
 
         Raises:
-            ProfileError: The file cannot be written.
+            ProfileError: The name of a table is no name of a file, or a file cannot be written
+                or removed.
         """
+        for table in self.tables:
+            if not is_file_name(table.name):
+                raise ProfileError(
+                    f"{directory}: the table {table.name!r} has a name that is no name of a file"
+                )
+        kept = {_file(directory, table.name) for table in self.tables}
         try:
-            write_document(path, _ADAPTER, FORMAT, self)
+            (directory / _TABLES).mkdir(parents=True, exist_ok=True)
+            for path in _files(directory):
+                if path not in kept:
+                    path.unlink()
+        except OSError as error:
+            raise ProfileError(f"{directory} cannot be written: {error.strerror}") from error
+        head = _Head(self.catalog, self.schema, self.glossary, self.types)
+        try:
+            write_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT, head)
+            for table in self.tables:
+                write_document(_file(directory, table.name), _TABLE_ADAPTER, FORMAT, table)
         except DocumentError as error:
             raise ProfileError(str(error)) from error
 
 
-def _with_types(
-    value: object, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
-) -> Profile:
-    """The profile `value`, its semantic types read first, as its matches name them."""
-    if isinstance(value, dict) and info.context is not None:
-        # Wrong types are refused where the field `types` is validated, naming the field.
-        with suppress(ValidationError, PydanticCustomError):
-            info.context[_TYPES] = _semantic_types(value.get("types", {}))
-    profile: Profile = handler(value)
-    return profile
+@dataclass(frozen=True)
+class _Head:
+    """What `profile.yml` holds: the profile but its tables, whose matches name its types."""
+
+    catalog: str
+    schema: str
+    glossary: Mapping[str, str] = field(default_factory=dict)
+    types: SemanticTypes = ()
 
 
-_ADAPTER: Final = TypeAdapter(Annotated[Profile, WrapValidator(_with_types)])
+def _file(directory: Path, table: str) -> Path:
+    """The file of the table named `table` in the profile in `directory`."""
+    return directory / _TABLES / f"{table}{_EXTENSION}"
+
+
+def _files(directory: Path) -> list[Path]:
+    """The files of the tables of the profile in `directory`, none where it has no `tables/`."""
+    return list((directory / _TABLES).glob(f"*{_EXTENSION}"))
+
+
+def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
+    """The table in the file `path`, whose matches name `types` or those of the tool.
+
+    Raises:
+        DocumentError: The file cannot be read as a document of a table.
+        ProfileError: The file holds a table of another name than its own.
+    """
+    table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
+    if table.name != path.name.removesuffix(_EXTENSION):
+        raise ProfileError(f"{path} holds the table {table.name!r}, not the one it is named after")
+    return table
+
+
+_HEAD_ADAPTER: Final = TypeAdapter(_Head)
+_TABLE_ADAPTER: Final = TypeAdapter(Table)

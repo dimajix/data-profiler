@@ -5,10 +5,12 @@ field `format`; a document of another format, or with a field missing, unknown o
 is refused. The field `format` is the document's own: a class a document holds has none. A field
 that has its default is not written: a document holds what differs from the defaults. The
 validators of a document share a context, a dict made anew for each document read, by which a
-field is checked against another that holds what it names.
-The profile is such a document, and the configuration of a project.
+field is checked against another that holds what it names - in the same document, or in another
+one, whose reader gives what it holds to begin the context with.
+The profile is made of such documents, and the configuration of a project is one.
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -22,13 +24,17 @@ class DocumentError(Exception):
     """A document that cannot be read or written: its file, and what is wrong with it."""
 
 
-def read_document[T](path: Path, adapter: TypeAdapter[T], version: int) -> T:
+def read_document[T](
+    path: Path, adapter: TypeAdapter[T], version: int, context: Mapping[str, object] | None = None
+) -> T:
     """The YAML document in `path`, of format `version`, checked by `adapter`.
 
     Args:
         path: The file of the document.
         adapter: The adapter of the class the document holds.
         version: The version of the format the document is to be of.
+        context: What the context of its validators begins with, of another document; nothing
+            where none is given.
 
     Returns:
         What the document holds.
@@ -52,7 +58,7 @@ def read_document[T](path: Path, adapter: TypeAdapter[T], version: int) -> T:
     if type(found) is not int or found != version:
         raise DocumentError(f"{path} is of format {found!r}, but only format {version} is read")
     try:
-        return adapter.validate_python(content, extra="forbid", context={})
+        return adapter.validate_python(content, extra="forbid", context=dict(context or {}))
     except ValidationError as error:
         problems = "; ".join(_problem(detail) for detail in error.errors())
         raise DocumentError(f"{path}: {problems}") from error

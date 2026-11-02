@@ -9,7 +9,7 @@ import pytest
 from data_profiler.profile import Profile
 from simulation.cli import main
 
-_EXAMPLE = Path(__file__).parents[1] / "profiles" / "crm.yml"
+_EXAMPLE = Path(__file__).parents[1] / "profiles" / "crm"
 
 
 def test_a_profile_is_loaded_and_its_tables_counted(
@@ -23,7 +23,7 @@ def test_a_profile_is_loaded_and_its_tables_counted(
 def test_a_failed_load_ends_with_its_message_and_exit_code_1(
     command_line: Callable[..., int], caplog: pytest.LogCaptureFixture, tmp_path: Path
 ) -> None:
-    path = tmp_path / "profile.yml"
+    path = tmp_path / "profile"
     Profile(catalog="billing", schema="sales", tables=()).write(path)
     assert command_line(main, "load", str(path)) == 1
     assert caplog.messages[-1].startswith("the profile is of the catalog billing")
