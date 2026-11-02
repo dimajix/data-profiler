@@ -1,6 +1,7 @@
 """Tests of detection: each detector on values of its type and on values that are not."""
 
 import re
+from collections.abc import Sequence
 from datetime import date, datetime
 
 import pytest
@@ -9,10 +10,12 @@ from data_profiler.detect import (
     CARD_NUMBER,
     DATE,
     EMAIL,
+    FREE_TEXT,
     IBAN,
     PHONE,
     POSTAL_CODE,
     UUID,
+    Detector,
     SemanticType,
     SemanticTypeError,
     Sensitivity,
@@ -47,6 +50,12 @@ _RECOGNISED = {
         "F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6",
         "00000000-0000-0000-0000-000000000000",
     ],
+    FREE_TEXT: [
+        "Bitte Rückruf am Montag",
+        "Kunde wünscht Lieferung an die Firma",
+        "Customer asked for a refund.",
+        "Rechnung\nkorrigiert und versandt",
+    ],
 }
 
 _NOT_RECOGNISED = {
@@ -70,6 +79,7 @@ _NOT_RECOGNISED = {
         "123e4567-e89b-12d3-a456-42661417400g",
         "123e4567-e89b-12d3a456-426614174000",
     ],
+    FREE_TEXT: ["ok", "Hans Müller", "Deutsche Bank AG", "Hauptstr. 5", "2024-01-31 12:00 UTC"],
 }
 
 
@@ -109,6 +119,7 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
             (CARD_NUMBER, Sensitivity.PAYMENT_CARD),
             (DATE, Sensitivity.NONE),
             (UUID, Sensitivity.NONE),
+            (FREE_TEXT, Sensitivity.NONE),
         ]
     ],
 )
@@ -119,8 +130,12 @@ def test_every_semantic_type_has_its_sensitivity(
 
 
 def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
-    values = ["10115", "01067", None, "anna@example.de", "nothing", None]
-    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
+    values = ["10115", "01067", None, "anna@example.de", "otto@example.de", None]
+    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.5}
+
+
+def test_a_type_recognised_in_less_than_the_threshold_of_its_detector_is_not_detected() -> None:
+    assert detect(["10115", "anna", "otto"], ()) == {}, "a third is less than half"
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:
@@ -135,6 +150,72 @@ def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])
 def test_no_type_is_detected_without_values(values: list[object]) -> None:
     assert detect(values, ()) == {}
+
+
+# Recognises digits, of a column of at most two distinct values.
+_PAIR = Detector(re.compile("[0-9]"), column=lambda texts, _: len(set(texts)) <= 2)
+
+
+def test_a_detector_shares_the_texts_it_recognises() -> None:
+    assert Detector(re.compile("[0-9]+")).share(["1", "22", "a", "b"]) == 0.5
+
+
+def test_a_detector_shares_nothing_of_no_texts() -> None:
+    assert Detector(re.compile("[0-9]+")).share([]) == 0.0
+
+
+def test_a_detector_shares_the_texts_of_a_column_that_meets_its_condition() -> None:
+    assert _PAIR.share(["0", "1", "0", "1"]) == 1.0
+
+
+def test_a_detector_shares_nothing_of_a_column_that_fails_its_condition() -> None:
+    assert _PAIR.share(["0", "1", "2", "1"]) == 0.0, "three distinct values are no pair"
+
+
+def test_a_condition_of_the_column_is_given_the_texts_its_detector_recognises() -> None:
+    given: list[tuple[list[str], list[str]]] = []
+
+    def condition(texts: Sequence[str], recognised: Sequence[str]) -> bool:
+        given.append((list(texts), list(recognised)))
+        return True
+
+    detector = Detector(re.compile("[0-9]"), check=lambda value: value != "0", column=condition)
+    assert detector.share(["0", "1", "a"]) == 1 / 3
+    assert given == [(["0", "1", "a"], ["1"])], "the check refuses the 0, the pattern the a"
+
+
+def test_a_type_whose_condition_of_the_column_fails_is_not_detected() -> None:
+    pair = SemanticType("pair", Sensitivity.NONE, _PAIR)
+    assert detect(["0", "1"], (pair,)) == {pair: 1.0}
+    assert detect(["0", "1", "2"], (pair,)) == {}
+
+
+# A column of comments, many of them short, and columns of several words each that are no free text.
+_COMMENTS = [
+    *["ok"] * 7,
+    *["-"] * 2,
+    "Kunde bittet um Rückruf am Montag",
+    "Lieferung kam beschädigt an, Ersatz wurde verschickt.",
+    "Zahlung ist noch offen",
+]
+_NOT_FREE_TEXT = {
+    "names": ["Hans Müller", "Anna Schmidt", "Hans von Müller", "Eva Maria Weber", "Otto Klein"],
+    "addresses": ["Hauptstr. 5", "Am Markt 3", "Lindenallee 12a", "Berliner Str. 101", "Ring 7"],
+    "products": ["Deutsche Bank AG", "Kaffee Crema 1 kg", "Apple iPhone 15 Pro", "Tee Grün 100 g"],
+    "codes": ["AB 123 x45", "XZ 99 k12", "QQ 17 b33", "ZZ 42 a01"],
+    "categories": ["neu angelegt", "neu angelegt", "in Arbeit", "in Arbeit", "neu angelegt"],
+}
+
+
+def test_a_column_of_free_text_is_detected_though_most_values_are_short_and_repeated() -> None:
+    assert detect(_COMMENTS, ()) == {FREE_TEXT: 0.25}
+
+
+@pytest.mark.parametrize(("kind", "values"), list(_NOT_FREE_TEXT.items()), ids=list(_NOT_FREE_TEXT))
+def test_a_column_of_several_words_that_is_no_free_text_is_not_detected(
+    kind: str, values: list[str]
+) -> None:
+    assert FREE_TEXT not in detect(values, ()), f"{kind} are no free text"
 
 
 @pytest.mark.parametrize(

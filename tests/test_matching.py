@@ -1,8 +1,9 @@
 """Tests of the matches of a table: recognised in a sample made by hand, verified on a table."""
 
+import re
 from dataclasses import replace
 
-from data_profiler.detect import BUILT_IN, DATE, POSTAL_CODE, SemanticType
+from data_profiler.detect import BUILT_IN, DATE, POSTAL_CODE, Detector, SemanticType, Sensitivity
 from data_profiler.matching import recognise, verify
 from data_profiler.profile import Column, Match, Statistics, Table
 from data_profiler.source import Source
@@ -33,6 +34,15 @@ def test_the_nulls_of_a_sample_are_not_counted() -> None:
 def test_every_type_recognised_in_half_of_the_values_is_a_match() -> None:
     matches = _matches(["10115", "2024-01-31"])
     assert sorted(match.type.name for match in matches) == ["date", "postal-code"]
+
+
+def test_a_type_recognised_in_the_threshold_of_its_detector_is_a_match() -> None:
+    pair = SemanticType(
+        "pair", Sensitivity.NONE, Detector(re.compile("[0-9]+ [0-9]+"), threshold=0.25)
+    )
+    values: list[object] = ["ok", "ok", "ok", "1 2"]
+    assert _matches(values, pair) == (Match(pair, 0.25),)
+    assert _matches(["ok", *values], pair) == (), "a fifth is less than a quarter"
 
 
 def test_a_type_of_the_project_is_recognised(account_number: SemanticType) -> None:

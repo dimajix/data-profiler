@@ -1,12 +1,13 @@
 """The matches of a table: its semantic types, recognised in its sample, verified on the table.
 
-The types of each column are recognised in the values of the sample by the module `detect`; a type
-is a match of the column where it is recognised in half of the values of the sample that are not
-null, or more - a low share, as more hypotheses are better than fewer. The matches are verified on
-the whole table by one query, built from the building blocks of the dialect, which counts the
-values of each column that are not null and those the pattern of each detector matches; what a
-detector checks beyond its pattern, SQL does not, so that the share on the table is at least the
-one the check would give. A share is written with as many digits as a sample says.
+The types of each column are recognised in the values of the sample by the module `detect`, which
+makes a type a match of the column where the share of the values of the sample that are not null
+it is recognised in reaches the threshold of its detector. The matches are verified on the whole
+table by one query, built from the building blocks of the dialect, which counts the values of each
+column that are not null and those the pattern of each detector matches; what a detector checks of
+a value beyond its pattern, SQL does not, so that the share on the table is at least the one the
+check would give, and a condition of the column is judged on the sample alone. A share is written
+with as many digits as a sample says.
 """
 
 import logging
@@ -20,9 +21,6 @@ from data_profiler.source import Source, counted
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
-
-# The share of the values of a sample a semantic type has to be recognised in, to be a match.
-_MATCHING: Final = 0.5
 
 # The digits a share is written with.
 _DIGITS: Final = 3
@@ -45,7 +43,6 @@ def recognise(table: Table, sample: Sample, types: Sequence[SemanticType]) -> Ta
         matches = tuple(
             Match(type=kind, sample=round(share, _DIGITS))
             for kind, share in sorted(shares.items(), key=lambda found: -found[1])
-            if share >= _MATCHING
         )
         columns.append(replace(column, matches=matches))
     found = sum(len(column.matches) for column in columns)

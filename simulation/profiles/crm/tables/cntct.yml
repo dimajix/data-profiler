@@ -22,3 +22,7 @@ columns:
   statistics: {nulls: 1300, distinct: 2790, lengths: {shortest: 11, longest: 44}}
   matches: [{type: email, sample: 1.0, table: 1.0}]
 - {name: brth_dt, type: date, statistics: {nulls: 2200, distinct: 1850}}
+- name: cntct_nt
+  type: varchar(500)
+  statistics: {nulls: 1500, distinct: 2600, lengths: {shortest: 12, longest: 240}}
+  matches: [{type: free-text, sample: 1.0, table: 1.0}]
