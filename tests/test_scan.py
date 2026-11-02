@@ -70,7 +70,7 @@ def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     matched = {column.name: column.matches for column in table.columns}
     assert matched["crt_dt"] == (Match(DATE, 1.0, 1.0),), "a date is a date as text"
     assert matched["upd_ts"] == (Match(DATE, 1.0, 1.0),), "nulls are not counted"
-    assert matched["actv_flg"] == (), "a column of no type has no match"
+    assert matched["cust_typ_cd"] == (), "a column of no type has no match"
 
 
 def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(

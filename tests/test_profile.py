@@ -132,7 +132,7 @@ def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
         ({"name": ["CUST", "ID"]}, r"CUST\.yml: columns\.0\.name: .*string"),
         (
             {"matches": [{"type": "account", "sample": 1.0}]},
-            r"CUST\.yml: columns\.0\.matches\.0\.type: Input should be 'email', .* or 'free-text'",
+            r"CUST\.yml: columns\.0\.matches\.0\.type: Input should be 'email', .* or 'zero-one'",
         ),
     ],
     ids=["a field missing", "a field unknown", "a field of the wrong type", "a type unknown"],
@@ -190,7 +190,7 @@ def test_a_match_of_a_type_neither_of_the_tool_nor_of_the_project_is_refused(
     content["types"] = {"customer-number": content["types"]["account-number"]}
     path.write_text(safe_dump(content), encoding="utf-8")
     with pytest.raises(
-        ProfileError, match=r"type: Input should be .*'free-text' or 'customer-number'"
+        ProfileError, match=r"type: Input should be .*'zero-one' or 'customer-number'"
     ):
         Profile.read(tmp_path)
 

@@ -14,4 +14,11 @@ columns:
   statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
 - {name: lst_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
 - {name: vat_rt, type: "decimal(4,2)", statistics: {nulls: 0, distinct: 3}}
-- {name: dscntd_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}
+- name: dscntd_flg
+  type: boolean
+  statistics: {nulls: 0, distinct: 2}
+  matches: [{type: true-false, sample: 1.0, table: 1.0}]
+- name: rtrn_ind
+  type: varchar(1)
+  statistics: {nulls: 0, distinct: 2, lengths: {shortest: 1, longest: 1}}
+  matches: [{type: zero-one, sample: 1.0, table: 1.0}]
