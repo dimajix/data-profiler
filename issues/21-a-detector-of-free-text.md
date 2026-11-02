@@ -91,3 +91,61 @@ Of the column:
 - **2026-11-02** — Opened as the maintainer asked for a detector of free text, judged by the
   values of a column together: their words, punctuation and spaces, and a statistic of the whole
   column, as not every value of free text is of several words.
+
+- **2026-11-02** — A plan for option 3 proposed, not decided yet. The measure of the column is not
+  a score of its own, which would make `Match.sample` mean something else for this type alone and
+  could not be verified on the table, but a third part of `Detector`, beside its pattern and its
+  check, so that `Detector` stays the one kind of detector:
+
+  ```python
+  @dataclass(frozen=True)
+  class Detector:
+      """Recognises one semantic type: by a pattern, a check of a value, and a condition of its column."""
+
+      pattern: re.Pattern[str]
+      check: Callable[[str], bool] | None = None
+      column: Callable[[Sequence[str]], bool] | None = None
+      """Whether the texts of a column, together, are of the type; None where each value says it alone."""
+      threshold: float = 0.5
+      """The share of the values of a sample of the type that makes it a match."""
+
+      def recognises(self, value: str) -> bool: ...  # as now
+      def share(self, texts: Sequence[str]) -> float:
+          """The share of `texts` of the type; 0 where the column fails the condition."""
+  ```
+
+  - **The share stays a share of values:** of the values of words, which the pattern recognises,
+    and which `verify` counts on the table as now; the condition of the column is judged on the
+    sample alone, which the documentation of `Match.table` says. `detect` asks each detector for
+    its `share`, so that the counting moves to the detector.
+  - **The threshold of a type**, 0.5 unless given, replaces the one of `matching.py`, as a column
+    of comments holds many short values. The pairs of [20](20-detectors-of-boolean-pairs.md) need
+    both parts as well: the condition for at most two distinct values (option 3 there), the
+    threshold for every value being of the pair (option 2 there). Condition and threshold are
+    therefore decided for both issues together, as a refactoring of their own before either.
+  - **The pattern of a value of words:** two words or more, one of them after the first in lower
+    case, for instance `[^ ]*[A-Za-zÄÖÜäöüß][^ ]* +[a-zäöüß][^ ]*( .*)?`; `Hans Müller`,
+    `Deutsche Bank AG` and `Hauptstr. 5` are none, `Bitte Rückruf am Montag` is one.
+  - **The condition of the column**, `_free_text` in `detect.py` beside `_phone` and
+    `_card_number`, measured on the texts of the sample, with thresholds to begin with: the share
+    of values of words at least 0.2 (the threshold of the type), the share of words in lower case
+    after the first of their value, over all values, at least 0.3, the share of letters among the
+    characters other than spaces at least 0.7, against codes and numbers, and the share of
+    distinct values at least 0.5, against categories of several words. Punctuation is left out:
+    `Hauptstr. 5` has a full stop and a space too, and every measure more is a threshold more.
+  - **Rules, not a weighted score or a classifier:** each threshold can be explained, logged and
+    fitted on its own; a classifier would need labelled columns, which there are none of.
+  - **`is_sensitive`** checks each value by `recognises`; if free text is personal, a value of
+    words at the end of the range of any column is withheld, as the condition of the column does
+    not apply to a value alone. Probably wanted, but to be decided with the sensitivity.
+  - **The types of a project** stay of a pattern alone.
+  - **The steps:** (1) a refactoring without a change of behaviour, `Detector.share` used by
+    `detect`; (2) the condition of the column and the threshold of a type, decided with
+    [20](20-detectors-of-boolean-pairs.md); (3) the type `free-text`, tested on columns of free
+    text and on columns of names, addresses, products, codes and categories, which are none;
+    (4) the simulation: the generator makes comments in German - sentences from templates, mixed
+    with `ok`, `-` and `siehe oben` -, the round trip finds the column again and takes no column
+    of names or addresses for one, and the thresholds are fitted on it and checked on the real
+    database.
+  - **Open:** whether condition and threshold become the concept shared with
+    [20](20-detectors-of-boolean-pairs.md), and the sensitivity of free text.
