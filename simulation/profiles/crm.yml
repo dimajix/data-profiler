@@ -111,6 +111,10 @@ tables:
   - name: pymt_mthd_cd
     type: varchar(4)
     statistics: {nulls: 40, distinct: 5, lengths: {shortest: 2, longest: 4}}
+  - name: pymt_ref_id
+    type: varchar(36)
+    statistics: {nulls: 40, distinct: 19960, lengths: {shortest: 36, longest: 36}}
+    matches: [{type: uuid, sample: 1.0, table: 1.0}]
   - name: crd_no
     type: varchar(19)
     statistics: {nulls: 14000, distinct: 5700, lengths: {shortest: 16, longest: 19}}

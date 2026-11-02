@@ -91,6 +91,7 @@ def test_a_column_that_cannot_be_generated_is_refused_naming_it(
         (SemanticType.IBAN, 22, 27),
         (SemanticType.CARD_NUMBER, 13, 19),
         (SemanticType.DATE, 10, 19),
+        (SemanticType.UUID, 36, 36),
     ],
     ids=str,
 )

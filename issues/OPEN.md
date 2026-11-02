@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [15](15-a-detector-of-uuids.md) | open | medium | feature | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
+| [15](15-a-detector-of-uuids.md) | in progress | medium | feature | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
 
 ## Describe
 
