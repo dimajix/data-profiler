@@ -3,16 +3,16 @@
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
 profile, for the whole project, the semantic types of its own its columns are checked for beside
 those of the tool, and the environments the database is profiled in - dev, test, prod -, each by
-the URL of its schema and its password; beside it, `overrides.yml` gives by hand what
-the profiles of all environments take as given. Each environment keeps its results in a directory
-of its own, named after it: its profile, its workspace and its report.
+the URL of its schema, and the user and the password it is reached as; beside it, `overrides.yml`
+gives by hand what the profiles of all environments take as given. Each environment keeps its
+results in a directory of its own, named after it: its profile, its workspace and its report.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
 variables are those of the process, completed by the `.env` of the project, which is not
-committed and does not override what the process sets. They are resolved when the URL or the
-password of an environment is asked for, so that an environment can be used without those of the
-others being set, and its results without its own.
+committed and does not override what the process sets. They are resolved when the URL, the user or
+the password of an environment is asked for, so that an environment can be used without those of
+the others being set, and its results without its own.
 """
 
 import re
@@ -29,7 +29,7 @@ from data_profiler.detect import SemanticType
 from data_profiler.documents import DocumentError, read_document
 from data_profiler.profile import SemanticTypes
 
-FORMAT: Final = 2
+FORMAT: Final = 3
 """The version of the format of the configuration of a project, raised as `profile.FORMAT` is."""
 
 # The name of an environment, which is the name of its directory, the same on every system, and an
@@ -50,14 +50,15 @@ class _Settings:
     """How an environment is reached, as the configuration gives it: values or `${NAME}`."""
 
     url: str
+    user: str
     password: str
 
 
 class Environment:
     """An environment of a project: the schema it profiles, and the directory of its results.
 
-    Its URL and password are resolved when they are asked for, so that a stage that does not reach
-    the database, such as `report`, needs neither.
+    Its URL, user and password are resolved when they are asked for, so that a stage that does not
+    reach the database, such as `report`, needs none of them.
 
     Attributes:
         name: The name of the environment, such as `dev` or `prod`.
@@ -84,8 +85,17 @@ class Environment:
         return self._resolved("url", self._settings.url)
 
     @property
+    def user(self) -> str:
+        """The user the environment is reached as.
+
+        Raises:
+            ProjectError: The user is a variable that is not set.
+        """
+        return self._resolved("user", self._settings.user)
+
+    @property
     def password(self) -> str:
-        """The password of the user the URL names; never shown.
+        """The password of the user; never shown.
 
         Raises:
             ProjectError: The password is a variable that is not set.
@@ -174,11 +184,11 @@ class Project:
 
         Raises:
             ProjectError: The configuration or the `.env` cannot be read, the configuration is
-                no document of the format, names
-                an environment other than in lower case letters, digits, `-` and `_`, beginning
-                with a letter or a digit, gives a password other than by a variable, a URL with a
-                variable in it rather than as a whole, its tables by no regular expression, or a
-                semantic type of its own that cannot be made, as `detect.project_type` says.
+                no document of the format, names an environment other than in lower case letters,
+                digits, `-` and `_`, beginning with a letter or a digit, gives a password other
+                than by a variable, a URL or a user with a variable in it rather than as a whole,
+                its tables by no regular expression, or a semantic type of its own that cannot be
+                made, as `detect.project_type` says.
         """
         file = directory / "project.yml"
         try:
@@ -196,11 +206,12 @@ class Project:
                     f"{file}: the environment {name} gives its password other than as ${{NAME}},"
                     " a variable"
                 )
-            if "${" in settings.url and not _VARIABLE.fullmatch(settings.url):
-                raise ProjectError(
-                    f"{file}: the environment {name} gives its url with a variable in it, but a"
-                    " variable is taken only as the whole value"
-                )
+            for setting, value in (("url", settings.url), ("user", settings.user)):
+                if "${" in value and not _VARIABLE.fullmatch(value):
+                    raise ProjectError(
+                        f"{file}: the environment {name} gives its {setting} with a variable in"
+                        " it, but a variable is taken only as the whole value"
+                    )
         tables = configuration.tables
         try:
             pattern = re.compile(

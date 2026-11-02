@@ -41,7 +41,7 @@ def test_a_failing_query_names_the_endpoint_and_the_step(source: Source) -> None
 @pytest.mark.usefixtures("user_environment")
 def test_a_wrong_password_is_refused_naming_the_user(url: str) -> None:
     with (
-        connect(url, "wrong") as source,
+        connect(url, "profiler", "wrong") as source,
         pytest.raises(SourceError, match="refused the user profiler:"),
     ):
         source.tables(re.compile(".*"))
@@ -51,19 +51,23 @@ def test_a_wrong_password_is_refused_naming_the_user(url: str) -> None:
     ("url", "problem"),
     [
         ("postgresql://u:secret@h/c/s", "only a URL of Trino"),
-        ("trino://u:secret@h/c/s", "holds a password"),
-        ("trino://u@h/c/s?secret=1", "a query or a fragment"),
-        ("trino://h/c/s", "lacks user"),
-        ("trino://u@h/c", "lacks user"),
-        ("trino://u@h//s", "lacks user"),
-        ("trino://u@h:x/c/s", "no number from 0 to 65535"),
-        ("trino://u@h:70000/c/s", "no number from 0 to 65535"),
+        ("trino://u:secret@h/c/s", "holds a user or a password"),
+        ("trino://:secret@h/c/s", "holds a user or a password"),
+        ("trino://u@h/c/s", "holds a user or a password"),
+        ("trino://h/c/s?secret=1", "a query or a fragment"),
+        ("trino:///c/s", "lacks host"),
+        ("trino://h/c", "lacks host"),
+        ("trino://h//s", "lacks host"),
+        ("trino://h:x/c/s", "no number from 0 to 65535"),
+        ("trino://h:70000/c/s", "no number from 0 to 65535"),
     ],
     ids=[
         "another database",
         "a password",
+        "a password without a user",
+        "a user",
         "a query",
-        "no user",
+        "no host",
         "no schema",
         "no catalog",
         "a port that is no number",
@@ -74,12 +78,17 @@ def test_a_url_that_names_no_schema_of_trino_is_refused_without_repeating_it(
     url: str, problem: str
 ) -> None:
     with pytest.raises(SourceError, match=problem) as raised:
-        connect(url, "")
+        connect(url, "u", "")
     assert "secret" not in str(raised.value), "the URL, which may hold a password, is not repeated"
 
 
+def test_a_schema_is_not_read_as_an_empty_user() -> None:
+    with pytest.raises(SourceError, match="the user to read the schema as is empty"):
+        connect("trino://h/c/s", "", "")
+
+
 def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
-    with connect("trino://u@h/c/s", "") as source:
+    with connect("trino://h/c/s", "u", "") as source:
         columns = source.dialect.columns('c"at', "it's", "t")
         select = source.dialect.select([source.dialect.longest('c"y')], 't"x')
         sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
@@ -112,7 +121,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     ],
 )
 def test_only_the_types_whose_values_have_an_order_are_ordered(kind: str, ordered: bool) -> None:
-    with connect("trino://u@h/c/s", "") as source:
+    with connect("trino://h/c/s", "u", "") as source:
         assert source.dialect.is_ordered(kind) == ordered
 
 

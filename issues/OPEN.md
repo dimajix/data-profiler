@@ -17,12 +17,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 | [10](10-the-stage-describe.md) | open | high | feature | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. Part of epic [02](02-first-version-epic.md). |
 
-## Command line
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [17](17-the-user-apart-from-the-url.md) | open | medium | feature | The user of an environment is part of its URL, so that it cannot be taken from a variable while the host, the catalog and the schema stay in the configuration the team shares. |
-
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

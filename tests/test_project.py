@@ -10,14 +10,16 @@ from data_profiler.project import Project, ProjectError
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
 _CONFIGURATION = """\
-format: 2
+format: 3
 tables: cust.*
 environments:
   dev:
-    url: trino://profiler@dev:8443/crm/sales
+    url: trino://dev:8443/crm/sales
+    user: profiler
     password: ${DEV_PASSWORD}
   prod:
     url: ${PROD_URL}
+    user: ${PROD_USER}
     password: ${PROD_PASSWORD}
 """
 
@@ -77,7 +79,8 @@ def test_a_semantic_type_of_a_project_without_its_sensitivity_is_refused(tmp_pat
 def test_an_environment_is_resolved_from_the_variables_it_names(tmp_path: Path) -> None:
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
     assert environment.name == "dev"
-    assert environment.url == "trino://profiler@dev:8443/crm/sales"
+    assert environment.url == "trino://dev:8443/crm/sales"
+    assert environment.user == "profiler"
     assert environment.directory == tmp_path / "dev"
     assert environment.password == "secret", "those of prod are not needed"
 
@@ -89,10 +92,12 @@ def test_an_environment_needs_its_variables_only_when_they_are_asked_for(tmp_pat
         assert environment.url
 
 
-def test_the_url_of_an_environment_may_be_a_variable(tmp_path: Path) -> None:
-    url = "trino://profiler@prod:8443/crm/sales"
-    project = _project(tmp_path, PROD_URL=url, PROD_PASSWORD="secret")
-    assert project.environment("prod").url == url
+def test_the_url_and_the_user_of_an_environment_may_be_variables(tmp_path: Path) -> None:
+    url = "trino://prod:8443/crm/sales"
+    project = _project(tmp_path, PROD_URL=url, PROD_USER="kaya@dimajix.de")
+    environment = project.environment("prod")
+    assert environment.url == url
+    assert environment.user == "kaya@dimajix.de", "the user is taken as written"
 
 
 def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None:
@@ -112,13 +117,13 @@ def test_the_password_of_an_environment_is_not_shown(tmp_path: Path) -> None:
 
 
 def test_an_environment_whose_variable_is_not_set_is_refused_naming_it(tmp_path: Path) -> None:
-    project = _project(tmp_path, PROD_URL="trino://profiler@prod:8443/crm/sales")
+    project = _project(tmp_path, PROD_URL="trino://prod:8443/crm/sales")
     problem = (
-        r"project\.yml: the password of the environment prod is the variable PROD_PASSWORD, which"
+        r"project\.yml: the user of the environment prod is the variable PROD_USER, which"
         r" neither the process sets nor .*\.env$"
     )
     with pytest.raises(ProjectError, match=problem):
-        assert project.environment("prod").password
+        assert project.environment("prod").user
 
 
 def test_the_variables_are_completed_by_those_of_the_project(tmp_path: Path) -> None:
@@ -160,9 +165,18 @@ def test_an_environment_that_is_no_name_of_a_directory_is_refused(
         _project(tmp_path, configuration)
 
 
-def test_a_url_with_a_variable_in_it_is_refused(tmp_path: Path) -> None:
-    configuration = _CONFIGURATION.replace("profiler@dev", "${USER}@dev")
-    with pytest.raises(ProjectError, match="environment dev gives its url with a variable in it"):
+@pytest.mark.parametrize(
+    ("value", "written", "setting"),
+    [
+        ("trino://dev:8443", "trino://${HOST}:8443", "url"),
+        ("user: profiler", "user: ${USER}@dimajix.de", "user"),
+    ],
+)
+def test_a_url_or_a_user_with_a_variable_in_it_is_refused(
+    tmp_path: Path, value: str, written: str, setting: str
+) -> None:
+    configuration = _CONFIGURATION.replace(value, written)
+    with pytest.raises(ProjectError, match=f"environment dev gives its {setting} with a variable"):
         _project(tmp_path, configuration)
 
 
@@ -179,8 +193,8 @@ def test_tables_that_are_no_regular_expression_are_refused(tmp_path: Path) -> No
 
 
 def test_a_configuration_that_is_no_document_of_a_project_is_refused(tmp_path: Path) -> None:
-    configuration = _CONFIGURATION.replace("format: 2", "format: 1")
-    with pytest.raises(ProjectError, match=r"project\.yml is of format 1"):
+    configuration = _CONFIGURATION.replace("format: 3", "format: 2")
+    with pytest.raises(ProjectError, match=r"project\.yml is of format 2"):
         _project(tmp_path, configuration)
 
 
@@ -192,6 +206,7 @@ def test_a_directory_without_a_configuration_is_refused(tmp_path: Path) -> None:
 def test_the_example_project_profiles_the_simulation_environment() -> None:
     project = Project.read(_EXAMPLE, {"SIMULATION_PASSWORD": "profiler"})
     environment = project.environment("simulation")
-    assert environment.url == "trino://profiler@localhost:8443/crm/sales"
+    assert environment.url == "trino://localhost:8443/crm/sales"
+    assert environment.user == "profiler"
     assert environment.directory == _EXAMPLE / "simulation"
     assert project.tables.fullmatch("cust_addr")

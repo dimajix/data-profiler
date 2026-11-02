@@ -1,6 +1,6 @@
 # 17 — The user apart from the URL
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Command line
@@ -55,3 +55,9 @@ As decided with the maintainer: option 1.
 
 - **2026-11-02** — Opened, as the maintainer asked for the user of an environment to come from a
   variable, as its password does.
+
+- **2026-11-02** — Done: `project.yml` is of format 3, each environment giving its `user` beside
+  its `url` and its `password`, a value or a variable as the URL is; `Environment.user` resolves
+  it. `source.connect` takes the user apart from the URL, and refuses a URL that holds a user or a
+  password in one check - a URL that holds a password holds a user too, if an empty one - and an
+  empty user. The example project, `README.md` and `docs/ARCHITECTURE.md` give the user so.

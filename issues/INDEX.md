@@ -47,7 +47,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [13](13-projects-and-environments.md) | done | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. |
-| [17](17-the-user-apart-from-the-url.md) | open | The user of an environment is part of its URL, so that it cannot be taken from a variable while the host, the catalog and the schema stay in the configuration the team shares. |
+| [17](17-the-user-apart-from-the-url.md) | done | The user of an environment is part of its URL, so that it cannot be taken from a variable while the host, the catalog and the schema stay in the configuration the team shares. |
 
 ## Simulation
 
