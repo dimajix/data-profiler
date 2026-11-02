@@ -25,6 +25,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [08](08-detection.md) | done | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. |
+| [15](15-a-detector-of-uuids.md) | open | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
 
 ## Describe
 
