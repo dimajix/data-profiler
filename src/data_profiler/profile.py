@@ -12,8 +12,9 @@ their own. A file of a table is read with the semantic types of `profile.yml`, w
 name.
 """
 
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+import logging
+from collections.abc import Collection, Iterable, Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -31,13 +32,15 @@ from data_profiler.detect import (
 from data_profiler.documents import DocumentError, read_document, write_document
 from data_profiler.files import is_file_name
 
+_logger = logging.getLogger(__name__)
+
 FORMAT: Final = 6
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
 written to: a field added is unknown to the version before, a field removed or renamed is missing
-for the version after. A profile of another format is refused, an older one as well: it is scanned
-again, not converted.
+for the version after. A profile of another format is refused, an older one as well: it is removed
+and scanned again, not converted.
 """
 
 
@@ -286,10 +289,47 @@ class Profile:
         return cls(
             catalog=head.catalog,
             schema=head.schema,
-            tables=tuple(sorted(tables, key=lambda table: table.name)),
+            tables=_sorted(tables),
             glossary=head.glossary,
             types=head.types,
         )
+
+    @classmethod
+    def updating(
+        cls, directory: Path, catalog: str, schema: str, types: tuple[SemanticType, ...]
+    ) -> "Profile":
+        """The profile in `directory` that a scan of `schema` of `catalog` with `types` updates.
+
+        A directory without `profile.yml` holds no profile, so that one left by an interrupted
+        first write is no profile either. A profile scanned with other semantic types loses its
+        tables, as their matches may name a type it no longer has, and keeps its glossary.
+
+        Args:
+            directory: The directory of the profile.
+            catalog: The catalog of the schema scanned.
+            schema: The schema scanned.
+            types: The semantic types of the project the scan recognises.
+
+        Returns:
+            The profile in `directory`, without its tables where it was scanned with other types;
+            an empty one of `types` where there is none.
+
+        Raises:
+            ProfileError: The profile cannot be read, as `read` says, or is of another schema.
+        """
+        empty = cls(catalog=catalog, schema=schema, tables=(), types=types)
+        if not (directory / _HEAD).exists():
+            return empty
+        profile = cls.read(directory)
+        if (profile.catalog, profile.schema) != (catalog, schema):
+            raise ProfileError(
+                f"the profile {directory} is of {profile.catalog}.{profile.schema},"
+                f" not of {catalog}.{schema}"
+            )
+        if profile.types != types:
+            _logger.info("The semantic types changed: the tables of %s are scanned anew", directory)
+            return replace(empty, glossary=profile.glossary)
+        return profile
 
     def write(self, directory: Path) -> None:
         """Writes the profile to `directory`, each of its files whole or not at all.
@@ -327,6 +367,29 @@ class Profile:
         except DocumentError as error:
             raise ProfileError(str(error)) from error
 
+    def updated(self, table: Table) -> "Profile":
+        """The profile with `table` in place of its table of the same name, or beside its tables.
+
+        Args:
+            table: The table, as it was found anew.
+
+        Returns:
+            The profile, its tables sorted by their names.
+        """
+        others = (kept for kept in self.tables if kept.name != table.name)
+        return replace(self, tables=_sorted((*others, table)))
+
+    def restricted(self, names: Collection[str]) -> "Profile":
+        """The profile with those of its tables alone that `names` names.
+
+        Args:
+            names: The names of the tables to keep.
+
+        Returns:
+            The profile, without the tables `names` does not name.
+        """
+        return replace(self, tables=tuple(table for table in self.tables if table.name in names))
+
 
 @dataclass(frozen=True)
 class _Head:
@@ -336,6 +399,11 @@ class _Head:
     schema: str
     glossary: Mapping[str, str] = field(default_factory=dict)
     types: SemanticTypes = ()
+
+
+def _sorted(tables: Iterable[Table]) -> tuple[Table, ...]:
+    """`tables`, sorted by their names, as a profile holds them."""
+    return tuple(sorted(tables, key=lambda table: table.name))
 
 
 def _file(directory: Path, table: str) -> Path:

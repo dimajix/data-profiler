@@ -141,10 +141,13 @@ uv run data-profiler scan simulation --project examples/crm
 
 which writes the profile to `examples/crm/simulation/profile/` - `profile.yml` of the schema, and
 a file of each table in `tables/` -, and the samples and enumerations of the tables to the
-workspace `examples/crm/simulation/workspace/`, which keeps itself out of version control. Without
-`--project`, the project is the current directory. The progress goes to standard error; with
-`--debug` before the command, the log holds the statements sent and the values of the database,
-and stays on the machine.
+workspace `examples/crm/simulation/workspace/`, which keeps itself out of version control. The
+profile is written after every table and updated, not replaced, by the next scan: the tables no
+longer selected are dropped, and the glossary is kept. A profile that cannot be read - of an older
+format, for one - or of another schema is refused, never overwritten; it is removed by hand before
+it is scanned anew. Without `--project`, the project is the current directory. The progress goes to
+standard error; with `--debug` before the command, the log holds the statements sent and the values
+of the database, and stays on the machine.
 
 The profile is rendered as a report by
 

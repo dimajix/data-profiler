@@ -210,3 +210,44 @@ def test_a_profile_that_cannot_be_written_is_refused(tmp_path: Path) -> None:
     (tmp_path / "profile").write_text("a file, not a directory", encoding="utf-8")
     with pytest.raises(ProfileError, match="cannot be written"):
         _PROFILE.write(tmp_path / "profile")
+
+
+def test_an_updated_profile_has_the_table_in_place_of_its_own_or_beside_them_sorted() -> None:
+    cust = _PROFILE.tables[0]
+    counted = replace(cust, rows=1)
+    assert _PROFILE.updated(counted).tables == (counted,), "in place of the table of its name"
+    added = replace(cust, name="ADDR")
+    assert _PROFILE.updated(added).tables == (added, cust), "beside them, sorted by name"
+
+
+def test_a_restricted_profile_has_the_tables_named_alone() -> None:
+    profile = _PROFILE.updated(replace(_PROFILE.tables[0], name="ORD"))
+    assert [table.name for table in profile.restricted({"ORD", "PROD"}).tables] == ["ORD"]
+    assert profile.restricted(["CUST", "ORD"]) == profile
+
+
+def test_a_scan_updates_an_empty_profile_where_there_is_none(tmp_path: Path) -> None:
+    (tmp_path / "tables").mkdir()
+    empty = Profile(catalog="crm", schema="sales", tables=())
+    assert Profile.updating(tmp_path / "missing", "crm", "sales", ()) == empty
+    assert Profile.updating(tmp_path, "crm", "sales", ()) == empty, "nor without profile.yml"
+
+
+def test_a_scan_updates_the_profile_there_is(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
+    assert Profile.updating(tmp_path, "crm", "sales", ()) == _PROFILE
+
+
+def test_a_scan_with_other_types_updates_the_profile_without_its_tables(
+    tmp_path: Path, account_number: SemanticType
+) -> None:
+    _PROFILE.write(tmp_path)
+    updating = Profile.updating(tmp_path, "crm", "sales", (account_number,))
+    assert (updating.tables, updating.types) == ((), (account_number,))
+    assert updating.glossary == _PROFILE.glossary, "the glossary is kept"
+
+
+def test_a_scan_of_another_schema_refuses_the_profile(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
+    with pytest.raises(ProfileError, match=r"is of crm\.sales, not of crm\.billing"):
+        Profile.updating(tmp_path, "crm", "billing", ())

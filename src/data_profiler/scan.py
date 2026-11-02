@@ -6,11 +6,19 @@ into the workspace. The semantic types of its columns, those of the tool and tho
 are recognised in the sample, and verified on the whole table, by the module `matching`. Which
 values of the database go into the profile - the ranges and enumerations of the columns of no
 sensitivity -, the module `disclosure` decides, by the same types.
+
+The profile is written after every table, so that a scan that fails at one table keeps those before
+it. A scan updates the profile there is rather than replacing it: it drops the tables no longer
+selected - deleted, or no longer matched by the pattern -, keeps the others until it counts them
+anew, and keeps the glossary. A profile scanned with other semantic types loses its tables, as
+their matches may name a type it no longer has; a profile of another schema, or one that cannot be
+read, is refused rather than overwritten.
 """
 
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
+from pathlib import Path
 from re import Pattern
 
 from data_profiler.detect import SemanticType
@@ -31,27 +39,33 @@ def scan(
     pattern: Pattern[str],
     workspace: Workspace,
     types: tuple[SemanticType, ...],
-) -> Profile:
-    """The profile of the tables of `source` that `pattern` matches whole.
+    directory: Path,
+) -> None:
+    """Scans the tables of `source` that `pattern` matches whole into the profile in `directory`.
+
+    The profile is written after every table: each table with its columns, types, statistics and
+    matches, and the ranges and values of enumerations of the columns of no sensitivity; and the
+    types of the project.
 
     Args:
         source: The schema whose tables are scanned.
         pattern: The names of the tables to scan, matched whole.
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
-
-    Returns:
-        The profile: the tables, sorted by name, with their columns, types, statistics and
-        matches, and the ranges and values of enumerations of the columns of no sensitivity; and
-        the types of the project.
+        directory: The directory of the profile, updated where there is one.
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
             values of its enumerations, to take its sample, or to verify its matches.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
+        ProfileError: The profile there is cannot be read, is of another schema, or the profile
+            cannot be written.
     """
-    tables = []
-    for name in source.tables(pattern):
+    profile = Profile.updating(directory, source.catalog, source.schema, types)
+    names = source.tables(pattern)
+    profile = profile.restricted(names)
+    profile.write(directory)
+    for name in names:
         _logger.info("Scanning %s", name)
         table = count(source, name)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
@@ -60,8 +74,8 @@ def scan(
         sample = take(source, table)
         workspace.write_sample(name, sample)
         found = verify(source, recognise(table, sample, types))
-        tables.append(disclose(_valued(found, enumerations), types))
-    return Profile(catalog=source.catalog, schema=source.schema, tables=tuple(tables), types=types)
+        profile = profile.updated(disclose(_valued(found, enumerations), types))
+        profile.write(directory)
 
 
 def _valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:

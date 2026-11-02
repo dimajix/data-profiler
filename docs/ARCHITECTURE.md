@@ -57,7 +57,7 @@ environment.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
-    matches of the selected tables, written to a profile.
+    matches of the selected tables, written to the profile table by table.
 *   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
     recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
@@ -139,7 +139,11 @@ lays the overrides over the profile they read. The semantic types of a project r
     threshold of an enumeration; and it takes a sample into the workspace. The detectors check the
     values of the sample; the semantic types they find are verified on the whole table by the
     patterns of the detectors in SQL. The result is the profile, with the ranges and the values of
-    enumerations of the columns of no sensitivity.
+    enumerations of the columns of no sensitivity, written after every table: a scan that fails
+    keeps the tables before it. It updates the profile there is: the tables no longer selected are
+    dropped, the others kept until they are counted anew, and the glossary is kept; a profile
+    scanned with other semantic types loses its tables. A profile that cannot be read, or one of
+    another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
     language model for the word of each term, showing it the tables and columns the term appears
     in. From the glossary and
