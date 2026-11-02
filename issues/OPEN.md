@@ -15,6 +15,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [15](15-a-detector-of-uuids.md) | open | medium | feature | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
+| [16](16-semantic-types-of-a-project.md) | open | medium | feature | The semantic types are fixed in the code, so that a pattern of one database alone - an account number `A` and ten digits - cannot be recognised without changing the tool. |
 
 ## Describe
 
