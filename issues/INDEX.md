@@ -12,6 +12,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 |---|---|---|
 | [03](03-the-profile.md) | done | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
 | [11](11-overrides.md) | in progress | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. |
+| [19](19-names-of-tables-that-differ-in-case-alone.md) | open | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
 ## Scan
 
