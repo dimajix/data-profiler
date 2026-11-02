@@ -1,6 +1,6 @@
 # 15 — A detector of UUIDs
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -57,3 +57,7 @@ As decided with the maintainer:
   and the example of the simulation has the column `ord.pymt_ref_id` of them. The round trip and
   the test that sends every pattern to Trino were not run where the change was made, which has no
   simulation environment; the issue is done once they pass.
+
+- **2026-11-02** — Done: the maintainer ran the tests with the simulation environment, the round
+  trip and the test that sends every pattern to Trino among them, and all of them passed; the
+  column `ord.pymt_ref_id` is found again, in the sample and on the whole table.

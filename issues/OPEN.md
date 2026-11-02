@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [11](11-overrides.md) | in progress | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
-## Detection
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [15](15-a-detector-of-uuids.md) | in progress | medium | feature | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
