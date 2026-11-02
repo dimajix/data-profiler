@@ -1,6 +1,6 @@
 # 20 — Detectors of boolean pairs
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -67,3 +67,23 @@ of any of them.
   type, which options 2 and 3 of a value not being a pair need, become one concept for this issue
   and [21](21-a-detector-of-free-text.md), built before either as the refactoring of
   [22](22-a-condition-of-a-column.md). Which of the options the pairs take is still to be decided.
+
+- **2026-11-02** — Decided with the maintainer: the types are named `true-false`, `yes-no` and
+  `zero-one`, of the sensitivity none; each takes its pair alone, `true` and `false`, `yes` and
+  `no`, `0` and `1`, the words in lower case, with a capital and in capitals, and no other forms
+  (`y`/`n`, `ja`/`nein`, `t`/`f`). A column is of a pair where every value of it that is not null
+  is - option 2, by a threshold of 1 -, without a condition of the column. A column of the type
+  `boolean` is recognised as `true-false`, as a column of the type `date` is as a date: a detector
+  sees each value as text, whatever the type of its column.
+
+- **2026-11-02** — Made as decided: the semantic types `true-false`, `yes-no` and `zero-one`, each
+  recognised by a pattern of its pair alone and the threshold 1 of its detector, so that a column
+  of counts, of zeros and ones mostly, is none. The condition of a column of
+  [22](22-a-condition-of-a-column.md), given all texts and those recognised for the sake of this
+  issue, is not needed by the pairs as decided; its user is the free text of
+  [21](21-a-detector-of-free-text.md). The generator makes a word of a pair in a case at random,
+  and the example of the simulation has its two columns of the type `boolean`, `cust.actv_flg` and
+  `prod.dscntd_flg`, recognised as `true-false` - read as `True` and `False` in the sample, as
+  `true` and `false` on the table -, the column `cust.nwslttr_flg` of `yes-no` and the column
+  `prod.rtrn_ind` of `zero-one`, which the round trip finds again, in the sample and on the whole
+  table.

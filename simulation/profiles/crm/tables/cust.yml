@@ -15,7 +15,14 @@ columns:
 - {name: crt_dt, type: date, statistics: {nulls: 0, distinct: 3100}}
 - {name: upd_ts, type: timestamp(3), statistics: {nulls: 412, distinct: 4588}}
 - {name: crdt_lmt_amt, type: "decimal(12,2)", statistics: {nulls: 1200, distinct: 340}}
-- {name: actv_flg, type: boolean, statistics: {nulls: 0, distinct: 2}}
+- name: actv_flg
+  type: boolean
+  statistics: {nulls: 0, distinct: 2}
+  matches: [{type: true-false, sample: 1.0, table: 1.0}]
+- name: nwslttr_flg
+  type: varchar(3)
+  statistics: {nulls: 600, distinct: 2, lengths: {shortest: 2, longest: 3}}
+  matches: [{type: yes-no, sample: 1.0, table: 1.0}]
 - name: seg_cd
   type: varchar(4)
   statistics: {nulls: 250, distinct: 7, lengths: {shortest: 2, longest: 4}}

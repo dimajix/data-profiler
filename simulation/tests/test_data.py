@@ -13,7 +13,10 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
+    TRUE_FALSE,
     UUID,
+    YES_NO,
+    ZERO_ONE,
     SemanticType,
 )
 from data_profiler.profile import Column, Lengths, Match, Statistics, Table
@@ -93,36 +96,39 @@ def test_a_column_that_cannot_be_generated_is_refused_naming_it(
         rows(_table(column), Random(0))
 
 
-# The shortest and the longest text of each semantic type of the tool that is made.
-_LENGTHS = {
-    EMAIL: (11, 44),
-    PHONE: (9, 16),
-    POSTAL_CODE: (5, 5),
-    IBAN: (22, 27),
-    CARD_NUMBER: (13, 19),
-    DATE: (10, 19),
-    UUID: (36, 36),
-    FREE_TEXT: (12, 60),
+# The shortest and the longest text of each semantic type of the tool that is made, and how many
+# distinct texts of 500 a column of them has: as many as there are, as the condition of free text
+# wants half of its values of words distinct, and of a pair two.
+_TEXTS = {
+    EMAIL: (11, 44, 500),
+    PHONE: (9, 16, 500),
+    POSTAL_CODE: (5, 5, 500),
+    IBAN: (22, 27, 500),
+    CARD_NUMBER: (13, 19, 500),
+    DATE: (10, 19, 500),
+    UUID: (36, 36, 500),
+    FREE_TEXT: (12, 60, 500),
+    TRUE_FALSE: (4, 5, 2),
+    YES_NO: (2, 3, 2),
+    ZERO_ONE: (1, 1, 2),
 }
 
 
 def test_every_semantic_type_of_the_tool_is_made() -> None:
-    assert set(_LENGTHS) == set(BUILT_IN), "a type of the tool without a test of its texts"
+    assert set(_TEXTS) == set(BUILT_IN), "a type of the tool without a test of its texts"
 
 
 @pytest.mark.parametrize(
-    ("kind", "shortest", "longest"),
-    [pytest.param(kind, *lengths, id=kind.name) for kind, lengths in _LENGTHS.items()],
+    ("kind", "shortest", "longest", "distinct"),
+    [pytest.param(kind, *texts, id=kind.name) for kind, texts in _TEXTS.items()],
 )
 def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
-    kind: SemanticType, shortest: int, longest: int
+    kind: SemanticType, shortest: int, longest: int, distinct: int
 ) -> None:
-    # As many distinct values as rows, as the condition of free text wants half of its values of
-    # words distinct.
     column = Column(
         name="v",
         type="varchar(60)",
-        statistics=Statistics(0, 500, Lengths(shortest, longest)),
+        statistics=Statistics(0, distinct, Lengths(shortest, longest)),
         matches=(Match(kind, 1.0),),
     )
     values = [str(value) for (value,) in rows(_table(column, count=500), Random(0))]

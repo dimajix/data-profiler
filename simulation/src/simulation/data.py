@@ -29,7 +29,10 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
+    TRUE_FALSE,
     UUID,
+    YES_NO,
+    ZERO_ONE,
     SemanticType,
 )
 from data_profiler.profile import Column, Lengths, Table
@@ -232,6 +235,16 @@ def _free_text(length: int, random: Random) -> str:
     return " ".join(words)[:length]
 
 
+def _pair(*words: str) -> Callable[[int, Random], str]:
+    """How a word of a pair is made: one of `words` of the length asked for, in a case at random."""
+
+    def made(length: int, random: Random) -> str:
+        word = random.choice([word for word in words if len(word) == length] or [""])
+        return random.choice((word, word.capitalize(), word.upper()))
+
+    return made
+
+
 # How a text is made that may be of a semantic type of the tool and of a length, which the caller
 # is to tell: making test data is no concern of the tool.
 _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
@@ -243,6 +256,9 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     DATE: _date,
     UUID: _uuid,
     FREE_TEXT: _free_text,
+    TRUE_FALSE: _pair("true", "false"),
+    YES_NO: _pair("yes", "no"),
+    ZERO_ONE: _pair("0", "1"),
 }
 
 

@@ -142,6 +142,16 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
     )
 
 
+# The threshold of a flag, of a pair of values: every value of its column that is not null is of the
+# pair, as a column of counts, mostly zeros and ones, is none.
+_EVERY: Final = 1.0
+
+
+def _cases(*words: str) -> str:
+    """A pattern of `words`, each in lower case, with a capital and in capitals."""
+    return "|".join(f"{word}|{word.capitalize()}|{word.upper()}" for word in words)
+
+
 @dataclass(frozen=True)
 class SemanticType:
     """What the values of a column are: a name, the rules its values fall under, and its detector.
@@ -212,8 +222,32 @@ FREE_TEXT: Final = SemanticType(
     "free-text", Sensitivity.NONE, Detector(_OF_WORDS, column=_free_text, threshold=0.2)
 )
 """Free text, such as a comment, a note or a description, of words and sentences."""
+TRUE_FALSE: Final = SemanticType(
+    "true-false", Sensitivity.NONE, Detector(re.compile(_cases("true", "false")), threshold=_EVERY)
+)
+"""A flag of `true` and `false`, as a column of the type `boolean` is read as text too."""
+YES_NO: Final = SemanticType(
+    "yes-no", Sensitivity.NONE, Detector(re.compile(_cases("yes", "no")), threshold=_EVERY)
+)
+"""A flag of `yes` and `no`."""
+ZERO_ONE: Final = SemanticType(
+    "zero-one", Sensitivity.NONE, Detector(re.compile("[01]"), threshold=_EVERY)
+)
+"""A flag of `0` and `1`."""
 
-BUILT_IN: Final = (EMAIL, PHONE, POSTAL_CODE, IBAN, CARD_NUMBER, DATE, UUID, FREE_TEXT)
+BUILT_IN: Final = (
+    EMAIL,
+    PHONE,
+    POSTAL_CODE,
+    IBAN,
+    CARD_NUMBER,
+    DATE,
+    UUID,
+    FREE_TEXT,
+    TRUE_FALSE,
+    YES_NO,
+    ZERO_ONE,
+)
 """The semantic types of the tool."""
 
 # The name of a semantic type of a project, of lower case letters, digits and `-`, as the names of

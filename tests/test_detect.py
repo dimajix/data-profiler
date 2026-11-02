@@ -14,7 +14,10 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
+    TRUE_FALSE,
     UUID,
+    YES_NO,
+    ZERO_ONE,
     Detector,
     SemanticType,
     SemanticTypeError,
@@ -56,6 +59,9 @@ _RECOGNISED = {
         "Customer asked for a refund.",
         "Rechnung\nkorrigiert und versandt",
     ],
+    TRUE_FALSE: ["true", "False", "TRUE", "false"],
+    YES_NO: ["yes", "No", "YES", "no"],
+    ZERO_ONE: ["0", "1"],
 }
 
 _NOT_RECOGNISED = {
@@ -80,6 +86,9 @@ _NOT_RECOGNISED = {
         "123e4567-e89b-12d3a456-426614174000",
     ],
     FREE_TEXT: ["ok", "Hans Müller", "Deutsche Bank AG", "Hauptstr. 5", "2024-01-31 12:00 UTC"],
+    TRUE_FALSE: ["t", "f", "tRUE", "truth", "yes"],
+    YES_NO: ["y", "n", "ja", "nein", "yES", "nope"],
+    ZERO_ONE: ["2", "01", "10", "0.0", "-1"],
 }
 
 
@@ -120,6 +129,9 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
             (DATE, Sensitivity.NONE),
             (UUID, Sensitivity.NONE),
             (FREE_TEXT, Sensitivity.NONE),
+            (TRUE_FALSE, Sensitivity.NONE),
+            (YES_NO, Sensitivity.NONE),
+            (ZERO_ONE, Sensitivity.NONE),
         ]
     ],
 )
@@ -186,8 +198,8 @@ def test_a_condition_of_the_column_is_given_the_texts_its_detector_recognises() 
 
 def test_a_type_whose_condition_of_the_column_fails_is_not_detected() -> None:
     pair = SemanticType("pair", Sensitivity.NONE, _PAIR)
-    assert detect(["0", "1"], (pair,)) == {pair: 1.0}
-    assert detect(["0", "1", "2"], (pair,)) == {}
+    assert detect(["4", "7"], (pair,)) == {pair: 1.0}
+    assert detect(["4", "7", "9"], (pair,)) == {}
 
 
 # A column of comments, many of them short, and columns of several words each that are no free text.
@@ -216,6 +228,18 @@ def test_a_column_of_several_words_that_is_no_free_text_is_not_detected(
     kind: str, values: list[str]
 ) -> None:
     assert FREE_TEXT not in detect(values, ()), f"{kind} are no free text"
+
+
+def test_a_column_of_booleans_is_one_of_true_and_false() -> None:
+    assert detect([True, False, None, True], ()) == {TRUE_FALSE: 1.0}
+
+
+def test_a_column_of_zeros_and_ones_is_one_of_a_pair() -> None:
+    assert detect([0, 1, 1, None], ()) == {ZERO_ONE: 1.0}
+
+
+def test_a_column_of_counts_mostly_zeros_and_ones_is_no_pair() -> None:
+    assert detect([0, 1, 1, 0, 2], ()) == {}, "every value is of a pair, not most"
 
 
 @pytest.mark.parametrize(
