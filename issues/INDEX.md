@@ -30,6 +30,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [15](15-a-detector-of-uuids.md) | done | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
 | [16](16-semantic-types-of-a-project.md) | done | The semantic types are fixed in the code, so that a pattern of one database alone - an account number `A` and ten digits - cannot be recognised without changing the tool. |
 | [20](20-detectors-of-boolean-pairs.md) | open | Nothing recognises a column of flags written as `true`/`false`, `yes`/`no` or `0`/`1`, so that a flag is told to the language model as nothing but a text or a number. |
+| [21](21-a-detector-of-free-text.md) | open | Nothing recognises a column of free text - comments, notes, descriptions -, so that it is told to the language model as a text like any other, and its values are disclosed like those of a code. |
 
 ## Describe
 
