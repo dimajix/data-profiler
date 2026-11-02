@@ -120,8 +120,10 @@ lays the overrides over the profile they read. The semantic types of a project r
     types; a project gives types of its own, each by a pattern alone, which the profile holds, so
     that it is read without its project.
 *   **Detector** - recognises one semantic type: by a pattern every value of the type matches - in
-    the values of a sample, and on the whole table in SQL -, and by a check of a value where the
-    pattern does not say enough, such as a checksum.
+    the values of a sample, and on the whole table in SQL -, by a check of a value where the
+    pattern does not say enough, such as a checksum, and by a condition of the column where no
+    value says enough alone, judged on the values of a sample together. Its type is a match of a
+    column where it recognises at least its threshold of the values of the sample.
 *   **Match** - a semantic type found in a column, with the share of values that match it in the
     sample and, once verified, in the whole table.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`.
