@@ -29,6 +29,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [08](08-detection.md) | done | Nothing recognises what the values of a column are - phone numbers, postal codes, IBANs, card numbers, dates -, nor whether they are sensitive. |
 | [15](15-a-detector-of-uuids.md) | done | Nothing recognises a column of UUIDs written as text, so that a key of that kind is told to the language model as nothing but a text. |
 | [16](16-semantic-types-of-a-project.md) | done | The semantic types are fixed in the code, so that a pattern of one database alone - an account number `A` and ten digits - cannot be recognised without changing the tool. |
+| [20](20-detectors-of-boolean-pairs.md) | open | Nothing recognises a column of flags written as `true`/`false`, `yes`/`no` or `0`/`1`, so that a flag is told to the language model as nothing but a text or a number. |
 
 ## Describe
 
