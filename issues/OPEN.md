@@ -10,6 +10,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [11](11-overrides.md) | in progress | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
 
+## Scan
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [18](18-a-scan-written-table-by-table.md) | open | high | feature | A scan writes its profile only once it has counted every table, so that a run that fails or is interrupted at one table loses all the tables before it, and a new scan replaces the profile whole. |
+
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
