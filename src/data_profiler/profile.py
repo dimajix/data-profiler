@@ -8,11 +8,12 @@ a document, written as YAML in the format below and read back by the same classe
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final
+from typing import Annotated, Final
 
-from pydantic import TypeAdapter
+from pydantic import PlainSerializer, PlainValidator, TypeAdapter
+from pydantic_core import PydanticCustomError
 
-from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.detect import BUILT_IN, SemanticType, Sensitivity, semantic_type
 from data_profiler.documents import DocumentError, read_document, write_document
 
 FORMAT: Final = 4
@@ -26,6 +27,22 @@ format is refused; whether older formats are read again is decided when the form
 
 class ProfileError(Exception):
     """A profile that cannot be read or written: its file, and what is wrong with it."""
+
+
+def _semantic_type(name: object) -> SemanticType:
+    """The semantic type named `name` in a profile."""
+    kind = semantic_type(name) if isinstance(name, str) else None
+    if kind is not None:
+        return kind
+    *others, last = (repr(kind.name) for kind in BUILT_IN)
+    expected = f"{', '.join(others)} or {last}"
+    raise PydanticCustomError("semantic_type", "Input should be {expected}", {"expected": expected})
+
+
+# A semantic type, written by its name.
+type _Named = Annotated[
+    SemanticType, PlainValidator(_semantic_type), PlainSerializer(lambda kind: kind.name)
+]
 
 
 @dataclass(frozen=True)
@@ -100,7 +117,7 @@ class Match:
             give.
     """
 
-    type: SemanticType
+    type: _Named
     sample: float
     table: float | None = None
 

@@ -52,54 +52,6 @@ class Detector:
         return self.check is None or self.check(value)
 
 
-class SemanticType(Enum):
-    """What the values of a column are: each type with its sensitivity and its detector.
-
-    Its value is its name in the profile.
-    """
-
-    EMAIL = "email"
-    PHONE = "phone"
-    POSTAL_CODE = "postal-code"
-    """A German postal code."""
-    IBAN = "iban"
-    CARD_NUMBER = "card-number"
-    DATE = "date"
-    """A date, with or without a time of day and a time zone, written as text."""
-    UUID = "uuid"
-    """A UUID, written as text in the form of RFC 9562."""
-
-    @property
-    def sensitivity(self) -> Sensitivity:
-        """The rules the values of the type fall under."""
-        match self:
-            case SemanticType.EMAIL | SemanticType.PHONE | SemanticType.IBAN:
-                return Sensitivity.PERSONAL
-            case SemanticType.CARD_NUMBER:
-                return Sensitivity.PAYMENT_CARD
-            case SemanticType.POSTAL_CODE | SemanticType.DATE | SemanticType.UUID:
-                return Sensitivity.NONE
-
-    @property
-    def detector(self) -> Detector:
-        """The detector that recognises the type."""
-        match self:
-            case SemanticType.EMAIL:
-                return _EMAIL
-            case SemanticType.PHONE:
-                return _PHONE
-            case SemanticType.POSTAL_CODE:
-                return _POSTAL_CODE
-            case SemanticType.IBAN:
-                return _IBAN
-            case SemanticType.CARD_NUMBER:
-                return _CARD_NUMBER
-            case SemanticType.DATE:
-                return _DATE
-            case SemanticType.UUID:
-                return _UUID
-
-
 # The region of a phone number written without its country code.
 _REGION: Final = "DE"
 
@@ -130,30 +82,78 @@ def _date(value: str) -> bool:
     return True
 
 
-_EMAIL: Final = Detector(
-    re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
+@dataclass(frozen=True)
+class SemanticType:
+    """What the values of a column are: a name, the rules its values fall under, and its detector.
+
+    Attributes:
+        name: The name of the type in the profile.
+        sensitivity: The rules the values of the type fall under.
+        detector: The detector that recognises the type.
+    """
+
+    name: str
+    sensitivity: Sensitivity
+    detector: Detector
+
+
+EMAIL: Final = SemanticType(
+    "email",
+    Sensitivity.PERSONAL,
+    Detector(re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")),
 )
 # A phone number begins with its country, or with the zero of a call within the country; a dot is
 # no separator of it, so that dates and decimals, which phonenumbers takes for numbers, are none.
-_PHONE: Final = Detector(re.compile(r"(\+|\(?0)[0-9 ()/-]{5,24}"), _phone)
-_POSTAL_CODE: Final = Detector(re.compile(r"(0[1-9]|[1-9][0-9])[0-9]{3}"))
+PHONE: Final = SemanticType(
+    "phone", Sensitivity.PERSONAL, Detector(re.compile(r"(\+|\(?0)[0-9 ()/-]{5,24}"), _phone)
+)
+POSTAL_CODE: Final = SemanticType(
+    "postal-code", Sensitivity.NONE, Detector(re.compile(r"(0[1-9]|[1-9][0-9])[0-9]{3}"))
+)
+"""A German postal code."""
 # Two letters, two check digits, and up to 30 letters and digits, in groups of four or not.
-_IBAN: Final = Detector(re.compile(r"[A-Z]{2}[0-9]{2}[A-Z0-9 ]{11,38}"), iban.is_valid)
+IBAN: Final = SemanticType(
+    "iban",
+    Sensitivity.PERSONAL,
+    Detector(re.compile(r"[A-Z]{2}[0-9]{2}[A-Z0-9 ]{11,38}"), iban.is_valid),
+)
 # A card number begins with the digit of an issuer, 2 to 6, as its check digit alone would let a
 # tenth of all numbers of its length pass.
-_CARD_NUMBER: Final = Detector(re.compile(r"[2-6][0-9 -]{11,21}[0-9]"), _card_number)
-_DATE: Final = Detector(
-    re.compile(
-        r"([0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
-        r"|(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.[0-9]{4})"
-        r"([ T]([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?"
-        r"( ?(Z|[+-][0-9]{2}:?[0-9]{2}|[A-Za-z][A-Za-z_/+-]*))?)?"
-    ),
-    _date,
+CARD_NUMBER: Final = SemanticType(
+    "card-number",
+    Sensitivity.PAYMENT_CARD,
+    Detector(re.compile(r"[2-6][0-9 -]{11,21}[0-9]"), _card_number),
 )
+DATE: Final = SemanticType(
+    "date",
+    Sensitivity.NONE,
+    Detector(
+        re.compile(
+            r"([0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
+            r"|(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.[0-9]{4})"
+            r"([ T]([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?"
+            r"( ?(Z|[+-][0-9]{2}:?[0-9]{2}|[A-Za-z][A-Za-z_/+-]*))?)?"
+        ),
+        _date,
+    ),
+)
+"""A date, with or without a time of day and a time zone, written as text."""
 # 32 hexadecimal digits in groups of 8, 4, 4, 4 and 12; their version and variant are not checked,
 # so that a UUID of any kind is recognised, as the groups alone say enough.
-_UUID: Final = Detector(re.compile(r"[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}"))
+UUID: Final = SemanticType(
+    "uuid",
+    Sensitivity.NONE,
+    Detector(re.compile(r"[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}")),
+)
+"""A UUID, written as text in the form of RFC 9562."""
+
+BUILT_IN: Final = (EMAIL, PHONE, POSTAL_CODE, IBAN, CARD_NUMBER, DATE, UUID)
+"""The semantic types of the tool."""
+
+
+def semantic_type(name: str) -> SemanticType | None:
+    """The semantic type of the tool named `name`, or None where it has none of that name."""
+    return next((kind for kind in BUILT_IN if kind.name == name), None)
 
 
 def is_sensitive(text: str) -> bool:
@@ -161,7 +161,7 @@ def is_sensitive(text: str) -> bool:
     text = text.strip()
     return any(
         kind.sensitivity is not Sensitivity.NONE and kind.detector.recognises(text)
-        for kind in SemanticType
+        for kind in BUILT_IN
     )
 
 
@@ -177,7 +177,7 @@ def detect(values: Sequence[object]) -> dict[SemanticType, float]:
     """
     texts = [str(value).strip() for value in values if value is not None]
     shares = {}
-    for kind in SemanticType:
+    for kind in BUILT_IN:
         recognised = sum(1 for text in texts if kind.detector.recognises(text))
         if recognised:
             shares[kind] = recognised / len(texts)

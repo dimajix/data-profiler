@@ -4,19 +4,31 @@ from datetime import date, datetime
 
 import pytest
 
-from data_profiler.detect import SemanticType, Sensitivity, detect, is_sensitive
+from data_profiler.detect import (
+    CARD_NUMBER,
+    DATE,
+    EMAIL,
+    IBAN,
+    PHONE,
+    POSTAL_CODE,
+    UUID,
+    SemanticType,
+    Sensitivity,
+    detect,
+    is_sensitive,
+)
 
 _RECOGNISED = {
-    SemanticType.EMAIL: ["anna.schmidt@example.de", "a+b@mail.example.co.uk", "X_1@host.org"],
-    SemanticType.PHONE: ["+49 30 12345678", "030 1234567", "(030) 1234567", "0171/1234567"],
-    SemanticType.POSTAL_CODE: ["10115", "01067", "99998"],
-    SemanticType.IBAN: [
+    EMAIL: ["anna.schmidt@example.de", "a+b@mail.example.co.uk", "X_1@host.org"],
+    PHONE: ["+49 30 12345678", "030 1234567", "(030) 1234567", "0171/1234567"],
+    POSTAL_CODE: ["10115", "01067", "99998"],
+    IBAN: [
         "DE89370400440532013000",
         "DE89 3704 0044 0532 0130 00",
         "RU02 0445 2560 0407 0281 0412 3456 7890 1",
     ],
-    SemanticType.CARD_NUMBER: ["4111111111111111", "4111 1111 1111 1111", "5500-0000-0000-0004"],
-    SemanticType.DATE: [
+    CARD_NUMBER: ["4111111111111111", "4111 1111 1111 1111", "5500-0000-0000-0004"],
+    DATE: [
         "2024-02-29",
         "29.02.2024",
         "2024-01-31 23:59",
@@ -26,7 +38,7 @@ _RECOGNISED = {
         "2024-01-31 12:00:00.000 UTC",
         "2024-01-31T12:00:00Z",
     ],
-    SemanticType.UUID: [
+    UUID: [
         "123e4567-e89b-12d3-a456-426614174000",
         "F81D4FAE-7DEC-11D0-A765-00A0C91E6BF6",
         "00000000-0000-0000-0000-000000000000",
@@ -34,12 +46,12 @@ _RECOGNISED = {
 }
 
 _NOT_RECOGNISED = {
-    SemanticType.EMAIL: ["anna.schmidt", "anna@localhost", "@example.de", "a b@example.de"],
-    SemanticType.PHONE: ["2024-01-01", "05.03.2024", "0.453219", "12345", "030 12", "+49 30 abc"],
-    SemanticType.POSTAL_CODE: ["00999", "1011", "101155", "A1011"],
-    SemanticType.IBAN: ["DE89370400440532013001", "DE89", "de89370400440532013000"],
-    SemanticType.CARD_NUMBER: ["4111111111111112", "1111111111111117", "411111111111"],
-    SemanticType.DATE: [
+    EMAIL: ["anna.schmidt", "anna@localhost", "@example.de", "a b@example.de"],
+    PHONE: ["2024-01-01", "05.03.2024", "0.453219", "12345", "030 12", "+49 30 abc"],
+    POSTAL_CODE: ["00999", "1011", "101155", "A1011"],
+    IBAN: ["DE89370400440532013001", "DE89", "de89370400440532013000"],
+    CARD_NUMBER: ["4111111111111112", "1111111111111117", "411111111111"],
+    DATE: [
         "2023-02-29",
         "31.04.2024",
         "31.13.2024",
@@ -47,7 +59,7 @@ _NOT_RECOGNISED = {
         "20240131",
         "2024/01/31",
     ],
-    SemanticType.UUID: [
+    UUID: [
         "123e4567e89b12d3a456426614174000",
         "{123e4567-e89b-12d3-a456-426614174000}",
         "123e4567-e89b-12d3-a456-42661417400",
@@ -59,8 +71,11 @@ _NOT_RECOGNISED = {
 
 @pytest.mark.parametrize(
     ("kind", "value"),
-    [(kind, value) for kind, values in _RECOGNISED.items() for value in values],
-    ids=str,
+    [
+        pytest.param(kind, value, id=f"{kind.name}-{value}")
+        for kind, values in _RECOGNISED.items()
+        for value in values
+    ],
 )
 def test_a_value_of_a_type_is_recognised(kind: SemanticType, value: str) -> None:
     assert kind.detector.recognises(value)
@@ -68,8 +83,11 @@ def test_a_value_of_a_type_is_recognised(kind: SemanticType, value: str) -> None
 
 @pytest.mark.parametrize(
     ("kind", "value"),
-    [(kind, value) for kind, values in _NOT_RECOGNISED.items() for value in values],
-    ids=str,
+    [
+        pytest.param(kind, value, id=f"{kind.name}-{value}")
+        for kind, values in _NOT_RECOGNISED.items()
+        for value in values
+    ],
 )
 def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: str) -> None:
     assert not kind.detector.recognises(value)
@@ -78,15 +96,17 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
 @pytest.mark.parametrize(
     ("kind", "sensitivity"),
     [
-        (SemanticType.EMAIL, Sensitivity.PERSONAL),
-        (SemanticType.PHONE, Sensitivity.PERSONAL),
-        (SemanticType.POSTAL_CODE, Sensitivity.NONE),
-        (SemanticType.IBAN, Sensitivity.PERSONAL),
-        (SemanticType.CARD_NUMBER, Sensitivity.PAYMENT_CARD),
-        (SemanticType.DATE, Sensitivity.NONE),
-        (SemanticType.UUID, Sensitivity.NONE),
+        pytest.param(kind, sensitivity, id=kind.name)
+        for kind, sensitivity in [
+            (EMAIL, Sensitivity.PERSONAL),
+            (PHONE, Sensitivity.PERSONAL),
+            (POSTAL_CODE, Sensitivity.NONE),
+            (IBAN, Sensitivity.PERSONAL),
+            (CARD_NUMBER, Sensitivity.PAYMENT_CARD),
+            (DATE, Sensitivity.NONE),
+            (UUID, Sensitivity.NONE),
+        ]
     ],
-    ids=str,
 )
 def test_every_semantic_type_has_its_sensitivity(
     kind: SemanticType, sensitivity: Sensitivity
@@ -96,16 +116,16 @@ def test_every_semantic_type_has_its_sensitivity(
 
 def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
     values = ["10115", "01067", None, "anna@example.de", "nothing", None]
-    assert detect(values) == {SemanticType.POSTAL_CODE: 0.5, SemanticType.EMAIL: 0.25}
+    assert detect(values) == {POSTAL_CODE: 0.5, EMAIL: 0.25}
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:
-    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)]) == {SemanticType.DATE: 1.0}
-    assert detect([10115, 99998]) == {SemanticType.POSTAL_CODE: 1.0}
+    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)]) == {DATE: 1.0}
+    assert detect([10115, 99998]) == {POSTAL_CODE: 1.0}
 
 
 def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
-    assert detect([" 10115", "10115   "]) == {SemanticType.POSTAL_CODE: 1.0}
+    assert detect([" 10115", "10115   "]) == {POSTAL_CODE: 1.0}
 
 
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])

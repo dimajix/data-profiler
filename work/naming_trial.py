@@ -172,7 +172,7 @@ def _brief(found: tuple[Table, Column], samples: dict[str, Sample]) -> str:
     table, column = found
     values = samples[table.name].columns.get(column.name, [])
     shown = list(dict.fromkeys(as_text(value) for value in values if value is not None))[:3]
-    parts = [column.type, *(f"recognised as {match.type.value}" for match in column.matches)]
+    parts = [column.type, *(f"recognised as {match.type.name}" for match in column.matches)]
     if shown:
         parts.append("values: " + ", ".join(shown))
     return f" ({'; '.join(parts)})"
@@ -198,7 +198,7 @@ def _facts(table: Table, column: Column, values: Sequence[object]) -> str:
         counted = ", ".join(f"{value.value} ({value.rows})" for value in column.values[:20])
         lines.append(f"- its values, with their rows: {counted}")
     if column.matches:
-        found = ", ".join(f"{match.type.value} ({match.sample:.0%})" for match in column.matches)
+        found = ", ".join(f"{match.type.name} ({match.sample:.0%})" for match in column.matches)
         lines.append(f"- recognised as: {found}")
     if shown:
         lines.append(f"- a few of its values: {', '.join(shown)}")

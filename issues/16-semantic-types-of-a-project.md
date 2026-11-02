@@ -1,6 +1,6 @@
 # 16 — Semantic types of a project
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -74,3 +74,27 @@ Open for that interface:
 
 - **2026-11-02** — Opened as the maintainer asked for patterns of their own, such as `A[0-9]{10}`
   for account numbers; option 1 chosen by the maintainer.
+
+- **2026-11-02** — The interface agreed with the maintainer. `SemanticType` becomes a frozen
+  dataclass of a name, a sensitivity and a detector; the types of the tool are constants of
+  `data_profiler.detect`, listed in `BUILT_IN`, and `detect` and `is_sensitive` take the types of a
+  project, beside which they check those of the tool - a parameter passed on by `scan` and
+  `recognise`, rather than a class that would hold no more than a list. `project.yml` gives the
+  types of a project under `types`, each by its name with its pattern and its sensitivity, both
+  required; `Project.read` refuses a name of the tool, a name other than of lower case letters,
+  digits and `-`, and a pattern Python does not compile. The profile, of format 5, holds all types
+  of the project as `types`, not only those its matches name, as said above: `disclose` checks each
+  value by every type, also in `describe` and `report`. A match names its type by its name, which
+  is resolved when the profile is read. In two steps, each reviewed on its own: first the type a
+  class, without a change of behaviour; then the types of a project.
+
+- **2026-11-02** — Step 1 done, without a change of behaviour: `SemanticType` is a frozen
+  dataclass of a name, a sensitivity and a detector, the types of the tool are the constants of
+  `data_profiler.detect`, listed in `BUILT_IN`, and `detect.semantic_type` finds one by its name.
+  This undoes a decision of step 1 of [08](08-detection.md): a type no longer names its detector
+  and its sensitivity by a `match` that mypy finds incomplete when a type is added, but holds them
+  as fields; the generator of the simulation makes the texts of each type of the tool by a table,
+  and a test that it has one for every type takes the place of mypy. The profile writes a type by
+  its name and resolves it when it is read, refusing an unknown name with the message pydantic gave
+  for the enumeration. `pydantic-core`, whose error that message is raised by, is named among the
+  dependencies, as every package imported is.

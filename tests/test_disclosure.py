@@ -1,6 +1,6 @@
 """Tests of disclosure: the values of a table the profile may hold, of a table made by hand."""
 
-from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.detect import PHONE, POSTAL_CODE, Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.profile import Column, Match, Range, Statistics, Table, Value
 
@@ -26,7 +26,7 @@ def _code(*matches: Match, marked: Sensitivity | None = None) -> Column:
 
 
 def test_a_column_of_no_sensitivity_keeps_its_range_and_its_values() -> None:
-    column = _disclosed(_code(Match(SemanticType.POSTAL_CODE, 1.0, 1.0)))
+    column = _disclosed(_code(Match(POSTAL_CODE, 1.0, 1.0)))
     assert column.statistics.range == Range("10115", "99998")
     assert column.values == _VALUES
 
@@ -36,7 +36,7 @@ def test_a_column_no_detector_recognises_is_of_no_sensitivity() -> None:
 
 
 def test_a_column_of_a_sensitivity_keeps_neither_its_range_nor_its_values() -> None:
-    column = _disclosed(_code(Match(SemanticType.POSTAL_CODE, 0.6), Match(SemanticType.PHONE, 0.5)))
+    column = _disclosed(_code(Match(POSTAL_CODE, 0.6), Match(PHONE, 0.5)))
     assert column.statistics.range is None
     assert column.values == ()
 
@@ -48,7 +48,7 @@ def test_a_column_marked_sensitive_keeps_neither_its_range_nor_its_values() -> N
 
 
 def test_a_mark_comes_before_the_matches() -> None:
-    column = _code(Match(SemanticType.PHONE, 1.0, 1.0), marked=Sensitivity.NONE)
+    column = _code(Match(PHONE, 1.0, 1.0), marked=Sensitivity.NONE)
     assert column.sensitivity is Sensitivity.NONE
     assert not column.sensitive
     assert _disclosed(column).values == _VALUES

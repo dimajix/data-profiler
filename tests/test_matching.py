@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import BUILT_IN, DATE, POSTAL_CODE, SemanticType
 from data_profiler.matching import recognise, verify
 from data_profiler.profile import Column, Match, Statistics, Table
 from data_profiler.source import Source
@@ -19,7 +19,7 @@ def _matches(values: list[object]) -> tuple[Match, ...]:
 
 
 def test_a_type_recognised_in_half_of_the_values_is_a_match() -> None:
-    assert _matches(["10115", "anna"]) == (Match(SemanticType.POSTAL_CODE, 0.5),)
+    assert _matches(["10115", "anna"]) == (Match(POSTAL_CODE, 0.5),)
 
 
 def test_a_type_recognised_in_less_than_half_of_the_values_is_no_match() -> None:
@@ -27,16 +27,16 @@ def test_a_type_recognised_in_less_than_half_of_the_values_is_no_match() -> None
 
 
 def test_the_nulls_of_a_sample_are_not_counted() -> None:
-    assert _matches(["10115", None, None, None]) == (Match(SemanticType.POSTAL_CODE, 1.0),)
+    assert _matches(["10115", None, None, None]) == (Match(POSTAL_CODE, 1.0),)
 
 
 def test_every_type_recognised_in_half_of_the_values_is_a_match() -> None:
     matches = _matches(["10115", "2024-01-31"])
-    assert sorted(match.type.value for match in matches) == ["date", "postal-code"]
+    assert sorted(match.type.name for match in matches) == ["date", "postal-code"]
 
 
 def test_a_share_is_written_with_three_digits() -> None:
-    assert _matches(["10115", "10117", "anna"]) == (Match(SemanticType.POSTAL_CODE, 0.667),)
+    assert _matches(["10115", "10117", "anna"]) == (Match(POSTAL_CODE, 0.667),)
 
 
 def _verified(source: Source, table: str, column: str, kinds: list[SemanticType]) -> list[Match]:
@@ -57,19 +57,19 @@ def _verified(source: Source, table: str, column: str, kinds: list[SemanticType]
 def test_a_match_is_verified_by_the_share_of_the_table_its_pattern_matches(
     source: Source,
 ) -> None:
-    assert _verified(source, "cust", "upd_ts", [SemanticType.DATE]) == [
-        Match(SemanticType.DATE, 1.0, 1.0)
-    ], "the nulls of the table are not counted"
+    assert _verified(source, "cust", "upd_ts", [DATE]) == [Match(DATE, 1.0, 1.0)], (
+        "the nulls of the table are not counted"
+    )
 
 
 def test_the_pattern_of_every_type_is_read_by_the_database(source: Source) -> None:
-    kinds = list(SemanticType)
+    kinds = list(BUILT_IN)
     shares = {m.type: m.table for m in _verified(source, "cust", "crt_dt", kinds)}
-    assert shares == {kind: 1.0 if kind is SemanticType.DATE else 0.0 for kind in kinds}
+    assert shares == {kind: 1.0 if kind is DATE else 0.0 for kind in kinds}
 
 
 def test_a_share_of_a_column_of_numbers_is_written_with_three_digits(source: Source) -> None:
-    (match,) = _verified(source, "ord_itm", "pos_no", [SemanticType.POSTAL_CODE])
+    (match,) = _verified(source, "ord_itm", "pos_no", [POSTAL_CODE])
     assert match.table is not None
     assert 0 < match.table < 1, "some of the positions are numbers of five digits, not all"
     assert match.table == round(match.table, 3)

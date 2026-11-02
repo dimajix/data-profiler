@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.detect import EMAIL, PHONE, Sensitivity
 from data_profiler.profile import (
     Column,
     Lengths,
@@ -35,7 +35,7 @@ _PROFILE = Profile(
                     name="eml_adr",
                     type="varchar(120)",
                     statistics=Statistics(0, 1150),
-                    matches=(Match(SemanticType.EMAIL, 0.982, 0.99),),
+                    matches=(Match(EMAIL, 0.982, 0.99),),
                 ),
                 Column(
                     name="cust_nm",
@@ -47,7 +47,7 @@ _PROFILE = Profile(
                     name="tel_no",
                     type="varchar(20)",
                     statistics=Statistics(0, 2, range=Range("", "0301234567")),
-                    matches=(Match(SemanticType.PHONE, 0.6, 0.6),),
+                    matches=(Match(PHONE, 0.6, 0.6),),
                     marked=Sensitivity.NONE,
                 ),
             ),

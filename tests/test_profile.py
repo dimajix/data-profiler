@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from yaml import safe_dump, safe_load
 
-from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.detect import EMAIL, Sensitivity
 from data_profiler.profile import (
     FORMAT,
     Column,
@@ -44,7 +44,7 @@ _PROFILE = Profile(
                     name="CUST_EML",
                     type="varchar(120)",
                     statistics=Statistics(0, 1100000, Lengths(9, 96)),
-                    matches=(Match(SemanticType.EMAIL, 0.982),),
+                    matches=(Match(EMAIL, 0.982),),
                 ),
             ),
         ),
@@ -97,8 +97,12 @@ def test_a_match_is_written_by_the_name_of_its_type(tmp_path: Path) -> None:
         ({"statistics": None}, r"tables\.0\.columns\.0\.statistics: .*required"),
         ({"colour": "blue"}, r"tables\.0\.columns\.0\.colour: Unexpected"),
         ({"name": ["CUST", "ID"]}, r"tables\.0\.columns\.0\.name: .*string"),
+        (
+            {"matches": [{"type": "account", "sample": 1.0}]},
+            r"tables\.0\.columns\.0\.matches\.0\.type: Input should be 'email', .* or 'uuid'",
+        ),
     ],
-    ids=["a field missing", "a field unknown", "a field of the wrong type"],
+    ids=["a field missing", "a field unknown", "a field of the wrong type", "a type unknown"],
 )
 def test_a_profile_with_a_wrong_field_is_refused_naming_the_field(
     tmp_path: Path, change: dict[str, object], problem: str

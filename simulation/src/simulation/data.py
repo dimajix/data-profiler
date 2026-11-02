@@ -8,18 +8,27 @@ recognises - all of them, whatever the shares of the match.
 """
 
 import re
+import uuid
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from random import Random
 from string import ascii_lowercase, digits
 from typing import Final
-from uuid import UUID
 
 from stdnum.iban import calc_check_digits
 from stdnum.luhn import calc_check_digit
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import (
+    CARD_NUMBER,
+    DATE,
+    EMAIL,
+    IBAN,
+    PHONE,
+    POSTAL_CODE,
+    UUID,
+    SemanticType,
+)
 from data_profiler.profile import Column, Lengths, Table
 from simulation import SimulationError
 
@@ -130,12 +139,12 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
         # longest is one of a value of the type.
         for _ in range(_ATTEMPTS):
             length = _length(given, lengths, random)
-            text = _typed(kind, length, random)
+            text = _TYPED[kind](length, random)
             if len(text) == length and kind.detector.recognises(text):
                 return text
         within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"
         raise SimulationError(
-            f"{table.name}.{column.name}: no {kind.value} of {within} characters can be made"
+            f"{table.name}.{column.name}: no {kind.name} of {within} characters can be made"
         )
 
     return _distinct(table, column, draw)
@@ -146,36 +155,61 @@ def _length(given: int | None, lengths: Lengths, random: Random) -> int:
     return given if given is not None else random.randint(lengths.shortest, lengths.longest)
 
 
-def _typed(kind: SemanticType, length: int, random: Random) -> str:
-    """A text that may be of `kind` and of `length` characters, which the caller is to tell.
+def _email(length: int, random: Random) -> str:
+    """An e-mail address that may be of `length` characters."""
+    domain = max(1, (length - 4) // 3)
+    return f"{_letters(length - domain - 4, random)}@{_letters(domain, random)}.de"
 
-    It is a `match` over the semantic types, as their sensitivity and their detector are, so that
-    mypy finds it incomplete when a type is added; making test data is no concern of the tool.
-    """
-    match kind:
-        case SemanticType.EMAIL:
-            domain = max(1, (length - 4) // 3)
-            return f"{_letters(length - domain - 4, random)}@{_letters(domain, random)}.de"
-        case SemanticType.PHONE:
-            prefix = random.choice(_PHONES)
-            return prefix + _digits(length - len(prefix), random)
-        case SemanticType.POSTAL_CODE:
-            return _digits(length, random)
-        case SemanticType.IBAN:
-            # A German IBAN: the bank of eight digits and the account of ten; in groups of four,
-            # it is five characters longer.
-            number = "DE00" + _digits(18, random)
-            number = number[:2] + calc_check_digits(number) + number[4:]
-            grouped = " ".join(number[start : start + 4] for start in range(0, len(number), 4))
-            return grouped if length == len(grouped) else number
-        case SemanticType.CARD_NUMBER:
-            number = random.choice("45") + _digits(length - 2, random)
-            return number + calc_check_digit(number)
-        case SemanticType.DATE:
-            moment = _START + timedelta(seconds=random.randrange(_DAYS * 86400))
-            return moment.strftime(random.choice(_DATES.get(length, ("",))))
-        case SemanticType.UUID:
-            return str(UUID(int=random.getrandbits(128), version=4))
+
+def _phone(length: int, random: Random) -> str:
+    """A German phone number that may be of `length` characters."""
+    prefix = random.choice(_PHONES)
+    return prefix + _digits(length - len(prefix), random)
+
+
+def _postal_code(length: int, random: Random) -> str:
+    """A postal code that may be of `length` characters."""
+    return _digits(length, random)
+
+
+def _iban(length: int, random: Random) -> str:
+    """A German IBAN, in groups of four where `length` is theirs."""
+    # The bank of eight digits and the account of ten; in groups of four, it is five characters
+    # longer.
+    number = "DE00" + _digits(18, random)
+    number = number[:2] + calc_check_digits(number) + number[4:]
+    grouped = " ".join(number[start : start + 4] for start in range(0, len(number), 4))
+    return grouped if length == len(grouped) else number
+
+
+def _card_number(length: int, random: Random) -> str:
+    """A card number of Visa or Mastercard of `length` digits, with its check digit."""
+    number = random.choice("45") + _digits(length - 2, random)
+    return number + calc_check_digit(number)
+
+
+def _date(length: int, random: Random) -> str:
+    """A date as text, of a form of `length` characters where there is one."""
+    moment = _START + timedelta(seconds=random.randrange(_DAYS * 86400))
+    return moment.strftime(random.choice(_DATES.get(length, ("",))))
+
+
+def _uuid(_: int, random: Random) -> str:
+    """A UUID of version 4, whose length is always the same."""
+    return str(uuid.UUID(int=random.getrandbits(128), version=4))
+
+
+# How a text is made that may be of a semantic type of the tool and of a length, which the caller
+# is to tell: making test data is no concern of the tool.
+_TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
+    EMAIL: _email,
+    PHONE: _phone,
+    POSTAL_CODE: _postal_code,
+    IBAN: _iban,
+    CARD_NUMBER: _card_number,
+    DATE: _date,
+    UUID: _uuid,
+}
 
 
 def _letters(length: int, random: Random) -> str:

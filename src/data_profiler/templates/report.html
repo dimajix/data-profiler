@@ -76,7 +76,7 @@
         <td>
           {% for match in column.matches %}
           <span class="match">
-            {{ match.type.value }} {{ "{:.0%}".format(match.sample) }}
+            {{ match.type.name }} {{ "{:.0%}".format(match.sample) }}
             {% if match.table is not none %} / {{ "{:.0%}".format(match.table) }}{% endif %}
           </span>
           {% else %}

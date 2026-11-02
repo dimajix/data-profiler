@@ -3,7 +3,7 @@
 import re
 from pathlib import Path
 
-from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.detect import DATE, Sensitivity
 from data_profiler.profile import Match, Profile
 from data_profiler.scan import scan
 from data_profiler.source import Source
@@ -37,7 +37,7 @@ def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_w
             scanned_matches = {match.type: match for match in column.matches}
             for match in wanted.matches:
                 assert scanned_matches.get(match.type) == match, (
-                    f"{where}: its {match.type.value} is found again, in sample and on table"
+                    f"{where}: its {match.type.name} is found again, in sample and on table"
                 )
 
 
@@ -47,8 +47,8 @@ def test_the_semantic_types_of_the_columns_are_recognised_and_verified(
     scanned = scan(source, re.compile("cust"), Workspace.open(tmp_path, "crm", "sales"))
     (table,) = scanned.tables
     matched = {column.name: column.matches for column in table.columns}
-    assert matched["crt_dt"] == (Match(SemanticType.DATE, 1.0, 1.0),), "a date is a date as text"
-    assert matched["upd_ts"] == (Match(SemanticType.DATE, 1.0, 1.0),), "nulls are not counted"
+    assert matched["crt_dt"] == (Match(DATE, 1.0, 1.0),), "a date is a date as text"
+    assert matched["upd_ts"] == (Match(DATE, 1.0, 1.0),), "nulls are not counted"
     assert matched["actv_flg"] == (), "a column of no type has no match"
 
 

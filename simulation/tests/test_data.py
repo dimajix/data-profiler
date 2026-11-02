@@ -4,7 +4,17 @@ from random import Random
 
 import pytest
 
-from data_profiler.detect import SemanticType
+from data_profiler.detect import (
+    BUILT_IN,
+    CARD_NUMBER,
+    DATE,
+    EMAIL,
+    IBAN,
+    PHONE,
+    POSTAL_CODE,
+    UUID,
+    SemanticType,
+)
 from data_profiler.profile import Column, Lengths, Match, Statistics, Table
 from simulation import SimulationError
 from simulation.data import rows
@@ -37,7 +47,7 @@ _TABLE = _table(
         name="iban",
         type="varchar(34)",
         statistics=Statistics(400, 500, Lengths(22, 27)),
-        matches=(Match(SemanticType.IBAN, 1.0),),
+        matches=(Match(IBAN, 1.0),),
     ),
 )
 
@@ -82,18 +92,25 @@ def test_a_column_that_cannot_be_generated_is_refused_naming_it(
         rows(_table(column), Random(0))
 
 
+# The shortest and the longest text of each semantic type of the tool that is made.
+_LENGTHS = {
+    EMAIL: (11, 44),
+    PHONE: (9, 16),
+    POSTAL_CODE: (5, 5),
+    IBAN: (22, 27),
+    CARD_NUMBER: (13, 19),
+    DATE: (10, 19),
+    UUID: (36, 36),
+}
+
+
+def test_every_semantic_type_of_the_tool_is_made() -> None:
+    assert set(_LENGTHS) == set(BUILT_IN), "a type of the tool without a test of its texts"
+
+
 @pytest.mark.parametrize(
     ("kind", "shortest", "longest"),
-    [
-        (SemanticType.EMAIL, 11, 44),
-        (SemanticType.PHONE, 9, 16),
-        (SemanticType.POSTAL_CODE, 5, 5),
-        (SemanticType.IBAN, 22, 27),
-        (SemanticType.CARD_NUMBER, 13, 19),
-        (SemanticType.DATE, 10, 19),
-        (SemanticType.UUID, 36, 36),
-    ],
-    ids=str,
+    [pytest.param(kind, *lengths, id=kind.name) for kind, lengths in _LENGTHS.items()],
 )
 def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     kind: SemanticType, shortest: int, longest: int
@@ -114,7 +131,7 @@ def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() 
         name="v",
         type="varchar(10)",
         statistics=Statistics(0, 10, Lengths(4, 6)),
-        matches=(Match(SemanticType.POSTAL_CODE, 1.0),),
+        matches=(Match(POSTAL_CODE, 1.0),),
     )
     with pytest.raises(SimulationError, match=r"t\.v: no postal-code of 4 characters can be made"):
         rows(_table(column, count=10), Random(0))
