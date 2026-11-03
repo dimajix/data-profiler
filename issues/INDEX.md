@@ -22,6 +22,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [07](07-the-stage-scan.md) | done | Nothing counts what the columns of a table hold - their nulls, their distinct values, their ranges, whether they are enumerations - and nothing takes a sample of them. |
 | [18](18-a-scan-written-table-by-table.md) | done | A scan writes its profile only once it has counted every table, so that a run that fails or is interrupted at one table loses all the tables before it, and a new scan replaces the profile whole. |
 | [23](23-sentinel-values.md) | open | A value that stands for no value - an empty text, `00000`, `9999-12-31` - is counted as a value like any other, so that a column of them looks filled, its range runs to the sentinel, and its share of a semantic type falls below the threshold. |
+| [25](25-groups-of-columns-filled-together.md) | open | Nothing tells which columns of a table are filled together - the street, postal code and city of a different delivery address -, so that columns that belong together are named and described each on its own. |
 
 ## Detection
 
