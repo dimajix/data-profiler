@@ -47,3 +47,10 @@ and columns second works. Then the interface, put before the maintainer.
 ## History
 
 - **2026-10-29** — Opened with the plan of the first version ([02](02-first-version-epic.md)).
+
+- **2026-11-03** — The glossary becomes one of concepts ([27](27-glossary-of-concepts.md)):
+  `describe` proposes for each term of no concept a new concept, of its word and description, or
+  the term as an abbreviation of a concept there is, and may propose another concept of a term
+  where none fits the columns it appears in; for a column, it chooses the meaning of each term of
+  several concepts, and proposes its name and description from the concepts of its terms. Whether
+  the words of concepts whose terms no name has any longer are dropped is decided here.

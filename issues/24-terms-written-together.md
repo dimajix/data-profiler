@@ -63,3 +63,12 @@ The interface first, put before the maintainer.
 
 - **2026-11-03** — Made a part of the first version ([02](02-first-version-epic.md)), as the
   maintainer decided, since it comes before or with [10](10-the-stage-describe.md).
+
+- **2026-11-03** — Planned with the maintainer, and put after [27](27-glossary-of-concepts.md),
+  which makes the glossary one of concepts. The vocabulary is the terms of the names and the
+  abbreviations of the concepts; a term is split by the others alone, and only where they cover it
+  whole, each part of two characters at least, into the fewest parts: tried on the example profile,
+  the split of the description above, of half a term covered and the rest a part of its own, split
+  nine of ten terms wrongly - `strt` into `st` and `rt`, `crt` into `c` and `rt` -, the split of the
+  whole term only `prodgrp`, rightly. Terms of several meanings are decided in 27: an abbreviation
+  may be of several concepts, its meaning chosen in each name.
