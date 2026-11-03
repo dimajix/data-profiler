@@ -25,7 +25,7 @@ candidate of its term - is none.
 
 import re
 import unicodedata
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from typing import Final, Self
 
 from data_profiler.profile import Column, Concept, Profile, Table, Term
@@ -84,14 +84,37 @@ def occurrences(profile: Profile) -> dict[str, list[str]]:
     """
     vocabulary = Vocabulary.of(profile)
     found: dict[str, list[str]] = {}
-    for table in profile.tables:
-        names = [(table.name, table.name)]
-        names += [(column.name, f"{table.name}.{column.name}") for column in table.columns]
-        for name, where in names:
-            for term in dict.fromkeys(vocabulary.split(name)):
-                if not term.isdigit():
-                    found.setdefault(term, []).append(where)
+    for named, where in _places(profile):
+        for term in dict.fromkeys(vocabulary.split(named.name)):
+            if not term.isdigit():
+                found.setdefault(term, []).append(where)
     return found
+
+
+def unknown(profile: Profile) -> dict[str, list[str]]:
+    """Each term of the names of `profile` of no concept, as describe split them, with its names.
+
+    Args:
+        profile: The profile, its names split.
+
+    Returns:
+        Each term without candidates, but of digits, among the terms of the names, in the order it
+        first appears, with the names it appears in, in their order, as `occurrences` gives them;
+        none of a name not split.
+    """
+    found: dict[str, list[str]] = {}
+    for named, where in _places(profile):
+        for term in dict.fromkeys(term.text for term in named.terms or () if not term.candidates):
+            found.setdefault(term, []).append(where)
+    return found
+
+
+def _places(profile: Profile) -> Iterator[tuple[Table | Column, str]]:
+    """Each table and column of `profile`, with where it is, as `occurrences` names it."""
+    for table in profile.tables:
+        yield table, table.name
+        for column in table.columns:
+            yield column, f"{table.name}.{column.name}"
 
 
 class Vocabulary:

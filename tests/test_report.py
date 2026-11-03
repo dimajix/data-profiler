@@ -60,6 +60,7 @@ _PROFILE = Profile(
                         type="varchar(120)",
                         statistics=Statistics(0, 1150),
                         matches=(Match(EMAIL, 0.982, 0.99),),
+                        terms=(Term("eml"), Term("adr")),
                     ),
                     Column(
                         name="cust_nm",
@@ -160,6 +161,7 @@ def test_the_glossary_shows_each_concept_and_where_the_terms_of_none_appear() ->
     (_, unknown) = page.split("Terms of no concept")
     assert '<td class="original">eml</td> <td> cust.eml_adr </td>' in unknown
     assert '"original">typ<' not in unknown, "a term of a concept"
+    assert '"original">nm<' not in unknown, "a term of a name not split"
 
 
 def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:

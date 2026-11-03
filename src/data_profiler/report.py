@@ -5,9 +5,9 @@ It shows each table with its columns - their original names and harmonized names
 their readings, types, statistics, the shares of their nulls and sentinels among them, semantic
 types, sensitivity, the values of their enumerations and each of their sentinels -, with the groups
 of its columns filled together and the harmonized names two of its columns share; and the glossary,
-each concept with its abbreviations and description, and each term of no concept with where it
-appears. It renders what the profile holds, and nothing of the workspace: the values in it are
-those the profile may hold, which the template escapes.
+each concept with its abbreviations and description, and each term of no concept, as describe split
+the names, with where it appears. It renders what the profile holds, and nothing of the workspace:
+the values in it are those the profile may hold, which the template escapes.
 """
 
 from pathlib import Path
@@ -16,7 +16,7 @@ from typing import Final
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.files import write_whole
-from data_profiler.glossary import Glossary, occurrences
+from data_profiler.glossary import Glossary, unknown
 from data_profiler.profile import Profile
 
 # The places a term of no concept is shown with, before the number of the others.
@@ -46,9 +46,7 @@ def render(profile: Profile) -> str:
         end=lambda value: "withheld" if value is None else value,
         # A share of no rows is none, written as a dash, as the template writes what is not known.
         share=lambda count, rows: f"{count / rows:.0%}" if rows else "\u2013",
-        unknown={
-            term: names for term, names in occurrences(profile).items() if not glossary.words(term)
-        },
+        unknown=unknown(profile),
         places=_PLACES,
         harmonized=glossary.harmonized,
         collisions=glossary.collisions,

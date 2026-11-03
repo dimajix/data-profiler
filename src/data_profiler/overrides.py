@@ -108,7 +108,7 @@ class TableOverride:
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
         return replace(table, columns=tuple(columns))
 
-    def read(self, table: Table, vocabulary: Vocabulary, glossary: Glossary) -> Table:
+    def readings_laid_over(self, table: Table, vocabulary: Vocabulary, glossary: Glossary) -> Table:
         """`table`, its name and the names of its columns read as given.
 
         Args:
@@ -291,7 +291,9 @@ class Overrides:
         given = self.selected([table.name for table in profile.tables])
         tables = (
             disclose(
-                given[table.name].read(given[table.name].laid_over(table), vocabulary, glossary),
+                given[table.name].readings_laid_over(
+                    given[table.name].laid_over(table), vocabulary, glossary
+                ),
                 profile.types,
             )
             for table in profile.tables

@@ -90,6 +90,8 @@ As agreed with the maintainer:
 - **`Profile.updated`** keeps the terms and readings of the table and of its columns of the same
   names; **`Profile.updating`** keeps the tables of a profile of other semantic types, without
   their matches, values and ranges, in a new run.
+- **The report** lists the terms of no concept by `glossary.unknown`, from the terms describe
+  split, not by splitting the names again, so that it shows one split of a name, the one held.
 - **The example** has `cust.cust_ap_id` and `cust.ap_ap_nm`, read by its overrides, the second a
   term repeated in two meanings, and `ap_seg_cd` read by them as well, as `ap` is now of two
   concepts.
@@ -112,3 +114,9 @@ As agreed with the maintainer:
 
 - **2026-11-03** — Done as agreed with the maintainer (see How). The report has no harmonized names
   before `describe` has run: they are composed from the readings alone.
+
+- **2026-11-03** — After the review of the maintainer: the report listed the terms of no concept
+  by splitting the names again with the vocabulary of today, so that it could show two splits of
+  one name; it takes them from the terms held now. The method of `TableOverride` that lays the
+  readings given over a table is named `readings_laid_over`, as the maintainer decided, not `read`,
+  which loads a document everywhere else.
