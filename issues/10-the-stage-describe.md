@@ -54,3 +54,9 @@ and columns second works. Then the interface, put before the maintainer.
   where none fits the columns it appears in; for a column, it chooses the meaning of each term of
   several concepts, and proposes its name and description from the concepts of its terms. Whether
   the words of concepts whose terms no name has any longer are dropped is decided here.
+
+- **2026-11-03** — The terms and readings of the names are steps of `describe` of their own
+  ([28](28-terms-and-readings.md)): this issue adds the steps of the language model - concepts of
+  the terms of none, the reading of a name of a term of several concepts, in the step that reads
+  the names, and the names and descriptions -, and the override of the name of a column, which
+  resolves a collision of harmonized names.

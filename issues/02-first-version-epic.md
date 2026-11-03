@@ -40,6 +40,8 @@ of these questions, in the order in which the later ones rest on the earlier.
   and concepts left out of the names.
 - [24](24-terms-written-together.md) - terms written together split by the vocabulary of the
   schema, before or with the words of the glossary.
+- [28](28-terms-and-readings.md) - the terms of each name with their concepts, and its reading of
+  one concept each, held in the profile by steps of `describe` of their own, which `scan` keeps.
 - [10](10-the-stage-describe.md) - the stage `describe`: the words of the terms and the names of
   the columns, proposed by the language model.
 - [11](11-overrides.md) - corrections written by hand, laid over the profile.
@@ -66,3 +68,8 @@ Not in the first version: PDF, the relationships between tables, other databases
 - **2026-11-03** — [27](27-glossary-of-concepts.md) added to the order, before
   [24](24-terms-written-together.md), as the maintainer decided: the vocabulary that splits the
   terms written together are the abbreviations of the concepts of the glossary.
+
+- **2026-11-03** — [28](28-terms-and-readings.md) added to the order, after
+  [24](24-terms-written-together.md) and before [10](10-the-stage-describe.md), as the maintainer
+  decided: the names are split and read by steps of `describe` without a language model, before
+  it proposes names and descriptions.
