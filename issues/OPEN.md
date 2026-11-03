@@ -20,7 +20,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [23](23-sentinel-values.md) | open | medium | feature | A value that stands for no value - an empty text, `00000`, `9999-12-31` - is counted as a value like any other, so that a column of them looks filled, its range runs to the sentinel, and its share of a semantic type falls below the threshold. |
+| [23](23-sentinel-values.md) | in progress | medium | feature | A value that stands for no value - an empty text, `00000`, `9999-12-31` - is counted as a value like any other, so that a column of them looks filled, its range runs to the sentinel, and its share of a semantic type falls below the threshold. |
 
 ## Describe
 

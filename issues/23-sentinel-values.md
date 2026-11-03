@@ -1,6 +1,6 @@
 # 23 — Sentinel values
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -58,6 +58,37 @@ The interface first, put before the maintainer.
   counting it close to counting the nulls (`statistics`); which part owns the concept is to be
   drawn in `docs/ARCHITECTURE.md`.
 
+## How
+
+As decided with the maintainer:
+
+- **The sentinels of the tool** are one pattern, of `detect`, which Python and SQL read alike,
+  matched whole against a value as text, its spaces at either end cut: the empty text, `NULL` and
+  `null`, `N/A` and `n/a`, `-`, and the dates `0001-01-01`, `1900-01-01` and `9999-12-31`, also
+  written `01.01.0001`, `01.01.1900` and `31.12.9999`, with a time of day or without. No run of
+  zeros: `0`, `00` and `000` are codes in some columns.
+- **The sentinels of a column given by hand** are given by an override, read by `scan` since
+  [26](26-overrides-read-by-scan.md): `sentinels: ["", "00000"]`, a list of values, matched as the
+  pattern is, in place of those of the tool, so that `sentinels: []` turns them off for the column.
+- **Counted, not named.** The profile holds the number of the sentinels of a column, beside its
+  nulls, not which they are: no value goes into the profile, and an enumeration shows them all the
+  same. The sentinels are named in the profile, as "Done when" asks, by their number alone.
+- **What leaves them aside:** the distinct values, the range and the lengths of the statistics,
+  the share of a match in the sample and on the table. The nulls are counted as before, and an
+  enumeration keeps the sentinels among its values, as it shows what a column holds.
+- **Left out**, until someone needs them: sentinels of a semantic type alone, found in the sample,
+  or given for all columns of a project.
+
+In two steps:
+
+1. A refactoring without a change of behaviour: the building blocks of the dialect that count or
+   measure values - `nulls`, `distinct`, `smallest`, `largest`, `shortest`, `longest`, `matching` -
+   take an expression of the values of a column, as `Dialect.column` writes it, in place of its
+   name, so that they can be given the values without the sentinels.
+2. The sentinels: their pattern in `detect`, the building block of the values of a column without
+   them in the dialect, their number in the statistics, the overrides of a column, the report and
+   the simulation.
+
 ## Done when
 
 - The interface is agreed with the maintainer.
@@ -70,3 +101,7 @@ The interface first, put before the maintainer.
 
 - **2026-11-03** — Opened from the comparison with an earlier draft of a profile, which held the
   sentinels of each column; found along the way that empty texts keep a column from its match.
+
+- **2026-11-03** — The decisions above taken with the maintainer, after
+  [26](26-overrides-read-by-scan.md) made `scan` read the overrides. Step 1 done: the building
+  blocks of the dialect that count or measure values take an expression of the values of a column.

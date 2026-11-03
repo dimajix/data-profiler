@@ -90,11 +90,12 @@ def test_a_schema_is_not_read_as_an_empty_user() -> None:
 def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     with connect("trino://h/c/s", "u", "") as source:
         columns = source.dialect.columns('c"at', "it's", "t")
-        select = source.dialect.select([source.dialect.longest('c"y')], 't"x')
-        sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
+        values = source.dialect.column('c"y')
+        select = source.dialect.select([source.dialect.longest(values)], 't"x')
+        sampled = source.dialect.sampled([values], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
-        matching = source.dialect.matching('c"y', "it's")
-        ranged = [source.dialect.smallest('c"y'), source.dialect.largest('c"y')]
+        matching = source.dialect.matching(values, "it's")
+        ranged = [source.dialect.smallest(values), source.dialect.largest(values)]
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select

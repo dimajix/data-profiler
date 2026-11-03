@@ -32,22 +32,23 @@ def count(source: Source, table: str) -> Table:
     # for has none.
     asked = []
     for name, kind in source.columns(table).items():
-        of_counts = [dialect.nulls(name), dialect.distinct(name)]
+        values = dialect.column(name)
+        of_counts = [dialect.nulls(values), dialect.distinct(values)]
         of_range = (
-            [dialect.smallest(name), dialect.largest(name)] if dialect.is_ordered(kind) else []
+            [dialect.smallest(values), dialect.largest(values)] if dialect.is_ordered(kind) else []
         )
         of_lengths = (
-            [dialect.shortest(name), dialect.longest(name)] if dialect.is_text(kind) else []
+            [dialect.shortest(values), dialect.longest(values)] if dialect.is_text(kind) else []
         )
         asked.append((name, kind, (of_counts, of_range, of_lengths)))
     expressions = chain.from_iterable(chain.from_iterable(groups) for _, _, groups in asked)
     statement = dialect.select([dialect.rows(), *expressions], table)
     (row,) = source.query(statement, f"counting the statistics of {source.name(table)}")
-    values = iter(row)
-    rows = counted(next(values), table)
+    answers = iter(row)
+    rows = counted(next(answers), table)
     columns = []
     for name, kind, groups in asked:
-        counts, ranged, lengths = ([next(values) for _ in group] for group in groups)
+        counts, ranged, lengths = ([next(answers) for _ in group] for group in groups)
         statistics = _statistics(counts, ranged, lengths, f"{table}.{name}")
         columns.append(Column(name=name, type=kind, statistics=statistics))
     return Table(name=table, rows=rows, columns=tuple(columns))

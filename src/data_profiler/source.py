@@ -65,7 +65,8 @@ class SourceError(Exception):
 class Dialect(ABC):
     """The SQL of one kind of database: the statements and expressions the tool sends.
 
-    Its building blocks take the names of tables and columns as they are, and quote them.
+    Its building blocks take the names of tables and columns as they are, and quote them; those that
+    count or measure values take an expression of the values of a column, as `column` writes it.
     """
 
     @abstractmethod
@@ -117,32 +118,32 @@ class Dialect(ABC):
         """The expression counting the rows."""
 
     @abstractmethod
-    def nulls(self, column: str) -> str:
-        """The expression counting the nulls of `column`."""
+    def nulls(self, values: str) -> str:
+        """The expression counting the nulls of `values`."""
 
     @abstractmethod
-    def distinct(self, column: str) -> str:
-        """The expression counting the distinct values of `column`, approximately."""
+    def distinct(self, values: str) -> str:
+        """The expression counting the distinct values of `values`, approximately."""
 
     @abstractmethod
-    def smallest(self, column: str) -> str:
-        """The expression of the smallest value of `column`."""
+    def smallest(self, values: str) -> str:
+        """The expression of the smallest of `values`."""
 
     @abstractmethod
-    def largest(self, column: str) -> str:
-        """The expression of the largest value of `column`."""
+    def largest(self, values: str) -> str:
+        """The expression of the largest of `values`."""
 
     @abstractmethod
-    def shortest(self, column: str) -> str:
-        """The expression of the length of the shortest value of `column`."""
+    def shortest(self, values: str) -> str:
+        """The expression of the length of the shortest of `values`."""
 
     @abstractmethod
-    def longest(self, column: str) -> str:
-        """The expression of the length of the longest value of `column`."""
+    def longest(self, values: str) -> str:
+        """The expression of the length of the longest of `values`."""
 
     @abstractmethod
-    def matching(self, column: str, pattern: str) -> str:
-        """The expression counting the values of `column` that `pattern` matches whole.
+    def matching(self, values: str, pattern: str) -> str:
+        """The expression counting those of `values` that `pattern` matches whole.
 
         Each value is matched as text, its spaces at either end cut, whatever the type of the
         column; `pattern` is a regular expression of what Python and the database share.
@@ -385,34 +386,34 @@ class _TrinoDialect(Dialect):
         """The expression counting the rows."""
         return "count(*)"
 
-    def nulls(self, column: str) -> str:
-        """The expression counting the nulls of `column`."""
-        return f"count(*) - count({_identifier(column)})"
+    def nulls(self, values: str) -> str:
+        """The expression counting the nulls of `values`."""
+        return f"count(*) - count({values})"
 
-    def distinct(self, column: str) -> str:
-        """The expression counting the distinct values of `column`, approximately."""
-        return f"approx_distinct({_identifier(column)}, {_DISTINCT_ERROR})"
+    def distinct(self, values: str) -> str:
+        """The expression counting the distinct values of `values`, approximately."""
+        return f"approx_distinct({values}, {_DISTINCT_ERROR})"
 
-    def smallest(self, column: str) -> str:
-        """The expression of the smallest value of `column`."""
-        return f"min({_identifier(column)})"
+    def smallest(self, values: str) -> str:
+        """The expression of the smallest of `values`."""
+        return f"min({values})"
 
-    def largest(self, column: str) -> str:
-        """The expression of the largest value of `column`."""
-        return f"max({_identifier(column)})"
+    def largest(self, values: str) -> str:
+        """The expression of the largest of `values`."""
+        return f"max({values})"
 
-    def shortest(self, column: str) -> str:
-        """The expression of the length of the shortest value of `column`."""
-        return f"min(length({_identifier(column)}))"
+    def shortest(self, values: str) -> str:
+        """The expression of the length of the shortest of `values`."""
+        return f"min(length({values}))"
 
-    def longest(self, column: str) -> str:
-        """The expression of the length of the longest value of `column`."""
-        return f"max(length({_identifier(column)}))"
+    def longest(self, values: str) -> str:
+        """The expression of the length of the longest of `values`."""
+        return f"max(length({values}))"
 
-    def matching(self, column: str, pattern: str) -> str:
-        """The expression counting the values of `column` that `pattern` matches whole."""
+    def matching(self, values: str, pattern: str) -> str:
+        """The expression counting those of `values` that `pattern` matches whole."""
         # A value that cannot be cast, such as a JSON array, is no text, and matches nothing.
-        text = f"trim(try_cast({_identifier(column)} AS varchar))"
+        text = f"trim(try_cast({values} AS varchar))"
         return f"count_if(regexp_like({text}, {_literal(f'^(?:{pattern})$')}))"
 
     def is_text(self, kind: str) -> bool:

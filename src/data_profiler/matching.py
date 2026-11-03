@@ -71,22 +71,23 @@ def verify(source: Source, table: Table) -> Table:
     # since its statistics were counted gives no share above 1.
     expressions = [dialect.rows()]
     for column in asked:
-        expressions.append(dialect.nulls(column.name))
+        values = dialect.column(column.name)
+        expressions.append(dialect.nulls(values))
         expressions += [
-            dialect.matching(column.name, match.type.detector.pattern.pattern)
+            dialect.matching(values, match.type.detector.pattern.pattern)
             for match in column.matches
         ]
     statement = dialect.select(expressions, table.name)
     (row,) = source.query(statement, f"verifying the matches of {source.name(table.name)}")
-    values = iter(row)
-    rows = counted(next(values), table.name)
+    answers = iter(row)
+    rows = counted(next(answers), table.name)
     verified = {}
     for column in asked:
         where = f"{table.name}.{column.name}"
-        present = rows - counted(next(values), where)
+        present = rows - counted(next(answers), where)
         matches = []
         for match in column.matches:
-            matched = counted(next(values), where)
+            matched = counted(next(answers), where)
             share = round(matched / present, _DIGITS) if present else 0.0
             matches.append(replace(match, table=share))
         verified[column.name] = replace(column, matches=tuple(matches))
