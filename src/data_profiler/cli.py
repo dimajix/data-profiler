@@ -1,11 +1,11 @@
 """The command line of the tool: `data-profiler [--debug] STAGE ENVIRONMENT [--project DIR]`.
 
 It runs a stage on one environment of a project, the project in the current directory if none is
-given: `scan` the tables of its database into its profile and workspace, `report` its profile, the
-overrides of the project laid over it, into its report, without the database. The project
-completes the variables of the process by its `.env`, so that certificates and proxies set there
-reach the connection to the database. `data_profiler.commands.run` configures the log and ends the
-program when the stage fails.
+given: `scan` the tables of its database into its profile and workspace, the overrides of the
+project taken as given, `report` its profile, the overrides laid over it, into its report, without
+the database. The project completes the variables of the process by its `.env`, so that
+certificates and proxies set there reach the connection to the database.
+`data_profiler.commands.run` configures the log and ends the program when the stage fails.
 """
 
 import logging
@@ -66,9 +66,10 @@ def _scan(directory: Path, name: str) -> None:
     """Scans the environment `name` of the project in `directory` into its results."""
     project = Project.read(directory, os.environ)
     environment = project.environment(name)
+    overrides = Overrides.read(project.overrides)
     with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
-        scan(source, project.tables, workspace, project.types, environment.profile)
+        scan(source, project.tables, workspace, project.types, overrides, environment.profile)
     _logger.info("Wrote the profile of %s to %s", name, environment.profile)
 
 

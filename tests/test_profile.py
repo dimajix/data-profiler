@@ -289,12 +289,12 @@ def test_a_profile_with_its_run_and_the_runs_of_its_tables_is_written_and_read_u
 
 def test_a_table_updated_is_counted_by_the_run_of_the_profile() -> None:
     profile = replace(_PROFILE, run=Run(started=_STARTED))
-    assert not profile.is_counted("CUST"), "a table of another run"
+    assert profile.counted("CUST") is None, "a table of another run"
     updated = profile.updated(_PROFILE.tables[0])
     assert updated.tables[0].run == _STARTED
-    assert updated.is_counted("CUST")
-    assert not updated.is_counted("ORD"), "a table the profile does not have"
-    assert not _PROFILE.updated(_PROFILE.tables[0]).is_counted("CUST"), "a profile of no run"
+    assert updated.counted("CUST") == updated.tables[0]
+    assert updated.counted("ORD") is None, "a table the profile does not have"
+    assert _PROFILE.updated(_PROFILE.tables[0]).counted("CUST") is None, "a profile of no run"
 
 
 def test_a_finished_run_keeps_its_start() -> None:

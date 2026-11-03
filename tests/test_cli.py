@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.cli import main
+from data_profiler.detect import Sensitivity
 from data_profiler.profile import Profile
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
@@ -34,10 +35,13 @@ def test_an_environment_is_scanned_into_its_directory(
     # The numbers of orders of the simulation are fourteen letters in lower case.
     with (project / "project.yml").open("a", encoding="utf-8") as file:
         file.write("types:\n  order-number: {pattern: '[a-z]{14}', sensitivity: personal}\n")
+    shutil.copy(_EXAMPLE / "overrides.yml", project)
     assert command_line(main, "scan", "simulation", "--project", str(project)) == 0
     scanned = Profile.read(project / "simulation" / "profile")
     assert [table.name for table in scanned.tables] == sorted(t.name for t in example.tables)
     assert [kind.name for kind in scanned.types] == ["order-number"], "of project.yml"
+    marked = [c for t in scanned.tables for c in t.columns if c.marked is Sensitivity.PERSONAL]
+    assert sorted(c.name for c in marked) == ["cust_nm", "frst_nm", "lst_nm"], "of overrides.yml"
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
 
 

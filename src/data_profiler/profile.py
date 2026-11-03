@@ -13,7 +13,7 @@ name.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
-each table names the run that counted it, so that a run resumed skips it.
+each table names the run that counted it, so that a run resumed can skip it.
 """
 
 import logging
@@ -426,19 +426,21 @@ class Profile:
         others = (kept for kept in self.tables if kept.name != table.name)
         return replace(self, tables=_sorted((*others, counted)))
 
-    def is_counted(self, name: str) -> bool:
-        """Whether the profile has the table `name`, counted by the run of the profile.
+    def counted(self, name: str) -> Table | None:
+        """The table `name`, where the run of the profile counted it.
 
         Args:
             name: The name of the table.
 
         Returns:
-            True where the table was counted by the run of the profile, False where the profile
-            has no run, no table `name`, or one counted by another run.
+            The table, where the run of the profile counted it; None where the profile has no run,
+            no table `name`, or one counted by another run.
         """
-        return self.run is not None and any(
-            table.name == name and table.run == self.run.started for table in self.tables
-        )
+        if self.run is None:
+            return None
+        started = self.run.started
+        found = (table for table in self.tables if table.name == name and table.run == started)
+        return next(found, None)
 
     def finished(self, at: datetime) -> "Profile":
         """The profile, its run finished, once it has counted every selected table.

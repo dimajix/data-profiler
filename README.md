@@ -130,8 +130,8 @@ environments:
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
   word of a term, and the sensitivity of a column the detectors miss, such as the names of
-  persons. `examples/crm/overrides.yml` shows both; `report` lays them over the profile, and so
-  will `describe`, once it is made.
+  persons. `examples/crm/overrides.yml` shows both; `scan` marks the columns as they give, and
+  `report` lays them over the profile, and so will `describe`, once it is made.
 
 With the simulation environment loaded, as above, the example is scanned by
 

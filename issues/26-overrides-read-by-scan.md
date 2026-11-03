@@ -1,6 +1,6 @@
 # 26 — Overrides read by scan
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** high
 **Area:** Profile
@@ -59,3 +59,14 @@ The interface first, put before the maintainer.
 - **2026-11-03** — Opened while planning [23](23-sentinel-values.md), whose sentinels are given by
   hand per column; the maintainer decided that `scan` reads the overrides, and that it comes before
   [23](23-sentinel-values.md).
+
+- **2026-11-03** — Done in one step, as agreed with the maintainer. `scan` takes the overrides of
+  the project, which `cli` reads before it connects, and refuses those naming a table it does not
+  select by `Overrides.selected` before anything is counted or written. It lays what is given of a
+  table over it once it is counted, by `TableOverride.laid_over`, before `disclose`, so that the
+  profile holds the marks and no values of a column marked sensitive. `TableOverride.laid_over`
+  marks the columns as given and no others, and leaves disclosing to `disclosure`;
+  `Overrides.laid_over` discloses every table after it. A run resumed counts a table anew whose
+  columns the overrides now mark otherwise, the first of the options above, told by
+  `TableOverride.is_laid_over`; `Profile.counted` gives the table a run counted, in place of
+  `is_counted`.
