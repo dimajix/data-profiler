@@ -1,4 +1,4 @@
-format: 7
+format: 8
 name: ord
 rows: 20000
 columns:
@@ -18,6 +18,9 @@ columns:
 - name: dlvr_dt
   type: date
   statistics: {nulls: 1900, distinct: 2800, sentinels: [{value: '9999-12-31', rows: 300}]}
+- name: dlvr_strt_nm
+  type: varchar(60)
+  statistics: {nulls: 12350, distinct: 3000, lengths: {shortest: 4, longest: 38}}
 - name: dlvr_pst_cd
   type: varchar(10)
   statistics:
@@ -26,6 +29,9 @@ columns:
     lengths: {shortest: 5, longest: 5}
     sentinels: [{value: '', rows: 12400}]
   matches: [{type: postal-code, sample: 1.0, table: 1.0}]
+- name: dlvr_cty_nm
+  type: varchar(60)
+  statistics: {nulls: 12420, distinct: 1400, lengths: {shortest: 3, longest: 28}}
 - name: pymt_mthd_cd
   type: varchar(4)
   statistics: {nulls: 40, distinct: 5, lengths: {shortest: 2, longest: 4}}
@@ -41,3 +47,5 @@ columns:
   type: varchar(34)
   statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
   matches: [{type: iban, sample: 1.0, table: 1.0}]
+groups:
+- {columns: [dlvr_strt_nm, dlvr_pst_cd, dlvr_cty_nm], coherence: 0.994}

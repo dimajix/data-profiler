@@ -91,6 +91,10 @@ th {
     border-bottom: none;
 }
 
+.group {
+    margin: 8px 0 0;
+}
+
 section {
     break-inside: avoid-page;
 }

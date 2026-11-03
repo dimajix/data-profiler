@@ -24,6 +24,7 @@ from data_profiler.detect import (
     SemanticTypeError,
     Sensitivity,
     detect,
+    is_filled,
     is_sensitive,
     project_type,
     semantic_type,
@@ -200,6 +201,15 @@ def test_the_sentinels_given_of_a_column_are_those_left_aside() -> None:
     assert not _is_left_aside("N/A", given), "in place of those of the tool"
     assert sentinels(None) is SENTINELS, "those of the tool where none are given"
     assert sentinels([]) == frozenset(), "none where they are none"
+
+
+def test_a_value_is_filled_where_it_is_neither_null_nor_a_sentinel() -> None:
+    assert is_filled("10115", SENTINELS)
+    assert is_filled(0, SENTINELS), "a zero is a value"
+    assert not is_filled(None, SENTINELS)
+    assert not is_filled(" N/A ", SENTINELS)
+    assert not is_filled(datetime(9999, 12, 31, 12), SENTINELS)
+    assert is_filled("", frozenset()), "where the column has no sentinels"
 
 
 @pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])

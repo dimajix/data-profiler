@@ -7,6 +7,7 @@ import pytest
 from data_profiler.detect import EMAIL, PHONE, Sensitivity
 from data_profiler.profile import (
     Column,
+    Group,
     Lengths,
     Match,
     Profile,
@@ -53,6 +54,7 @@ _PROFILE = Profile(
                     marked=Sensitivity.NONE,
                 ),
             ),
+            groups=(Group(("eml_adr", "tel_no"), 0.947),),
         ),
         Table(name="empty", rows=0, columns=(Column("x", "bigint", Statistics(0, 0)),)),
     ),
@@ -77,6 +79,10 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
     assert "<td> 1 … 2 </td>" in page, "the lengths of a text"
     assert "email 98% / 99%" in page, "a match with its shares in the sample and on the table"
     assert '<td class="number">\u2013</td>' in page, "no share of nulls of a table without rows"
+
+
+def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
+    assert 'Filled together: <span class="original">eml_adr, tel_no</span> (95%)' in _page()
 
 
 def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -> None:

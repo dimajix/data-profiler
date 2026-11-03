@@ -1,7 +1,11 @@
 """Rows of test data whose columns have the statistics of a profile.
 
 The values of a column are drawn from a pool of as many distinct values as its statistics count,
-each of them used at least once, and its nulls and sentinels are spread over the rows at random.
+each of them used at least once, and its nulls and sentinels are spread over the rows at random:
+the rows of a column are taken in an order of their own, its nulls and sentinels in the first of
+them. The columns of a group share their order, so that they are filled in the same rows as far as
+their nulls and sentinels allow: the column of more of them is filled within the rows of the column
+of fewer.
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
@@ -72,7 +76,10 @@ _DATES: Final = {
 
 
 def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
-    """The rows of `table`, each of its columns with its nulls, distinct values and lengths.
+    """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
+
+    The columns of each of its groups are filled in the same rows, as far as their nulls and
+    sentinels allow.
 
     Args:
         table: The table, with the statistics of its columns.
@@ -85,11 +92,19 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
         SimulationError: A column has a type that is not generated, or statistics that no values
             can have.
     """
-    return list(zip(*(_values(table, column, random) for column in table.columns), strict=True))
+    shared = {}
+    for found in table.groups:
+        order = random.sample(range(table.rows), table.rows)
+        shared.update(dict.fromkeys(found.columns, order))
+    columns = []
+    for column in table.columns:
+        order = shared.get(column.name) or random.sample(range(table.rows), table.rows)
+        columns.append(_values(table, column, order, random))
+    return list(zip(*columns, strict=True))
 
 
-def _values(table: Table, column: Column, random: Random) -> list[object]:
-    """The values of `column`, one per row of `table`, in random order."""
+def _values(table: Table, column: Column, order: list[int], random: Random) -> list[object]:
+    """The values of `column`, one per row of `table`, its nulls and sentinels first in `order`."""
     statistics = column.statistics
     sentinels = statistics.sentinel_rows
     present = table.rows - statistics.nulls - sentinels
@@ -109,11 +124,15 @@ def _values(table: Table, column: Column, random: Random) -> list[object]:
                 f"{table.name}.{column.name}: {statistics.distinct} distinct values of"
                 f" {present} are no {kind.name} together"
             )
+    empty: list[object] = [None] * statistics.nulls
     for sentinel in statistics.sentinels:
-        values += [_sentinel(table, column, sentinel.value)] * sentinel.rows
-    values += [None] * statistics.nulls
+        empty += [_sentinel(table, column, sentinel.value)] * sentinel.rows
+    random.shuffle(empty)
     random.shuffle(values)
-    return values
+    placed: list[object] = [None] * table.rows
+    for row, value in zip(order, [*empty, *values], strict=True):
+        placed[row] = value
+    return placed
 
 
 def _sentinel(table: Table, column: Column, text: str) -> object:

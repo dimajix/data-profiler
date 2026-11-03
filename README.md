@@ -11,7 +11,8 @@ It works in three stages, each of which can be run again on its own:
   the range of its values, its nulls and the values that stand for none, such as empty texts or
   `9999-12-31`, whether it is an enumeration of few values, and what its values are - phone
   numbers, postal codes, card numbers, dates and more - by deterministic detectors, checked on a
-  sample and, where they can, verified on the whole table.
+  sample and, where they can, verified on the whole table; and which columns of a table are filled
+  together, such as the street, the postal code and the city of a delivery address.
 - **describe** asks a small language model, running locally in Ollama, for a harmonized English
   name and a description of every column. The names are composed from one glossary of the terms of
   the whole schema - mostly abbreviations -, so that the same term reads the same in every table.

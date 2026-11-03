@@ -39,13 +39,20 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 7
+FORMAT: Final = 8
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
 written to: a field added is unknown to the version before, a field removed or renamed is missing
 for the version after. A profile of another format is refused, an older one as well: it is removed
 and scanned again, not converted.
+"""
+
+
+DIGITS: Final = 3
+"""The digits a share found in a sample is written with: of a match, and the coherence of a group.
+
+A sample of about 10,000 rows says no more.
 """
 
 
@@ -255,6 +262,23 @@ class Column:
 
 
 @dataclass(frozen=True)
+class Group:
+    """Columns of a table filled together: in mostly the same rows of its sample.
+
+    A column is filled in a row where it holds a value, neither null nor a sentinel. A group holds
+    its columns, and a column does not name its group, so that it is said in one place.
+
+    Attributes:
+        columns: The names of its columns, at least two, in the order of the table.
+        coherence: The mean of the Jaccard indexes of the rows each two of its columns are filled
+            in, from 0 to 1, with three digits.
+    """
+
+    columns: tuple[str, ...]
+    coherence: float
+
+
+@dataclass(frozen=True)
 class Table:
     """A table of the schema, under its original name, and what was found about it.
 
@@ -263,6 +287,8 @@ class Table:
         run: When the run of scan that counted the table started, or None where no scan did.
         rows: The number of its rows, counted exactly.
         columns: Its columns, in the order of the table.
+        groups: The groups of its columns filled together, in the order of their first columns;
+            a column is in one group at most.
     """
 
     name: str
@@ -270,6 +296,7 @@ class Table:
     run: datetime | None = field(default=None, kw_only=True)
     rows: int
     columns: tuple[Column, ...]
+    groups: tuple[Group, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -325,8 +352,9 @@ class Profile:
             ProfileError: A file cannot be read, is no YAML, holds no fields, is of another
                 format, a field is missing, unknown or of the wrong type, a semantic type of the
                 project cannot be made, as `detect.project_type` says, a match names a type
-                neither of the tool nor of the project, or the file of a table holds a table of
-                another name.
+                neither of the tool nor of the project, the file of a table holds a table of
+                another name, or the groups of a table name a column it does not have, or one
+                twice.
         """
         try:
             head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
@@ -518,11 +546,23 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
 
     Raises:
         DocumentError: The file cannot be read as a document of a table.
-        ProfileError: The file holds a table of another name than its own.
+        ProfileError: The file holds a table of another name than its own, or a group names a
+            column the table does not have, or the groups name one twice.
     """
     table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
         raise ProfileError(f"{path} holds the table {table.name!r}, not the one it is named after")
+    names = {column.name for column in table.columns}
+    grouped: set[str] = set()
+    for group in table.groups:
+        for name in group.columns:
+            if name not in names:
+                raise ProfileError(
+                    f"{path}: a group names the column {name!r}, which the table does not have"
+                )
+            if name in grouped:
+                raise ProfileError(f"{path}: the groups name the column {name!r} twice")
+            grouped.add(name)
     return table
 
 

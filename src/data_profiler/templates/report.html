@@ -102,6 +102,12 @@
     {% endfor %}
     </tbody>
   </table>
+  {% for group in table.groups %}
+  <p class="group">
+    Filled together: <span class="original">{{ group.columns | join(", ") }}</span>
+    ({{ "{:.0%}".format(group.coherence) }})
+  </p>
+  {% endfor %}
 </section>
 {% endfor %}
 
