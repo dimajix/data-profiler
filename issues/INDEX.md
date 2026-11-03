@@ -44,6 +44,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [09](09-the-glossary.md) | done | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
 | [10](10-the-stage-describe.md) | open | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
 | [24](24-terms-written-together.md) | open | Terms written together without a separator, `LFADR` in `KD_LFADR_PLZ`, stay one term, so that the glossary needs a word for every combination of terms, and the same term reads differently where it is written together. |
+| [27](27-glossary-of-concepts.md) | open | The glossary gives each term one word and nothing else, so that two abbreviations of one concept are two entries, an abbreviation of several meanings has one of them, a prefix that means nothing becomes part of every name, and the language model is told no more of a term than a word. |
 
 ## Report
 
