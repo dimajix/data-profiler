@@ -1,4 +1,4 @@
-"""Detection: semantic types, their sensitivity, and the detectors that recognise them.
+"""Detection: what the values of a column are, and the detectors that recognise them.
 
 A detector recognises one semantic type by a pattern, a regular expression every value of the type
 matches whole - in a value, and on the whole table in SQL -, and, where the pattern does not say
@@ -14,12 +14,17 @@ classes, repetitions, groups and alternatives, and no other escapes than of a ch
 
 The types of the tool are the constants below; a project gives types of its own, each by its name,
 its sensitivity and a pattern alone, which a value is checked for beside those of the tool.
+
+A value is of a semantic type, which has a sensitivity, or a sentinel: a value that stands for no
+value, such as an empty text or `9999-12-31`, of no type, and left aside as a null is. The
+sentinels of a column are texts: those of the tool, `SENTINELS`, unless others are given of it by
+hand. A value is compared with them as text, a moment as the text of its day.
 """
 
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from re import PatternError
 from typing import Final
@@ -142,8 +147,8 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
     )
 
 
-# The threshold of a flag, of a pair of values: every value of its column that is not null is of the
-# pair, as a column of counts, mostly zeros and ones, is none.
+# The threshold of a flag, of a pair of values: every value of its column that is neither null nor
+# a sentinel is of the pair, as a column of counts, mostly zeros and ones, is none.
 _EVERY: Final = 1.0
 
 
@@ -317,18 +322,64 @@ def is_sensitive(text: str, types: Sequence[SemanticType]) -> bool:
     )
 
 
-def detect(values: Sequence[object], types: Sequence[SemanticType]) -> dict[SemanticType, float]:
+SENTINELS: Final = frozenset(
+    {"", "NULL", "null", "N/A", "n/a", "-"}
+    | {"0001-01-01", "1900-01-01", "9999-12-31", "01.01.0001", "01.01.1900", "31.12.9999"}
+)
+"""The sentinels of the tool: the values that stand for no value, as text.
+
+The empty text, `NULL`, `N/A` and `-`, and the first and the last day a database writes for a day
+not known - `0001-01-01`, `1900-01-01` and `9999-12-31`, in the forms of a date. No run of zeros:
+`0`, `00` and `000` are codes in some columns.
+"""
+
+
+def sentinels(given: Sequence[str] | None) -> frozenset[str]:
+    """The sentinels of a column: those given of it by hand, else those of the tool.
+
+    Args:
+        given: The sentinels given of the column by hand, as values; None where none are given.
+
+    Returns:
+        The values given, none where they are none; `SENTINELS` where none are given.
+    """
+    return SENTINELS if given is None else frozenset(given)
+
+
+def is_sentinel(value: object, texts: Collection[str]) -> bool:
+    """Whether `value` is one of the sentinels `texts`, compared as text.
+
+    A value is compared as text, its spaces at either end cut, and a moment as the text of its day,
+    so that `9999-12-31` is a sentinel of a moment at any time of that day, in any time zone, as
+    the dialect compares it.
+
+    Args:
+        value: A value of a column, as the database gives it.
+        texts: The sentinels of the column.
+
+    Returns:
+        Whether the value, as it is compared, is one of `texts`.
+    """
+    day = value.date() if isinstance(value, datetime) else value
+    return str(day).strip() in texts
+
+
+def detect(
+    values: Sequence[object], types: Sequence[SemanticType], without: Collection[str]
+) -> dict[SemanticType, float]:
     """The share of `values` each semantic type is recognised in, of the types they are a match of.
 
     Args:
         values: The values of a column, as a sample holds them; None is a null, and not counted.
         types: The semantic types of the project, checked beside those of the tool.
+        without: The sentinels of the column, which are not counted either.
 
     Returns:
-        The share of the values that are not null each type is recognised in, from 0 to 1, by
-        type, of the types whose share reaches the threshold of their detector; every other type
-        is left out, and so is every type where all values are null.
+        The share of the values that are neither null nor sentinels each type is recognised in,
+        from 0 to 1, by type, of the types whose share reaches the threshold of their detector;
+        every other type is left out, and so is every type where no value is left.
     """
-    texts = [str(value).strip() for value in values if value is not None]
+    present = (value for value in values if value is not None and not is_sentinel(value, without))
+    texts = [str(value).strip() for value in present]
     shares = {kind: kind.detector.share(texts) for kind in all_types(types)}
     return {kind: share for kind, share in shares.items() if share >= kind.detector.threshold}

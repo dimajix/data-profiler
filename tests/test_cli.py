@@ -42,6 +42,8 @@ def test_an_environment_is_scanned_into_its_directory(
     assert [kind.name for kind in scanned.types] == ["order-number"], "of project.yml"
     marked = [c for t in scanned.tables for c in t.columns if c.marked is Sensitivity.PERSONAL]
     assert sorted(c.name for c in marked) == ["cust_nm", "frst_nm", "lst_nm"], "of overrides.yml"
+    given = [c for t in scanned.tables for c in t.columns if c.sentinels is not None]
+    assert [(c.name, c.sentinels) for c in given] == [("dlvr_pst_cd", ("", "00000"))]
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
 
 

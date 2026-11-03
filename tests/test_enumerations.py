@@ -14,9 +14,10 @@ def test_the_columns_of_few_values_that_repeat_are_enumerations(
             column.name
             for column in made.columns
             if column.statistics.distinct <= 500
-            and column.statistics.distinct < made.rows - column.statistics.nulls
+            and column.statistics.distinct
+            < made.rows - column.statistics.nulls - column.statistics.sentinel_rows
         ]
-        enumerations = values(source, count(source, made.name))
+        enumerations = values(source, count(source, made.name, {}))
         assert [enumeration.column for enumeration in enumerations] == expected, made.name
 
 
@@ -25,11 +26,12 @@ def test_the_values_of_an_enumeration_are_counted_on_the_whole_table(
 ) -> None:
     for made in example.tables:
         statistics = {column.name: column.statistics for column in made.columns}
-        for enumeration in values(source, count(source, made.name)):
+        for enumeration in values(source, count(source, made.name, {})):
             where = f"{made.name}.{enumeration.column}"
             found = statistics[enumeration.column]
-            assert len(enumeration.values) == found.distinct, where
+            assert len(enumeration.values) == found.distinct, f"{where}: its sentinels aside"
             counts = [rows for _, rows in enumeration.values]
-            assert sum(counts) == made.rows - found.nulls, f"{where}: every row but the nulls"
+            rest = made.rows - found.nulls - found.sentinel_rows
+            assert sum(counts) == rest, f"{where}: every row but its nulls and sentinels"
             assert counts == sorted(counts, reverse=True), f"{where}: the most frequent first"
             assert None not in [value for value, _ in enumeration.values], where

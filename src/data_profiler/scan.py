@@ -1,6 +1,7 @@
 """The stage scan: what the selected tables of a source hold.
 
-Each table is counted by the module `statistics`, by one query; the values of its enumerations are
+Each table is counted by the module `statistics`, by one query, its columns with the sentinels the
+overrides of the project give of them, or else those of the tool; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
 into the workspace. The semantic types of its columns, those of the tool and those of the project,
 are recognised in the sample, and verified on the whole table, by the module `matching`. The
@@ -10,7 +11,7 @@ the profile - the ranges and enumerations of the columns of no sensitivity -, th
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
-which skips the tables the run counted, unless the overrides now mark their columns otherwise; a
+which skips the tables the run counted, unless the overrides now give their columns otherwise; a
 run that finished is followed by a new one, which counts every table anew. Overrides that name a
 table not selected are refused before anything is counted.
 
@@ -61,7 +62,8 @@ def scan(
         pattern: The names of the tables to scan, matched whole.
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
-        overrides: The overrides of the project, which mark the columns of the tables.
+        overrides: The overrides of the project, which mark the columns of the tables and give
+            their sentinels.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
@@ -69,7 +71,7 @@ def scan(
             values of its enumerations, to take its sample, or to verify its matches.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
-            does not have.
+            does not have, or give sentinels of a column whose values are no text.
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
     """
@@ -81,13 +83,14 @@ def scan(
     profile.write(directory)
     for name in names:
         kept = profile.counted(name)
-        if kept is not None and given[name].is_laid_over(kept):
+        if kept is not None and given[name].agrees_with(kept):
             _logger.info("Skipping %s, counted by the run resumed", name)
             continue
         if kept is not None:
-            _logger.info("Counting %s anew, as the overrides mark its columns otherwise", name)
+            _logger.info("Counting %s anew, as the overrides give its columns otherwise", name)
         _logger.info("Scanning %s", name)
-        table = count(source, name)
+        table = count(source, name, given[name].sentinels)
+        given[name].refuse_uncounted(table)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
         enumerations = values(source, table)
         workspace.write_enumerations(name, enumerations)

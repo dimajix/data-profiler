@@ -1,4 +1,4 @@
-format: 6
+format: 7
 name: cust
 rows: 5000
 columns:
@@ -13,7 +13,9 @@ columns:
   type: varchar(2)
   statistics: {nulls: 0, distinct: 3, lengths: {shortest: 1, longest: 2}}
 - {name: crt_dt, type: date, statistics: {nulls: 0, distinct: 3100}}
-- {name: upd_ts, type: timestamp(3), statistics: {nulls: 412, distinct: 4588}}
+- name: upd_ts
+  type: timestamp(3)
+  statistics: {nulls: 312, distinct: 4588, sentinels: [{value: '9999-12-31', rows: 100}]}
 - {name: crdt_lmt_amt, type: "decimal(12,2)", statistics: {nulls: 1200, distinct: 340}}
 - name: actv_flg
   type: boolean
@@ -25,4 +27,8 @@ columns:
   matches: [{type: yes-no, sample: 1.0, table: 1.0}]
 - name: seg_cd
   type: varchar(4)
-  statistics: {nulls: 250, distinct: 7, lengths: {shortest: 2, longest: 4}}
+  statistics:
+    nulls: 250
+    distinct: 7
+    lengths: {shortest: 2, longest: 4}
+    sentinels: [{value: N/A, rows: 60}, {value: '', rows: 40}]

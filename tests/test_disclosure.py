@@ -1,5 +1,7 @@
 """Tests of disclosure: the values of a table the profile may hold, of a table made by hand."""
 
+from dataclasses import replace
+
 from data_profiler.detect import PHONE, POSTAL_CODE, SemanticType, Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.profile import Column, Match, Range, Statistics, Table, Value
@@ -45,6 +47,15 @@ def test_a_column_marked_sensitive_keeps_neither_its_range_nor_its_values() -> N
     column = _disclosed(_code(marked=Sensitivity.PERSONAL))
     assert column.sensitive
     assert (column.statistics.range, column.values) == (None, ())
+
+
+def test_a_column_marked_sensitive_keeps_its_sentinels() -> None:
+    sentinels = (Value("", 3), Value("N/A", 1))
+    column = _code(marked=Sensitivity.PERSONAL)
+    column = replace(column, statistics=replace(column.statistics, sentinels=sentinels))
+    disclosed = _disclosed(column)
+    assert disclosed.statistics.sentinels == sentinels, "no values of the column"
+    assert (disclosed.statistics.range, disclosed.values) == (None, ())
 
 
 def test_a_mark_comes_before_the_matches() -> None:

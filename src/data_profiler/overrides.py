@@ -1,23 +1,26 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
 The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments: the word of a term of the glossary, and the sensitivity
-of a column the detectors miss - or find where it is none, which gives back no values `scan` took
-out. Tables, columns and terms are named by their original names, as keys, so that a person writes
-no more than what is given.
+project, the same for all its environments: the word of a term of the glossary, the sensitivity of
+a column the detectors miss - or find where it is none, which gives back no values `scan` took
+out -, and the sentinels of a column, in place of those of the tool. Tables, columns and terms are
+named by their original names, as keys, so that a person writes no more than what is given.
 
-Every stage takes as given what they give of its work. `scan` takes the sensitivity of the columns:
-it lays the overrides over each table it counts, before the module `disclosure` decides what of its
-values the profile holds, so that the profile holds no values of a column marked sensitive. The
-stages that read the profile - `report`, and `describe`, which takes the words of terms as well -
-lay them over it whole, so that a mark given after a scan withholds the values there without a scan
-again. A column has the marks the overrides give it and no others: a mark taken out gives back no
-values until `scan` counts the column again.
+Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
+which it counts the table with, and their sensitivity: it lays the overrides over each table it
+counts, before the module `disclosure` decides what of its values the profile holds, so that the
+profile holds no values of a column marked sensitive. The stages that read the profile - `report`,
+and `describe`, which takes the words of terms as well - lay them over it whole, so that a mark
+given after a scan withholds the values there without a scan again; the sentinels a column was
+counted with, they leave as they are. A column has the marks the overrides give it and no others: a
+mark taken out gives back no values until `scan` counts the column again, and sentinels changed
+count only once it does.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
-not select before it counts anything, and a column its table does not have once it has counted the
-table; it does not check the terms, which it does not use. A stage that reads the profile refuses
-a table, a column or a term the profile does not have.
+not select before it counts anything, and, once it has counted the table, a column the table does
+not have and the sentinels given of a column whose values the database writes as no text, which
+has none; it does not check the terms, which it does not use. A stage that reads the profile
+refuses a table, a column or a term the profile does not have.
 """
 
 from collections.abc import Collection, Mapping
@@ -34,7 +37,7 @@ from data_profiler.glossary import occurrences
 from data_profiler.profile import Profile, Table
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 1
+_FORMAT: Final = 2
 
 
 class OverridesError(Exception):
@@ -47,9 +50,12 @@ class ColumnOverride:
 
     Attributes:
         sensitivity: The sensitivity of the column, or None where it is not given.
+        sentinels: The values that stand for no value in the column, in place of those of the
+            tool, none where empty; None where they are not given.
     """
 
     sensitivity: Sensitivity | None = None
+    sentinels: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +67,15 @@ class TableOverride:
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
+
+    @property
+    def sentinels(self) -> dict[str, tuple[str, ...]]:
+        """The sentinels given of the columns, by their names, of those they are given of."""
+        return {
+            name: column.sentinels
+            for name, column in self.columns.items()
+            if column.sentinels is not None
+        }
 
     def laid_over(self, table: Table) -> Table:
         """`table`, each of its columns marked with the sensitivity given of it, and only so.
@@ -75,29 +90,64 @@ class TableOverride:
         Raises:
             OverridesError: A column is named that the table does not have.
         """
-        missing = self._missing(table)
-        if missing:
-            raise OverridesError(
-                f"the overrides name columns of {table.name} it does not have: {', '.join(missing)}"
-            )
+        self._refuse_missing(table)
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
         return replace(table, columns=tuple(columns))
 
-    def is_laid_over(self, table: Table) -> bool:
-        """Whether the columns of `table` are marked as given, and no others are.
+    def agrees_with(self, table: Table) -> bool:
+        """Whether `table` agrees with what is given: marked, and counted with the sentinels given.
 
         Args:
             table: The table.
 
         Returns:
-            True where `laid_over` would leave the table as it is; False where it would mark its
-            columns otherwise, or the table lacks a column that is named.
+            True where `laid_over` would leave the table as it is and each column was counted with
+            the sentinels given of it; False where it would mark its columns otherwise, a column
+            was counted with others, or the table lacks a column that is named.
         """
-        return not self._missing(table) and self.laid_over(table) == table
+        return (
+            not self._missing(table)
+            and self.laid_over(table) == table
+            and not self._counted_otherwise(table)
+        )
+
+    def refuse_uncounted(self, table: Table) -> None:
+        """Refuses what is given of `table` that it was not counted with, once it is counted.
+
+        Right after `statistics.count`, a column is counted otherwise than given only where its
+        values are no text, which `count` counts without sentinels, whatever is given.
+
+        Args:
+            table: The table, as `statistics.count` counted it.
+
+        Raises:
+            OverridesError: A column is named that the table does not have, or sentinels are
+                given of a column of no text.
+        """
+        self._refuse_missing(table)
+        refused = self._counted_otherwise(table)
+        if refused:
+            raise OverridesError(
+                f"the overrides give sentinels of columns of {table.name} whose values are no"
+                f" text: {', '.join(refused)}"
+            )
 
     def _missing(self, table: Table) -> list[str]:
         """The columns given that `table` does not have, sorted by their names."""
         return sorted(set(self.columns) - {column.name for column in table.columns})
+
+    def _refuse_missing(self, table: Table) -> None:
+        """Refuses what is given of the columns `table` does not have, naming them."""
+        missing = self._missing(table)
+        if missing:
+            raise OverridesError(
+                f"the overrides name columns of {table.name} it does not have: {', '.join(missing)}"
+            )
+
+    def _counted_otherwise(self, table: Table) -> list[str]:
+        """The columns of `table` counted with other sentinels than given, sorted by their names."""
+        given = self.sentinels
+        return sorted(c.name for c in table.columns if c.sentinels != given.get(c.name))
 
     def _marked(self, name: str) -> Sensitivity | None:
         """The sensitivity given of the column `name`, or None where none is."""
@@ -107,7 +157,7 @@ class TableOverride:
 
 @dataclass(frozen=True)
 class Overrides:
-    """What is given by hand of a profile: the words of terms, the sensitivity of columns.
+    """What is given by hand of a profile: words of terms, sensitivity and sentinels of columns.
 
     Attributes:
         glossary: The word of each term given, by the term, in lower case.

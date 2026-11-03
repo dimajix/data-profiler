@@ -11,7 +11,7 @@ certificate of a CA of one's own, `NO_PROXY` for a database a proxy does not rea
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from re import Pattern
 from types import TracebackType
 from typing import Final, Self
@@ -53,6 +53,13 @@ _ORDERED: Final = (
     "uuid",
 )
 
+# The types of Trino whose values it casts to a text, by how their names begin: those of others,
+# such as an array, a map, a row or a binary, would make the cast fail the query it is in.
+_HAVE_TEXT: Final = (*_ORDERED, "json")
+
+# The types of Trino whose values are moments, by how their names begin, compared as their days.
+_MOMENTS: Final = ("timestamp",)
+
 # The standard error of the distinct values Trino counts: half a percent, against its default of
 # 2.3, so that keys and enumerations can be told by them, for about 64 KB of memory per column.
 _DISTINCT_ERROR: Final = 0.005
@@ -66,7 +73,9 @@ class Dialect(ABC):
     """The SQL of one kind of database: the statements and expressions the tool sends.
 
     Its building blocks take the names of tables and columns as they are, and quote them; those that
-    count or measure values take an expression of the values of a column, as `column` writes it.
+    count or measure values take an expression of the values of a column, as `column` or `without`
+    writes it. Those of the sentinels take a column and its type, as they compare the values of the
+    column itself, a moment as its day.
     """
 
     @abstractmethod
@@ -110,6 +119,24 @@ class Dialect(ABC):
         """The expression of the values of `column`."""
 
     @abstractmethod
+    def sentinels(self, column: str, kind: str, texts: Collection[str]) -> str:
+        """The expression counting the values of `column`, of the type `kind`, one of `texts`.
+
+        A value is compared as text, its spaces at either end cut, and a moment as the text of its
+        day, as `detect` compares the values of a sample; `kind` is a type that `has_text`, and
+        `texts` are one at least. Texts, days and moments are written alike by the database and by
+        Python; truth values and floating numbers are not, `true` and `True`, `0.0E0` and `0.0`.
+        """
+
+    @abstractmethod
+    def without(self, column: str, kind: str, texts: Collection[str]) -> str:
+        """The expression of the values of `column`, null where a value is one of `texts`.
+
+        A value is compared as `sentinels` compares it; where `texts` are none, the expression is
+        that of `column`, of any type.
+        """
+
+    @abstractmethod
     def grouping(self, column: str) -> str:
         """The expression that is 0 in the rows grouped by `column`, and 1 in the others."""
 
@@ -145,8 +172,9 @@ class Dialect(ABC):
     def matching(self, values: str, pattern: str) -> str:
         """The expression counting those of `values` that `pattern` matches whole.
 
-        Each value is matched as text, its spaces at either end cut, whatever the type of the
-        column; `pattern` is a regular expression of what Python and the database share.
+        Each value is matched as text, its spaces at either end cut; `values` are of a type the
+        database casts to a text, not an array, a map, a row or a binary, which fail the query.
+        `pattern` is a regular expression of what Python and the database share.
         """
 
     @abstractmethod
@@ -156,6 +184,10 @@ class Dialect(ABC):
     @abstractmethod
     def is_ordered(self, kind: str) -> bool:
         """Whether the values of a column of the type `kind` have an order, and so a range."""
+
+    @abstractmethod
+    def has_text(self, kind: str) -> bool:
+        """Whether the database writes the values of a column of the type `kind` as text."""
 
 
 class Source(ABC):
@@ -378,6 +410,17 @@ class _TrinoDialect(Dialect):
         """The expression of the values of `column`."""
         return _identifier(column)
 
+    def sentinels(self, column: str, kind: str, texts: Collection[str]) -> str:
+        """The expression counting the values of `column` that are one of `texts`, as text."""
+        return f"count_if({_among(column, kind, texts)})"
+
+    def without(self, column: str, kind: str, texts: Collection[str]) -> str:
+        """The expression of the values of `column`, null where a value is one of `texts`."""
+        values = _identifier(column)
+        if not texts:
+            return values
+        return f"CASE WHEN {_among(column, kind, texts)} THEN NULL ELSE {values} END"
+
     def grouping(self, column: str) -> str:
         """The expression that is 0 in the rows grouped by `column`, and 1 in the others."""
         return f"grouping({_identifier(column)})"
@@ -423,6 +466,18 @@ class _TrinoDialect(Dialect):
     def is_ordered(self, kind: str) -> bool:
         """Whether the values of the type `kind` have an order: texts, numbers, times and a few."""
         return kind.startswith(_ORDERED)
+
+    def has_text(self, kind: str) -> bool:
+        """Whether Trino casts the values of the type `kind` to a text: all but a few."""
+        return kind.startswith(_HAVE_TEXT)
+
+
+def _among(column: str, kind: str, texts: Collection[str]) -> str:
+    """The condition that a value of `column`, of the type `kind`, is one of `texts`, as text."""
+    values = _identifier(column)
+    day = f"CAST({values} AS date)" if kind.startswith(_MOMENTS) else values
+    listed = ", ".join(_literal(text) for text in sorted(texts))
+    return f"trim(try_cast({day} AS varchar)) IN ({listed})"
 
 
 def _identifier(name: str) -> str:

@@ -63,6 +63,7 @@ def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_w
             found, statistics = column.statistics, wanted.statistics
             where = f"{table.name}.{column.name}"
             assert found.nulls == statistics.nulls, where
+            assert found.sentinels == statistics.sentinels, where
             assert found.lengths == statistics.lengths, where
             assert abs(found.distinct - statistics.distinct) <= _TOLERANCE * statistics.distinct, (
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
@@ -111,6 +112,18 @@ def test_a_column_the_overrides_mark_sensitive_is_marked_without_its_values(
     (column,) = [column for column in table.columns if column.name == "cust_nm"]
     assert column.marked is Sensitivity.PERSONAL
     assert (column.statistics.range, column.values) == (None, ())
+
+
+def test_a_column_without_sentinels_counts_what_the_tool_takes_for_them_as_values(
+    source: Source, tmp_path: Path
+) -> None:
+    given = TableOverride(columns={"dlvr_pst_cd": ColumnOverride(sentinels=())})
+    scanned = _scanned(source, "ord", tmp_path, overrides=Overrides(tables={"ord": given}))
+    (table,) = scanned.tables
+    (column,) = [column for column in table.columns if column.name == "dlvr_pst_cd"]
+    assert column.sentinels == ()
+    assert column.statistics.sentinels == ()
+    assert column.matches == (), "its empty texts are values, of no type"
 
 
 def test_overrides_of_a_table_not_selected_are_refused_before_anything_is_counted(
@@ -254,6 +267,25 @@ def test_a_run_resumed_counts_a_table_anew_whose_columns_the_overrides_mark_othe
     assert table.rows != -1, "counted anew"
     (column,) = [column for column in table.columns if column.name == "cust_nm"]
     assert (column.marked, column.statistics.range) == (Sensitivity.PERSONAL, None)
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_sentinels_the_overrides_give_otherwise(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "ord|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    (ord,) = failed.tables
+    # Its rows told apart from those a scan counts, to see that it is counted again.
+    failed.updated(replace(ord, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    given = TableOverride(columns={"dlvr_pst_cd": ColumnOverride(sentinels=())})
+    resumed = _scanned(source, "ord|prod", tmp_path, overrides=Overrides(tables={"ord": given}))
+    table, _ = resumed.tables
+    assert table.rows != -1, "counted anew"
+    (column,) = [column for column in table.columns if column.name == "dlvr_pst_cd"]
+    assert (column.sentinels, column.statistics.sentinels) == ((), ())
 
 
 def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(

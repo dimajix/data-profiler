@@ -37,7 +37,8 @@
     <thead>
       <tr>
         <th>Column</th><th>Name</th><th>Type</th><th class="number">Nulls</th>
-        <th class="number">Distinct</th><th>Lengths</th><th>Range</th><th>Semantic type</th>
+        <th class="number">Sentinels</th><th class="number">Distinct</th><th>Lengths</th>
+        <th>Range</th><th>Semantic type</th>
       </tr>
     </thead>
     <tbody>
@@ -47,13 +48,8 @@
         <td class="original">{{ column.name }}</td>
         <td>{{ harmonized(column.name) or "–" }}</td>
         <td class="type">{{ column.type }}</td>
-        <td class="number">
-          {% if table.rows %}
-          {{ "{:.0%}".format(statistics.nulls / table.rows) }}
-          {% else %}
-          –
-          {% endif %}
-        </td>
+        <td class="number">{{ share(statistics.nulls, table.rows) }}</td>
+        <td class="number">{{ share(statistics.sentinel_rows, table.rows) }}</td>
         <td class="number">{{ "{:,}".format(statistics.distinct) }}</td>
         <td>
           {% if statistics.lengths %}
@@ -87,20 +83,22 @@
           {% endif %}
         </td>
       </tr>
-      {% if column.values %}
+      {% for what, listed in (("values", column.values), ("sentinels", statistics.sentinels)) %}
+      {% if listed %}
       <tr class="values">
         <td></td>
-        <td colspan="7">
+        <td colspan="8">
           <details>
-            <summary>{{ column.values | length }} values</summary>
-            {% for value in column.values %}
-            <span class="value">{{ value.value }}</span> {{ "{:,}".format(value.rows) }}
+            <summary>{{ listed | length }} {{ what }}</summary>
+            {% for value in listed %}
+            <span class="value">{{ value.value or "(empty)" }}</span> {{ "{:,}".format(value.rows) }}
             {% if not loop.last %} · {% endif %}
             {% endfor %}
           </details>
         </td>
       </tr>
       {% endif %}
+      {% endfor %}
     {% endfor %}
     </tbody>
   </table>

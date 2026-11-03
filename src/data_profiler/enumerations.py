@@ -5,14 +5,15 @@ not each of them in one row alone: the values of a key of a small table say noth
 is. A column of more values is never grouped by: grouped by a column of keys, a table of hundreds
 of millions of rows would fill the memory of the database with a group for each. The query groups
 the table by each of the columns on its own, in one pass, and counts the rows of each value; null
-is no value of an enumeration, as the statistics count the nulls. The values are values of the
-database; they go into the workspace, never into the log, and into the profile only as the module
-`disclosure` lets them.
+is no value of an enumeration, as the statistics count the nulls, and nor is a sentinel, which the
+statistics count each. The values are values of the database; they go into the workspace, never
+into the log, and into the profile only as the module `disclosure` lets them.
 """
 
 import logging
 from typing import Final
 
+from data_profiler.detect import is_sentinel
 from data_profiler.profile import Table
 from data_profiler.source import Source, counted
 from data_profiler.workspace import Enumeration
@@ -36,13 +37,16 @@ def values(source: Source, table: Table) -> list[Enumeration]:
     Raises:
         SourceError: The database fails to count the values.
     """
-    names = [column.name for column in table.columns if 0 < column.statistics.distinct <= _LIMIT]
-    by_column = _count(source, table.name, names) if names else {}
-    enumerations = [
-        Enumeration(column=name, values=tuple(sorted(found, key=lambda v: v[1], reverse=True)))
-        for name, found in by_column.items()
-        if any(rows > 1 for _, rows in found)
-    ]
+    asked = {c.name: c for c in table.columns if 0 < c.statistics.distinct <= _LIMIT}
+    by_column = _count(source, table.name, list(asked)) if asked else {}
+    enumerations = []
+    for name, found in by_column.items():
+        kept = [
+            (value, rows) for value, rows in found if not is_sentinel(value, asked[name].left_aside)
+        ]
+        if any(rows > 1 for _, rows in kept):
+            ordered = tuple(sorted(kept, key=lambda v: v[1], reverse=True))
+            enumerations.append(Enumeration(column=name, values=ordered))
     _logger.info("Counted the values of %s: %d enumerations", table.name, len(enumerations))
     return enumerations
 

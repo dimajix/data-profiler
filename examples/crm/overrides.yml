@@ -1,7 +1,8 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
-# the word of a term, and the sensitivity of a column the detectors miss - here the names of
-# persons, which no detector recognises.
-format: 1
+# the word of a term, the sensitivity of a column the detectors miss - here the names of persons,
+# which no detector recognises -, and the sentinels of a column in place of those of the tool -
+# here the postal codes of a delivery, which are empty where none is given, or would be zeros.
+format: 2
 glossary:
   cust: customer
 tables:
@@ -12,3 +13,6 @@ tables:
     columns:
       frst_nm: {sensitivity: personal}
       lst_nm: {sensitivity: personal}
+  ord:
+    columns:
+      dlvr_pst_cd: {sentinels: ["", "00000"]}

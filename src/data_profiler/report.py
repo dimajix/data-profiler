@@ -2,9 +2,10 @@
 
 The document holds its styles inside, and no script, so that it can be sent and printed as it is.
 It shows each table with its columns - their original and harmonized names, types, statistics,
-semantic types, sensitivity and the values of their enumerations - and the glossary, each term with
-its word and where it appears. It renders what the profile holds, and nothing of the workspace:
-the values in it are those the profile may hold, which the template escapes.
+the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of
+their enumerations and each of their sentinels - and the glossary, each term with its word and
+where it appears. It renders what the profile holds, and nothing of the workspace: the values in it
+are those the profile may hold, which the template escapes.
 """
 
 from pathlib import Path
@@ -41,6 +42,8 @@ def render(profile: Profile) -> str:
         column_count=len(columns),
         sensitive_count=sum(1 for column in columns if column.sensitive),
         end=lambda value: "withheld" if value is None else value,
+        # A share of no rows is none, written as a dash, as the template writes what is not known.
+        share=lambda count, rows: f"{count / rows:.0%}" if rows else "\u2013",
         terms=occurrences(profile),
         places=_PLACES,
         harmonized=lambda name: harmonized(name, glossary),

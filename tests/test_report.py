@@ -28,7 +28,9 @@ _PROFILE = Profile(
                 Column(
                     name="cust_typ_cd",
                     type="varchar(2)",
-                    statistics=Statistics(300, 2, Lengths(1, 2), Range("<b>", None)),
+                    statistics=Statistics(
+                        300, 2, Lengths(1, 2), Range("<b>", None), (Value("", 40), Value("-", 20))
+                    ),
                     values=(Value("<script>alert(1)</script>", 800), Value("B", 100)),
                 ),
                 Column(
@@ -69,9 +71,12 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
     assert "1,200 rows" in page
     assert "customer_type_code" in page, "the harmonized name of a column"
     assert "25%" in page, "the share of the nulls"
+    assert '<td class="number">5%</td>' in page, "the share of the sentinels"
+    assert "2 sentinels" in page, "each of the sentinels"
+    assert '<span class="value">(empty)</span> 40' in page, "the empty text shown"
     assert "<td> 1 … 2 </td>" in page, "the lengths of a text"
     assert "email 98% / 99%" in page, "a match with its shares in the sample and on the table"
-    assert '<td class="number"> \u2013 </td>' in page, "no share of nulls of a table without rows"
+    assert '<td class="number">\u2013</td>' in page, "no share of nulls of a table without rows"
 
 
 def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -> None:
