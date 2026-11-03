@@ -14,17 +14,13 @@ share is written with as many digits as a sample says.
 import logging
 from collections.abc import Sequence
 from dataclasses import replace
-from typing import Final
 
 from data_profiler.detect import SemanticType, detect
-from data_profiler.profile import Match, Table
+from data_profiler.profile import DIGITS, Match, Table
 from data_profiler.source import Source, counted
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
-
-# The digits a share is written with.
-_DIGITS: Final = 3
 
 
 def recognise(table: Table, sample: Sample, types: Sequence[SemanticType]) -> Table:
@@ -42,7 +38,7 @@ def recognise(table: Table, sample: Sample, types: Sequence[SemanticType]) -> Ta
     for column in table.columns:
         shares = detect(sample.columns[column.name], types, column.left_aside)
         matches = tuple(
-            Match(type=kind, sample=round(share, _DIGITS))
+            Match(type=kind, sample=round(share, DIGITS))
             for kind, share in sorted(shares.items(), key=lambda found: -found[1])
         )
         columns.append(replace(column, matches=matches))
@@ -91,7 +87,7 @@ def verify(source: Source, table: Table) -> Table:
         matches = []
         for match in column.matches:
             matched = counted(next(answers), where)
-            share = round(matched / present, _DIGITS) if present else 0.0
+            share = round(matched / present, DIGITS) if present else 0.0
             matches.append(replace(match, table=share))
         verified[column.name] = replace(column, matches=tuple(matches))
     columns = tuple(verified.get(column.name, column) for column in table.columns)

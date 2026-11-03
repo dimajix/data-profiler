@@ -20,7 +20,7 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
 )
-from data_profiler.profile import Column, Lengths, Match, Statistics, Table, Value
+from data_profiler.profile import Column, Group, Lengths, Match, Statistics, Table, Value
 from simulation import SimulationError
 from simulation.data import rows
 
@@ -94,6 +94,30 @@ def test_a_column_has_each_of_its_sentinels_beside_its_nulls(
     assert [values.count(sentinel) for sentinel in made] == [300] * len(made)
     assert values.count(None) == 100
     assert len(set(values) - {None, *made}) == 50
+
+
+def test_the_columns_of_a_group_are_filled_in_the_same_rows_as_far_as_they_can_be() -> None:
+    table = Table(
+        name="t",
+        rows=1000,
+        columns=(
+            _column("strt", "varchar(10)", 600, 50, Lengths(5, 5)),
+            Column(
+                "pst", "varchar(5)", Statistics(0, 50, Lengths(5, 5), sentinels=(Value("", 600),))
+            ),
+            _column("cty", "varchar(10)", 620, 50, Lengths(5, 5)),
+            _column("other", "varchar(10)", 600, 50, Lengths(5, 5)),
+        ),
+        groups=(Group(("strt", "pst", "cty"), 0.967),),
+    )
+    made = rows(table, Random(0))
+    strt, pst, cty, other = (
+        {row for row, values in enumerate(made) if values[index] not in (None, "")}
+        for index in range(4)
+    )
+    assert strt == pst, "the empty texts of a column are not filled either"
+    assert cty < strt, "filled in fewer rows, within those of the others"
+    assert other != strt, "a column of no group is filled in rows of its own"
 
 
 # A sentinel of five rows, which is no day.

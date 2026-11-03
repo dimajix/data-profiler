@@ -16,6 +16,8 @@ from data_profiler.workspace import Workspace, WorkspaceError
 # How far the approximate number of distinct values may lie from the true one: four times the
 # standard error the dialect asks for.
 _TOLERANCE = 0.02
+# How far the coherence of a group, found in a sample, may lie from the one it was made with.
+_COHERENCE = 0.01
 
 
 def _scanned(
@@ -47,7 +49,7 @@ def _failing_at(tmp_path: Path, table: str) -> None:
     (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
 
 
-def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_with(
+def test_a_scanned_profile_has_the_statistics_matches_and_groups_its_tables_were_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = _scanned(source, ".*", tmp_path)
@@ -73,6 +75,11 @@ def test_a_scanned_profile_has_the_statistics_and_matches_its_tables_were_made_w
                 assert scanned_matches.get(match.type) == match, (
                     f"{where}: its {match.type.name} is found again, in sample and on table"
                 )
+        assert [g.columns for g in table.groups] == [g.columns for g in expected.groups], table.name
+        for group, given in zip(table.groups, expected.groups, strict=True):
+            assert abs(group.coherence - given.coherence) <= _COHERENCE, (
+                f"{table.name}: {group.columns} of {group.coherence}, made with {given.coherence}"
+            )
 
 
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(

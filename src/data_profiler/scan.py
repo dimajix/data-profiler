@@ -4,10 +4,11 @@ Each table is counted by the module `statistics`, by one query, its columns with
 overrides of the project give of them, or else those of the tool; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
 into the workspace. The semantic types of its columns, those of the tool and those of the project,
-are recognised in the sample, and verified on the whole table, by the module `matching`. The
-overrides of the project mark its columns as they give, and which values of the database go into
-the profile - the ranges and enumerations of the columns of no sensitivity -, the module
-`disclosure` decides, by the same types and those marks.
+are recognised in the sample, and verified on the whole table, by the module `matching`; the
+columns filled together are found in the sample as well, by the module `grouping`. The overrides
+of the project mark its columns as they give, and which values of the database go into the
+profile - the ranges and enumerations of the columns of no sensitivity -, the module `disclosure`
+decides, by the same types and those marks.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
@@ -32,6 +33,7 @@ from re import Pattern
 from data_profiler.detect import SemanticType
 from data_profiler.disclosure import disclose
 from data_profiler.enumerations import values
+from data_profiler.grouping import group
 from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile, Table, Value
@@ -54,8 +56,9 @@ def scan(
     """Scans the tables of `source` that `pattern` matches whole into the profile in `directory`.
 
     The profile is written after every table: each table with its columns, types, statistics and
-    matches, marked as the overrides give, and the ranges and values of enumerations of the
-    columns of no sensitivity; and the types of the project.
+    matches, marked as the overrides give, the groups of its columns filled together, and the
+    ranges and values of enumerations of the columns of no sensitivity; and the types of the
+    project.
 
     Args:
         source: The schema whose tables are scanned.
@@ -96,7 +99,7 @@ def scan(
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        found = verify(source, recognise(table, sample, types))
+        found = group(verify(source, recognise(table, sample, types)), sample)
         marked = given[name].laid_over(_valued(found, enumerations))
         profile = profile.updated(disclose(marked, types))
         profile.write(directory)

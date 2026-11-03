@@ -12,6 +12,7 @@ from data_profiler.detect import EMAIL, SemanticType, Sensitivity
 from data_profiler.profile import (
     FORMAT,
     Column,
+    Group,
     Lengths,
     Match,
     Profile,
@@ -51,6 +52,7 @@ _PROFILE = Profile(
                     matches=(Match(EMAIL, 0.982),),
                 ),
             ),
+            groups=(Group(("CUST_NM", "CUST_EML"), 0.912),),
         ),
     ),
     glossary={"cust": "customer", "nm": "name"},
@@ -149,6 +151,31 @@ def test_a_file_of_a_table_of_another_name_is_refused(tmp_path: Path) -> None:
     _written(tmp_path)
     (tmp_path / "tables" / "CUST.yml").rename(tmp_path / "tables" / "ORD.yml")
     with pytest.raises(ProfileError, match=r"ORD\.yml holds the table 'CUST'"):
+        Profile.read(tmp_path)
+
+
+def test_the_groups_of_a_table_are_written_by_the_names_of_their_columns(tmp_path: Path) -> None:
+    content = _content(_written(tmp_path) / "tables" / "CUST.yml")
+    assert content["groups"] == [{"columns": ["CUST_NM", "CUST_EML"], "coherence": 0.912}]
+
+
+@pytest.mark.parametrize(
+    ("groups", "problem"),
+    [
+        ((Group(("CUST_NM", "CUST_ADR"), 0.95),), "the column 'CUST_ADR', which the table"),
+        (
+            (Group(("CUST_ID", "CUST_NM"), 0.95), Group(("CUST_NM", "CUST_EML"), 0.95)),
+            "the groups name the column 'CUST_NM' twice",
+        ),
+        ((Group(("CUST_NM", "CUST_NM"), 0.95),), "the groups name the column 'CUST_NM' twice"),
+    ],
+    ids=["a column the table does not have", "a column of another group", "a column twice"],
+)
+def test_a_group_of_a_column_it_cannot_have_is_refused(
+    tmp_path: Path, groups: tuple[Group, ...], problem: str
+) -> None:
+    replace(_PROFILE, tables=(replace(_PROFILE.tables[0], groups=groups),)).write(tmp_path)
+    with pytest.raises(ProfileError, match=rf"CUST\.yml: .*{problem}"):
         Profile.read(tmp_path)
 
 

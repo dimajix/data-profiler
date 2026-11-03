@@ -364,6 +364,20 @@ def is_sentinel(value: object, texts: Collection[str]) -> bool:
     return str(day).strip() in texts
 
 
+def is_filled(value: object, texts: Collection[str]) -> bool:
+    """Whether `value` is a value: neither null nor one of the sentinels `texts`.
+
+    Args:
+        value: A value of a column, as the database gives it; None is a null.
+        texts: The sentinels of the column.
+
+    Returns:
+        Whether the value is neither None nor, compared as `is_sentinel` compares it, one of
+        `texts`.
+    """
+    return value is not None and not is_sentinel(value, texts)
+
+
 def detect(
     values: Sequence[object], types: Sequence[SemanticType], without: Collection[str]
 ) -> dict[SemanticType, float]:
@@ -379,7 +393,6 @@ def detect(
         from 0 to 1, by type, of the types whose share reaches the threshold of their detector;
         every other type is left out, and so is every type where no value is left.
     """
-    present = (value for value in values if value is not None and not is_sentinel(value, without))
-    texts = [str(value).strip() for value in present]
+    texts = [str(value).strip() for value in values if is_filled(value, without)]
     shares = {kind: kind.detector.share(texts) for kind in all_types(types)}
     return {kind: share for kind, share in shares.items() if share >= kind.detector.threshold}
