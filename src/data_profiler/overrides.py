@@ -16,11 +16,12 @@ after a scan withholds the values there without a scan again; the sentinels a co
 with, they leave as they are. A column has the marks the overrides give it and no others: a mark
 taken out gives back no values until `scan` counts the column again, and sentinels changed count
 only once it does. A concept given comes before those proposed: it takes the place of the one of
-its word, and its abbreviations are taken from the others, a concept left without any dropped, so
-that a term given is of no concept but those given. A reading given comes before the one read; it
-is laid over by the stages that read the profile alone, not by `scan`, so that the profile never
-holds it as read, and it counts once `describe` has split the name, as a reading agrees with the
-terms of its name.
+its word, keeping of it only the abbreviations it was proposed with beside those given, and its
+abbreviations are taken from the others, a concept left without any dropped, so that a term given
+is of no concept but those given, and a term proposed as one more abbreviation of a concept given
+is one of it. A reading given comes before the one read; it is laid over by the stages that read
+the profile alone, not by `scan`, so that the profile never holds it as read, and it counts once
+`describe` has split the name, as a reading agrees with the terms of its name.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -304,13 +305,20 @@ class Overrides:
 def _laid_over(
     given: Mapping[str, Concept], taken: Collection[str], proposed: Mapping[str, Concept]
 ) -> dict[str, Concept]:
-    """The concepts `given`, whose abbreviations are `taken`, with those `proposed` without them."""
-    kept = {}
+    """The concepts `given`, whose abbreviations are `taken`, with those `proposed` without them.
+
+    A concept proposed of the word of one given adds to it the abbreviations it has left.
+    """
+    concepts = dict(given)
     for word, concept in proposed.items():
         left = tuple(term for term in concept.abbreviations if term not in taken)
-        if word not in given and left:
-            kept[word] = replace(concept, abbreviations=left)
-    return {**given, **kept}
+        if not left:
+            continue
+        if word in given:
+            concepts[word] = replace(given[word], abbreviations=(*given[word].abbreviations, *left))
+        else:
+            concepts[word] = replace(concept, abbreviations=left)
+    return concepts
 
 
 _ADAPTER: Final = TypeAdapter(Overrides)

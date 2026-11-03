@@ -15,8 +15,8 @@ Every attribute of a profile is filled by one step, which replaces in a profile 
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
 profile, the rows, runs and groups of its tables, and the types, statistics, matches, values, marks
 and sentinels of their columns; the stage describe fills the terms of the names of the tables and
-columns by its step that splits them, and their readings by its step that reads them, and is to
-fill the glossary once it asks the language model. The overrides fill none: what they give, the
+columns by its step that splits them, the glossary by its step that proposes concepts, and the
+readings by its step that reads the names. The overrides fill none: what they give, the
 stages lay over the profile they read, and scan takes the marks and sentinels they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by

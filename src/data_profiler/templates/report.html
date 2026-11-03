@@ -139,12 +139,12 @@
       <tr><th>Term</th><th>Appears in</th></tr>
     </thead>
     <tbody>
-    {% for term, names in unknown.items() %}
+    {% for term, found in unknown.items() %}
       <tr>
         <td class="original">{{ term }}</td>
         <td>
-          {{ names[:places] | join(", ") }}
-          {% if names | length > places %}, … ({{ names | length }}){% endif %}
+          {{ found[:places] | map(attribute=2) | join(", ") }}
+          {% if found | length > places %}, … ({{ found | length }}){% endif %}
         </td>
       </tr>
     {% endfor %}

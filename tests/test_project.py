@@ -10,7 +10,7 @@ from data_profiler.project import Project, ProjectError
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
 _CONFIGURATION = """\
-format: 3
+format: 4
 tables: cust.*
 environments:
   dev:
@@ -104,6 +104,54 @@ def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None
     assert _project(tmp_path).overrides == tmp_path / "overrides.yml"
 
 
+def test_the_model_of_a_project_is_named_by_its_configuration(tmp_path: Path) -> None:
+    assert _project(tmp_path, _CONFIGURATION + "model: qwen3.5:2b\n").model == "qwen3.5:2b"
+    with pytest.raises(ProjectError, match="names no model to describe the names by"):
+        _ = _project(tmp_path).model
+
+
+def test_ollama_answers_where_the_variable_says_else_on_this_machine(tmp_path: Path) -> None:
+    assert _project(tmp_path).ollama == "http://localhost:11434"
+    (tmp_path / ".env").write_text("OLLAMA_HOST=https://ollama:8443/\n", encoding="utf-8")
+    assert _project(tmp_path).ollama == "https://ollama:8443", "of the .env of the project"
+
+
+@pytest.mark.parametrize(
+    ("variable", "url"),
+    [
+        ("ollama", "http://ollama:11434"),
+        ("0.0.0.0:11435", "http://0.0.0.0:11435"),
+        ("http://ollama", "http://ollama:11434"),
+        ("[::1]:11434", "http://[::1]:11434"),
+    ],
+)
+def test_the_variable_of_ollama_is_read_as_ollama_reads_it(
+    tmp_path: Path, variable: str, url: str
+) -> None:
+    assert _project(tmp_path, OLLAMA_HOST=variable).ollama == url
+
+
+@pytest.mark.parametrize(
+    "variable",
+    [
+        "ftp://ollama",
+        "http://:11434",
+        "http://user:secret@ollama",
+        "http://ollama/api",
+        "http://ollama?a=b",
+        "ollama:port",
+    ],
+)
+def test_a_variable_of_ollama_that_is_no_host_of_it_is_refused_naming_it(
+    tmp_path: Path, variable: str
+) -> None:
+    with pytest.raises(
+        ProjectError, match="the variable OLLAMA_HOST, of the process or of"
+    ) as refused:
+        _ = _project(tmp_path, OLLAMA_HOST=variable).ollama
+    assert "secret" not in str(refused.value)
+
+
 def test_an_environment_keeps_its_results_in_its_directory(tmp_path: Path) -> None:
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
     assert environment.profile == tmp_path / "dev" / "profile"
@@ -193,8 +241,8 @@ def test_tables_that_are_no_regular_expression_are_refused(tmp_path: Path) -> No
 
 
 def test_a_configuration_that_is_no_document_of_a_project_is_refused(tmp_path: Path) -> None:
-    configuration = _CONFIGURATION.replace("format: 3", "format: 2")
-    with pytest.raises(ProjectError, match=r"project\.yml is of format 2"):
+    configuration = _CONFIGURATION.replace("format: 4", "format: 3")
+    with pytest.raises(ProjectError, match=r"project\.yml is of format 3"):
         _project(tmp_path, configuration)
 
 
@@ -210,3 +258,4 @@ def test_the_example_project_profiles_the_simulation_environment() -> None:
     assert environment.user == "profiler"
     assert environment.directory == _EXAMPLE / "simulation"
     assert project.tables.fullmatch("cust_addr")
+    assert project.model == "qwen3.5:2b"

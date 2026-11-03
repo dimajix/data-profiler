@@ -3,8 +3,9 @@
 It runs a stage on one environment of a project, the project in the current directory if none is
 given: `scan` the tables of its database into its profile and workspace, the overrides of the
 project taken as given, `describe` the names of its profile, by the concepts of the profile and of
-the overrides, into its profile, and `report` its profile, the overrides laid over it, into its
-report, the last two without the database. The project completes the variables of the process by
+the overrides and by the language model of the project, into its profile - with `--anew`, dropping
+first what the language model filled -, and `report` its profile, the overrides laid over it, into
+its report, the last two without the database. The project completes the variables of the process by
 its `.env`, so that certificates and proxies set there reach the connection to the database.
 `data_profiler.commands.run` configures the log and ends the program when the stage fails.
 """
@@ -17,10 +18,11 @@ from pathlib import Path
 from typing import Final
 
 from data_profiler.commands import run
-from data_profiler.describe import describe
+from data_profiler.describe import describe, forgotten
+from data_profiler.model import ModelError, Ollama
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Profile, ProfileError
-from data_profiler.project import Project, ProjectError
+from data_profiler.project import Environment, Project, ProjectError
 from data_profiler.report import ReportError, write_report
 from data_profiler.scan import scan
 from data_profiler.source import SourceError, connect
@@ -35,6 +37,7 @@ _SHOWN: Final = (
     WorkspaceError,
     ProfileError,
     OverridesError,
+    ModelError,
     ReportError,
 )
 
@@ -46,9 +49,9 @@ def main() -> None:
     )
     parser.add_argument("--debug", action="store_true", help="log at debug level")
     commands = parser.add_subparsers(dest="command", required=True)
-    stages: dict[str, tuple[Callable[[Path, str], None], str]] = {
+    stages: dict[str, tuple[_Stage, str]] = {
         "scan": (_scan, "scan the tables of an environment of a project"),
-        "describe": (_describe, "split and read the names of the profile of an environment"),
+        "describe": (_describe, "describe the names of the profile of an environment"),
         "report": (_report, "render the profile of an environment of a project as HTML"),
     }
     for name, (stage, summary) in stages.items():
@@ -61,34 +64,61 @@ def main() -> None:
             help="the directory of the project (default: the current one)",
         )
         command.set_defaults(stage=stage)
+    commands.choices["describe"].add_argument(
+        "--anew",
+        dest="stage",
+        action="store_const",
+        const=_describe_anew,
+        help="drop first what the language model filled, to describe the profile anew",
+    )
     arguments = parser.parse_args()
-    run(lambda: arguments.stage(arguments.project, arguments.environment), arguments.debug, _SHOWN)
+    run(
+        lambda: _run(arguments.stage, arguments.project, arguments.environment),
+        arguments.debug,
+        _SHOWN,
+    )
 
 
-def _scan(directory: Path, name: str) -> None:
-    """Scans the environment `name` of the project in `directory` into its results."""
+type _Stage = Callable[[Project, Environment], None]
+"""A stage, run on an environment of a project."""
+
+
+def _run(stage: _Stage, directory: Path, name: str) -> None:
+    """Runs `stage` on the environment `name` of the project in `directory`."""
     project = Project.read(directory, os.environ)
-    environment = project.environment(name)
+    stage(project, project.environment(name))
+
+
+def _scan(project: Project, environment: Environment) -> None:
+    """Scans `environment` of `project` into its results."""
     overrides = Overrides.read(project.overrides)
     with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
         scan(source, project.tables, workspace, project.types, overrides, environment.profile)
-    _logger.info("Wrote the profile of %s to %s", name, environment.profile)
+    _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 
-def _describe(directory: Path, name: str) -> None:
-    """Describes the profile of the environment `name` of the project in `directory`."""
-    project = Project.read(directory, os.environ)
-    environment = project.environment(name)
+def _describe(project: Project, environment: Environment) -> None:
+    """Describes the profile of `environment` of `project`."""
+    _described(project, environment, Profile.read(environment.profile))
+
+
+def _describe_anew(project: Project, environment: Environment) -> None:
+    """Describes the profile of `environment` of `project` anew, as if it was not described."""
+    _described(project, environment, forgotten(Profile.read(environment.profile)))
+
+
+def _described(project: Project, environment: Environment, profile: Profile) -> None:
+    """Describes `profile`, of `environment` of `project`, into its directory."""
     overrides = Overrides.read(project.overrides)
-    describe(Profile.read(environment.profile), overrides).write(environment.profile)
-    _logger.info("Wrote the profile of %s to %s", name, environment.profile)
+    model = Ollama(project.ollama, project.model)
+    workspace = Workspace.open(environment.workspace, profile.catalog, profile.schema)
+    describe(profile, overrides, model, workspace, environment.profile)
+    _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 
-def _report(directory: Path, name: str) -> None:
-    """Renders the profile of the environment `name` of the project in `directory` as its report."""
-    project = Project.read(directory, os.environ)
-    environment = project.environment(name)
+def _report(project: Project, environment: Environment) -> None:
+    """Renders the profile of `environment` of `project` as its report."""
     profile = Overrides.read(project.overrides).laid_over(Profile.read(environment.profile))
     write_report(profile, environment.report)
-    _logger.info("Wrote the report of %s to %s", name, environment.report)
+    _logger.info("Wrote the report of %s to %s", environment.name, environment.report)

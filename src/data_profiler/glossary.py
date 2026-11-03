@@ -84,37 +84,43 @@ def occurrences(profile: Profile) -> dict[str, list[str]]:
     """
     vocabulary = Vocabulary.of(profile)
     found: dict[str, list[str]] = {}
-    for named, where in _places(profile):
+    for _, named, where in _places(profile):
         for term in dict.fromkeys(vocabulary.split(named.name)):
             if not term.isdigit():
                 found.setdefault(term, []).append(where)
     return found
 
 
-def unknown(profile: Profile) -> dict[str, list[str]]:
-    """Each term of the names of `profile` of no concept, as describe split them, with its names.
+type Place = tuple[Table, Table | Column, str]
+"""A table or column of a profile, with its table and where it is: a table by its name, a column as
+`table.column`."""
+
+
+def unknown(profile: Profile) -> dict[str, list[Place]]:
+    """Each term of the names of `profile` of no concept, as describe split them, with its places.
 
     Args:
         profile: The profile, its names split.
 
     Returns:
         Each term without candidates, but of digits, among the terms of the names, in the order it
-        first appears, with the names it appears in, in their order, as `occurrences` gives them;
-        none of a name not split.
+        first appears, with the tables and columns it appears in, in their order, each once; none
+        of a name not split.
     """
-    found: dict[str, list[str]] = {}
-    for named, where in _places(profile):
+    found: dict[str, list[Place]] = {}
+    for place in _places(profile):
+        named = place[1]
         for term in dict.fromkeys(term.text for term in named.terms or () if not term.candidates):
-            found.setdefault(term, []).append(where)
+            found.setdefault(term, []).append(place)
     return found
 
 
-def _places(profile: Profile) -> Iterator[tuple[Table | Column, str]]:
-    """Each table and column of `profile`, with where it is, as `occurrences` names it."""
+def _places(profile: Profile) -> Iterator[Place]:
+    """Each table, then each of its columns, of `profile`, in their order."""
     for table in profile.tables:
-        yield table, table.name
+        yield table, table, table.name
         for column in table.columns:
-            yield column, f"{table.name}.{column.name}"
+            yield table, column, f"{table.name}.{column.name}"
 
 
 class Vocabulary:

@@ -129,6 +129,10 @@ def test_the_concepts_of_the_overrides_are_taken_as_given() -> None:
         _PROFILE
     )
     assert replaced.glossary["contact"] == Concept(("cntct",), "A contact."), "of the same word"
+    joined = Overrides(glossary={"type_code": Concept(("cd",), "A code.")}).laid_over(_PROFILE)
+    assert joined.glossary["type_code"] == Concept(("cd", "typ"), "A code."), (
+        "with the abbreviations proposed of its word beside those given"
+    )
 
 
 def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:

@@ -15,10 +15,10 @@ It works in three stages, each of which can be run again on its own:
   together, such as the street, the postal code and the city of a delivery address.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
-  language model, running locally in Ollama, for a harmonized English name and a description of
-  every column. The names are composed from one glossary of the concepts of the whole schema -
-  each a word, its abbreviations and a description -, so that the same concept reads the same in
-  every table, whichever abbreviation it is written as.
+  language model, running locally in Ollama, for the concepts of the terms of none, and for a
+  description of every column. Harmonized English names are composed from one glossary of the
+  concepts of the whole schema - each a word, its abbreviations and a description -, so that the
+  same concept reads the same in every table, whichever abbreviation it is written as.
 - **report** renders the result as HTML.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
@@ -77,7 +77,9 @@ and stopped by `docker compose down`; its data stays in a volume until
   simulation alone, as its key beside it.
 - **PostgreSQL** answers on `localhost:5432`: database, user and password are `crm`.
 - **Ollama** is started with the profile `ollama`, on a machine on which none runs already:
-  `docker compose --profile ollama up -d --wait`. Its models stay in a volume.
+  `docker compose --profile ollama up -d --wait`. Its models stay in a volume; the model of the
+  example project is pulled once, by
+  `curl http://localhost:11434/api/pull -d '{"model": "qwen3.5:2b"}'`.
 
 It is filled with the tables of a profile, with generated rows that have the statistics of the
 profile and, in the texts of a column with a match, the values of its semantic type, by
@@ -98,8 +100,9 @@ test, prod - in a directory named after the environment. `examples/crm/` is a pr
 simulation environment:
 
 ```yaml
-format: 3
+format: 4
 tables: .*
+model: qwen3.5:2b
 environments:
   simulation:
     url: trino://localhost:8443/crm/sales
@@ -122,6 +125,10 @@ environments:
 
   The pattern is read by Python and by the database alike, so it uses what both share: classes,
   repetitions, groups and alternatives, and no other escapes than of a character.
+- **`model`** names the language model of Ollama that `describe` asks, as Ollama names it; it is
+  pulled into Ollama once. Where Ollama answers is a matter of the machine: the variable
+  `OLLAMA_HOST`, as `http://host:port`, else `http://localhost:11434`. The tool reaches it past
+  every proxy, as its prompts hold values of the database.
 - **`environments`** names each environment by the URL of its schema,
   `trino://host:port/catalog/schema`, and the user and the password it is reached as. A value
   `${NAME}` is taken from the variable `NAME`; the password is given only so, never written out, so
@@ -167,8 +174,13 @@ The names of the profile are split into their terms and read by
 uv run data-profiler describe simulation --project examples/crm
 ```
 
-without the database, by the concepts of the profile and of the overrides; it writes them into the
-profile. The profile is rendered as a report by
+without the database, by the concepts of the profile and of the overrides; the language model of the
+project proposes a concept of each term of none, shown the samples of the workspace but of the
+columns of a sensitivity, into the glossary of the profile. A concept proposed wrongly is corrected
+in `overrides.yml`, whose concepts come first. It asks only for what the profile lacks, and writes
+the profile after each concept, so that a run interrupted is resumed by the next; `--anew` drops
+first what the language model filled, to describe the profile anew, with another model, say. The
+profile is rendered as a report by
 
 ```bash
 uv run data-profiler report simulation --project examples/crm
@@ -184,8 +196,8 @@ are composed from the readings, so that a profile not described has none.
 uv run pytest
 ```
 
-Tests that need the simulation environment expect it to run. The other checks, which the
-pre-commit hook runs as well, are listed in
+Tests that need the simulation environment expect it to run, Ollama with the model of the example
+project among it. The other checks, which the pre-commit hook runs as well, are listed in
 [docs/CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md#checks).
 
 ### The Dev Container
@@ -212,7 +224,7 @@ Docker Desktop with that distribution of WSL.
 4. Open the folder in Visual Studio Code and choose *Reopen in Container*. The container runs
    `uv sync` once it is made, and enables the pre-commit hook.
 5. Pull a model into Ollama once, from a terminal of the container, for instance
-   `curl http://ollama:11434/api/pull -d '{"model": "qwen3:1.7b"}'`; models stay in a volume,
+   `curl http://ollama:11434/api/pull -d '{"model": "qwen3.5:2b"}'`; models stay in a volume,
    which the simulation environment shares.
 
 The simulation environment is not part of the container: the tests that need it fail in it and run

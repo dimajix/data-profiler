@@ -8,8 +8,8 @@ data-profiler is a command line tool for data engineers that profiles the tables
 database - Trino and Starburst first - to help build an understandable data model of it: what each
 column contains, and a harmonized name for it, composed from one glossary for the whole schema. It
 reads the database through generated SQL, recognises the semantic types of columns with
-deterministic detectors, and asks a small local language model for names; no value leaves the
-machine it runs on.
+deterministic detectors, and asks a small local language model for the concepts of the terms of
+the names and for descriptions of the columns; no value leaves the machine it runs on.
 
 The project is at its beginning: the parts below are the design it is built to, and come into the
 code one by one.
@@ -33,10 +33,10 @@ environment.
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
-    profile, the semantic types of its own, and the environments, each by its URL, its user and
-    its password, the password given by a variable -, its variables in `.env`, which complete those
-    of the process, its overrides in `overrides.yml`, and the directories of the results of each
-    environment.
+    profile, the semantic types of its own, the language model, and the environments, each by its
+    URL, its user and its password, the password given by a variable -, its variables in `.env`,
+    which complete those of the process, its overrides in `overrides.yml`, and the directories of
+    the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, those of
     the profile and the configuration of a project among them, each the fields of one class with
     the version of its format; what is wrong with one is named, field by field.
@@ -69,9 +69,11 @@ environment.
     those written together by the vocabulary of the profile, each with its candidates among the
     concepts of the glossary, which the profile holds, and composing harmonized names from the
     readings of the names.
+*   **`data_profiler.model`** - the language model: a prompt answered in the form of a JSON schema,
+    by the `Model`; `Ollama` runs one locally, reached past every proxy.
 *   **`data_profiler.describe`** - the stage `describe`: the names of the tables and columns split
     into their terms and read, by steps of their own without the language model; and the
-    glossary's concepts and the columns' names and descriptions, proposed by the language model.
+    glossary's concepts and the columns' descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
@@ -87,10 +89,11 @@ environment.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `grouping`, `overrides`, `disclosure` and `workspace`, `describe` uses
-`glossary`, `overrides` and `workspace`, `report` the profile alone, and `glossary` for its names;
-`cli` runs the stages, gives the overrides to `scan` and `describe`, and lays them over the
-profile `report` reads. The semantic types of a project reach `scan` from `project`, and every
-stage after it from the profile.
+`glossary`, `overrides`, `model` and `workspace`, `report` the profile alone, and `glossary` for its
+names; `cli` runs the stages, gives the overrides to `scan` and `describe` and the language model,
+made by `model` as the project names it, to `describe`, and lays the overrides over the profile
+`report` reads. The semantic types of a project reach `scan` from `project`, and every stage after
+it from the profile.
 
 ## The domain
 
@@ -160,7 +163,7 @@ stage after it from the profile.
     abbreviation of a concept never.
 *   **Concept** - an entry of the glossary: a word, from which harmonized names are composed, the
     terms it is written as, its abbreviations - `cust` and `kd` for `customer` -, and its
-    description, in English, from which the language model proposes names and descriptions. A
+    description, in English, from which the language model proposes descriptions of columns. A
     concept omitted is left out of the harmonized names, as a prefix that marks a custom column.
 *   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
@@ -172,7 +175,8 @@ stage after it from the profile.
     the names by the concepts given, as by `report`, which lays the concepts, readings and marks
     over the profile; sentinels changed count once `scan` counts the column again, and a reading
     given once `describe` has split its name. A concept given takes the place of the one proposed
-    of its word, and its abbreviations are taken from the others.
+    of its word, keeping of it the abbreviations proposed beside those given, and its abbreviations
+    are taken from the others.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -197,13 +201,17 @@ stage after it from the profile.
     values and ranges, until they are counted anew. A profile that cannot be read, or one of
     another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
-    together by the vocabulary, each with its candidates, and reads each name whose terms have one
-    candidate each. It asks the language model for the concept of each term of none, showing it the
-    tables and columns the term appears in, splits the names again, and asks it for the reading of
-    each name of a term of several concepts. From the reading of its name, and from each column's
-    statistics, matches and sample, it asks for the column's name and description. Overrides are
-    taken as given. The result is the profile, with terms, readings, glossary and suggestions; of
-    these, the terms and readings are made today, without the language model.
+    together by the vocabulary, each with its candidates. It asks the language model of the project
+    for the concept of each term of none, showing it the tables and columns the term appears in,
+    with the values of their samples of no sensitivity, and proposes it into the glossary, a word
+    there is taking the term as one more abbreviation. It splits the names again, and reads each
+    name whose terms have one candidate each; it is to ask the language model for the reading of
+    each name of a term of several concepts, and, from the reading of its name and from each
+    column's statistics, matches and sample, for the column's description - its name stays the one
+    harmonized. Overrides are taken as given, and no term of a concept given is asked for. The
+    language model is asked only for what the profile lacks, and the profile is written after each
+    concept, so that a run interrupted is resumed; `describe --anew` drops first what the language
+    model filled. The result is the profile, with terms, glossary, readings and descriptions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML.
 
 ## Principles
@@ -218,8 +226,9 @@ The design repeats a few decisions; new code follows them.
     each value that goes into the profile is checked on its own all the same, and withheld where it
     is of a sensitive type. The sentinels of a column are no values of it, and go into the profile
     whatever its sensitivity: those of the tool are fixed texts, those given are of the overrides.
-*   **No value leaves the machine.** The language model runs locally; no external service gets a
-    value, a sample or a profile.
+*   **No value leaves the machine.** The language model runs locally, and is reached past every
+    proxy, as its prompts hold values of samples; no external service gets a value, a sample or a
+    profile.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation
     writes, into its own environment.
 *   **The dialect writes all SQL.** No other part of the tool writes SQL text, so that another
@@ -232,8 +241,9 @@ The design repeats a few decisions; new code follows them.
     the names, and splitting the names again keeps a reading that still agrees. Which step fills
     which attribute is said once, in the module docs of `data_profiler.profile`.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
-    detectors that can be tested; the language model proposes names and descriptions from what they
-    found, and nothing else.
+    detectors that can be tested; the language model proposes the concepts of terms and the
+    descriptions of columns from what they found, and nothing else. It is shown no values of the
+    columns of a sensitivity, as what it answers goes into the profile.
 *   **One word per concept.** Harmonized names are composed from the words of the concepts of the
     glossary, through the reading of each name, so that the same concept reads the same in every
     table, under whichever of its abbreviations it is written; a name of no reading has none.

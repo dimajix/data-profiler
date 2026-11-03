@@ -94,9 +94,13 @@ def test_the_terms_of_no_concept_are_those_of_no_candidates_as_the_names_were_sp
         Column("ab_cd", "varchar(10)", Statistics(0, 1)),
     )
     profile = _profile(Table(name="cust", rows=1, columns=columns, terms=(split[0],)))
+    (table,) = profile.tables
     assert unknown(profile) == {
-        "xy": ["cust.cust_xy2xy", "cust.xy_nm"],
-        "nm": ["cust.xy_nm"],
+        "xy": [
+            (table, table.columns[0], "cust.cust_xy2xy"),
+            (table, table.columns[1], "cust.xy_nm"),
+        ],
+        "nm": [(table, table.columns[1], "cust.xy_nm")],
     }, "but of digits, and of a name not split"
 
 

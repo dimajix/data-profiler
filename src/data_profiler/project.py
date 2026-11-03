@@ -2,17 +2,20 @@
 
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
 profile, for the whole project, the semantic types of its own its columns are checked for beside
-those of the tool, and the environments the database is profiled in - dev, test, prod -, each by
-the URL of its schema, and the user and the password it is reached as; beside it, `overrides.yml`
-gives by hand what the profiles of all environments take as given. Each environment keeps its
-results in a directory of its own, named after it: its profile, its workspace and its report.
+those of the tool, the language model its names are described by, and the environments the
+database is profiled in - dev, test, prod -, each by the URL of its schema, and the user and the
+password it is reached as; beside it, `overrides.yml` gives by hand what the profiles of all
+environments take as given. Each environment keeps its results in a directory of its own, named
+after it: its profile, its workspace and its report.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
 variables are those of the process, completed by the `.env` of the project, which is not
 committed and does not override what the process sets. They are resolved when the URL, the user or
 the password of an environment is asked for, so that an environment can be used without those of
-the others being set, and its results without its own.
+the others being set, and its results without its own. Where Ollama answers is a matter of the
+machine, not of the project: the variable `OLLAMA_HOST`, read as Ollama reads it - `http` where it
+names no scheme, and 11434 where it names no port -, else its port on the machine itself.
 """
 
 import re
@@ -21,6 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import Pattern, PatternError
 from typing import Final, Self
+from urllib.parse import urlsplit
 
 from dotenv import dotenv_values
 from pydantic import TypeAdapter
@@ -29,7 +33,7 @@ from data_profiler.detect import SemanticType
 from data_profiler.documents import DocumentError, read_document
 from data_profiler.profile import SemanticTypes
 
-FORMAT: Final = 3
+FORMAT: Final = 4
 """The version of the format of the configuration of a project, raised as `profile.FORMAT` is."""
 
 # The name of an environment, which is the name of its directory, the same on every system, and an
@@ -39,6 +43,11 @@ _NAME: Final = re.compile(r"[a-z0-9][a-z0-9_-]*")
 _VARIABLES: Final = ".env"
 # A value taken from a variable, by its name.
 _VARIABLE: Final = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
+# The variable of where Ollama answers, where it answers where the variable is not set, and the
+# port it answers on where the variable names none.
+_OLLAMA: Final = "OLLAMA_HOST"
+_OLLAMA_DEFAULT: Final = "localhost"
+_OLLAMA_PORT: Final = 11434
 
 
 class ProjectError(Exception):
@@ -138,6 +147,7 @@ class _Configuration:
 
     tables: str | tuple[str, ...]
     environments: Mapping[str, _Settings]
+    model: str | None = None
     # Checked by its validator, not after it as the others are, as the profile holds the types too
     # and checks them the same way.
     types: SemanticTypes = ()
@@ -159,6 +169,7 @@ class Project:
         file: Path,
         tables: Pattern[str],
         types: tuple[SemanticType, ...],
+        model: str | None,
         environments: Mapping[str, _Settings],
         variables: Mapping[str, str],
     ) -> None:
@@ -166,6 +177,7 @@ class Project:
         self.tables = tables
         self.types = types
         self._file = file
+        self._model = model
         self._environments = environments
         self._variables = variables
 
@@ -220,7 +232,59 @@ class Project:
         except PatternError as error:
             raise ProjectError(f"{file}: tables is no regular expression: {error}") from error
         _complete(variables, directory / _VARIABLES)
-        return cls(file, pattern, configuration.types, configuration.environments, variables)
+        return cls(
+            file,
+            pattern,
+            configuration.types,
+            configuration.model,
+            configuration.environments,
+            variables,
+        )
+
+    @property
+    def model(self) -> str:
+        """The language model the names of the project are described by, as Ollama names it.
+
+        Raises:
+            ProjectError: The configuration names no model.
+        """
+        if self._model is None:
+            raise ProjectError(f"{self._file} names no model to describe the names by")
+        return self._model
+
+    @property
+    def ollama(self) -> str:
+        """Where Ollama answers, as `http://host:port`: the variable `OLLAMA_HOST`, else here.
+
+        The variable is read as Ollama reads it: `[scheme://]host[:port]`, of the scheme `http`
+        and the port 11434 where it names none.
+
+        Raises:
+            ProjectError: The variable is of another scheme than HTTP or HTTPS, lacks its host,
+                has a port that is no number, or holds a user, a password, a path, a query or a
+                fragment. The message does not repeat it, which may hold a password.
+        """
+        value = self._variables.get(_OLLAMA) or _OLLAMA_DEFAULT
+        parts = urlsplit(value if "://" in value else f"http://{value}")
+        try:
+            port = parts.port or _OLLAMA_PORT
+        except ValueError:
+            port = 0
+        host = parts.hostname or ""
+        if (
+            parts.scheme not in ("http", "https")
+            or not host
+            or not port
+            or parts.username is not None
+            or parts.path.strip("/")
+            or parts.query
+            or parts.fragment
+        ):
+            raise ProjectError(
+                f"the variable {_OLLAMA}, of the process or of {self._file.parent / _VARIABLES},"
+                " is no [http://]host[:port] of Ollama"
+            )
+        return f"{parts.scheme}://{f'[{host}]' if ':' in host else host}:{port}"
 
     @property
     def overrides(self) -> Path:
