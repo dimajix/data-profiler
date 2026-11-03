@@ -18,6 +18,8 @@ services:
       - https_proxy
       - NO_PROXY=ollama,localhost,${NO_PROXY:-${no_proxy:-}}
       - no_proxy=ollama,localhost,${NO_PROXY:-${no_proxy:-}}
+      # Where the tool reaches Ollama, beside the container.
+      - OLLAMA_HOST=http://ollama:11434
       # The certificates of the system, those of the company among them, for uv and for requests.
       - UV_SYSTEM_CERTS=true
       - REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt

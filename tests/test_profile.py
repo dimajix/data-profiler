@@ -213,10 +213,10 @@ def test_an_updated_profile_has_the_table_in_place_of_its_own_or_beside_them_sor
     assert _PROFILE.updated(added).tables == (added, cust), "beside them, sorted by name"
 
 
-def test_a_table_updated_keeps_the_terms_and_readings_of_its_names() -> None:
+def test_a_table_updated_keeps_what_describe_filled() -> None:
     cust = _PROFILE.tables[0]
     named = replace(cust.columns[0], terms=(Term("cust", ("customer",)), Term("id")))
-    read = replace(named, reading=("customer", "id"))
+    read = replace(named, reading=("customer", "id"), description="Who the customer is.")
     described = replace(
         cust,
         columns=(read, *cust.columns[1:]),
@@ -227,14 +227,17 @@ def test_a_table_updated_keeps_the_terms_and_readings_of_its_names() -> None:
     gone = replace(cust.columns[1], name="CUST_NO")
     (updated,) = profile.updated(replace(cust, rows=1, columns=(cust.columns[0], gone))).tables
     assert (updated.rows, updated.terms, updated.reading) == (1, described.terms, described.reading)
-    assert updated.columns[0] == read, "the terms and reading of a column of the same name"
+    assert updated.columns[0] == read, "the terms, reading and description of a column of a name"
     assert updated.columns[1] == gone, "none of a column of another name"
 
 
-def test_the_terms_and_readings_of_a_profile_are_written_and_read_unchanged(tmp_path: Path) -> None:
+def test_what_describe_filled_is_written_and_read_unchanged(tmp_path: Path) -> None:
     cust = _PROFILE.tables[0]
     column = replace(
-        cust.columns[0], terms=(Term("cust", ("customer",)), Term("id")), reading=("customer", "id")
+        cust.columns[0],
+        terms=(Term("cust", ("customer",)), Term("id")),
+        reading=("customer", "id"),
+        description="Who the customer is.",
     )
     profile = replace(_PROFILE, tables=(replace(cust, columns=(column, *cust.columns[1:])),))
     profile.write(tmp_path)
@@ -242,6 +245,7 @@ def test_the_terms_and_readings_of_a_profile_are_written_and_read_unchanged(tmp_
     written = _content(tmp_path / "tables" / "CUST.yml")["columns"][0]
     assert written["terms"] == [{"text": "cust", "concepts": ["customer"]}, {"text": "id"}]
     assert written["reading"] == ["customer", "id"]
+    assert written["description"] == "Who the customer is."
 
 
 def test_a_restricted_profile_has_the_tables_named_alone() -> None:

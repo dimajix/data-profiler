@@ -32,7 +32,7 @@ from data_profiler.glossary import Glossary, Vocabulary, occurrences
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Column, Concept, Profile, ProfileError, Statistics, Table, Term
 from data_profiler.project import Project, ProjectError
-from data_profiler.source import as_text
+from data_profiler.values import as_text
 from data_profiler.workspace import Sample, Workspace, WorkspaceError
 
 _logger = logging.getLogger(__name__)

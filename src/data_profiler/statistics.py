@@ -17,7 +17,8 @@ from itertools import chain
 
 from data_profiler.detect import sentinels
 from data_profiler.profile import Column, Lengths, Range, Statistics, Table, Value
-from data_profiler.source import Source, as_text, counted
+from data_profiler.source import Source
+from data_profiler.values import as_text, counted
 
 
 def count(source: Source, table: str, given: Mapping[str, tuple[str, ...]]) -> Table:

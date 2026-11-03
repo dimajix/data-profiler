@@ -4,13 +4,16 @@ import logging
 import os
 import shutil
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from yaml import safe_dump
 
 from data_profiler.cli import main
 from data_profiler.detect import Sensitivity
-from data_profiler.profile import Profile
+from data_profiler.glossary import occurrences
+from data_profiler.profile import Concept, Profile
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
@@ -86,13 +89,25 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
 def test_the_profile_of_an_environment_is_described_into_its_directory(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:
-    shutil.copy(_EXAMPLE / "overrides.yml", project)
+    # Every term of a concept given, and every column a description, so that the language model
+    # is asked nothing.
+    given = {f"word_{term}": {"abbreviations": [term]} for term in occurrences(example_profile)}
+    descriptions = {
+        table.name: {"columns": {c.name: {"description": "Given."} for c in table.columns}}
+        for table in example_profile.tables
+    }
+    document = {"format": 5, "glossary": given, "tables": descriptions}
+    (project / "overrides.yml").write_text(safe_dump(document), encoding="utf-8")
     (project / "simulation").mkdir()
-    example_profile.write(project / "simulation" / "profile")
+    proposed = {"customer": Concept(("cust",))}
+    replace(example_profile, glossary=proposed).write(project / "simulation" / "profile")
     assert command_line(main, "describe", "simulation", "--project", str(project)) == 0
     described = Profile.read(project / "simulation" / "profile")
-    assert all(column.terms is not None for t in described.tables for column in t.columns)
-    assert described.glossary == example_profile.glossary, "nothing of the overrides"
+    assert all(column.reading is not None for t in described.tables for column in t.columns)
+    assert described.glossary == proposed, "nothing of the overrides, and the concepts proposed"
+    arguments = ("describe", "simulation", "--project", str(project), "--anew")
+    assert command_line(main, *arguments) == 0
+    assert Profile.read(project / "simulation" / "profile").glossary == {}, "dropped first"
 
 
 def test_the_profile_of_an_environment_is_reported_without_its_password(

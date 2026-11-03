@@ -5,7 +5,7 @@ import re
 import pytest
 
 from data_profiler.profile import Profile
-from data_profiler.source import Source, SourceError, as_text, connect
+from data_profiler.source import Source, SourceError, connect
 
 
 def test_the_tables_that_a_pattern_matches_whole_are_listed(source: Source) -> None:
@@ -175,14 +175,3 @@ def test_the_database_has_a_range_of_every_type_the_dialect_takes_as_ordered(
     # The statement is the test's own: a column of each type is had of no table of the simulation.
     statement = f"SELECT min(CAST(NULL AS {kind})), max(CAST(NULL AS {kind}))"
     assert source.query(statement, f"ordering {kind}") == [(None, None)]
-
-
-@pytest.mark.parametrize(
-    ("value", "text"),
-    [(True, "true"), (False, "false"), (12, "12"), ("10115", "10115")],
-    ids=str,
-)
-def test_a_value_of_the_database_is_written_as_the_database_writes_it(
-    value: object, text: str
-) -> None:
-    assert as_text(value) == text

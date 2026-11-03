@@ -1,7 +1,9 @@
 # The example project: the tables of the example CRM, profiled in the simulation environment.
-format: 3
+format: 4
 # The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
+# The language model of Ollama the names are described by.
+llm: qwen3.5:2b
 environments:
   simulation:
     url: trino://localhost:8443/crm/sales

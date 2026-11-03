@@ -10,18 +10,11 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
-## Profile
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [11](11-overrides.md) | in progress | medium | feature | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. Part of epic [02](02-first-version-epic.md). |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
-| [10](10-the-stage-describe.md) | open | high | feature | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 

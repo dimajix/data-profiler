@@ -17,7 +17,8 @@ from dataclasses import replace
 
 from data_profiler.detect import SemanticType, detect
 from data_profiler.profile import DIGITS, Match, Table
-from data_profiler.source import Source, counted
+from data_profiler.source import Source
+from data_profiler.values import counted
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)

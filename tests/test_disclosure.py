@@ -3,7 +3,7 @@
 from dataclasses import replace
 
 from data_profiler.detect import PHONE, POSTAL_CODE, SemanticType, Sensitivity
-from data_profiler.disclosure import disclose
+from data_profiler.disclosure import disclose, disclose_texts
 from data_profiler.profile import Column, Match, Range, Statistics, Table, Value
 
 _VALUES = (Value("10115", 7), Value("99998", 3))
@@ -117,3 +117,14 @@ def test_a_value_of_a_sensitive_type_of_the_project_is_withheld(
     disclosed = _disclosed(column, account_number)
     assert disclosed.statistics.range == Range(None, "x")
     assert disclosed.values == (Value("x", 1),)
+
+
+def test_the_texts_of_a_column_are_disclosed_as_its_values_are() -> None:
+    texts = ["Anna", "+49 30 1234567", "x" * 120]
+    assert list(disclose_texts(_code(), texts, ())) == ["Anna", "x" * 99 + "\u2026"], (
+        "but of a sensitive type, and cut where long"
+    )
+    assert list(disclose_texts(_code(marked=Sensitivity.PERSONAL), texts, ())) == [], (
+        "of none marked"
+    )
+    assert list(disclose_texts(_code(Match(PHONE, 0.9, 0.9)), texts, ())) == [], "of none matched"

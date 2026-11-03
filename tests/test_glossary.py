@@ -4,7 +4,15 @@ from dataclasses import replace
 
 import pytest
 
-from data_profiler.glossary import Glossary, Vocabulary, agrees, occurrences, terms, unknown
+from data_profiler.glossary import (
+    Glossary,
+    Vocabulary,
+    agrees,
+    occurrences,
+    snake_case,
+    terms,
+    unknown,
+)
 from data_profiler.profile import Column, Concept, Profile, Statistics, Table, Term
 
 
@@ -94,9 +102,13 @@ def test_the_terms_of_no_concept_are_those_of_no_candidates_as_the_names_were_sp
         Column("ab_cd", "varchar(10)", Statistics(0, 1)),
     )
     profile = _profile(Table(name="cust", rows=1, columns=columns, terms=(split[0],)))
+    (table,) = profile.tables
     assert unknown(profile) == {
-        "xy": ["cust.cust_xy2xy", "cust.xy_nm"],
-        "nm": ["cust.xy_nm"],
+        "xy": [
+            (table, table.columns[0], "cust.cust_xy2xy"),
+            (table, table.columns[1], "cust.xy_nm"),
+        ],
+        "nm": [(table, table.columns[1], "cust.xy_nm")],
     }, "but of digits, and of a name not split"
 
 
@@ -222,3 +234,12 @@ def test_columns_of_the_same_harmonized_name_are_a_collision() -> None:
     )
     table = Table(name="t", rows=1, columns=columns)
     assert glossary.collisions(table) == {"status": ("ap_sts", "st")}, "id has no name"
+
+
+def test_a_name_in_snake_case_is_of_its_terms_joined() -> None:
+    assert [snake_case(name) for name in ("Contact Person", "custCrtDt", "Address2", "--")] == [
+        "contact_person",
+        "cust_crt_dt",
+        "address_2",
+        "",
+    ]

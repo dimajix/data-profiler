@@ -17,12 +17,12 @@ run that finished is followed by a new one, which counts every table anew. Overr
 table not selected are refused before anything is counted.
 
 A scan updates the profile there is rather than replacing it: it drops the tables no longer
-selected - deleted, or no longer matched by the pattern -, keeps the others until it counts them
-anew, and keeps what the other stages filled: the glossary, and the terms and readings of the
-names of the tables and columns that stay. A profile scanned with other semantic types keeps its
-tables without their matches, which may name a type it no longer has, and the values and ranges of
-their columns, until it counts them anew; a profile of another schema, or one that cannot be read,
-is refused rather than overwritten.
+selected, deleted or no longer matched by the pattern, keeps the others until it counts them anew,
+and keeps what the other stages filled: the glossary, the terms and readings of the names of the
+tables and columns that stay, and the descriptions of those columns. A profile scanned with other
+semantic types keeps its tables without their matches, which may name a type it no longer has, and
+the values and ranges of their columns, until it counts them anew; a profile of another schema, or
+one that cannot be read, is refused rather than overwritten.
 """
 
 import logging
@@ -40,8 +40,9 @@ from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile, Table, Value
 from data_profiler.sampling import take
-from data_profiler.source import Source, as_text
+from data_profiler.source import Source
 from data_profiler.statistics import count
+from data_profiler.values import as_text
 from data_profiler.workspace import Enumeration, Workspace
 
 _logger = logging.getLogger(__name__)

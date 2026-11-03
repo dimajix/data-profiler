@@ -1,11 +1,12 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
 # concepts of the glossary - a customer; an address, written in two ways; a prefix that marks a
 # custom column, left out of the names; a contact person, written as that prefix is; and the terms
-# of three names that stand for the one or the other -, the readings of those three names, the
-# sensitivity of a column the detectors miss - here the names of persons, which no detector
+# of three names that stand for the one or the other -, the readings of those three names, a name
+# given in place of the one composed from a reading and a description in place of the one proposed,
+# the sensitivity of a column the detectors miss - here the names of persons, which no detector
 # recognises -, and the sentinels of a column in place of those of the tool - here the postal codes
 # of a delivery, which are empty where none is given, or would be zeros.
-format: 4
+format: 5
 glossary:
   customer:
     abbreviations: [cust]
@@ -34,7 +35,10 @@ tables:
   cust:
     columns:
       cust_nm: {sensitivity: personal}
-      cust_ap_id: {reading: [customer, contact_person, identifier]}
+      cust_ap_id:
+        reading: [customer, contact_person, identifier]
+        name: contact_person_id
+        description: The identifier of the contact person a customer is reached through.
       ap_ap_nm: {sensitivity: personal, reading: [airplus, contact_person, name]}
       ap_seg_cd: {reading: [airplus, segment, code]}
   cntct:

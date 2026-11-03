@@ -11,10 +11,11 @@ long one is cut to its first characters, ending in `…`, so that the end of the
 free texts does not fill the profile. A table disclosed again is disclosed as before, or loses
 more: what a mark of none would give back, it cannot. The sentinels of a column are no values of
 it, and stay whatever its sensitivity: those of the tool are fixed texts, and those given are of the
-overrides of the project, which are shared as the profile is.
+overrides of the project, which are shared as the profile is. The values of a sample shown to the
+language model are judged the same way, as what it answers goes into the profile.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import replace
 from typing import Final
 
@@ -38,6 +39,29 @@ def disclose(table: Table, types: Sequence[SemanticType]) -> Table:
         column of a sensitivity without either.
     """
     return replace(table, columns=tuple(_disclosed(column, types) for column in table.columns))
+
+
+def disclose_texts(
+    column: Column, texts: Iterable[str], types: Sequence[SemanticType]
+) -> Iterator[str]:
+    """Of `texts`, values of `column`, those the profile may hold, as it would hold them.
+
+    Args:
+        column: The column, with its matches and mark.
+        texts: Values of the column, as text, such as those of its sample.
+        types: The semantic types of the project, by which each value is checked beside those of
+            the tool.
+
+    Returns:
+        None of a column of a sensitivity; else each of `texts` but those of a sensitive type, in
+        their order, each cut where it is long, judged one by one as they are taken.
+    """
+    if column.sensitive:
+        return
+    for text in texts:
+        found = _shown(text, types)
+        if found is not None:
+            yield found
 
 
 def _disclosed(column: Column, types: Sequence[SemanticType]) -> Column:

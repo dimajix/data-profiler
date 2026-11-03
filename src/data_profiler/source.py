@@ -265,28 +265,6 @@ class Source(ABC):
         self.close()
 
 
-def counted(value: object, where: str) -> int:
-    """`value`, which a query has counted of `where`, as a number.
-
-    Raises:
-        TypeError: The value is no number, which the dialect that wrote the query would have to
-            make sure of.
-    """
-    if not isinstance(value, int):
-        raise TypeError(f"the query counted something of {where} that is no number")
-    return value
-
-
-def as_text(value: object) -> str:
-    """`value`, which a query has read of the database, as text, as the database writes it.
-
-    A truth value is written `true` or `false`; any other, as Python writes it.
-    """
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
-
-
 def connect(url: str, user: str, password: str) -> Source:
     """Connects to the schema `url` names, as `user`.
 
