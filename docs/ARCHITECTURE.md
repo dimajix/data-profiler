@@ -48,6 +48,8 @@ environment.
     so that another database brings only its connection and its SQL. Trino is reached by HTTPS as a
     user with a password, both given apart from the URL; certificates and proxies come from the
     variables of the process.
+*   **`data_profiler.values`** - values of the database, as the tool takes them: a count as a
+    number, any value as text, as the profile holds it.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
     from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
@@ -88,12 +90,12 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching`, `grouping`, `overrides`, `disclosure` and `workspace`, `describe` uses
-`glossary`, `overrides`, `model` and `workspace`, `report` the profile alone, and `glossary` for its
-names; `cli` runs the stages, gives the overrides to `scan` and `describe` and the language model,
-made by `model` as the project names it, to `describe`, and lays the overrides over the profile
-`report` reads. The semantic types of a project reach `scan` from `project`, and every stage after
-it from the profile.
+`sampling`, `matching`, `grouping`, `overrides`, `disclosure`, `values` and `workspace`, `describe`
+uses `glossary`, `overrides`, `model`, `values` and `workspace`, `report` the profile alone, and
+`glossary` for its names; `cli` runs the stages, gives the overrides to `scan` and `describe` and
+the language model, made by `model` as the project names it, to `describe`, and lays the overrides
+over the profile `report` reads. The semantic types of a project reach `scan` from `project`, and
+every stage after it from the profile.
 
 ## The domain
 

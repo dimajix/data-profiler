@@ -34,7 +34,7 @@ from data_profiler.glossary import Glossary, Vocabulary, agrees, terms, unknown
 from data_profiler.model import Model
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Column, Concept, Profile, Table
-from data_profiler.source import as_text
+from data_profiler.values import as_text
 from data_profiler.workspace import Sample, Workspace
 
 _logger = logging.getLogger(__name__)

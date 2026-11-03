@@ -40,8 +40,9 @@ from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile, Table, Value
 from data_profiler.sampling import take
-from data_profiler.source import Source, as_text
+from data_profiler.source import Source
 from data_profiler.statistics import count
+from data_profiler.values import as_text
 from data_profiler.workspace import Enumeration, Workspace
 
 _logger = logging.getLogger(__name__)

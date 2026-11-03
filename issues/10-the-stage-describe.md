@@ -109,3 +109,8 @@ As agreed with the maintainer, in three steps, each a commit of its own:
   [04](04-can-a-small-model-name-columns.md), its descriptions mostly of the abbreviation rather
   than of the concept. A concept given now keeps the abbreviations proposed of its word, so that a
   term the model reads as a concept given is of it.
+
+- **2026-11-03** — Before step 2, as the maintainer decided: how the tool takes a value of the
+  database - a count as a number, any value as text - moved from `data_profiler.source` to a part
+  of its own, `data_profiler.values`, so that `describe`, which reads no database, no longer
+  depends on the part that does.

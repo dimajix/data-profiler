@@ -15,7 +15,8 @@ from typing import Final
 
 from data_profiler.detect import is_sentinel
 from data_profiler.profile import Table
-from data_profiler.source import Source, counted
+from data_profiler.source import Source
+from data_profiler.values import counted
 from data_profiler.workspace import Enumeration
 
 _logger = logging.getLogger(__name__)
