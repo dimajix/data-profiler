@@ -92,3 +92,9 @@ As decided with the maintainer:
 
 - **2026-10-30** — `report` ([12](12-the-stage-report.md)) lays the overrides of the project over
   the profile it renders; what is left is `describe` ([10](10-the-stage-describe.md)).
+
+- **2026-11-03** — The decision that `scan` never reads the overrides is changed by
+  [26](26-overrides-read-by-scan.md): the profile it wrote held the values of the columns an
+  override marks sensitive. `scan` now marks the columns as the overrides give, and every stage
+  lays them over the profile it reads, a column marked as given and no other; the question left to
+  [10](10-the-stage-describe.md) of the marks a stage keeps is settled with it.

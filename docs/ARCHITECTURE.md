@@ -25,8 +25,9 @@ environment.
     and written as a directory of documents, one of the schema and one of each table; the profile
     a scan starts from, in its run, resumed or new; and the form the semantic types of a project
     take in a document, which `project` reads them in as well.
-*   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over a
-    profile, refused where they name what it does not have.
+*   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
+    each table a scan counts and over a profile a stage reads, refused where they name what is not
+    profiled.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -79,10 +80,11 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching`, `disclosure` and `workspace`, `describe` uses `glossary`, `overrides` and
-`workspace`, `report` the profile alone, and `glossary` for its names; `cli` runs the stages, and
-lays the overrides over the profile they read. The semantic types of a project reach `scan` from
-`project`, and every stage after it from the profile.
+`sampling`, `matching`, `overrides`, `disclosure` and `workspace`, `describe` uses `glossary`,
+`overrides` and `workspace`, `report` the profile alone, and `glossary` for its names; `cli` runs
+the stages, gives the overrides to `scan`, and lays them over the profile the other stages read.
+The semantic types of a project reach `scan` from `project`, and every stage after it from the
+profile.
 
 ## The domain
 
@@ -133,7 +135,8 @@ lays the overrides over the profile they read. The semantic types of a project r
     name composed from the words of the glossary.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
     laid over a generated profile: the word of a term, the sensitivity of a column. What it gives
-    is taken as given, by `describe` as by `report`; `scan` never reads it.
+    is taken as given by every stage: by `scan`, which marks the columns it counts, as by
+    `describe` and `report`.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -145,13 +148,14 @@ lays the overrides over the profile they read. The semantic types of a project r
     counts included; it counts the values of every column whose distinct count is at most the
     threshold of an enumeration; and it takes a sample into the workspace. The detectors check the
     values of the sample; the semantic types they find are verified on the whole table by the
-    patterns of the detectors in SQL. The result is the profile, with the ranges and the values of
-    enumerations of the columns of no sensitivity, written after every table: a scan that fails
-    keeps the tables before it, and the next scan resumes its run, skipping the tables it
-    counted. It updates the profile there is: the tables no longer selected are dropped, the
-    others kept until they are counted anew, and the glossary is kept; a profile scanned with
-    other semantic types loses its tables. A profile that cannot be read, or one of another
-    schema, is refused and never overwritten: it may be the work of hours.
+    patterns of the detectors in SQL. The overrides of the project mark the columns the detectors
+    miss. The result is the profile, with the ranges and the values of enumerations of the columns
+    of no sensitivity, written after every table: a scan that fails keeps the tables before it,
+    and the next scan resumes its run, skipping the tables it counted, unless the overrides now
+    mark their columns otherwise. It updates the profile there is: the tables no longer selected
+    are dropped, the others kept until they are counted anew, and the glossary is kept; a profile
+    scanned with other semantic types loses its tables. A profile that cannot be read, or one of
+    another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
     language model for the word of each term, showing it the tables and columns the term appears
     in. From the glossary and

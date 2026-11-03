@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import DATE, Detector, SemanticType, Sensitivity
+from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
 from data_profiler.profile import Match, Profile, ProfileError, Table
 from data_profiler.scan import scan
 from data_profiler.source import Source
@@ -18,11 +19,22 @@ _TOLERANCE = 0.02
 
 
 def _scanned(
-    source: Source, pattern: str, tmp_path: Path, types: tuple[SemanticType, ...] = ()
+    source: Source,
+    pattern: str,
+    tmp_path: Path,
+    types: tuple[SemanticType, ...] = (),
+    overrides: Overrides = Overrides(),  # noqa: B008  # frozen, so that no call changes it
 ) -> Profile:
-    """The profile of the tables `pattern` matches, scanned into `tmp_path` with `types`."""
-    scan(source, re.compile(pattern), _workspace(tmp_path), types, tmp_path / "profile")
+    """The profile of the tables `pattern` matches, scanned into `tmp_path` as `scan` is given."""
+    workspace = _workspace(tmp_path)
+    scan(source, re.compile(pattern), workspace, types, overrides, tmp_path / "profile")
     return Profile.read(tmp_path / "profile")
+
+
+def _marked(table: str, column: str) -> Overrides:
+    """Overrides that mark the column `column` of `table` as personal data."""
+    given = TableOverride(columns={column: ColumnOverride(sensitivity=Sensitivity.PERSONAL)})
+    return Overrides(tables={table: given})
 
 
 def _workspace(tmp_path: Path) -> Workspace:
@@ -89,6 +101,34 @@ def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
         assert columns[name].sensitivity is Sensitivity.PERSONAL, name
         assert columns[name].statistics.range is None, name
         assert columns[name].values == (), name
+
+
+def test_a_column_the_overrides_mark_sensitive_is_marked_without_its_values(
+    source: Source, tmp_path: Path
+) -> None:
+    scanned = _scanned(source, "cust", tmp_path, overrides=_marked("cust", "cust_nm"))
+    (table,) = scanned.tables
+    (column,) = [column for column in table.columns if column.name == "cust_nm"]
+    assert column.marked is Sensitivity.PERSONAL
+    assert (column.statistics.range, column.values) == (None, ())
+
+
+def test_overrides_of_a_table_not_selected_are_refused_before_anything_is_counted(
+    source: Source, tmp_path: Path
+) -> None:
+    with pytest.raises(OverridesError, match="tables that are not profiled: prod"):
+        _scanned(source, "cust", tmp_path, overrides=_marked("prod", "prod_nm"))
+    assert not (tmp_path / "profile").exists()
+    assert not (tmp_path / "workspace" / "samples" / "cust.parquet").exists()
+
+
+def test_overrides_of_a_column_the_table_does_not_have_are_refused_keeping_the_tables_before(
+    source: Source, tmp_path: Path
+) -> None:
+    with pytest.raises(OverridesError, match="columns of prod it does not have: gone"):
+        _scanned(source, "cust|prod", tmp_path, overrides=_marked("prod", "gone"))
+    (cust,) = Profile.read(tmp_path / "profile").tables
+    assert cust.name == "cust", "the table before is written"
 
 
 def test_only_the_tables_a_pattern_matches_whole_are_scanned(
@@ -193,6 +233,27 @@ def test_a_run_that_failed_is_resumed_counting_only_the_tables_it_did_not(
     assert resumed.run.started == failed.run.started, "the same run"
     assert resumed.run.finished is not None
     assert all(table.run == resumed.run.started for table in resumed.tables)
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_columns_the_overrides_mark_otherwise(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    (cust,) = failed.tables
+    # Its rows told apart from those a scan counts, to see that it is counted again.
+    failed.updated(replace(cust, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    resumed = _scanned(source, "cust|prod", tmp_path, overrides=_marked("cust", "cust_nm"))
+    assert resumed.run is not None
+    assert failed.run is not None
+    assert resumed.run.started == failed.run.started, "the same run"
+    table, _ = resumed.tables
+    assert table.rows != -1, "counted anew"
+    (column,) = [column for column in table.columns if column.name == "cust_nm"]
+    assert (column.marked, column.statistics.range) == (Sensitivity.PERSONAL, None)
 
 
 def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(

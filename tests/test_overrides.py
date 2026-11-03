@@ -63,6 +63,31 @@ def test_a_value_of_a_sensitive_type_of_the_project_is_withheld_where_laid_over(
     assert laid.columns[1].values == (Value("TEL", 1),), "checked by the types of the profile"
 
 
+def test_a_mark_no_longer_given_is_taken_off() -> None:
+    (table,) = _marked("frst_nm").laid_over(_PROFILE).tables
+    profile = replace(_PROFILE, tables=(table,))
+    (laid,) = Overrides().laid_over(profile).tables
+    assert laid.columns[0].marked is None
+    assert laid.columns[0].values == (), "its values are not given back"
+
+
+def test_a_table_is_laid_over_where_its_columns_are_marked_as_given() -> None:
+    given = _marked("frst_nm").tables["cntct"]
+    (table,) = _PROFILE.tables
+    assert not given.is_laid_over(table), "a column not marked as given"
+    assert given.is_laid_over(given.laid_over(table))
+    assert not TableOverride().is_laid_over(given.laid_over(table)), "a column marked otherwise"
+    assert not _marked("lst_nm").tables["cntct"].is_laid_over(table), "a column it does not have"
+
+
+def test_each_table_selected_has_what_is_given_of_it() -> None:
+    overrides = _marked("frst_nm")
+    selected = overrides.selected(["cntct", "cust"])
+    assert selected == {"cntct": overrides.tables["cntct"], "cust": TableOverride()}
+    with pytest.raises(OverridesError, match="tables that are not profiled: cntct"):
+        overrides.selected(["cust"])
+
+
 def test_the_words_of_the_overrides_are_taken_as_given() -> None:
     laid = Overrides(glossary={"frst": "first", "nm": "name"}).laid_over(_PROFILE)
     assert laid.glossary == {"cntct": "contact", "frst": "first", "nm": "name"}
@@ -72,7 +97,7 @@ def test_the_words_of_the_overrides_are_taken_as_given() -> None:
     ("overrides", "problem"),
     [
         (Overrides(glossary={"CUST": "customer"}), "that no name of the profile has: CUST"),
-        (Overrides(tables={"cust": TableOverride()}), "tables the profile does not have: cust"),
+        (Overrides(tables={"cust": TableOverride()}), "tables that are not profiled: cust"),
         (_marked("lst_nm"), "columns of cntct it does not have: lst_nm"),
     ],
     ids=["a term", "a table", "a column"],
