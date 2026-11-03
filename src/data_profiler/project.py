@@ -147,7 +147,7 @@ class _Configuration:
 
     tables: str | tuple[str, ...]
     environments: Mapping[str, _Settings]
-    model: str | None = None
+    llm: str | None = None
     # Checked by its validator, not after it as the others are, as the profile holds the types too
     # and checks them the same way.
     types: SemanticTypes = ()
@@ -169,7 +169,7 @@ class Project:
         file: Path,
         tables: Pattern[str],
         types: tuple[SemanticType, ...],
-        model: str | None,
+        llm: str | None,
         environments: Mapping[str, _Settings],
         variables: Mapping[str, str],
     ) -> None:
@@ -177,7 +177,7 @@ class Project:
         self.tables = tables
         self.types = types
         self._file = file
-        self._model = model
+        self._llm = llm
         self._environments = environments
         self._variables = variables
 
@@ -236,21 +236,23 @@ class Project:
             file,
             pattern,
             configuration.types,
-            configuration.model,
+            configuration.llm,
             configuration.environments,
             variables,
         )
 
     @property
-    def model(self) -> str:
+    def llm(self) -> str:
         """The language model the names of the project are described by, as Ollama names it.
 
         Raises:
-            ProjectError: The configuration names no model.
+            ProjectError: The configuration names no language model.
         """
-        if self._model is None:
-            raise ProjectError(f"{self._file} names no model to describe the names by")
-        return self._model
+        if self._llm is None:
+            raise ProjectError(
+                f"{self._file} names no language model, llm, to describe the names by"
+            )
+        return self._llm
 
     @property
     def ollama(self) -> str:

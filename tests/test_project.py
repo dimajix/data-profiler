@@ -104,10 +104,10 @@ def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None
     assert _project(tmp_path).overrides == tmp_path / "overrides.yml"
 
 
-def test_the_model_of_a_project_is_named_by_its_configuration(tmp_path: Path) -> None:
-    assert _project(tmp_path, _CONFIGURATION + "model: qwen3.5:2b\n").model == "qwen3.5:2b"
-    with pytest.raises(ProjectError, match="names no model to describe the names by"):
-        _ = _project(tmp_path).model
+def test_the_language_model_of_a_project_is_named_by_its_configuration(tmp_path: Path) -> None:
+    assert _project(tmp_path, _CONFIGURATION + "llm: qwen3.5:2b\n").llm == "qwen3.5:2b"
+    with pytest.raises(ProjectError, match="names no language model, llm, to describe"):
+        _ = _project(tmp_path).llm
 
 
 def test_ollama_answers_where_the_variable_says_else_on_this_machine(tmp_path: Path) -> None:
@@ -258,4 +258,4 @@ def test_the_example_project_profiles_the_simulation_environment() -> None:
     assert environment.user == "profiler"
     assert environment.directory == _EXAMPLE / "simulation"
     assert project.tables.fullmatch("cust_addr")
-    assert project.model == "qwen3.5:2b"
+    assert project.llm == "qwen3.5:2b"

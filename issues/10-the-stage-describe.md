@@ -41,12 +41,13 @@ and columns second works. Then the interface, put before the maintainer.
 
 As agreed with the maintainer, in three steps, each a commit of its own:
 
-- **The part `data_profiler.model`** - `Model`, a language model that answers a prompt in the form
-  of a JSON schema, `ModelError`, and `Ollama`, its first implementation, without thinking, at
-  temperature 0. Ollama is reached past every proxy: the prompts hold values of samples, which a
-  proxy would take off the machine. `describe` parses each answer by the form it asked for; an
-  answer not of it is skipped with a warning, a model that cannot be reached ends the stage.
-- **The configuration.** `project.yml` names the model of the project, `model`, so that its
+- **The part `data_profiler.llm`** - `LanguageModel`, a language model that answers a prompt in the
+  form of a JSON schema, `LanguageModelError`, and `Ollama`, its first implementation, without
+  thinking, at temperature 0. Ollama is reached past every proxy: the prompts hold values of
+  samples, which a proxy would take off the machine. `describe` parses each answer by the form it
+  asked for; an answer not of it is skipped with a warning, a model that cannot be reached ends the
+  stage.
+- **The configuration.** `project.yml` names the language model of the project, `llm`, so that its
   results rest on one; where Ollama answers is a matter of the machine, the variable
   `OLLAMA_HOST`, else `http://localhost:11434`. The first model is `qwen3.5:2b`, the better one of
   the trial of [04](04-can-a-small-model-name-columns.md), which stays open for the run on the real
@@ -114,3 +115,7 @@ As agreed with the maintainer, in three steps, each a commit of its own:
   database - a count as a number, any value as text - moved from `data_profiler.source` to a part
   of its own, `data_profiler.values`, so that `describe`, which reads no database, no longer
   depends on the part that does.
+
+- **2026-11-03** — The part of the language model is named `data_profiler.llm`, its classes
+  `LanguageModel` and `LanguageModelError`, and the setting of `project.yml` `llm`, as the
+  maintainer decided: "model" reads as the data model the tool is to help build.

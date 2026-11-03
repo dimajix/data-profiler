@@ -31,7 +31,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from data_profiler.detect import is_filled
 from data_profiler.glossary import Glossary, Vocabulary, agrees, terms, unknown
-from data_profiler.model import Model
+from data_profiler.llm import LanguageModel
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Column, Concept, Profile, Table
 from data_profiler.values import as_text
@@ -74,7 +74,11 @@ database.
 
 
 def describe(
-    profile: Profile, overrides: Overrides, model: Model, workspace: Workspace, directory: Path
+    profile: Profile,
+    overrides: Overrides,
+    llm: LanguageModel,
+    workspace: Workspace,
+    directory: Path,
 ) -> None:
     """Describes `profile` into `directory`: its names split, concepts proposed, and names read.
 
@@ -83,20 +87,20 @@ def describe(
     Args:
         profile: The profile, as it was read from `directory`, or as `forgotten` left it.
         overrides: The overrides of the project, whose concepts count beside those of the profile.
-        model: The language model that proposes the concepts.
+        llm: The language model that proposes the concepts.
         workspace: Where the samples of the tables are, whose values the model is shown.
         directory: The directory of the profile.
 
     Raises:
         OverridesError: The overrides name what the profile does not have, as
             `Overrides.laid_over` says.
-        ModelError: The language model fails to answer.
+        LanguageModelError: The language model fails to answer.
         WorkspaceError: The sample of a table cannot be read.
         ProfileError: The profile cannot be written.
     """
     profile = _split(profile, overrides)
     profile.write(directory)
-    profile = _proposed(profile, overrides, model, workspace, directory)
+    profile = _proposed(profile, overrides, llm, workspace, directory)
     profile = _read(_split(profile, overrides))
     profile.write(directory)
     readings = [table.reading for table in profile.tables]
@@ -152,7 +156,11 @@ def _terms[Named: (Table, Column)](
 
 
 def _proposed(
-    profile: Profile, overrides: Overrides, model: Model, workspace: Workspace, directory: Path
+    profile: Profile,
+    overrides: Overrides,
+    llm: LanguageModel,
+    workspace: Workspace,
+    directory: Path,
 ) -> Profile:
     """`profile`, a concept proposed of each term of none, written after each into `directory`."""
     profile = _held(profile)
@@ -168,7 +176,7 @@ def _proposed(
                 samples[table.name] = workspace.read_sample(table.name)
             lines.append(f"- column {where}{_brief(named, samples[table.name])}")
         prompt = _CONCEPT_PROMPT.format(term=term, places="\n".join(lines))
-        proposal = _asked(model, prompt, _PROPOSAL)
+        proposal = _asked(llm, prompt, _PROPOSAL)
         word = "_".join(terms(proposal.word)) if proposal is not None else ""
         if proposal is None or not word:
             _logger.warning("No concept was proposed of the term %s", term)
@@ -211,13 +219,13 @@ def _brief(column: Column, sample: Sample) -> str:
     return f": {'; '.join(parts)}"
 
 
-def _asked[T](model: Model, prompt: str, form: TypeAdapter[T]) -> T | None:
-    """The answer of `model` to `prompt`, parsed by `form`, or None where it is not of the form."""
-    answer = model.answer(prompt, form.json_schema())
+def _asked[T](llm: LanguageModel, prompt: str, form: TypeAdapter[T]) -> T | None:
+    """The answer of `llm` to `prompt`, parsed by `form`, or None where it is not of the form."""
+    answer = llm.answer(prompt, form.json_schema())
     try:
         return form.validate_json(answer)
     except ValidationError:
-        _logger.warning("An answer of %s was not of the form asked for", model.name)
+        _logger.warning("An answer of %s was not of the form asked for", llm.name)
         return None
 
 

@@ -19,7 +19,7 @@ from typing import Final
 
 from data_profiler.commands import run
 from data_profiler.describe import describe, forgotten
-from data_profiler.model import ModelError, Ollama
+from data_profiler.llm import LanguageModelError, Ollama
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Profile, ProfileError
 from data_profiler.project import Environment, Project, ProjectError
@@ -37,7 +37,7 @@ _SHOWN: Final = (
     WorkspaceError,
     ProfileError,
     OverridesError,
-    ModelError,
+    LanguageModelError,
     ReportError,
 )
 
@@ -111,9 +111,9 @@ def _describe_anew(project: Project, environment: Environment) -> None:
 def _described(project: Project, environment: Environment, profile: Profile) -> None:
     """Describes `profile`, of `environment` of `project`, into its directory."""
     overrides = Overrides.read(project.overrides)
-    model = Ollama(project.ollama, project.model)
+    llm = Ollama(project.ollama, project.llm)
     workspace = Workspace.open(environment.workspace, profile.catalog, profile.schema)
-    describe(profile, overrides, model, workspace, environment.profile)
+    describe(profile, overrides, llm, workspace, environment.profile)
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 

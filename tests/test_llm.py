@@ -12,7 +12,7 @@ from threading import Thread
 
 import pytest
 
-from data_profiler.model import ModelError, Ollama
+from data_profiler.llm import LanguageModelError, Ollama
 from data_profiler.project import Project
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
@@ -28,29 +28,29 @@ _FORM = {
 
 
 @pytest.fixture(scope="module")
-def model() -> str:
-    """The model of the example project, which the simulation environment has pulled."""
-    return Project.read(_EXAMPLE, {}).model
+def llm() -> str:
+    """The language model of the example project, which the simulation environment has pulled."""
+    return Project.read(_EXAMPLE, {}).llm
 
 
 def test_a_model_answers_in_the_form_asked_for_past_every_proxy(
-    model: str, monkeypatch: pytest.MonkeyPatch
+    llm: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     for variable in ("http_proxy", "HTTP_PROXY", "https_proxy", "HTTPS_PROXY"):
         monkeypatch.setenv(variable, "http://localhost:9")
     monkeypatch.delenv("no_proxy", raising=False)
     monkeypatch.delenv("NO_PROXY", raising=False)
-    answer = Ollama(_OLLAMA, model).answer('Which word does "cust" stand for?', _FORM)
+    answer = Ollama(_OLLAMA, llm).answer('Which word does "cust" stand for?', _FORM)
     assert isinstance(json.loads(answer)["word"], str), "parsed by its form"
 
 
 def test_a_model_ollama_does_not_have_is_refused_naming_it() -> None:
-    with pytest.raises(ModelError, match="fails to answer by the model no-such-model:"):
+    with pytest.raises(LanguageModelError, match="fails to answer by the model no-such-model:"):
         Ollama(_OLLAMA, "no-such-model").answer("Anything?", _FORM)
 
 
 def test_an_ollama_that_cannot_be_reached_is_named() -> None:
-    with pytest.raises(ModelError, match=r"Ollama at http://localhost:9 cannot be reached"):
+    with pytest.raises(LanguageModelError, match=r"Ollama at http://localhost:9 cannot be reached"):
         Ollama("http://localhost:9", "any").answer("Anything?", _FORM)
 
 
@@ -95,7 +95,7 @@ def replying() -> Iterator[Callable[[bytes], str]]:
 def test_an_answer_of_no_message_is_refused(
     replying: Callable[[bytes], str], body: bytes, problem: str
 ) -> None:
-    with pytest.raises(ModelError, match=problem):
+    with pytest.raises(LanguageModelError, match=problem):
         Ollama(replying(body), "any").answer("Anything?", _FORM)
 
 

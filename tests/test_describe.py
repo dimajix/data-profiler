@@ -12,7 +12,7 @@ import pytest
 from data_profiler.describe import describe, forgotten
 from data_profiler.detect import Sensitivity
 from data_profiler.glossary import Glossary, occurrences
-from data_profiler.model import Model, ModelError
+from data_profiler.llm import LanguageModel, LanguageModelError
 from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
 from data_profiler.profile import Column, Concept, Profile, Statistics, Table, Term, Value
 from data_profiler.scan import scan
@@ -22,7 +22,7 @@ from data_profiler.workspace import Sample, Workspace
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
 
 
-class _Answers(Model):
+class _Answers(LanguageModel):
     """A model that answers with the texts given, in their order, then with no concept at all."""
 
     def __init__(self, *answers: str) -> None:
@@ -35,7 +35,7 @@ class _Answers(Model):
         return self._answers.pop(0) if self._answers else "{}"
 
 
-class _Failing(Model):
+class _Failing(LanguageModel):
     """A model that answers once with the text given, and fails then."""
 
     def __init__(self, answer: str) -> None:
@@ -45,7 +45,7 @@ class _Failing(Model):
     def answer(self, prompt: str, form: Mapping[str, object]) -> str:
         answer, self._answer = self._answer, None
         if answer is None:
-            raise ModelError("the model fails")
+            raise LanguageModelError("the model fails")
         return answer
 
 
@@ -65,16 +65,16 @@ def _described(
     profile: Profile,
     tmp_path: Path,
     overrides: Overrides | None = None,
-    model: Model | None = None,
+    llm: LanguageModel | None = None,
     samples: dict[str, Sample] | None = None,
 ) -> Profile:
-    """`profile` described by `model`, of the samples `samples`, else of none, as written."""
+    """`profile` described by `llm`, of the samples `samples`, else of none, as written."""
     workspace = Workspace.open(tmp_path / "workspace", profile.catalog, profile.schema)
     for table in profile.tables:
         sample = (samples or {}).get(table.name, Sample({c.name: [] for c in table.columns}))
         workspace.write_sample(table.name, sample)
     directory = tmp_path / "profile"
-    describe(profile, overrides or Overrides(), model or _Answers(), workspace, directory)
+    describe(profile, overrides or Overrides(), llm or _Answers(), workspace, directory)
     return Profile.read(directory)
 
 
@@ -131,13 +131,13 @@ def test_the_concepts_of_the_overrides_count_but_the_profile_holds_nothing_of_th
     given = TableOverride(columns={"cust_nm": ColumnOverride(sensitivity=Sensitivity.PERSONAL)})
     overrides = Overrides(glossary={"customer": Concept(("cust",))}, tables={"cust": given})
     profile = _profile("cust_nm", glossary={"name": Concept(("nm",))})
-    model = _Answers()
-    described = _described(profile, tmp_path, overrides, model)
+    llm = _Answers()
+    described = _described(profile, tmp_path, overrides, llm)
     (column,) = described.tables[0].columns
     assert column.reading == ("customer", "name"), "by the concept given"
     assert column.marked is None, "the mark given is laid over by the stage that reads it"
     assert described.glossary == profile.glossary
-    assert model.prompts == [], "no term of a concept given is asked for"
+    assert llm.prompts == [], "no term of a concept given is asked for"
 
 
 def test_a_reading_given_counts_once_the_name_is_split(tmp_path: Path) -> None:
@@ -153,7 +153,7 @@ def test_a_reading_given_counts_once_the_name_is_split(tmp_path: Path) -> None:
 
 
 def test_a_term_of_no_concept_is_of_the_concept_the_model_proposes(tmp_path: Path) -> None:
-    model = _Answers(_proposal("Delivery Address", " Where an order is delivered to. "))
+    llm = _Answers(_proposal("Delivery Address", " Where an order is delivered to. "))
     samples = {"cust": Sample({"cust_dlvadr": ["Hauptstr. 1", None, "", "Hauptstr. 1", "Ring 2"]})}
     profile = _profile("cust_dlvadr", glossary={"customer": Concept(("cust",))})
     (table,) = profile.tables
@@ -161,13 +161,13 @@ def test_a_term_of_no_concept_is_of_the_concept_the_model_proposes(tmp_path: Pat
     # Its empty texts left aside as sentinels, as scan counted them.
     counted = replace(column, statistics=Statistics(1, 2, sentinels=(Value("", 1),)))
     profile = replace(profile, tables=(replace(table, columns=(counted,)),))
-    described = _described(profile, tmp_path, model=model, samples=samples)
+    described = _described(profile, tmp_path, llm=llm, samples=samples)
     assert described.glossary["delivery_address"] == Concept(
         ("dlvadr",), "Where an order is delivered to."
     ), "its word as a name is written, its description without spaces at either end"
     (column,) = described.tables[0].columns
     assert column.reading == ("customer", "delivery_address"), "split again, and read"
-    (prompt,) = model.prompts
+    (prompt,) = llm.prompts
     assert '"dlvadr"' in prompt
     assert "- column cust.cust_dlvadr: varchar(10); values: Hauptstr. 1, Ring 2" in prompt, (
         "but its nulls and sentinels"
@@ -177,7 +177,7 @@ def test_a_term_of_no_concept_is_of_the_concept_the_model_proposes(tmp_path: Pat
 def test_a_word_the_glossary_has_takes_the_term_as_one_more_abbreviation(tmp_path: Path) -> None:
     glossary = {"customer": Concept(("cust",)), "address": Concept(("addr",), "Where one lives.")}
     profile = _profile("cust_addr", "cust_adr", glossary=glossary)
-    described = _described(profile, tmp_path, model=_Answers(_proposal("address", "Other.")))
+    described = _described(profile, tmp_path, llm=_Answers(_proposal("address", "Other.")))
     assert described.glossary["address"] == Concept(("addr", "adr"), "Where one lives.")
     assert [column.reading for column in described.tables[0].columns] == [
         ("customer", "address"),
@@ -189,14 +189,14 @@ def test_the_values_of_a_column_of_a_sensitivity_are_not_shown_to_the_model(
     tmp_path: Path,
 ) -> None:
     marked = TableOverride(columns={"cust_nm": ColumnOverride(sensitivity=Sensitivity.PERSONAL)})
-    model = _Answers()
+    llm = _Answers()
     samples = {"cust": Sample({"cust_nm": ["Anna Muster"]})}
-    _described(_profile("cust_nm"), tmp_path, Overrides(tables={"cust": marked}), model, samples)
-    assert len(model.prompts) == 2, "of cust and of nm"
-    assert all("Anna" not in prompt for prompt in model.prompts)
+    _described(_profile("cust_nm"), tmp_path, Overrides(tables={"cust": marked}), llm, samples)
+    assert len(llm.prompts) == 2, "of cust and of nm"
+    assert all("Anna" not in prompt for prompt in llm.prompts)
     assert (
         "- column cust.cust_nm: varchar(10); personal data, its values not shown"
-        in (model.prompts[1])
+        in (llm.prompts[1])
     )
 
 
@@ -204,7 +204,7 @@ def test_an_answer_not_of_the_form_asked_for_is_passed_over(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     profile = _profile("cust_addr", glossary={"customer": Concept(("cust",))})
-    described = _described(profile, tmp_path, model=_Answers("an address", _proposal("_")))
+    described = _described(profile, tmp_path, llm=_Answers("an address", _proposal("_")))
     assert described.glossary == profile.glossary
     assert "An answer of answers was not of the form asked for" in caplog.messages
     assert "No concept was proposed of the term addr" in caplog.messages
@@ -212,16 +212,16 @@ def test_an_answer_not_of_the_form_asked_for_is_passed_over(
 
 def test_only_the_terms_of_no_concept_are_asked_for(tmp_path: Path) -> None:
     profile = _profile("cust_addr", glossary={"customer": Concept(("cust",))})
-    described = _described(profile, tmp_path, model=_Answers(_proposal("address")))
-    model = _Answers()
-    _described(described, tmp_path, model=model)
-    assert model.prompts == [], "nothing is asked for again"
+    described = _described(profile, tmp_path, llm=_Answers(_proposal("address")))
+    llm = _Answers()
+    _described(described, tmp_path, llm=llm)
+    assert llm.prompts == [], "nothing is asked for again"
 
 
 def test_the_profile_is_written_after_each_concept_proposed(tmp_path: Path) -> None:
     profile = _profile("cust_addr")
-    with pytest.raises(ModelError):
-        _described(profile, tmp_path, model=_Failing(_proposal("customer")))
+    with pytest.raises(LanguageModelError):
+        _described(profile, tmp_path, llm=_Failing(_proposal("customer")))
     written = Profile.read(tmp_path / "profile")
     assert written.glossary == {"customer": Concept(("cust",))}, "before the model failed"
 
@@ -247,9 +247,9 @@ def test_the_names_of_the_example_are_read_from_words_given(
     example_profile: Profile, tmp_path: Path
 ) -> None:
     glossary = {f"word_{term}": Concept((term,)) for term in occurrences(example_profile)}
-    model = _Answers()
-    described = _described(replace(example_profile, glossary=glossary), tmp_path, model=model)
-    assert model.prompts == []
+    llm = _Answers()
+    described = _described(replace(example_profile, glossary=glossary), tmp_path, llm=llm)
+    assert llm.prompts == []
     words = Glossary(glossary)
     for table in described.tables:
         for column in table.columns:
@@ -304,5 +304,5 @@ def test_the_log_of_describe_holds_no_values_above_debug(
     caplog.set_level(logging.INFO)
     samples = {"cust": Sample({"cust_addr": ["Hauptstr. 1"]})}
     profile = _profile("cust_addr", glossary={"customer": Concept(("cust",))})
-    _described(profile, tmp_path, model=_Answers(_proposal("address")), samples=samples)
+    _described(profile, tmp_path, llm=_Answers(_proposal("address")), samples=samples)
     assert "Hauptstr" not in caplog.text

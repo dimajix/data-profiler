@@ -102,7 +102,7 @@ simulation environment:
 ```yaml
 format: 4
 tables: .*
-model: qwen3.5:2b
+llm: qwen3.5:2b
 environments:
   simulation:
     url: trino://localhost:8443/crm/sales
@@ -125,7 +125,7 @@ environments:
 
   The pattern is read by Python and by the database alike, so it uses what both share: classes,
   repetitions, groups and alternatives, and no other escapes than of a character.
-- **`model`** names the language model of Ollama that `describe` asks, as Ollama names it; it is
+- **`llm`** names the language model of Ollama that `describe` asks, as Ollama names it; it is
   pulled into Ollama once. Where Ollama answers is a matter of the machine: the variable
   `OLLAMA_HOST`, as `http://host:port`, else `http://localhost:11434`. The tool reaches it past
   every proxy, as its prompts hold values of the database.

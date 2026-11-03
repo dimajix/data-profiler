@@ -1,12 +1,12 @@
 """The language model: a prompt answered in the form of a JSON schema, by a model run locally.
 
-A `Model` answers a prompt with JSON text that a schema constrains, so that its answer is parsed,
-not read: the caller gives the schema, and parses the answer by it. `Ollama` is the first, a model
-run by Ollama, asked without thinking - a small model thinking took minutes for one word and found
-it no better - and at temperature 0, so that the same prompt is answered the same. A prompt holds
-values of the database, as the samples show them: Ollama is reached past every proxy the variables
-of the process name, as a proxy would take them off the machine, and a prompt and its answer are
-logged at debug alone. A failure is told by the model, its endpoint and what was done.
+A `LanguageModel` answers a prompt with JSON text that a schema constrains, so that its answer is
+parsed, not read: the caller gives the schema, and parses the answer by it. `Ollama` is the first, a
+model run by Ollama, asked without thinking - a small model thinking took minutes for one word and
+found it no better - and at temperature 0, so that the same prompt is answered the same. A prompt
+holds values of the database, as the samples show them: Ollama is reached past every proxy the
+variables of the process name, as a proxy would take them off the machine, and a prompt and its
+answer are logged at debug alone. A failure is told by the model, its endpoint and what was done.
 """
 
 import json
@@ -23,11 +23,11 @@ _logger = logging.getLogger(__name__)
 _TIMEOUT: Final = 600
 
 
-class ModelError(Exception):
+class LanguageModelError(Exception):
     """A failure of the language model: the model by its name and endpoint, and what was done."""
 
 
-class Model(ABC):
+class LanguageModel(ABC):
     """A language model that answers a prompt in the form of a JSON schema.
 
     Attributes:
@@ -50,11 +50,11 @@ class Model(ABC):
             The answer, as JSON text, for the caller to parse by `form`.
 
         Raises:
-            ModelError: The model cannot be reached, is not there, or fails to answer.
+            LanguageModelError: The model cannot be reached, is not there, or fails to answer.
         """
 
 
-class Ollama(Model):
+class Ollama(LanguageModel):
     """A model run by Ollama, reached past every proxy, without thinking, at temperature 0."""
 
     def __init__(self, url: str, name: str) -> None:
@@ -75,8 +75,8 @@ class Ollama(Model):
             The answer, as JSON text, for the caller to parse by `form`.
 
         Raises:
-            ModelError: The URL is none of Ollama, Ollama cannot be reached, does not have the
-                model, fails to answer, or answers no message.
+            LanguageModelError: The URL is none of Ollama, Ollama cannot be reached, does not
+                have the model, fails to answer, or answers no message.
         """
         body = {
             "model": self.name,
@@ -96,21 +96,25 @@ class Ollama(Model):
             with self._opener.open(request, timeout=_TIMEOUT) as response:
                 reply = json.loads(response.read())
         except HTTPError as error:
-            raise ModelError(
+            raise LanguageModelError(
                 f"Ollama at {self._endpoint} fails to answer by the model {self.name}:"
                 f" {_problem(error)}"
             ) from error
         except (URLError, OSError) as error:
             reason = error.reason if isinstance(error, URLError) else error
-            raise ModelError(f"Ollama at {self._endpoint} cannot be reached: {reason}") from error
+            raise LanguageModelError(
+                f"Ollama at {self._endpoint} cannot be reached: {reason}"
+            ) from error
         except json.JSONDecodeError as error:
-            raise ModelError(f"Ollama at {self._endpoint} answers no JSON") from error
+            raise LanguageModelError(f"Ollama at {self._endpoint} answers no JSON") from error
         except ValueError as error:
-            raise ModelError(f"{self._endpoint} is no URL of Ollama") from error
+            raise LanguageModelError(f"{self._endpoint} is no URL of Ollama") from error
         message = reply.get("message") if isinstance(reply, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
         if not isinstance(content, str):
-            raise ModelError(f"Ollama at {self._endpoint} answers no message of {self.name}")
+            raise LanguageModelError(
+                f"Ollama at {self._endpoint} answers no message of {self.name}"
+            )
         _logger.debug("Answered by %s: %s", self.name, content)
         return content
 
