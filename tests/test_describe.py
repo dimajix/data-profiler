@@ -28,10 +28,12 @@ class _Answers(LanguageModel):
     def __init__(self, *answers: str) -> None:
         super().__init__("answers")
         self.prompts: list[str] = []
+        self.forms: list[Mapping[str, object]] = []
         self._answers = list(answers)
 
     def answer(self, prompt: str, form: Mapping[str, object]) -> str:
         self.prompts.append(prompt)
+        self.forms.append(form)
         return self._answers.pop(0) if self._answers else "{}"
 
 
@@ -113,12 +115,16 @@ def test_a_name_of_one_candidate_for_each_term_is_read_and_any_other_not(tmp_pat
     ], "a term of two concepts and one of none are not read"
 
 
-def test_a_reading_that_agrees_with_the_terms_of_its_name_is_kept(tmp_path: Path) -> None:
+def test_a_reading_is_kept_while_the_terms_of_its_name_stay_as_they_were_split(
+    tmp_path: Path,
+) -> None:
     (table,) = _described(_profile("st_cd", glossary=_GLOSSARY), tmp_path / "first").tables
     chosen = replace(table.columns[0], reading=("street", "code"))
     profile = replace(_profile(glossary=_GLOSSARY), tables=(replace(table, columns=(chosen,)),))
-    (again,) = _described(profile, tmp_path / "second").tables
+    llm = _Answers()
+    (again,) = _described(profile, tmp_path / "second", llm=llm).tables
     assert again.columns[0].reading == ("street", "code"), "as chosen, a split that stayed"
+    assert llm.prompts == [], "not asked for again"
     stale = replace(chosen, reading=("street", "name"))
     profile = replace(profile, tables=(replace(table, columns=(stale,)),))
     (again,) = _described(profile, tmp_path / "third").tables
@@ -224,6 +230,109 @@ def test_the_profile_is_written_after_each_concept_proposed(tmp_path: Path) -> N
         _described(profile, tmp_path, llm=_Failing(_proposal("customer")))
     written = Profile.read(tmp_path / "profile")
     assert written.glossary == {"customer": Concept(("cust",))}, "before the model failed"
+
+
+def test_a_name_of_a_term_of_several_concepts_is_read_by_the_model(tmp_path: Path) -> None:
+    glossary = {**_GLOSSARY, "street": Concept(("st",), "Where a building stands.")}
+    llm = _Answers(json.dumps({"2_st": "street"}))
+    described = _described(_profile("cust_st_cd", glossary=glossary), tmp_path, llm=llm)
+    (column,) = described.tables[0].columns
+    assert column.reading == ("customer", "street", "code")
+    (prompt,) = llm.prompts
+    assert 'the column "cust_st_cd" of the table "cust": varchar(10).' in prompt
+    assert '- "st" (2_st): one of status; street (Where a building stands.)' in prompt
+    assert '- "cust" (1_cust): customer' in prompt
+    assert llm.forms[0]["properties"] == {"2_st": {"type": "string", "enum": ["status", "street"]}}
+
+
+def test_a_term_repeated_in_two_meanings_is_read_in_each(tmp_path: Path) -> None:
+    glossary = {
+        "customer": Concept(("cust",)),
+        "airplus": Concept(("ap",)),
+        "contact": Concept(("ap",)),
+        "name": Concept(("nm",)),
+    }
+    llm = _Answers(json.dumps({"1_ap": "airplus", "2_ap": "contact"}))
+    described = _described(_profile("ap_ap_nm", glossary=glossary), tmp_path, llm=llm)
+    assert described.tables[0].columns[0].reading == ("airplus", "contact", "name")
+
+
+def test_a_choice_of_no_candidate_is_passed_over(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    llm = _Answers(json.dumps({"2_st": "stone"}))
+    described = _described(_profile("cust_st_cd", glossary=_GLOSSARY), tmp_path, llm=llm)
+    assert described.tables[0].columns[0].reading is None
+    assert "No reading was chosen of the name cust_st_cd" in caplog.messages
+
+
+def test_a_name_whose_reading_is_given_is_not_asked_for(tmp_path: Path) -> None:
+    given = TableOverride(
+        columns={"cust_st_cd": ColumnOverride(reading=("customer", "status", "code"))}
+    )
+    llm = _Answers()
+    profile = _profile("cust_st_cd", glossary=_GLOSSARY)
+    described = _described(profile, tmp_path, Overrides(tables={"cust": given}), llm)
+    assert llm.prompts == []
+    assert described.tables[0].columns[0].reading is None, "the profile holds nothing given"
+
+
+def test_a_name_read_by_one_candidate_is_read_anew_once_its_term_gains_another(
+    tmp_path: Path,
+) -> None:
+    glossary = {
+        "customer": Concept(("cust",)),
+        "airplus": Concept(("ap",)),
+        "name": Concept(("nm",)),
+    }
+    profile = _profile("ap_nm", glossary=glossary)
+    described = _described(profile, tmp_path / "first")
+    assert described.tables[0].columns[0].reading == ("airplus", "name")
+    gained = replace(described, glossary={**described.glossary, "contact": Concept(("ap",))})
+    llm = _Answers(json.dumps({"1_ap": "contact"}))
+    again = _described(gained, tmp_path / "second", llm=llm)
+    assert again.tables[0].columns[0].reading == ("contact", "name"), "chosen among both"
+    assert len(llm.prompts) == 1
+    llm = _Answers()
+    _described(again, tmp_path / "third", llm=llm)
+    assert llm.prompts == [], "a reading chosen is kept while its terms stay"
+
+
+def test_a_name_of_a_term_of_no_concept_is_not_asked_for(tmp_path: Path) -> None:
+    llm = _Answers()
+    described = _described(_profile("cust_st_xy", glossary=_GLOSSARY), tmp_path, llm=llm)
+    assert described.tables[0].columns[0].reading is None
+    assert all("Some of them may stand" not in prompt for prompt in llm.prompts), (
+        "only the concept of xy is asked for"
+    )
+
+
+def test_the_values_shown_to_the_model_are_those_the_profile_may_hold(tmp_path: Path) -> None:
+    llm = _Answers()
+    samples = {"cust": Sample({"cust_addr": ["DE89370400440532013000", "Hauptstr. 1", "x" * 120]})}
+    profile = _profile("cust_addr", glossary={"customer": Concept(("cust",))})
+    _described(profile, tmp_path, llm=llm, samples=samples)
+    (prompt,) = llm.prompts
+    assert f"values: Hauptstr. 1, {'x' * 99}\u2026" in prompt, "no IBAN, and a long one cut"
+
+
+def test_the_profile_is_written_after_each_table_read(tmp_path: Path) -> None:
+    columns = (Column("st_cd", "varchar(10)", Statistics(0, 1)),)
+    profile = Profile(
+        catalog="crm",
+        schema="sales",
+        tables=(
+            Table(name="cust", rows=1, columns=columns),
+            Table(name="ord", rows=1, columns=columns),
+        ),
+        glossary={**_GLOSSARY, "order": Concept(("ord",))},
+    )
+    with pytest.raises(LanguageModelError):
+        _described(profile, tmp_path, llm=_Failing(json.dumps({"1_st": "street"})))
+    cust, ord_ = Profile.read(tmp_path / "profile").tables
+    assert cust.columns[0].reading == ("street", "code")
+    assert ord_.columns[0].reading is None, "the model failed"
+    assert ord_.columns[0].terms is None, "its terms written with its readings alone"
 
 
 def test_the_abbreviations_no_name_has_any_longer_are_dropped(tmp_path: Path) -> None:

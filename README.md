@@ -176,11 +176,12 @@ uv run data-profiler describe simulation --project examples/crm
 
 without the database, by the concepts of the profile and of the overrides; the language model of the
 project proposes a concept of each term of none, shown the samples of the workspace but of the
-columns of a sensitivity, into the glossary of the profile. A concept proposed wrongly is corrected
-in `overrides.yml`, whose concepts come first. It asks only for what the profile lacks, and writes
-the profile after each concept, so that a run interrupted is resumed by the next; `--anew` drops
-first what the language model filled, to describe the profile anew, with another model, say. The
-profile is rendered as a report by
+columns of a sensitivity, into the glossary of the profile, and chooses the concept of each term of
+several in a name, of which the reading of the name is made. A concept proposed or a reading chosen
+wrongly is corrected in `overrides.yml`, which comes first. It asks only for what the profile lacks,
+and writes the profile after each concept and each table read, so that a run interrupted is resumed
+by the next; `--anew` drops first what the language model filled, to describe the profile anew, with
+another model, say. The profile is rendered as a report by
 
 ```bash
 uv run data-profiler report simulation --project examples/crm

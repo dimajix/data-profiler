@@ -68,6 +68,10 @@ As agreed with the maintainer, in three steps, each a commit of its own:
   kept by hand, and the report tells both apart. An abbreviation of a concept proposed that no name
   has any longer is dropped, and a concept left without any. A concept of another meaning, where
   none fits a term, is not proposed: an override gives it.
+- **No values of sensitive columns are shown** to the language model, as the maintainer decided:
+  it is shown the values of a sample as far as `data_profiler.disclosure` lets the profile hold
+  them, as what it answers goes into the profile. They are few, and where the model needs more,
+  the overrides give it.
 - **Descriptions, not names.** The language model proposes the description of a column alone; its
   name stays the harmonized one, composed from its reading, so that one word stays one concept.
   Should the names not satisfy, the maintainer opens an issue of its own. The overrides give the
@@ -119,3 +123,14 @@ As agreed with the maintainer, in three steps, each a commit of its own:
 - **2026-11-03** — The part of the language model is named `data_profiler.llm`, its classes
   `LanguageModel` and `LanguageModelError`, and the setting of `project.yml` `llm`, as the
   maintainer decided: "model" reads as the data model the tool is to help build.
+
+- **2026-11-03** — Step 2 made: the language model reads each name of a term of several concepts,
+  shown the candidates with their descriptions, choosing for each such term one of them, which the
+  JSON schema of the answer allows alone; a name of a reading given is not asked for. A reading is
+  kept while the terms of its name stay as they were split, their candidates among them, and the
+  terms and the reading of a name are written together, so that an interrupted run leaves no
+  reading of other terms. Against the simulation environment, without the readings of the example
+  given, `qwen3.5:2b` read `cust_ap_id` right, but took the prefix `ap` of `ap_ap_nm` and
+  `ap_seg_cd` for the contact person rather than AirPlus: where the model chooses wrongly, the
+  overrides give the reading. The values the model is shown are judged by `disclosure`, as those
+  of the profile.
