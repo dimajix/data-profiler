@@ -225,7 +225,9 @@ class Overrides:
                 or name a table or column the profile does not have.
         """
         taken = {term for concept in self.glossary.values() for term in concept.abbreviations}
-        unknown = sorted(taken - set(occurrences(profile)))
+        concepts = _laid_over(self.glossary, taken, profile.glossary)
+        # Split by the concepts given, as an abbreviation given is no longer split.
+        unknown = sorted(taken - set(occurrences(replace(profile, glossary=concepts))))
         if unknown:
             raise OverridesError(
                 "the overrides give abbreviations, in lower case as terms are, that no name of"
@@ -235,7 +237,6 @@ class Overrides:
         tables = (
             disclose(given[table.name].laid_over(table), profile.types) for table in profile.tables
         )
-        concepts = _laid_over(self.glossary, taken, profile.glossary)
         return replace(profile, tables=tuple(tables), glossary=concepts)
 
 

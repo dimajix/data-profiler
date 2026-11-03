@@ -16,7 +16,7 @@ from typing import Final
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.files import write_whole
-from data_profiler.glossary import Glossary, occurrences
+from data_profiler.glossary import Glossary, Vocabulary, occurrences
 from data_profiler.profile import Profile
 
 # The places a term of no concept is shown with, before the number of the others.
@@ -38,6 +38,7 @@ class ReportError(Exception):
 def render(profile: Profile) -> str:
     """The report of `profile`, one HTML document with its styles inside."""
     glossary = Glossary(profile.glossary)
+    vocabulary = Vocabulary.of(profile)
     columns = [column for table in profile.tables for column in table.columns]
     return _TEMPLATES.get_template("report.html").render(
         profile=profile,
@@ -50,8 +51,8 @@ def render(profile: Profile) -> str:
             term: names for term, names in occurrences(profile).items() if not glossary.words(term)
         },
         places=_PLACES,
-        harmonized=glossary.harmonized,
-        collisions=glossary.collisions,
+        harmonized=lambda name: glossary.harmonized(vocabulary.split(name)),
+        collisions=lambda table: glossary.collisions(table, vocabulary),
     )
 
 

@@ -1,6 +1,6 @@
 # 24 — Terms written together
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -48,6 +48,27 @@ The interface first, put before the maintainer.
     from what was found about it - a status of three values, a street of free text -, the
     principle changed to one word per term and meaning.
 
+## How
+
+As agreed with the maintainer, after [27](27-glossary-of-concepts.md):
+
+- **`glossary.Vocabulary`** - of a profile by `Vocabulary.of`: the terms `terms` finds in its names,
+  but those of digits, and the abbreviations of its concepts. `split` gives the terms of a name,
+  each written together split. A term is split where other terms of the vocabulary, of two
+  characters at least, cover it whole, into the fewest, the longer first where two splits have as
+  many; each part is split again; an abbreviation of a concept never.
+- **`occurrences`** splits by the vocabulary of the profile; **`Glossary.harmonized`** takes the
+  terms of a name, so that the vocabulary is made once, not for each name, and
+  **`Glossary.collisions`** the vocabulary the names of the columns are split by.
+- **The overrides** check the abbreviations they give against the names as the concepts given
+  split them: an abbreviation of a term written together, which a concept given keeps whole, is
+  found.
+- **The example** has a column `ord_itm.prodgrp_cd`, split into `prod`, `grp` and `cd`, and no other
+  name of it is split otherwise than by `terms`.
+- **Terms of several meanings** are decided in [27](27-glossary-of-concepts.md) and
+  [28](28-terms-and-readings.md); the words of terms no longer found in
+  [10](10-the-stage-describe.md).
+
 ## Done when
 
 - The interface is agreed with the maintainer, and the decision on terms of several meanings is
@@ -72,3 +93,7 @@ The interface first, put before the maintainer.
   nine of ten terms wrongly - `strt` into `st` and `rt`, `crt` into `c` and `rt` -, the split of the
   whole term only `prodgrp`, rightly. Terms of several meanings are decided in 27: an abbreviation
   may be of several concepts, its meaning chosen in each name.
+
+- **2026-11-03** — Done as agreed with the maintainer (see How). `KD_LFADR_PLZ` is split into `kd`,
+  `lf`, `adr` and `plz` in a profile with `lf` and `adr` on their own, and kept as `kd`, `lfadr` and
+  `plz` where `lfadr` is an abbreviation of a concept.

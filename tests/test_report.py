@@ -48,6 +48,7 @@ _PROFILE = Profile(
                     marked=Sensitivity.PERSONAL,
                 ),
                 Column(name="ap_tel_no", type="varchar(20)", statistics=Statistics(0, 2)),
+                Column(name="custtyp", type="varchar(1)", statistics=Statistics(0, 2)),
                 Column(
                     name="tel_no",
                     type="varchar(20)",
@@ -102,7 +103,7 @@ def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
 
 def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -> None:
     page = _page()
-    assert "6 columns · 2 columns sensitive" in page
+    assert "7 columns · 2 columns sensitive" in page
     assert "personal (marked)" in page
     assert '<span class="sensitivity"> personal </span>' in page, "found by a match, not marked"
     assert page.count('class="sensitive"') == 2, "a column of no sensitivity is not shown as one"
@@ -135,6 +136,10 @@ def test_the_glossary_shows_each_concept_and_where_the_terms_of_none_appear() ->
 
 def test_a_table_of_a_term_of_several_concepts_is_shown_without_a_harmonized_name() -> None:
     assert '<h2> empty <span class="rows">0 rows</span> </h2>' in _page(), "void or blank"
+
+
+def test_a_harmonized_name_is_composed_of_the_terms_written_together_split() -> None:
+    assert "<td>customer_type</td>" in _page(), "of custtyp, by cust and typ of other names"
 
 
 def test_a_report_shows_the_harmonized_names_two_columns_share() -> None:
