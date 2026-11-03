@@ -3,17 +3,28 @@
 import re
 from dataclasses import replace
 
-from data_profiler.detect import BUILT_IN, DATE, POSTAL_CODE, Detector, SemanticType, Sensitivity
+from data_profiler.detect import (
+    BUILT_IN,
+    DATE,
+    FREE_TEXT,
+    POSTAL_CODE,
+    Detector,
+    SemanticType,
+    Sensitivity,
+)
 from data_profiler.matching import recognise, verify
-from data_profiler.profile import Column, Match, Statistics, Table
+from data_profiler.profile import Column, Match, Statistics, Table, Value
 from data_profiler.source import Source
 from data_profiler.statistics import count
 from data_profiler.workspace import Sample
 
 
-def _matches(values: list[object], *types: SemanticType) -> tuple[Match, ...]:
+def _matches(
+    values: list[object], *types: SemanticType, sentinels: tuple[Value, ...] = ()
+) -> tuple[Match, ...]:
     """The matches of a column of `values`, as its sample holds them, in a project of `types`."""
-    column = Column(name="value", type="varchar(40)", statistics=Statistics(0, len(values)))
+    statistics = Statistics(0, len(values), sentinels=sentinels)
+    column = Column(name="value", type="varchar(40)", statistics=statistics)
     table = Table(name="table", rows=len(values), columns=(column,))
     (matched,) = recognise(table, Sample(columns={"value": values}), types).columns
     return matched.matches
@@ -29,6 +40,13 @@ def test_a_type_recognised_in_less_than_half_of_the_values_is_no_match() -> None
 
 def test_the_nulls_of_a_sample_are_not_counted() -> None:
     assert _matches(["10115", None, None, None]) == (Match(POSTAL_CODE, 1.0),)
+
+
+def test_the_sentinels_of_a_sample_are_not_counted_where_the_table_has_any() -> None:
+    values: list[object] = ["10115", "", "N/A", "-"]
+    found = (Value("", 1), Value("-", 1), Value("N/A", 1))
+    assert _matches(values, sentinels=found) == (Match(POSTAL_CODE, 1.0),)
+    assert _matches(values) == (), "counted where the statistics counted none"
 
 
 def test_every_type_recognised_in_half_of_the_values_is_a_match() -> None:
@@ -55,7 +73,7 @@ def test_a_share_is_written_with_three_digits() -> None:
 
 def _verified(source: Source, table: str, column: str, kinds: list[SemanticType]) -> list[Match]:
     """The matches of `kinds` of `column` of `table`, as the simulation verifies them."""
-    counted = count(source, table)
+    counted = count(source, table, {})
     columns = tuple(
         replace(found, matches=tuple(Match(kind, 1.0) for kind in kinds))
         if found.name == column
@@ -76,6 +94,15 @@ def test_a_match_is_verified_by_the_share_of_the_table_its_pattern_matches(
     )
 
 
+def test_a_match_is_verified_without_the_sentinels_of_the_table(source: Source) -> None:
+    assert _verified(source, "ord", "dlvr_pst_cd", [POSTAL_CODE]) == [
+        Match(POSTAL_CODE, 1.0, 1.0)
+    ], "the empty texts of the table are not counted"
+    assert _verified(source, "ord", "dlvr_dt", [DATE]) == [Match(DATE, 1.0, 1.0)], (
+        "nor its last days, which the pattern of a date matches"
+    )
+
+
 def test_the_pattern_of_every_type_is_read_by_the_database(source: Source) -> None:
     kinds = list(BUILT_IN)
     shares = {m.type: m.table for m in _verified(source, "cust", "crt_dt", kinds)}
@@ -87,6 +114,13 @@ def test_a_share_of_a_column_of_numbers_is_written_with_three_digits(source: Sou
     assert match.table is not None
     assert 0 < match.table < 1, "some of the positions are numbers of five digits, not all"
     assert match.table == round(match.table, 3)
+
+
+def test_a_match_of_a_column_of_no_text_is_not_verified(source: Source) -> None:
+    statistics = Statistics(0, 1)
+    column = Column("value", "varbinary", statistics, matches=(Match(FREE_TEXT, 1.0),))
+    table = Table(name="no such table", rows=1, columns=(column,))
+    assert verify(source, table) is table, "the database casts no binary to a text"
 
 
 def test_a_table_without_matches_is_not_queried(source: Source) -> None:

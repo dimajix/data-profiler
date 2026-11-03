@@ -27,7 +27,7 @@ environment.
     take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
-    profiled.
+    profiled, or give sentinels of a column of no text.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -60,8 +60,8 @@ environment.
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples and detector
     matches of the selected tables, written to the profile table by table.
-*   **`data_profiler.detect`** - the semantic types, their sensitivity, and the detectors that
-    recognise them.
+*   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
+    sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
     and composing harmonized names from the words of the glossary, which the profile holds.
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
@@ -111,11 +111,17 @@ profile.
     workspace, and it holds no values of the columns found sensitive (see
     [Principles](#principles)).
 *   **Table** and **Column** - as found in the database, under their original names.
-*   **Statistics** - what is counted of a column on the whole table: its nulls, the approximate
-    number of its distinct values, the range of its values, the range of lengths of texts.
-    The rows are counted once per table.
+*   **Statistics** - what is counted of a column on the whole table: its nulls, each of its
+    sentinels, the approximate number of its distinct values, the range of its values, the range
+    of lengths of texts, the last three without the sentinels. The rows are counted once per table.
+*   **Sentinel** - a value that stands for no value: an empty text, `NULL`, `N/A`, `-`, a day such
+    as `9999-12-31`. It is of no semantic type, and left aside as a null is, but each is counted
+    apart and named in the profile with its rows, whatever the sensitivity of its column, so that
+    a person can check them: the sentinels of the tool are fixed texts, and those given are of the
+    overrides. The tool brings its sentinels, of the columns whose values the database writes as
+    text; an override gives those of a column in their place.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
-    in one row alone; its values with the rows of each.
+    in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
 *   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date. Each has
     a **sensitivity**: personal data (GDPR), payment card data (PCI), or none. The tool brings its
@@ -134,9 +140,10 @@ profile.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
     name composed from the words of the glossary.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: the word of a term, the sensitivity of a column. What it gives
-    is taken as given by every stage: by `scan`, which marks the columns it counts, as by
-    `describe` and `report`.
+    laid over a generated profile: the word of a term, the sensitivity and the sentinels of a
+    column. What it gives is taken as given by every stage: by `scan`, which counts the columns
+    with their sentinels and marks them, as by `describe` and `report`, which lay the words and
+    marks over the profile; sentinels changed count once `scan` counts the column again.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -145,17 +152,19 @@ profile.
 1.  `scan` connects to the schema of an environment of a project as its user, the password taken
     from a variable, and selects the tables the project names, by a list or a regular expression.
     For each table it counts the statistics of all columns in one query, the approximate distinct
-    counts included; it counts the values of every column whose distinct count is at most the
-    threshold of an enumeration; and it takes a sample into the workspace. The detectors check the
-    values of the sample; the semantic types they find are verified on the whole table by the
-    patterns of the detectors in SQL. The overrides of the project mark the columns the detectors
-    miss. The result is the profile, with the ranges and the values of enumerations of the columns
-    of no sensitivity, written after every table: a scan that fails keeps the tables before it,
-    and the next scan resumes its run, skipping the tables it counted, unless the overrides now
-    mark their columns otherwise. It updates the profile there is: the tables no longer selected
-    are dropped, the others kept until they are counted anew, and the glossary is kept; a profile
-    scanned with other semantic types loses its tables. A profile that cannot be read, or one of
-    another schema, is refused and never overwritten: it may be the work of hours.
+    counts included, the sentinels of each column counted apart and left aside; it counts the
+    values of every column whose distinct count is at most the threshold of an enumeration; and it
+    takes a sample into the workspace. The detectors check the values of the sample, its sentinels
+    aside; the semantic types they find are verified on the whole table by the patterns of the
+    detectors in SQL. The overrides of the project give the sentinels of a column in place of
+    those of the tool, and mark the columns the detectors miss. The result is the profile, with
+    the ranges and the values of enumerations of the columns of no sensitivity, written after every
+    table: a scan that fails keeps the tables before it, and the next scan resumes its run,
+    skipping the tables it counted, unless the overrides now give their columns otherwise. It
+    updates the profile there is: the tables no longer selected are dropped, the others kept until
+    they are counted anew, and the glossary is kept; a profile scanned with other semantic types
+    loses its tables. A profile that cannot be read, or one of another schema, is refused and never
+    overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
     language model for the word of each term, showing it the tables and columns the term appears
     in. From the glossary and
@@ -174,7 +183,8 @@ The design repeats a few decisions; new code follows them.
     judged optimistically: a column is sensitive where a sensitive type is one of its matches, or
     where an override marks it so - the mark comes first, and marks what the detectors miss -;
     each value that goes into the profile is checked on its own all the same, and withheld where it
-    is of a sensitive type.
+    is of a sensitive type. The sentinels of a column are no values of it, and go into the profile
+    whatever its sensitivity: those of the tool are fixed texts, those given are of the overrides.
 *   **No value leaves the machine.** The language model runs locally; no external service gets a
     value, a sample or a profile.
 *   **The database is only read.** The tool sends nothing but queries; only the simulation

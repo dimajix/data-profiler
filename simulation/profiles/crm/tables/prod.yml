@@ -1,4 +1,4 @@
-format: 6
+format: 7
 name: prod
 rows: 350
 columns:
@@ -6,6 +6,13 @@ columns:
 - name: prod_cd
   type: varchar(8)
   statistics: {nulls: 0, distinct: 350, lengths: {shortest: 8, longest: 8}}
+- name: ean_cd
+  type: varchar(13)
+  statistics:
+    nulls: 0
+    distinct: 300
+    lengths: {shortest: 13, longest: 13}
+    sentinels: [{value: '', rows: 50}]
 - name: prod_nm
   type: varchar(80)
   statistics: {nulls: 0, distinct: 348, lengths: {shortest: 6, longest: 48}}

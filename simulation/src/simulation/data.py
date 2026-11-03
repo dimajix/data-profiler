@@ -1,12 +1,14 @@
 """Rows of test data whose columns have the statistics of a profile.
 
 The values of a column are drawn from a pool of as many distinct values as its statistics count,
-each of them used at least once, and its nulls are spread over the rows at random. What the values
-are follows from the type of the column: texts are letters of the counted lengths, and where the
-column has a match, values of its first semantic type, of those lengths, which its detector
-recognises - all of them, whatever the shares of the match -, and which meet the condition of its
-column together, where the detector has one. Values are made of the semantic types of the tool
-alone, not of those of a project.
+each of them used at least once, and its nulls and sentinels are spread over the rows at random.
+What the values are follows from the type of the column: texts are letters of the counted lengths,
+and where the column has a match, values of its first semantic type, of those lengths, which its
+detector recognises - all of them, whatever the shares of the match -, and which meet the condition
+of its column together, where the detector has one. Values are made of the semantic types of the
+tool alone, not of those of a project. The sentinels of a column are made as many times as the
+profile counts each: a text as it is written, a day or a moment of the day it names in the form of
+ISO 8601.
 """
 
 import re
@@ -89,11 +91,12 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
 def _values(table: Table, column: Column, random: Random) -> list[object]:
     """The values of `column`, one per row of `table`, in random order."""
     statistics = column.statistics
-    present = table.rows - statistics.nulls
+    sentinels = statistics.sentinel_rows
+    present = table.rows - statistics.nulls - sentinels
     if present < 0 or statistics.distinct > present or (present > 0 and statistics.distinct == 0):
         raise SimulationError(
-            f"{table.name}.{column.name}: {statistics.distinct} distinct values and "
-            f"{statistics.nulls} nulls do not fit {table.rows} rows"
+            f"{table.name}.{column.name}: {statistics.distinct} distinct values, "
+            f"{statistics.nulls} nulls and {sentinels} sentinels do not fit {table.rows} rows"
         )
     pool = _pool(table, column, random)
     values: list[object] = [*pool, *random.choices(pool, k=present - len(pool))]
@@ -106,24 +109,42 @@ def _values(table: Table, column: Column, random: Random) -> list[object]:
                 f"{table.name}.{column.name}: {statistics.distinct} distinct values of"
                 f" {present} are no {kind.name} together"
             )
+    for sentinel in statistics.sentinels:
+        values += [_sentinel(table, column, sentinel.value)] * sentinel.rows
     values += [None] * statistics.nulls
     random.shuffle(values)
     return values
 
 
+def _sentinel(table: Table, column: Column, text: str) -> object:
+    """The sentinel `text` of `column`, of its type: a text as it is, or a day or a moment."""
+    kind, _ = _type(column)
+    try:
+        if kind == "varchar":
+            return text
+        if kind == "date":
+            return date.fromisoformat(text)
+        if kind == "timestamp":
+            return datetime.fromisoformat(text)
+    except ValueError as error:
+        raise SimulationError(
+            f"{table.name}.{column.name}: a sentinel is no day in the form of ISO 8601"
+        ) from error
+    raise SimulationError(f"{table.name}.{column.name}: no sentinel of {column.type} is made")
+
+
 def _pool(table: Table, column: Column, random: Random) -> list[object]:
     """As many distinct values of the type of `column` as its statistics count."""
     count = column.statistics.distinct
-    match = re.fullmatch(r"(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?", column.type)
-    kind, first, second = match.groups() if match else (column.type, None, None)
+    kind, parameters = _type(column)
     if count == 0:
         return []
     try:
         if kind in _INTEGERS:
             return list(random.sample(range(1, _INTEGERS[kind]), count))
-        if kind == "decimal" and first is not None:
-            scale = int(second or 0)
-            numbers = random.sample(range(10 ** int(first)), count)
+        if kind == "decimal" and parameters:
+            precision, scale = (*parameters, 0)[:2]
+            numbers = random.sample(range(10**precision), count)
             return [Decimal(number).scaleb(-scale) for number in numbers]
         if kind == "date":
             return [_EPOCH + timedelta(days=day) for day in random.sample(range(_DAYS), count)]
@@ -141,6 +162,14 @@ def _pool(table: Table, column: Column, random: Random) -> list[object]:
     if kind == "varchar":
         return _texts(table, column, random)
     raise SimulationError(f"{table.name}.{column.name}: the type {column.type} is not generated")
+
+
+def _type(column: Column) -> tuple[str, tuple[int, ...]]:
+    """The type of `column`, without its parameters, and its parameters of numbers, if any."""
+    match = re.fullmatch(r"(\w+)(?:\((\d+)(?:,\s*(\d+))?\))?", column.type)
+    if match is None:
+        return column.type, ()
+    return match.group(1), tuple(int(number) for number in match.groups()[1:] if number)
 
 
 def _texts(table: Table, column: Column, random: Random) -> list[object]:

@@ -1,4 +1,4 @@
-format: 6
+format: 7
 name: ord
 rows: 20000
 columns:
@@ -15,7 +15,17 @@ columns:
 - name: curr_cd
   type: varchar(3)
   statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 3}}
-- {name: dlvr_dt, type: date, statistics: {nulls: 1900, distinct: 2800}}
+- name: dlvr_dt
+  type: date
+  statistics: {nulls: 1900, distinct: 2800, sentinels: [{value: '9999-12-31', rows: 300}]}
+- name: dlvr_pst_cd
+  type: varchar(10)
+  statistics:
+    nulls: 0
+    distinct: 1800
+    lengths: {shortest: 5, longest: 5}
+    sentinels: [{value: '', rows: 12400}]
+  matches: [{type: postal-code, sample: 1.0, table: 1.0}]
 - name: pymt_mthd_cd
   type: varchar(4)
   statistics: {nulls: 40, distinct: 5, lengths: {shortest: 2, longest: 4}}

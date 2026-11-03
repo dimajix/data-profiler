@@ -71,13 +71,35 @@ def test_a_mark_no_longer_given_is_taken_off() -> None:
     assert laid.columns[0].values == (), "its values are not given back"
 
 
-def test_a_table_is_laid_over_where_its_columns_are_marked_as_given() -> None:
+def test_a_table_agrees_with_the_overrides_where_its_columns_are_marked_as_given() -> None:
     given = _marked("frst_nm").tables["cntct"]
     (table,) = _PROFILE.tables
-    assert not given.is_laid_over(table), "a column not marked as given"
-    assert given.is_laid_over(given.laid_over(table))
-    assert not TableOverride().is_laid_over(given.laid_over(table)), "a column marked otherwise"
-    assert not _marked("lst_nm").tables["cntct"].is_laid_over(table), "a column it does not have"
+    assert not given.agrees_with(table), "a column not marked as given"
+    assert given.agrees_with(given.laid_over(table))
+    assert not TableOverride().agrees_with(given.laid_over(table)), "a column marked otherwise"
+    assert not _marked("lst_nm").tables["cntct"].agrees_with(table), "a column it does not have"
+
+
+def test_a_table_agrees_with_the_overrides_where_counted_with_the_sentinels_given() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("", "-"))})
+    assert given.sentinels == {"frst_nm": ("", "-")}
+    (table,) = _PROFILE.tables
+    assert not given.agrees_with(table), "counted with those of the tool"
+    frst_nm, other = table.columns
+    counted = replace(table, columns=(replace(frst_nm, sentinels=("", "-")), other))
+    assert given.agrees_with(counted)
+    assert not TableOverride().agrees_with(counted), "counted with others than of the tool"
+
+
+def test_sentinels_given_of_a_column_counted_without_them_are_refused() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("",))})
+    (table,) = _PROFILE.tables
+    with pytest.raises(OverridesError, match="columns of cntct whose values are no text: frst_nm"):
+        given.refuse_uncounted(table)
+    frst_nm, other = table.columns
+    given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("",)), other)))
+    with pytest.raises(OverridesError, match="columns of cntct it does not have: lst_nm"):
+        _marked("lst_nm").tables["cntct"].refuse_uncounted(table)
 
 
 def test_each_table_selected_has_what_is_given_of_it() -> None:
@@ -118,6 +140,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     assert overrides.glossary == {"cust": "customer"}
     marked = overrides.tables["cntct"].columns["frst_nm"]
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
+    assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
@@ -130,6 +153,6 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
 
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
-    path.write_text("format: 2\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 2, but only format 1"):
+    path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
+    with pytest.raises(OverridesError, match="format 1, but only format 2"):
         Overrides.read(path)

@@ -8,9 +8,10 @@ its SQL through a dialect, so that others can follow.
 It works in three stages, each of which can be run again on its own:
 
 - **scan** reads the selected tables, by a list or a regular expression, and finds for every column
-  the range of its values, its nulls, whether it is an enumeration of few values, and what its
-  values are - phone numbers, postal codes, card numbers, dates and more - by deterministic
-  detectors, checked on a sample and, where they can, verified on the whole table.
+  the range of its values, its nulls and the values that stand for none, such as empty texts or
+  `9999-12-31`, whether it is an enumeration of few values, and what its values are - phone
+  numbers, postal codes, card numbers, dates and more - by deterministic detectors, checked on a
+  sample and, where they can, verified on the whole table.
 - **describe** asks a small language model, running locally in Ollama, for a harmonized English
   name and a description of every column. The names are composed from one glossary of the terms of
   the whole schema - mostly abbreviations -, so that the same term reads the same in every table.
@@ -129,9 +130,11 @@ environments:
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
-  word of a term, and the sensitivity of a column the detectors miss, such as the names of
-  persons. `examples/crm/overrides.yml` shows both; `scan` marks the columns as they give, and
-  `report` lays them over the profile, and so will `describe`, once it is made.
+  word of a term, the sensitivity of a column the detectors miss, such as the names of persons,
+  and the values that stand for no value in a column, its sentinels, in place of those of the
+  tool: `sentinels: ["", "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows
+  all three; `scan` counts and marks the columns as they give, and `report` lays them over the
+  profile, and so will `describe`, once it is made.
 
 With the simulation environment loaded, as above, the example is scanned by
 

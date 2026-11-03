@@ -90,11 +90,14 @@ def test_a_schema_is_not_read_as_an_empty_user() -> None:
 def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     with connect("trino://h/c/s", "u", "") as source:
         columns = source.dialect.columns('c"at', "it's", "t")
-        select = source.dialect.select([source.dialect.longest('c"y')], 't"x')
-        sampled = source.dialect.sampled([source.dialect.column('c"y')], 't"x', 1.5, 10)
+        values = source.dialect.column('c"y')
+        select = source.dialect.select([source.dialect.longest(values)], 't"x')
+        sampled = source.dialect.sampled([values], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
-        matching = source.dialect.matching('c"y', "it's")
-        ranged = [source.dialect.smallest('c"y'), source.dialect.largest('c"y')]
+        matching = source.dialect.matching(values, "it's")
+        ranged = [source.dialect.smallest(values), source.dialect.largest(values)]
+        without = source.dialect.without('c"y', "varchar(3)", {"it's"})
+        moments = source.dialect.sentinels('c"y', "timestamp(3)", {"9999-12-31", ""})
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
@@ -105,6 +108,24 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert 'try_cast("c""y" AS varchar)' in matching
     assert "'^(?:it''s)$'" in matching
     assert ranged == ['min("c""y")', 'max("c""y")']
+    assert without.endswith('ELSE "c""y" END')
+    assert "IN ('it''s')" in without
+    assert 'CAST("c""y" AS date)' in moments, "a moment compared as its day"
+    assert "IN ('', '9999-12-31')" in moments
+
+
+def test_a_column_without_sentinels_is_counted_as_it_is() -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.without("c", "array(integer)", ()) == '"c"'
+
+
+@pytest.mark.parametrize(
+    ("kind", "written"),
+    [("varchar(40)", True), ("json", True), ("array(integer)", False), ("varbinary", False)],
+)
+def test_only_the_types_the_database_casts_to_a_text_have_text(kind: str, written: bool) -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.has_text(kind) == written
 
 
 @pytest.mark.parametrize(

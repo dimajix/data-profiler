@@ -1,5 +1,6 @@
 """Tests of the rows of test data: their columns have the statistics of the profile."""
 
+from datetime import date, datetime
 from random import Random
 
 import pytest
@@ -19,7 +20,7 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
 )
-from data_profiler.profile import Column, Lengths, Match, Statistics, Table
+from data_profiler.profile import Column, Lengths, Match, Statistics, Table, Value
 from simulation import SimulationError
 from simulation.data import rows
 
@@ -74,6 +75,31 @@ def test_a_text_column_has_its_shortest_and_its_longest_value() -> None:
     assert (min(lengths), max(lengths)) == (3, 30)
 
 
+@pytest.mark.parametrize(
+    ("type", "lengths", "texts", "made"),
+    [
+        ("varchar(10)", Lengths(5, 5), ("", "N/A"), ("", "N/A")),
+        ("date", None, ("9999-12-31",), (date(9999, 12, 31),)),
+        ("timestamp(3)", None, ("9999-12-31",), (datetime(9999, 12, 31),)),
+    ],
+    ids=["a text", "a day", "a moment"],
+)
+def test_a_column_has_each_of_its_sentinels_beside_its_nulls(
+    type: str, lengths: Lengths | None, texts: tuple[str, ...], made: tuple[object, ...]
+) -> None:
+    counted = tuple(Value(text, 300) for text in texts)
+    statistics = Statistics(100, 50, lengths, sentinels=counted)
+    table = _table(Column(name="x", type=type, statistics=statistics))
+    values = [value for (value,) in rows(table, Random(0))]
+    assert [values.count(sentinel) for sentinel in made] == [300] * len(made)
+    assert values.count(None) == 100
+    assert len(set(values) - {None, *made}) == 50
+
+
+# A sentinel of five rows, which is no day.
+_NONE = (Value("N/A", 5),)
+
+
 def test_the_same_seed_gives_the_same_rows() -> None:
     assert rows(_TABLE, Random(7)) == rows(_TABLE, Random(7))
 
@@ -86,8 +112,24 @@ def test_the_same_seed_gives_the_same_rows() -> None:
         (_column("x", "boolean", 0, 3), "fewer than 3 distinct values"),
         (_column("x", "varchar(1)", 0, 30, Lengths(1, 1)), "30 distinct values cannot be drawn"),
         (_column("x", "varchar(9)", 0, 30), "without its lengths"),
+        (
+            Column(name="x", type="bigint", statistics=Statistics(0, 10, sentinels=_NONE)),
+            "no sentinel of bigint is made",
+        ),
+        (
+            Column(name="x", type="date", statistics=Statistics(0, 10, sentinels=_NONE)),
+            "a sentinel is no day",
+        ),
     ],
-    ids=["an unknown type", "too many values", "too few booleans", "too few texts", "no lengths"],
+    ids=[
+        "an unknown type",
+        "too many values",
+        "too few booleans",
+        "too few texts",
+        "no lengths",
+        "no sentinel",
+        "no day",
+    ],
 )
 def test_a_column_that_cannot_be_generated_is_refused_naming_it(
     column: Column, problem: str

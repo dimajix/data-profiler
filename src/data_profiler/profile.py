@@ -39,7 +39,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 6
+FORMAT: Final = 7
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -146,27 +146,8 @@ class Range:
 
 
 @dataclass(frozen=True)
-class Statistics:
-    """What is counted of a column on the whole table.
-
-    Attributes:
-        nulls: The number of nulls.
-        distinct: The number of distinct values, approximate, as `approx_distinct` counts them.
-        lengths: The range of the lengths of the values, or None where none was counted: for a
-            column that holds no text, or only nulls.
-        range: The range of the values, or None where none is known: for a column whose values
-            have no order, that holds only nulls, or that is of a sensitivity.
-    """
-
-    nulls: int
-    distinct: int
-    lengths: Lengths | None = None
-    range: Range | None = None
-
-
-@dataclass(frozen=True)
 class Value:
-    """A value of an enumeration, as text, with the rows that hold it.
+    """A value of an enumeration, or a sentinel, as text, with the rows that hold it.
 
     Attributes:
         value: The value.
@@ -178,17 +159,47 @@ class Value:
 
 
 @dataclass(frozen=True)
+class Statistics:
+    """What is counted of a column on the whole table, its sentinels aside but where counted.
+
+    Attributes:
+        nulls: The number of nulls.
+        distinct: The number of distinct values, approximate, as `approx_distinct` counts them.
+        lengths: The range of the lengths of the values, or None where none was counted: for a
+            column that holds no text, or only nulls and sentinels.
+        range: The range of the values, or None where none is known: for a column whose values
+            have no order, that holds only nulls and sentinels, or that is of a sensitivity.
+        sentinels: The values that stand for no value found in the column, its sentinels, each
+            with the rows that hold it, the most frequent first; none of a column whose values
+            the database writes as no text. They are no values of the column, and shown whatever
+            its sensitivity: the sentinels of the tool are fixed, those given are of the overrides.
+    """
+
+    nulls: int
+    distinct: int
+    lengths: Lengths | None = None
+    range: Range | None = None
+    sentinels: tuple[Value, ...] = ()
+
+    @property
+    def sentinel_rows(self) -> int:
+        """The number of the rows that hold a sentinel."""
+        return sum(sentinel.rows for sentinel in self.sentinels)
+
+
+@dataclass(frozen=True)
 class Match:
     """A semantic type found in a column, with the share of its values that are of it.
 
     Attributes:
         type: The semantic type.
-        sample: The share of the values of the sample, nulls aside, that are of the type, from 0
-            to 1.
-        table: The share of the values of the whole table, nulls aside, that the pattern of the
-            detector of the type matches, from 0 to 1, or None where it was not verified. Where
-            the detector checks a value by more than its pattern, it is at least the share the
-            check would give; a condition of the column is judged on the sample alone.
+        sample: The share of the values of the sample, nulls and sentinels aside, that are of the
+            type, from 0 to 1.
+        table: The share of the values of the whole table, nulls and sentinels aside, that the
+            pattern of the detector of the type matches, from 0 to 1, or None where it was not
+            verified. Where the detector checks a value by more than its pattern, it is at least
+            the share the check would give; a condition of the column is judged on the sample
+            alone.
     """
 
     type: _Named
@@ -209,6 +220,9 @@ class Column:
             frequent first; none else.
         marked: The sensitivity of the column given by hand, by an override, or None where none
             is given.
+        sentinels: The sentinels given by hand, by an override, as values, in place of those of
+            the tool, that the column was counted with; None where none are given, and where the
+            column has no text, which is counted without sentinels, whatever is given.
     """
 
     name: str
@@ -217,6 +231,12 @@ class Column:
     matches: tuple[Match, ...] = ()
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
+    sentinels: tuple[str, ...] | None = None
+
+    @property
+    def left_aside(self) -> frozenset[str]:
+        """The sentinels its values were counted without: those its statistics found in it."""
+        return frozenset(sentinel.value for sentinel in self.statistics.sentinels)
 
     @property
     def sensitivity(self) -> Sensitivity:

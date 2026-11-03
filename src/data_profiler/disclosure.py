@@ -9,7 +9,9 @@ project, and withheld where it is of a sensitive type - a phone number at the en
 a column of which few values are phone numbers, an IBAN of a column whose sample held none -, and a
 long one is cut to its first characters, ending in `…`, so that the end of the range of a column of
 free texts does not fill the profile. A table disclosed again is disclosed as before, or loses
-more: what a mark of none would give back, it cannot.
+more: what a mark of none would give back, it cannot. The sentinels of a column are no values of
+it, and stay whatever its sensitivity: those of the tool are fixed texts, and those given are of the
+overrides of the project, which are shared as the profile is.
 """
 
 from collections.abc import Sequence
