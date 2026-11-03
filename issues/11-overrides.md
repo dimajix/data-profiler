@@ -1,6 +1,6 @@
 # 11 — Overrides
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -98,3 +98,10 @@ As decided with the maintainer:
   override marks sensitive. `scan` now marks the columns as the overrides give, and every stage
   lays them over the profile it reads, a column marked as given and no other; the question left to
   [10](10-the-stage-describe.md) of the marks a stage keeps is settled with it.
+
+- **2026-11-03** — Done with [10](10-the-stage-describe.md): `describe` takes the concepts, readings
+  and descriptions of the overrides as given and asks the language model for the rest, and
+  `report` lays the overrides over the profile itself - concepts, readings, names, descriptions and
+  marks -, telling the concepts given from those proposed. The overrides give the name of a table
+  or column, in place of the harmonized one, and the description of a column; what names a table,
+  column or term the profile does not have is refused, naming it.

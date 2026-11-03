@@ -1,6 +1,6 @@
 # 10 — The stage describe
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Describe
@@ -134,3 +134,23 @@ As agreed with the maintainer, in three steps, each a commit of its own:
   `ap_seg_cd` for the contact person rather than AirPlus: where the model chooses wrongly, the
   overrides give the reading. The values the model is shown are judged by `disclosure`, as those
   of the profile.
+
+- **2026-11-03** — Step 3 made, and the issue done: the language model proposes the description of
+  each column of none, `Column.description` of the profile of format 11, shown the reading of its
+  name with the descriptions of its concepts, what is counted of it, its values and those of its
+  sample, the columns beside it and those filled together with it; a scan keeps the descriptions.
+  The overrides, of format 5, give the description of a column, which is not asked for then, and
+  the harmonized name of a table or column, in snake_case, laid over as `named`, which comes before
+  the name composed from the reading and so resolves a collision. The report lays the overrides
+  over the profile itself, so that it tells the concepts proposed from those given, and shows the
+  descriptions. Against the simulation environment, `qwen3.5:2b` described 63 columns in about a
+  minute; its descriptions make up meanings of the random codes of the simulation and follow a
+  concept proposed wrongly - `lst_nm` as a list -, so that only the real database can judge them.
+  Tables are not described, as How has it for columns alone; so the overrides give the name of a
+  table, but no description of one.
+
+- **2026-11-03** — After the review of the maintainer: the name given of a table or column is held
+  as `name_given`, not `named`, which names a table or column in the code, as the maintainer
+  decided; and what the stages that read the profile lay over of a table - readings, names and
+  descriptions given - is laid over by one method, `TableOverride.described_laid_over`, in place
+  of `readings_laid_over` and a second one for the names.

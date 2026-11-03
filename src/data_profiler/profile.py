@@ -15,15 +15,17 @@ Every attribute of a profile is filled by one step, which replaces in a profile 
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
 profile, the rows, runs and groups of its tables, and the types, statistics, matches, values, marks
 and sentinels of their columns; the stage describe fills the terms of the names of the tables and
-columns by its step that splits them, the glossary by its step that proposes concepts, and the
-readings by its step that reads the names. The overrides fill none: what they give, the
-stages lay over the profile they read, and scan takes the marks and sentinels they give.
+columns by its step that splits them, the glossary by its step that proposes concepts, the readings
+by its step that reads the names, and the descriptions of the columns by its step that describes
+them. The overrides fill none: what they give, the stages lay over the profile they read - the names
+given among it, which a profile written holds none of -, and scan takes the marks and sentinels they
+give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
 each table names the run that counted it, so that a run resumed can skip it. A table counted anew
-keeps the terms and the readings of its name and of the names of its columns, which describe
-filled.
+keeps the terms and the readings of its name and of the names of its columns, and the descriptions
+of its columns, which describe filled.
 """
 
 import logging
@@ -49,7 +51,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 10
+FORMAT: Final = 11
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -263,6 +265,10 @@ class Column:
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
+        description: What the column holds, in English, for a person who knows the business but
+            not the database; None where it is not described.
+        name_given: The harmonized name given by hand, by an override, in place of the one composed
+            from its reading; None where none is given, and in a profile written.
     """
 
     name: str
@@ -274,6 +280,8 @@ class Column:
     sentinels: tuple[str, ...] | None = None
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
+    description: str | None = None
+    name_given: str | None = None
 
     @property
     def left_aside(self) -> frozenset[str]:
@@ -327,6 +335,8 @@ class Table:
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
+        name_given: The harmonized name given by hand, by an override, in place of the one composed
+            from its reading; None where none is given, and in a profile written.
     """
 
     name: str
@@ -337,6 +347,7 @@ class Table:
     groups: tuple[Group, ...] = ()
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
+    name_given: str | None = None
 
 
 @dataclass(frozen=True)
@@ -531,7 +542,8 @@ class Profile:
         Returns:
             The profile, `table` in place of its table of the same name, or beside its tables,
             sorted by their names, and named counted by the run of the profile; with the terms and
-            readings of its table of the same name and of its columns of the same names.
+            readings of its table of the same name and of its columns of the same names, and the
+            descriptions of those columns.
         """
         counted = replace(table, run=None if self.run is None else self.run.started)
         for kept in self.tables:
@@ -602,10 +614,10 @@ def _unmatched(table: Table) -> Table:
 
 
 def _described(table: Table, kept: Table) -> Table:
-    """`table`, with the terms and readings of `kept`, of its name and of its columns of a name."""
+    """`table`, with what describe filled of `kept`, of its name and of its columns of a name."""
     described = {column.name: column for column in kept.columns}
     columns = (
-        replace(column, terms=old.terms, reading=old.reading)
+        replace(column, terms=old.terms, reading=old.reading, description=old.description)
         if (old := described.get(column.name)) is not None
         else column
         for column in table.columns

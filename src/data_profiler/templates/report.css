@@ -100,8 +100,13 @@ th {
     color: var(--accent);
 }
 
-.omitted {
+.omitted,
+.proposed {
     color: var(--muted);
+}
+
+.description {
+    min-width: 16em;
 }
 
 section {

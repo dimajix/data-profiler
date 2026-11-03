@@ -94,10 +94,10 @@ environment.
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `grouping`, `overrides`, `disclosure`, `values` and `workspace`, `describe`
 uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and `workspace`, `report` the profile
-alone, and `glossary` for its names; `cli` runs the stages, gives the overrides to `scan` and
-`describe` and the language model, made by `llm` as the project names it, to `describe`, and lays
-the overrides over the profile `report` reads. The semantic types of a project reach `scan` from
-`project`, and every stage after it from the profile.
+and `overrides`, which it lays over it, and `glossary` for its names; `cli` runs the stages, gives
+the overrides to each, and the language model, made by `llm` as the project names it, to `describe`.
+The semantic types of a project reach `scan` from `project`, and every stage after it from the
+profile.
 
 ## The domain
 
@@ -160,9 +160,9 @@ the overrides over the profile `report` reads. The semantic types of a project r
     `ap_ap_nm` read as AirPlus, contact person and name. `describe` reads a name whose terms have
     one candidate each, and keeps a reading while the terms of its name stay as they were split,
     their candidates among them; which concept a term of several stands for, the language model
-    chooses, or an override gives. The terms and the reading of a name are written together, so
-    that a profile never holds a reading of other terms than its own. A harmonized name is composed
-    from the reading alone.
+    chooses, or an override gives. The terms and the reading of a name are written together, so that
+    a profile never holds a reading of other terms than its own. A harmonized name is composed from
+    the reading alone, unless an override gives the name.
 *   **Vocabulary** - the terms a term written together is split into: those found in the names of
     a profile, and the abbreviations of its concepts. A term is split only where other terms of the
     vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and an
@@ -172,17 +172,20 @@ the overrides over the profile `report` reads. The semantic types of a project r
     description, in English, from which the language model proposes descriptions of columns. A
     concept omitted is left out of the harmonized names, as a prefix that marks a custom column.
 *   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
-*   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
-    name composed from the words of the glossary.
+*   **Description** - what a column holds, in English, for a person who knows the business but not
+    the database, proposed by the language model from the reading of its name, its statistics, its
+    matches and its sample; its name is the harmonized one.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: concepts of the glossary, the reading of a name, the sensitivity
-    and the sentinels of a column. What it gives is taken as given by every stage: by `scan`, which
-    counts the columns with their sentinels and marks them, by `describe`, which splits and reads
-    the names by the concepts given, as by `report`, which lays the concepts, readings and marks
-    over the profile; sentinels changed count once `scan` counts the column again, and a reading
-    given once `describe` has split its name. A concept given takes the place of the one proposed
-    of its word, keeping of it the abbreviations proposed beside those given, and its abbreviations
-    are taken from the others.
+    laid over a generated profile: concepts of the glossary, the reading of a name, the harmonized
+    name of a table or column, the description of a column, and the sensitivity and the sentinels of
+    a column. What it gives is taken as given by every stage: by `scan`, which counts the columns
+    with their sentinels and marks them, by `describe`, which splits and reads the names by the
+    concepts given and asks the language model for nothing given, as by `report`, which lays the
+    concepts, readings, names, descriptions and marks over the profile; sentinels changed count once
+    `scan` counts the column again, and a reading given once `describe` has split its name. A name
+    given comes before the one composed from the reading, so that it resolves a collision of
+    harmonized names. A concept given takes the place of the one proposed of its word, keeping of it
+    the abbreviations proposed beside those given, and its abbreviations are taken from the others.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -191,35 +194,38 @@ the overrides over the profile `report` reads. The semantic types of a project r
 1.  `scan` connects to the schema of an environment of a project as its user, the password taken
     from a variable, and selects the tables the project names, by a list or a regular expression.
     For each table it counts the statistics of all columns in one query, the approximate distinct
-    counts included, the sentinels of each column counted apart and left aside; it counts the
-    values of every column whose distinct count is at most the threshold of an enumeration; and it
-    takes a sample into the workspace. The detectors check the values of the sample, its sentinels
-    aside; the semantic types they find are verified on the whole table by the patterns of the
-    detectors in SQL. The columns filled together in the sample are named as groups. The
-    overrides of the project give the sentinels of a column in place of those of the tool, and
-    mark the columns the detectors miss. The result is the profile, with the ranges and the values
-    of enumerations of the columns of no sensitivity, written after every table: a scan that fails
-    keeps the tables before it, and the next scan resumes its run, skipping the tables it counted,
-    unless the overrides now give their columns otherwise. It updates the profile there is: the
-    tables no longer selected are dropped, the others kept until they are counted anew, and what
-    the other stages filled is kept - the glossary, and the terms and readings of the names that
-    stay; a profile scanned with other semantic types keeps its tables without their matches,
-    values and ranges, until they are counted anew. A profile that cannot be read, or one of
-    another schema, is refused and never overwritten: it may be the work of hours.
+    counts included, the sentinels of each column counted apart and left aside; it counts the values
+    of every column whose distinct count is at most the threshold of an enumeration; and it takes a
+    sample into the workspace. The detectors check the values of the sample, its sentinels aside;
+    the semantic types they find are verified on the whole table by the patterns of the detectors in
+    SQL. The columns filled together in the sample are named as groups. The overrides of the project
+    give the sentinels of a column in place of those of the tool, and mark the columns the detectors
+    miss. The result is the profile, with the ranges and the values of enumerations of the columns
+    of no sensitivity, written after every table: a scan that fails keeps the tables before it, and
+    the next scan resumes its run, skipping the tables it counted, unless the overrides now give
+    their columns otherwise. It updates the profile there is: the tables no longer selected are
+    dropped, the others kept until they are counted anew, and what the other stages filled is kept -
+    the glossary, the terms and readings of the names that stay, and the descriptions of the
+    columns; a profile scanned with other semantic types keeps its tables without their matches,
+    values and ranges, until they are counted anew. A profile that cannot be read, or one of another
+    schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,
     with the values of their samples of no sensitivity, and proposes it into the glossary, a word
-    there is taking the term as one more abbreviation. It splits the names again, and reads each
-    name whose terms have one candidate each, and asks the language model for the reading of each
-    name of a term of several concepts, shown the concepts with their descriptions; it is to ask
-    it, from the reading of its name and from each column's statistics, matches and sample, for the
-    column's description - its name stays the one harmonized. Overrides are taken as given: no term
-    of a concept given, and no name of a reading given, is asked for. The language model is asked
+    there is taking the term as one more abbreviation. It splits the names again, reads each name
+    whose terms have one candidate each, and asks the language model for the reading of each name of
+    a term of several concepts, shown the concepts with their descriptions. From the reading of its
+    name and the descriptions of its concepts, and from each column's statistics, matches, values,
+    sample and the columns filled together with it, it asks for the column's description - its name
+    stays the one harmonized. Overrides are taken as given: no term of a concept given, no name of a
+    reading given and no column of a description given is asked for. The language model is asked
     only for what the profile lacks, and the profile is written after each concept and each table
-    read, so that a run interrupted is resumed; `describe --anew` drops first what the language
-    model filled. The result is the profile, with terms, glossary, readings and descriptions.
-3.  `report` renders the profile, with the overrides laid over it, as HTML.
+    read or described, so that a run interrupted is resumed; `describe --anew` drops first what the
+    language model filled. The result is the profile, with terms, glossary, readings and
+    descriptions.
+3.  `report` renders the profile, with the overrides laid over it, as HTML: the harmonized names and
+    descriptions of the columns, and the concepts proposed told apart from those given.
 
 ## Principles
 
@@ -242,11 +248,12 @@ The design repeats a few decisions; new code follows them.
     database is a new dialect, not a change across the code. What the tables hold is counted or
     sampled by queries that the part that reads their rows builds from the building blocks of the
     dialect: metadata belongs to the source, counting and sampling to the parts that do them.
-*   **Every attribute of the profile is filled by one step.** A step - `scan`, a step of
-    `describe` - replaces in a profile there is the attributes it fills alone, and keeps all others,
+*   **Every attribute of the profile is filled by one step.** A step, `scan` or a step of
+    `describe`, replaces in a profile there is the attributes it fills alone, and keeps all others,
     so that a stage run again loses nothing another found: a scan keeps the terms and readings of
-    the names, and splitting the names again keeps a reading while its terms stay. Which step fills
-    which attribute is said once, in the module docs of `data_profiler.profile`.
+    the names and the descriptions of the columns, and splitting the names again keeps a reading
+    while its terms stay. Which step fills which attribute is said once, in the module docs of
+    `data_profiler.profile`.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes the concepts of terms and the
     descriptions of columns from what they found, and nothing else. It is shown the values of a
@@ -255,9 +262,10 @@ The design repeats a few decisions; new code follows them.
     give it.
 *   **One word per concept.** Harmonized names are composed from the words of the concepts of the
     glossary, through the reading of each name, so that the same concept reads the same in every
-    table, under whichever of its abbreviations it is written; a name of no reading has none.
-    Where two columns of a table come to the same name, the report shows it, rather than one name
-    taking the place of the other.
+    table, under whichever of its abbreviations it is written; a name of no reading has none. Where
+    two columns of a table come to the same name, the report shows it, rather than one name taking
+    the place of the other. An override gives a name in place of the composed one, which resolves a
+    collision.
 *   **The stages share nothing but the profile and the workspace.** Each stage can be run again on
     its own: `describe` with another model without querying the database, `report` without
     either.

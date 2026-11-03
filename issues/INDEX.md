@@ -11,7 +11,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [03](03-the-profile.md) | done | There is no profile yet: the stages have no format in which to hand on what they found about a database. |
-| [11](11-overrides.md) | in progress | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. |
+| [11](11-overrides.md) | done | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. |
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 | [26](26-overrides-read-by-scan.md) | done | A profile written by scan holds the range and the values of the columns an override marks sensitive, as scan does not read the overrides, so that the profile, which is shared, holds what the overrides were to withhold. |
 
@@ -42,7 +42,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 |---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
 | [09](09-the-glossary.md) | done | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
-| [10](10-the-stage-describe.md) | in progress | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
+| [10](10-the-stage-describe.md) | done | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
 | [24](24-terms-written-together.md) | done | Terms written together without a separator, `LFADR` in `KD_LFADR_PLZ`, stay one term, so that the glossary needs a word for every combination of terms, and the same term reads differently where it is written together. |
 | [27](27-glossary-of-concepts.md) | done | The glossary gives each term one word and nothing else, so that two abbreviations of one concept are two entries, an abbreviation of several meanings has one of them, a prefix that means nothing becomes part of every name, and the language model is told no more of a term than a word. |
 | [28](28-terms-and-readings.md) | done | The terms of a name are computed whenever they are needed, and which concept a term of several stands for is said nowhere, so that the split of a name changes unseen with the profile, a name of a term repeated in two meanings cannot be read, and a scan would lose what was found of the names. |

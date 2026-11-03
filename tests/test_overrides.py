@@ -171,6 +171,28 @@ def test_a_reading_given_comes_before_the_one_read() -> None:
     assert laid.columns[0].reading == ("fist", "name")
 
 
+def test_the_names_and_descriptions_of_the_overrides_are_taken_as_given() -> None:
+    (table,) = _PROFILE.tables
+    described = replace(table.columns[1], description="The kind of a contact.")
+    profile = replace(_PROFILE, tables=(replace(table, columns=(table.columns[0], described)),))
+    given = TableOverride(
+        name="contact",
+        columns={"frst_nm": ColumnOverride(name="first_name", description="Its first name.")},
+    )
+    (laid,) = Overrides(tables={"cntct": given}).laid_over(profile).tables
+    first, kind = laid.columns
+    assert laid.name_given == "contact"
+    assert (first.name_given, first.description) == ("first_name", "Its first name.")
+    assert (kind.name_given, kind.description) == (None, "The kind of a contact."), "as proposed"
+    assert given.laid_over(table) == table, "not by a scan"
+
+
+def test_a_name_given_other_than_in_snake_case_is_refused_naming_it() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(name="FirstName")})
+    with pytest.raises(OverridesError, match="names of cntct other than in snake_case: frst_nm"):
+        Overrides(tables={"cntct": given}).laid_over(_PROFILE)
+
+
 @pytest.mark.parametrize(
     ("overrides", "problem"),
     [
@@ -209,6 +231,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     marked = overrides.tables["cntct"].columns["frst_nm"]
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
     assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
+    assert overrides.tables["cust"].columns["cust_ap_id"].name == "contact_person_id"
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
@@ -224,5 +247,5 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 4"):
+    with pytest.raises(OverridesError, match="format 1, but only format 5"):
         Overrides.read(path)

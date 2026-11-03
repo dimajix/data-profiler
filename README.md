@@ -141,14 +141,17 @@ environments:
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given:
-  concepts of the glossary, each under its word with its abbreviations, its description and,
-  where it is to be left out of the names, `omitted: true`; the reading of the name of a table or
-  column, a concept for each of its terms, `reading: [airplus, contact_person, name]`; the
-  sensitivity of a column the detectors miss, such as the names of persons; and the values that
-  stand for no value in a column, its sentinels, in place of those of the tool:
+  concepts of the glossary, each under its word with its abbreviations, its description and, where
+  it is to be left out of the names, `omitted: true`; the reading of the name of a table or column,
+  a concept for each of its terms, `reading: [airplus, contact_person, name]`; the harmonized name
+  of a table or column, in snake_case, in place of the one composed from its reading, as where two
+  columns would share one, `name: contact_person_id`; the description of a column, in place of the
+  one proposed; the sensitivity of a column the detectors miss, such as the names of persons; and
+  the values that stand for no value in a column, its sentinels, in place of those of the tool:
   `sentinels: ["", "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows them
   all; `scan` counts and marks the columns as they give, `describe` splits and reads the names by
-  the concepts they give, and `report` lays them over the profile.
+  the concepts they give and asks the language model for nothing given, and `report` lays them over
+  the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -176,11 +179,12 @@ uv run data-profiler describe simulation --project examples/crm
 
 without the database, by the concepts of the profile and of the overrides; the language model of the
 project proposes a concept of each term of none, shown the samples of the workspace but of the
-columns of a sensitivity, into the glossary of the profile, and chooses the concept of each term of
-several in a name, of which the reading of the name is made. A concept proposed or a reading chosen
-wrongly is corrected in `overrides.yml`, which comes first. It asks only for what the profile lacks,
-and writes the profile after each concept and each table read, so that a run interrupted is resumed
-by the next; `--anew` drops first what the language model filled, to describe the profile anew, with
+columns of a sensitivity, into the glossary of the profile, chooses the concept of each term of
+several in a name, of which the reading of the name is made, and proposes a description of each
+column. A concept proposed, a reading chosen or a description proposed wrongly is corrected in
+`overrides.yml`, which comes first. It asks only for what the profile lacks, and writes the profile
+after each concept and each table read or described, so that a run interrupted is resumed by the
+next; `--anew` drops first what the language model filled, to describe the profile anew, with
 another model, say. The profile is rendered as a report by
 
 ```bash
@@ -189,7 +193,8 @@ uv run data-profiler report simulation --project examples/crm
 
 which lays the overrides of the project over it and writes `examples/crm/simulation/report.html`:
 one file, which a browser shows and prints on its own, without the database. Its harmonized names
-are composed from the readings, so that a profile not described has none.
+are composed from the readings, so that a profile not described has none but those the overrides
+give.
 
 ### Running Tests
 

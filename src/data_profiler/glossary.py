@@ -18,9 +18,9 @@ The glossary of a profile is its concepts, each a word with the terms it is writ
 abbreviations, once for the whole schema. A term may stand for the concepts it is an abbreviation
 of, its candidates; which one it stands for in a name, the reading of the name says, one word for
 each term. A harmonized name is composed of the words of its reading, each split as a name is, in
-`snake_case`: a term of digits stands for itself, and a concept omitted is left out. A reading
-that no longer agrees with the terms of its name - of another length, or a word that is no
-candidate of its term - is none.
+`snake_case`: a term of digits stands for itself, and a concept omitted is left out; a name given by
+hand comes before it. A reading that no longer agrees with the terms of its name - of another
+length, or a word that is no candidate of its term - is none.
 """
 
 import re
@@ -57,6 +57,19 @@ def terms(name: str) -> list[str]:
         if part:
             found.append(part[start:].lower())
     return found
+
+
+def snake_case(name: str) -> str:
+    """`name` in snake_case: its terms, as `terms` splits a name, joined by `_`.
+
+    Args:
+        name: A name or a word.
+
+    Returns:
+        Its terms joined by `_`, a term of digits apart from the letters before it: `address_2` of
+        `Address2`; empty where it has no letters and digits.
+    """
+    return "_".join(terms(name))
 
 
 def _splits(part: str, index: int) -> bool:
@@ -217,6 +230,10 @@ class Glossary:
             for term in dict.fromkeys(concept.abbreviations):
                 self._words.setdefault(term, []).append(word)
 
+    def concept(self, word: str) -> Concept | None:
+        """The concept of `word`, or None where the glossary has none of it."""
+        return self._concepts.get(word)
+
     def words(self, term: str) -> tuple[str, ...]:
         """The words of the concepts `term` is an abbreviation of, in the order of the glossary.
 
@@ -251,10 +268,13 @@ class Glossary:
             named: A table or a column, with the terms and the reading of its name.
 
         Returns:
-            The harmonized name, without the words of the concepts omitted; None where its name
-            has no reading that agrees with its terms, a word of it is of no concept of the
-            glossary or of neither letters nor digits, or no word is left.
+            The name given by hand, where one is; else the harmonized name, without the words of
+            the concepts omitted; None where its name has no reading that agrees with its terms, a
+            word of it is of no concept of the glossary or of neither letters nor digits, or no
+            word is left.
         """
+        if named.name_given is not None:
+            return named.name_given
         reading = named.reading
         if reading is None or not agrees(named.terms, reading):
             return None
@@ -268,7 +288,7 @@ class Glossary:
                 return None
             if concept.omitted:
                 continue
-            composed = "_".join(terms(word))
+            composed = snake_case(word)
             if not composed:
                 return None
             words.append(composed)

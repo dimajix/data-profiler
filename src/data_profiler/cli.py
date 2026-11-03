@@ -119,6 +119,6 @@ def _described(project: Project, environment: Environment, profile: Profile) -> 
 
 def _report(project: Project, environment: Environment) -> None:
     """Renders the profile of `environment` of `project` as its report."""
-    profile = Overrides.read(project.overrides).laid_over(Profile.read(environment.profile))
-    write_report(profile, environment.report)
+    overrides = Overrides.read(project.overrides)
+    write_report(Profile.read(environment.profile), overrides, environment.report)
     _logger.info("Wrote the report of %s to %s", environment.name, environment.report)

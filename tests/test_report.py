@@ -7,6 +7,7 @@ import pytest
 
 from data_profiler.detect import EMAIL, PHONE, Sensitivity
 from data_profiler.glossary import terms
+from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
 from data_profiler.profile import (
     Column,
     Concept,
@@ -78,7 +79,7 @@ _PROFILE = Profile(
                         Column(
                             name="tel_no",
                             type="varchar(20)",
-                            statistics=Statistics(0, 2, range=Range("", "0301234567")),
+                            statistics=Statistics(0, 2, range=Range("", "zzz")),
                             matches=(Match(PHONE, 0.6, 0.6),),
                             marked=Sensitivity.NONE,
                         ),
@@ -107,9 +108,26 @@ _PROFILE = Profile(
 )
 
 
-def _page() -> str:
-    """The report of `_PROFILE`, its white space each one space."""
-    return " ".join(render(_PROFILE).split())
+# The marks of the columns of `_PROFILE`, as the overrides of its project give them.
+_MARKED = {
+    "cust_nm": ColumnOverride(sensitivity=Sensitivity.PERSONAL),
+    "tel_no": ColumnOverride(sensitivity=Sensitivity.NONE),
+}
+
+
+def _overrides(
+    columns: dict[str, ColumnOverride] | None = None,
+    name: str | None = None,
+    glossary: dict[str, Concept] | None = None,
+) -> Overrides:
+    """The overrides of `_PROFILE`: its marks, what `columns` gives, `name` and `glossary`."""
+    given = TableOverride(columns={**_MARKED, **(columns or {})}, name=name)
+    return Overrides(glossary=glossary or {}, tables={"cust": given})
+
+
+def _page(overrides: Overrides | None = None, profile: Profile = _PROFILE) -> str:
+    """The report of `profile`, with `overrides` laid over it, its white space each one space."""
+    return " ".join(render(profile, overrides or _overrides()).split())
 
 
 def test_a_report_shows_the_tables_and_their_columns() -> None:
@@ -142,22 +160,23 @@ def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -
 def test_a_range_shows_both_its_ends_and_says_where_one_is_withheld() -> None:
     page = _page()
     assert "&lt;b&gt; … withheld" in page
-    assert '<td class="value"> … 0301234567 </td>' in page, "an empty smallest value is one"
+    assert '<td class="value"> … zzz </td>' in page, "an empty smallest value is one"
 
 
 def test_the_values_of_the_profile_are_escaped() -> None:
-    page = render(_PROFILE)
+    page = _page()
     assert "<script>" not in page
     assert "&lt;script&gt;" in page
 
 
 def test_the_glossary_shows_each_concept_and_where_the_terms_of_none_appear() -> None:
     page = _page()
+    proposed = '<span class="proposed">(proposed)</span>'
     assert (
-        '<td>customer</td> <td class="original">cust</td> <td>A person or company that buys.</td>'
-        in page
+        f'<td> customer {proposed} </td> <td class="original">cust</td>'
+        " <td>A person or company that buys.</td>" in page
     )
-    assert '<td>airplus <span class="omitted">(omitted)</span></td>' in page
+    assert f'<td> airplus <span class="omitted">(omitted)</span> {proposed} </td>' in page
     (_, unknown) = page.split("Terms of no concept")
     assert '<td class="original">eml</td> <td> cust.eml_adr </td>' in unknown
     assert '"original">typ<' not in unknown, "a term of a concept"
@@ -171,13 +190,39 @@ def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:
     assert '<td class="original">eml_adr</td> <td>\u2013</td>' in page, "of a name not read"
 
 
+def test_a_concept_given_is_told_apart_from_those_proposed() -> None:
+    page = _page(_overrides(glossary={"customer": Concept(("cust",), "Who buys.")}))
+    assert '<td> customer </td> <td class="original">cust</td> <td>Who buys.</td>' in page
+    assert '<td> type <span class="proposed">(proposed)</span> </td>' in page
+
+
+def test_a_report_shows_the_descriptions_given_and_proposed() -> None:
+    (table, empty) = _PROFILE.tables
+    described = replace(table.columns[0], description="The kind of the customer.")
+    profile = replace(
+        _PROFILE, tables=(replace(table, columns=(described, *table.columns[1:])), empty)
+    )
+    given = {"tel_no": ColumnOverride(sensitivity=Sensitivity.NONE, description="Where one calls.")}
+    page = _page(_overrides(given), profile)
+    assert '<td class="description">The kind of the customer.</td>' in page, "proposed"
+    assert '<td class="description">Where one calls.</td>' in page, "given"
+
+
+def test_a_name_given_comes_before_the_harmonized_name_and_resolves_a_collision() -> None:
+    given = {"tel_no": ColumnOverride(sensitivity=Sensitivity.NONE, name="phone")}
+    page = _page(_overrides(given, name="client"))
+    assert '<span class="harmonized">→ client</span>' in page
+    assert '<td class="original">tel_no</td> <td>phone</td>' in page
+    assert "Same harmonized name" not in page
+
+
 def test_a_report_shows_the_harmonized_names_two_columns_share() -> None:
     shared = '<span class="original">ap_tel_no, tel_no</span>'
     assert f"Same harmonized name: telephone_number \u2013 {shared}" in _page()
 
 
 def test_a_report_holds_its_styles_whole_and_no_script() -> None:
-    page = render(_PROFILE)
+    page = render(_PROFILE, Overrides())
     assert '"Segoe UI"' in page, "the style sheet is not escaped"
     assert "<link" not in page
     assert "<script" not in page
@@ -185,4 +230,4 @@ def test_a_report_holds_its_styles_whole_and_no_script() -> None:
 
 def test_a_report_that_cannot_be_written_is_refused(tmp_path: Path) -> None:
     with pytest.raises(ReportError, match="cannot be written"):
-        write_report(_PROFILE, tmp_path / "missing" / "report.html")
+        write_report(_PROFILE, Overrides(), tmp_path / "missing" / "report.html")

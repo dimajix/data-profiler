@@ -14,7 +14,18 @@ from data_profiler.detect import Sensitivity
 from data_profiler.glossary import Glossary, occurrences
 from data_profiler.llm import LanguageModel, LanguageModelError
 from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
-from data_profiler.profile import Column, Concept, Profile, Statistics, Table, Term, Value
+from data_profiler.profile import (
+    Column,
+    Concept,
+    Group,
+    Lengths,
+    Profile,
+    Range,
+    Statistics,
+    Table,
+    Term,
+    Value,
+)
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Sample, Workspace
@@ -23,15 +34,24 @@ _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
 
 
 class _Answers(LanguageModel):
-    """A model that answers with the texts given, in their order, then with no concept at all."""
+    """A model that answers with the texts given, in their order, then with nothing of the form.
 
-    def __init__(self, *answers: str) -> None:
+    The questions of the descriptions of columns are kept apart from those of concepts and
+    readings, and answered by the descriptions given.
+    """
+
+    def __init__(self, *answers: str, descriptions: tuple[str, ...] = ()) -> None:
         super().__init__("answers")
         self.prompts: list[str] = []
         self.forms: list[Mapping[str, object]] = []
+        self.descriptions: list[str] = []
         self._answers = list(answers)
+        self._descriptions = [json.dumps({"description": text}) for text in descriptions]
 
     def answer(self, prompt: str, form: Mapping[str, object]) -> str:
+        if "Describe in one or two sentences" in prompt:
+            self.descriptions.append(prompt)
+            return self._descriptions.pop(0) if self._descriptions else "{}"
         self.prompts.append(prompt)
         self.forms.append(form)
         return self._answers.pop(0) if self._answers else "{}"
@@ -42,9 +62,11 @@ class _Failing(LanguageModel):
 
     def __init__(self, answer: str) -> None:
         super().__init__("failing")
+        self.prompts: list[str] = []
         self._answer: str | None = answer
 
     def answer(self, prompt: str, form: Mapping[str, object]) -> str:
+        self.prompts.append(prompt)
         answer, self._answer = self._answer, None
         if answer is None:
             raise LanguageModelError("the model fails")
@@ -199,7 +221,7 @@ def test_the_values_of_a_column_of_a_sensitivity_are_not_shown_to_the_model(
     samples = {"cust": Sample({"cust_nm": ["Anna Muster"]})}
     _described(_profile("cust_nm"), tmp_path, Overrides(tables={"cust": marked}), llm, samples)
     assert len(llm.prompts) == 2, "of cust and of nm"
-    assert all("Anna" not in prompt for prompt in llm.prompts)
+    assert all("Anna" not in prompt for prompt in (*llm.prompts, *llm.descriptions))
     assert (
         "- column cust.cust_nm: varchar(10); personal data, its values not shown"
         in (llm.prompts[1])
@@ -341,15 +363,92 @@ def test_the_abbreviations_no_name_has_any_longer_are_dropped(tmp_path: Path) ->
     assert described.glossary == {"customer": Concept(("cust",))}, "and a concept of none left"
 
 
-def test_a_profile_forgotten_has_no_glossary_and_no_readings(tmp_path: Path) -> None:
-    described = _described(_profile("cust_nm", glossary=_GLOSSARY), tmp_path)
+def test_a_profile_forgotten_has_no_glossary_readings_and_descriptions(tmp_path: Path) -> None:
+    llm = _Answers(descriptions=("Who the customer is.",))
+    described = _described(_profile("cust_nm", glossary=_GLOSSARY), tmp_path, llm=llm)
+    assert described.tables[0].columns[0].description == "Who the customer is."
     profile = forgotten(described)
     assert profile.glossary == {}
     (table,) = profile.tables
     assert table.reading is None
-    assert [(c.terms, c.reading) for c in table.columns] == [
-        (described.tables[0].columns[0].terms, None)
+    assert [(c.terms, c.reading, c.description) for c in table.columns] == [
+        (described.tables[0].columns[0].terms, None, None)
     ], "its terms as they were split"
+
+
+def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) -> None:
+    glossary = {**_GLOSSARY, "customer": Concept(("cust",), "Who buys.")}
+    (table,) = _profile("cust_nm", "cust_st_cd", glossary=glossary).tables
+    counted = replace(
+        table,
+        rows=10,
+        columns=(
+            replace(table.columns[0], statistics=Statistics(2, 8, Lengths(3, 9))),
+            replace(table.columns[1], values=(Value("A", 6), Value("B", 4))),
+        ),
+        groups=(Group(("cust_nm", "cust_st_cd"), 0.9),),
+    )
+    profile = replace(_profile(glossary=glossary), tables=(counted,))
+    llm = _Answers(json.dumps({"2_st": "status"}), descriptions=(" The name. ", "The status."))
+    samples = {"cust": Sample({"cust_nm": ["Anna", "Otto"], "cust_st_cd": ["A", "B"]})}
+    described = _described(profile, tmp_path, llm=llm, samples=samples)
+    assert [c.description for c in described.tables[0].columns] == ["The name.", "The status."]
+    first, second = llm.descriptions
+    for fact in (
+        "- its name reads: customer_name",
+        "- customer: Who buys.",
+        "- the name of the table reads: customer",
+        "- type: varchar(10); values: Anna, Otto",
+        "- rows of the table: 10, of them null: 2, holding a value that stands for none: 0",
+        "- distinct values: 8",
+        "- lengths: 3 to 9",
+        "- the columns beside it: cust_st_cd",
+        "- filled in the same rows as: cust_st_cd",
+    ):
+        assert fact in first, fact
+    assert "- its values, with their rows: A (6), B (4)" in second
+    assert "- its name reads: customer_status_code" in second, "read by the model before"
+    again = _Answers()
+    _described(described, tmp_path, llm=again)
+    assert again.descriptions == [], "a column described is not asked for again"
+
+
+def test_the_profile_is_written_after_each_table_described(tmp_path: Path) -> None:
+    columns = (Column("cd", "varchar(10)", Statistics(0, 1, range=Range("", "B"))),)
+    profile = Profile(
+        catalog="crm",
+        schema="sales",
+        tables=(
+            Table(name="cust", rows=1, columns=columns),
+            Table(name="ord", rows=1, columns=columns),
+        ),
+        glossary={**_GLOSSARY, "order": Concept(("ord",))},
+    )
+    llm = _Failing(json.dumps({"description": "A code."}))
+    with pytest.raises(LanguageModelError):
+        _described(profile, tmp_path, llm=llm)
+    cust, ord_ = Profile.read(tmp_path / "profile").tables
+    assert cust.columns[0].description == "A code."
+    assert ord_.columns[0].description is None, "the model failed"
+    assert "- range: '' to 'B'" in llm.prompts[0], "an empty value is one"
+
+
+def test_a_description_of_nothing_is_passed_over(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    llm = _Answers(descriptions=("  ",))
+    described = _described(_profile("cust_nm", glossary=_GLOSSARY), tmp_path, llm=llm)
+    assert described.tables[0].columns[0].description is None
+    assert "No description was proposed of the column cust.cust_nm" in caplog.messages
+
+
+def test_a_column_of_a_description_given_is_not_described_by_the_model(tmp_path: Path) -> None:
+    given = TableOverride(columns={"cust_nm": ColumnOverride(description="Given.")})
+    llm = _Answers()
+    profile = _profile("cust_nm", glossary=_GLOSSARY)
+    described = _described(profile, tmp_path, Overrides(tables={"cust": given}), llm)
+    assert llm.descriptions == []
+    assert described.tables[0].columns[0].description is None, "the profile holds nothing given"
 
 
 def test_the_names_of_the_example_are_read_from_words_given(
@@ -380,7 +479,8 @@ def test_the_names_of_the_example_are_read_with_its_overrides(
     assert glossary.harmonized(columns["ap_ap_nm"]) == "contact_person_name", (
         "a term repeated in two meanings, by the reading given"
     )
-    assert glossary.harmonized(columns["cust_ap_id"]) == "customer_contact_person_identifier"
+    assert glossary.harmonized(columns["cust_ap_id"]) == "contact_person_id", "the name given"
+    assert columns["cust_ap_id"].reading == ("customer", "contact_person", "identifier")
     assert glossary.harmonized(columns["ap_seg_cd"]) == "segment_code", "the prefix omitted"
 
 

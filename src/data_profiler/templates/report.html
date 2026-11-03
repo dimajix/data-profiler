@@ -36,7 +36,7 @@
   <table>
     <thead>
       <tr>
-        <th>Column</th><th>Name</th><th>Type</th><th class="number">Nulls</th>
+        <th>Column</th><th>Name</th><th>Description</th><th>Type</th><th class="number">Nulls</th>
         <th class="number">Sentinels</th><th class="number">Distinct</th><th>Lengths</th>
         <th>Range</th><th>Semantic type</th>
       </tr>
@@ -47,6 +47,7 @@
       <tr{% if column.sensitive %} class="sensitive"{% endif %}>
         <td class="original">{{ column.name }}</td>
         <td>{{ harmonized(column) or "–" }}</td>
+        <td class="description">{{ column.description or "–" }}</td>
         <td class="type">{{ column.type }}</td>
         <td class="number">{{ share(statistics.nulls, table.rows) }}</td>
         <td class="number">{{ share(statistics.sentinel_rows, table.rows) }}</td>
@@ -87,7 +88,7 @@
       {% if listed %}
       <tr class="values">
         <td></td>
-        <td colspan="8">
+        <td colspan="9">
           <details>
             <summary>{{ listed | length }} {{ what }}</summary>
             {% for value in listed %}
@@ -125,7 +126,10 @@
     <tbody>
     {% for word, concept in profile.glossary.items() %}
       <tr>
-        <td>{{ word }}{% if concept.omitted %} <span class="omitted">(omitted)</span>{% endif %}</td>
+        <td>
+          {{ word }}{% if concept.omitted %} <span class="omitted">(omitted)</span>{% endif %}
+          {% if word not in given %} <span class="proposed">(proposed)</span>{% endif %}
+        </td>
         <td class="original">{{ concept.abbreviations | join(", ") }}</td>
         <td>{{ concept.description or "–" }}</td>
       </tr>

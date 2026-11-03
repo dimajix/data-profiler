@@ -89,11 +89,15 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
 def test_the_profile_of_an_environment_is_described_into_its_directory(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:
-    # Every term of a concept given, so that the language model is asked nothing.
+    # Every term of a concept given, and every column a description, so that the language model
+    # is asked nothing.
     given = {f"word_{term}": {"abbreviations": [term]} for term in occurrences(example_profile)}
-    (project / "overrides.yml").write_text(
-        safe_dump({"format": 4, "glossary": given}), encoding="utf-8"
-    )
+    descriptions = {
+        table.name: {"columns": {c.name: {"description": "Given."} for c in table.columns}}
+        for table in example_profile.tables
+    }
+    document = {"format": 5, "glossary": given, "tables": descriptions}
+    (project / "overrides.yml").write_text(safe_dump(document), encoding="utf-8")
     (project / "simulation").mkdir()
     proposed = {"customer": Concept(("cust",))}
     replace(example_profile, glossary=proposed).write(project / "simulation" / "profile")
