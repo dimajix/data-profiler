@@ -1,26 +1,28 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
 The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments: the word of a term of the glossary, the sensitivity of
-a column the detectors miss - or find where it is none, which gives back no values `scan` took
-out -, and the sentinels of a column, in place of those of the tool. Tables, columns and terms are
-named by their original names, as keys, so that a person writes no more than what is given.
+project, the same for all its environments: concepts of the glossary, the sensitivity of a column
+the detectors miss - or find where it is none, which gives back no values `scan` took out -, and the
+sentinels of a column, in place of those of the tool. Concepts are named by their words, tables and
+columns by their original names, as keys, so that a person writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
 counts, before the module `disclosure` decides what of its values the profile holds, so that the
 profile holds no values of a column marked sensitive. The stages that read the profile - `report`,
-and `describe`, which takes the words of terms as well - lay them over it whole, so that a mark
-given after a scan withholds the values there without a scan again; the sentinels a column was
+and `describe`, which takes the concepts as well - lay them over it whole, so that a
+mark given after a scan withholds the values there without a scan again; the sentinels a column was
 counted with, they leave as they are. A column has the marks the overrides give it and no others: a
 mark taken out gives back no values until `scan` counts the column again, and sentinels changed
-count only once it does.
+count only once it does. A concept given comes before those proposed: it takes the place of the
+one of its word, and its abbreviations are taken from the others, a concept left without any
+dropped, so that a term given is of no concept but those given.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
 not have and the sentinels given of a column whose values the database writes as no text, which
-has none; it does not check the terms, which it does not use. A stage that reads the profile
-refuses a table, a column or a term the profile does not have.
+has none; it does not check the concepts, which it does not use. A stage that reads the profile
+refuses a table or a column the profile does not have, and an abbreviation no name of it has.
 """
 
 from collections.abc import Collection, Mapping
@@ -34,10 +36,10 @@ from data_profiler.detect import Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.documents import DocumentError, read_document
 from data_profiler.glossary import occurrences
-from data_profiler.profile import Profile, Table
+from data_profiler.profile import Concept, Profile, Table
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 2
+_FORMAT: Final = 3
 
 
 class OverridesError(Exception):
@@ -157,14 +159,14 @@ class TableOverride:
 
 @dataclass(frozen=True)
 class Overrides:
-    """What is given by hand of a profile: words of terms, sensitivity and sentinels of columns.
+    """What is given by hand of a profile: concepts, sensitivity and sentinels of columns.
 
     Attributes:
-        glossary: The word of each term given, by the term, in lower case.
+        glossary: The concepts given, by their words.
         tables: What is given of each table, by its original name.
     """
 
-    glossary: Mapping[str, str] = field(default_factory=dict)
+    glossary: Mapping[str, Concept] = field(default_factory=dict)
     tables: Mapping[str, TableOverride] = field(default_factory=dict)
 
     @classmethod
@@ -214,26 +216,39 @@ class Overrides:
             profile: The profile.
 
         Returns:
-            The profile, the words of the overrides in its glossary, its columns marked with the
-            sensitivity they give, and only so, and without the values of those marked sensitive.
+            The profile, the concepts of the overrides in its glossary before its own, its columns
+            marked with the sensitivity they give, and only so, and without the values of those
+            marked sensitive.
 
         Raises:
-            OverridesError: The overrides give the word of a term that no name of the profile
-                has, or name a table or column the profile does not have.
+            OverridesError: The overrides give an abbreviation that no name of the profile has,
+                or name a table or column the profile does not have.
         """
-        unknown = sorted(set(self.glossary) - set(occurrences(profile)))
+        taken = {term for concept in self.glossary.values() for term in concept.abbreviations}
+        unknown = sorted(taken - set(occurrences(profile)))
         if unknown:
             raise OverridesError(
-                "the overrides give words of terms, in lower case as terms are, that no name of"
+                "the overrides give abbreviations, in lower case as terms are, that no name of"
                 " the profile has: " + ", ".join(unknown)
             )
         given = self.selected([table.name for table in profile.tables])
         tables = (
             disclose(given[table.name].laid_over(table), profile.types) for table in profile.tables
         )
-        return replace(
-            profile, tables=tuple(tables), glossary={**profile.glossary, **self.glossary}
-        )
+        concepts = _laid_over(self.glossary, taken, profile.glossary)
+        return replace(profile, tables=tuple(tables), glossary=concepts)
+
+
+def _laid_over(
+    given: Mapping[str, Concept], taken: Collection[str], proposed: Mapping[str, Concept]
+) -> dict[str, Concept]:
+    """The concepts `given`, whose abbreviations are `taken`, with those `proposed` without them."""
+    kept = {}
+    for word, concept in proposed.items():
+        left = tuple(term for term in concept.abbreviations if term not in taken)
+        if word not in given and left:
+            kept[word] = replace(concept, abbreviations=left)
+    return {**given, **kept}
 
 
 _ADAPTER: Final = TypeAdapter(Overrides)

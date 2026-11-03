@@ -65,8 +65,9 @@ environment.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
-    and composing harmonized names from the words of the glossary, which the profile holds.
-*   **`data_profiler.describe`** - the stage `describe`: the glossary's words and the columns'
+    and composing harmonized names from the words of the concepts of the glossary, which the
+    profile holds.
+*   **`data_profiler.describe`** - the stage `describe`: the glossary's concepts and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
@@ -143,15 +144,20 @@ from the profile.
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
     is in none.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`.
-*   **Glossary** - the word each term of a profile stands for, once for the whole profile:
-    `customer` for `CUST`.
+*   **Concept** - an entry of the glossary: a word, from which harmonized names are composed, the
+    terms it is written as, its abbreviations - `cust` and `kd` for `customer` -, and its
+    description, in English, from which the language model proposes names and descriptions. A
+    concept omitted is left out of the harmonized names, as a prefix that marks a custom column.
+*   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
     name composed from the words of the glossary.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: the word of a term, the sensitivity and the sentinels of a
+    laid over a generated profile: concepts of the glossary, the sensitivity and the sentinels of a
     column. What it gives is taken as given by every stage: by `scan`, which counts the columns
-    with their sentinels and marks them, as by `describe` and `report`, which lay the words and
-    marks over the profile; sentinels changed count once `scan` counts the column again.
+    with their sentinels and marks them, as by `describe` and `report`, which lay the concepts and
+    marks over the profile; sentinels changed count once `scan` counts the column again. A concept
+    given takes the place of the one proposed of its word, and its abbreviations are taken from the
+    others.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -175,11 +181,10 @@ from the profile.
     cannot be read, or one of another schema, is refused and never overwritten: it may be the work
     of hours.
 2.  `describe` splits the original names of all tables and columns into terms, and asks the
-    language model for the word of each term, showing it the tables and columns the term appears
-    in. From the glossary and
-    from each column's statistics, matches and sample, it asks for the column's name and
-    description. Overrides are taken as given. The result is the profile, with glossary and
-    suggestions.
+    language model for the concept of each term of none, showing it the tables and columns the term
+    appears in. From the concepts of its terms, and from each column's statistics, matches and
+    sample, it asks for the column's name and description. Overrides are taken as given. The
+    result is the profile, with glossary and suggestions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML.
 
 ## Principles
@@ -205,8 +210,11 @@ The design repeats a few decisions; new code follows them.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes names and descriptions from what they
     found, and nothing else.
-*   **One word per term.** Harmonized names are composed from the glossary, so that the same term
-    reads the same in every table.
+*   **One word per concept.** Harmonized names are composed from the words of the concepts of the
+    glossary, so that the same concept reads the same in every table, under whichever of its
+    abbreviations it is written; a name of a term of several concepts has none, as long as which
+    one it stands for is not known. Where two columns of a table come to the same name, the report
+    shows it, rather than one name taking the place of the other.
 *   **The stages share nothing but the profile and the workspace.** Each stage can be run again on
     its own: `describe` with another model without querying the database, `report` without
     either.

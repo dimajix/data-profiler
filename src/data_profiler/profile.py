@@ -39,7 +39,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 8
+FORMAT: Final = 9
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -317,6 +317,24 @@ class Run:
 
 
 @dataclass(frozen=True)
+class Concept:
+    """An entry of the glossary: what a word means, and the terms it is written as in the names.
+
+    An abbreviation may be of several concepts, which a term of a name may each stand for.
+
+    Attributes:
+        abbreviations: The terms it is written as, in lower case.
+        description: What it means, in English; None where none is given.
+        omitted: Whether it is left out of harmonized names, as a prefix that marks a custom
+            column, which says nothing of what the column holds.
+    """
+
+    abbreviations: tuple[str, ...]
+    description: str | None = None
+    omitted: bool = False
+
+
+@dataclass(frozen=True)
 class Profile:
     """What was found about the tables of one schema of a database.
 
@@ -324,8 +342,8 @@ class Profile:
         catalog: The catalog of the schema, as Trino names the database it reads.
         schema: The schema whose tables the profile describes.
         tables: The tables that were selected, sorted by their names.
-        glossary: Each term of the names of the tables and columns with the word it stands for,
-            once proposed or given.
+        glossary: The concepts of the names of the tables and columns, by their words, once
+            proposed or given.
         types: The semantic types of the project the tables were scanned with, beside those of
             the tool.
         run: The last run of scan, or None where no scan wrote the profile.
@@ -334,7 +352,7 @@ class Profile:
     catalog: str
     schema: str
     tables: tuple[Table, ...]
-    glossary: Mapping[str, str] = field(default_factory=dict)
+    glossary: Mapping[str, Concept] = field(default_factory=dict)
     types: SemanticTypes = ()
     run: Run | None = None
 
@@ -522,7 +540,7 @@ class _Head:
     catalog: str
     schema: str
     run: Run | None = None
-    glossary: Mapping[str, str] = field(default_factory=dict)
+    glossary: Mapping[str, Concept] = field(default_factory=dict)
     types: SemanticTypes = ()
 
 

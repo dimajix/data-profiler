@@ -1,4 +1,4 @@
-format: 8
+format: 9
 name: cust
 rows: 5000
 columns:
@@ -32,3 +32,6 @@ columns:
     distinct: 7
     lengths: {shortest: 2, longest: 4}
     sentinels: [{value: N/A, rows: 60}, {value: '', rows: 40}]
+- name: ap_seg_cd
+  type: varchar(4)
+  statistics: {nulls: 3200, distinct: 9, lengths: {shortest: 2, longest: 4}}

@@ -1,10 +1,23 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
-# the word of a term, the sensitivity of a column the detectors miss - here the names of persons,
-# which no detector recognises -, and the sentinels of a column in place of those of the tool -
-# here the postal codes of a delivery, which are empty where none is given, or would be zeros.
-format: 2
+# concepts of the glossary - a customer; an address, written in two ways; and a prefix that marks a
+# custom column, left out of the names -, the sensitivity of a column the detectors miss - here the
+# names of persons, which no detector recognises -, and the sentinels of a column in place of those
+# of the tool - here the postal codes of a delivery, which are empty where none is given, or would
+# be zeros.
+format: 3
 glossary:
-  cust: customer
+  customer:
+    abbreviations: [cust]
+    description: A person or company that buys from the company, with its orders and addresses.
+  address:
+    abbreviations: [addr, adr]
+    description: Where a person or company is reached, by post or by e-mail.
+  airplus:
+    abbreviations: [ap]
+    description: >-
+      Marks a column added to the CRM for AirPlus, a custom column; it says nothing of what the
+      column holds.
+    omitted: true
 tables:
   cust:
     columns:

@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.glossary import Glossary
 from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
-from data_profiler.profile import Column, Profile, Range, Statistics, Table, Value
+from data_profiler.profile import Column, Concept, Profile, Range, Statistics, Table, Value
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
 
@@ -34,7 +35,11 @@ _PROFILE = Profile(
             ),
         ),
     ),
-    glossary={"cntct": "contact", "frst": "fist"},
+    glossary={
+        "contact": Concept(("cntct",)),
+        "fist": Concept(("frst",)),
+        "type_code": Concept(("typ", "cd")),
+    },
 )
 
 
@@ -110,19 +115,34 @@ def test_each_table_selected_has_what_is_given_of_it() -> None:
         overrides.selected(["cust"])
 
 
-def test_the_words_of_the_overrides_are_taken_as_given() -> None:
-    laid = Overrides(glossary={"frst": "first", "nm": "name"}).laid_over(_PROFILE)
-    assert laid.glossary == {"cntct": "contact", "frst": "first", "nm": "name"}
+def test_the_concepts_of_the_overrides_are_taken_as_given() -> None:
+    given = {
+        "first": Concept(("frst",), "The first of the names of a person."),
+        "type": Concept(("typ",)),
+    }
+    laid = Overrides(glossary=given).laid_over(_PROFILE)
+    assert laid.glossary == {
+        **given,
+        "contact": Concept(("cntct",)),
+        "type_code": Concept(("cd",)),
+    }, "the concepts proposed without the abbreviations given, and none without any left"
+    replaced = Overrides(glossary={"contact": Concept(("cntct",), "A contact.")}).laid_over(
+        _PROFILE
+    )
+    assert replaced.glossary["contact"] == Concept(("cntct",), "A contact."), "of the same word"
 
 
 @pytest.mark.parametrize(
     ("overrides", "problem"),
     [
-        (Overrides(glossary={"CUST": "customer"}), "that no name of the profile has: CUST"),
+        (
+            Overrides(glossary={"customer": Concept(("CUST",))}),
+            "abbreviations, in lower case as terms are, that no name of the profile has: CUST",
+        ),
         (Overrides(tables={"cust": TableOverride()}), "tables that are not profiled: cust"),
         (_marked("lst_nm"), "columns of cntct it does not have: lst_nm"),
     ],
-    ids=["a term", "a table", "a column"],
+    ids=["an abbreviation", "a table", "a column"],
 )
 def test_an_override_of_what_the_profile_does_not_have_is_refused_naming_it(
     overrides: Overrides, problem: str
@@ -137,7 +157,8 @@ def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:
 
 def test_the_overrides_of_the_example_project_are_read() -> None:
     overrides = Overrides.read(_EXAMPLE)
-    assert overrides.glossary == {"cust": "customer"}
+    assert overrides.glossary["address"].abbreviations == ("addr", "adr")
+    assert overrides.glossary["airplus"].omitted
     marked = overrides.tables["cntct"].columns["frst_nm"]
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
     assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
@@ -149,10 +170,14 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     laid = Overrides.read(_EXAMPLE).laid_over(example_profile)
     columns = {f"{t.name}.{c.name}": c for t in laid.tables for c in t.columns}
     assert columns["cntct.lst_nm"].sensitivity is Sensitivity.PERSONAL
+    words = {"segment": Concept(("seg",)), "code": Concept(("cd",))}
+    glossary = Glossary({**laid.glossary, **words})
+    assert glossary.harmonized("cust_addr") == "customer_address", "of two abbreviations"
+    assert glossary.harmonized("ap_seg_cd") == "segment_code", "the prefix omitted"
 
 
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 2"):
+    with pytest.raises(OverridesError, match="format 1, but only format 3"):
         Overrides.read(path)

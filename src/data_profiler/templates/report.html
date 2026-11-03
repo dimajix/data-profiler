@@ -102,6 +102,11 @@
     {% endfor %}
     </tbody>
   </table>
+  {% for name, shared in collisions(table).items() %}
+  <p class="collision">
+    Same harmonized name: {{ name }} – <span class="original">{{ shared | join(", ") }}</span>
+  </p>
+  {% endfor %}
   {% for group in table.groups %}
   <p class="group">
     Filled together: <span class="original">{{ group.columns | join(", ") }}</span>
@@ -115,13 +120,28 @@
   <h2>Glossary</h2>
   <table>
     <thead>
-      <tr><th>Term</th><th>Word</th><th>Appears in</th></tr>
+      <tr><th>Word</th><th>Abbreviations</th><th>Description</th></tr>
     </thead>
     <tbody>
-    {% for term, names in terms.items() %}
+    {% for word, concept in profile.glossary.items() %}
+      <tr>
+        <td>{{ word }}{% if concept.omitted %} <span class="omitted">(omitted)</span>{% endif %}</td>
+        <td class="original">{{ concept.abbreviations | join(", ") }}</td>
+        <td>{{ concept.description or "–" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if unknown %}
+  <h3>Terms of no concept</h3>
+  <table>
+    <thead>
+      <tr><th>Term</th><th>Appears in</th></tr>
+    </thead>
+    <tbody>
+    {% for term, names in unknown.items() %}
       <tr>
         <td class="original">{{ term }}</td>
-        <td>{{ profile.glossary.get(term, "—") }}</td>
         <td>
           {{ names[:places] | join(", ") }}
           {% if names | length > places %}, … ({{ names | length }}){% endif %}
@@ -130,6 +150,7 @@
     {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 </section>
 </main>
 </body>
