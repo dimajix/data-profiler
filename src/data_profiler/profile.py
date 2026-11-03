@@ -11,9 +11,19 @@ named after it, so that a person finds a table in a file of its own, and its cha
 their own. A file of a table is read with the semantic types of `profile.yml`, which its matches
 name.
 
+Every attribute of a profile is filled by one step, which replaces in a profile there is those it
+fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
+profile, the rows, runs and groups of its tables, and the types, statistics, matches, values, marks
+and sentinels of their columns; the stage describe fills the terms of the names of the tables and
+columns by its step that splits them, and their readings by its step that reads them, and is to
+fill the glossary once it asks the language model. The overrides fill none: what they give, the
+stages lay over the profile they read, and scan takes the marks and sentinels they give.
+
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
-each table names the run that counted it, so that a run resumed can skip it.
+each table names the run that counted it, so that a run resumed can skip it. A table counted anew
+keeps the terms and the readings of its name and of the names of its columns, which describe
+filled.
 """
 
 import logging
@@ -39,7 +49,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 9
+FORMAT: Final = 10
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -215,6 +225,26 @@ class Match:
 
 
 @dataclass(frozen=True)
+class Term:
+    """A term of a name, as the vocabulary splits it, with the concepts it may stand for.
+
+    Attributes:
+        text: The term, in lower case.
+        concepts: The words of the concepts it is an abbreviation of, its candidates, in the order
+            of the glossary when it was split; none of a term of digits, which stands for itself,
+            or of a term of no concept.
+    """
+
+    text: str
+    concepts: tuple[str, ...] = ()
+
+    @property
+    def candidates(self) -> tuple[str, ...]:
+        """What it may be read as: its digits, of a term of digits, else its concepts."""
+        return (self.text,) if self.text.isdigit() else self.concepts
+
+
+@dataclass(frozen=True)
 class Column:
     """A column of a table, under its original name and type, and what was found about it.
 
@@ -230,6 +260,9 @@ class Column:
         sentinels: The sentinels given by hand, by an override, as values, in place of those of
             the tool, that the column was counted with; None where none are given, and where the
             column has no text, which is counted without sentinels, whatever is given.
+        terms: The terms of its name, in their order, or None where it is not split yet.
+        reading: The reading of its name: the word of the concept each of its terms stands for,
+            at its place, the digits of a term of digits; None where it is not read.
     """
 
     name: str
@@ -239,6 +272,8 @@ class Column:
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
+    terms: tuple[Term, ...] | None = None
+    reading: tuple[str, ...] | None = None
 
     @property
     def left_aside(self) -> frozenset[str]:
@@ -289,6 +324,9 @@ class Table:
         columns: Its columns, in the order of the table.
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
+        terms: The terms of its name, in their order, or None where it is not split yet.
+        reading: The reading of its name: the word of the concept each of its terms stands for,
+            at its place, the digits of a term of digits; None where it is not read.
     """
 
     name: str
@@ -297,6 +335,8 @@ class Table:
     rows: int
     columns: tuple[Column, ...]
     groups: tuple[Group, ...] = ()
+    terms: tuple[Term, ...] | None = None
+    reading: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -400,9 +440,11 @@ class Profile:
         """The profile in `directory` that a scan of `schema` of `catalog` with `types` updates.
 
         A directory without `profile.yml` holds no profile, so that one left by an interrupted
-        first write is no profile either. A profile scanned with other semantic types loses its
-        tables, as their matches may name a type it no longer has, and keeps its glossary. The run
-        of the profile is resumed where it did not finish, and a new run begun else.
+        first write is no profile either. A profile scanned with other semantic types keeps its
+        tables, but their matches, which may name a type it no longer has, and the values and
+        ranges of their columns, which a type it has now may find sensitive, until they are
+        counted anew; its glossary and what describe filled it keeps as well. The run of the
+        profile is resumed where it did not finish, and a new run begun else.
 
         Args:
             directory: The directory of the profile.
@@ -412,8 +454,9 @@ class Profile:
             started: When the scan started, in UTC: the start of a new run, where it begins one.
 
         Returns:
-            The profile in `directory`, without its tables where it was scanned with other types;
-            an empty one of `types` where there is none; with its run resumed, or a new one.
+            The profile in `directory`, its tables without their matches, values and ranges where
+            it was scanned with other types, then in a new run; an empty one of `types` where
+            there is none; with its run resumed, or a new one.
 
         Raises:
             ProfileError: The profile cannot be read, as `read` says, or is of another schema.
@@ -430,7 +473,8 @@ class Profile:
             )
         if profile.types != types:
             _logger.info("The semantic types changed: the tables of %s are scanned anew", directory)
-            return replace(empty, glossary=profile.glossary)
+            tables = tuple(_unmatched(table) for table in profile.tables)
+            return replace(profile, tables=tables, types=types, run=begun)
         if profile.run is not None and profile.run.finished is None:
             _logger.info("Resuming the scan of %s begun at %s", directory, profile.run.started)
             return profile
@@ -482,13 +526,17 @@ class Profile:
         """The profile with `table`, counted by its run, in place of its table of the same name.
 
         Args:
-            table: The table, as it was found anew.
+            table: The table, as scan found it anew.
 
         Returns:
             The profile, `table` in place of its table of the same name, or beside its tables,
-            sorted by their names, and named counted by the run of the profile.
+            sorted by their names, and named counted by the run of the profile; with the terms and
+            readings of its table of the same name and of its columns of the same names.
         """
         counted = replace(table, run=None if self.run is None else self.run.started)
+        for kept in self.tables:
+            if kept.name == table.name:
+                counted = _described(counted, kept)
         others = (kept for kept in self.tables if kept.name != table.name)
         return replace(self, tables=_sorted((*others, counted)))
 
@@ -542,6 +590,27 @@ class _Head:
     run: Run | None = None
     glossary: Mapping[str, Concept] = field(default_factory=dict)
     types: SemanticTypes = ()
+
+
+def _unmatched(table: Table) -> Table:
+    """`table`, its columns without their matches, values and ranges."""
+    columns = (
+        replace(column, matches=(), values=(), statistics=replace(column.statistics, range=None))
+        for column in table.columns
+    )
+    return replace(table, columns=tuple(columns))
+
+
+def _described(table: Table, kept: Table) -> Table:
+    """`table`, with the terms and readings of `kept`, of its name and of its columns of a name."""
+    described = {column.name: column for column in kept.columns}
+    columns = (
+        replace(column, terms=old.terms, reading=old.reading)
+        if (old := described.get(column.name)) is not None
+        else column
+        for column in table.columns
+    )
+    return replace(table, columns=tuple(columns), terms=kept.terms, reading=kept.reading)
 
 
 def _sorted(tables: Iterable[Table]) -> tuple[Table, ...]:

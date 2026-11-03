@@ -30,7 +30,7 @@ from yaml import safe_dump, safe_load
 from data_profiler.commands import run
 from data_profiler.glossary import Glossary, Vocabulary, occurrences
 from data_profiler.overrides import Overrides, OverridesError
-from data_profiler.profile import Column, Concept, Profile, ProfileError, Table
+from data_profiler.profile import Column, Concept, Profile, ProfileError, Statistics, Table, Term
 from data_profiler.project import Project, ProjectError
 from data_profiler.source import as_text
 from data_profiler.workspace import Sample, Workspace, WorkspaceError
@@ -185,12 +185,17 @@ def _brief(found: tuple[Table, Column], samples: dict[str, Sample]) -> str:
 
 
 def _composed(split: list[str], words: dict[str, str]) -> str | None:
-    """The harmonized name of a name of the terms `split`, from the word of each."""
+    """The harmonized name of a name of the terms `split`, read by the word of each."""
+    if not all(term.isdigit() or term in words for term in split):
+        return None
     concepts: dict[str, list[str]] = {}
     for term, word in words.items():
         concepts.setdefault(word, []).append(term)
     glossary = Glossary({word: Concept(tuple(found)) for word, found in concepts.items()})
-    return glossary.harmonized(split)
+    reading = tuple(term if term.isdigit() else words[term] for term in split)
+    terms = tuple(Term(term, () if term.isdigit() else (words[term],)) for term in split)
+    named = Column("_".join(split), "", Statistics(0, 0), terms=terms, reading=reading)
+    return glossary.harmonized(named)
 
 
 def _facts(table: Table, column: Column, values: Sequence[object]) -> str:

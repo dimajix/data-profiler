@@ -206,7 +206,7 @@ def test_a_scan_keeps_the_glossary_and_drops_the_tables_no_longer_selected(
     assert not (tmp_path / "profile" / "tables" / "gone.yml").exists()
 
 
-def test_a_profile_scanned_with_other_types_loses_its_tables(
+def test_a_profile_scanned_with_other_types_keeps_its_tables_until_they_are_counted_anew(
     source: Source, example_profile: Profile, account_number: SemanticType, tmp_path: Path
 ) -> None:
     Profile(
@@ -220,9 +220,13 @@ def test_a_profile_scanned_with_other_types_loses_its_tables(
     with pytest.raises(WorkspaceError):
         _scanned(source, "cust|prod", tmp_path)
     profile = Profile.read(tmp_path / "profile")
-    assert [table.name for table in profile.tables] == ["cust"], "only what is counted anew"
+    cust, prod = profile.tables
     assert profile.types == ()
     assert profile.glossary == _GLOSSARY, "the glossary is kept all the same"
+    assert any(column.matches for column in cust.columns), "a table counted anew"
+    assert not any(column.matches or column.values for column in prod.columns), (
+        "a table not counted anew, without its matches and values"
+    )
 
 
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(

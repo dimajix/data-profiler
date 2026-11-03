@@ -1,4 +1,4 @@
-format: 9
+format: 10
 name: cust
 rows: 5000
 columns:
@@ -25,6 +25,10 @@ columns:
   type: varchar(3)
   statistics: {nulls: 600, distinct: 2, lengths: {shortest: 2, longest: 3}}
   matches: [{type: yes-no, sample: 1.0, table: 1.0}]
+- {name: cust_ap_id, type: bigint, statistics: {nulls: 2100, distinct: 2400}}
+- name: ap_ap_nm
+  type: varchar(60)
+  statistics: {nulls: 3000, distinct: 1800, lengths: {shortest: 3, longest: 40}}
 - name: seg_cd
   type: varchar(4)
   statistics:

@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import SemanticType, Sensitivity
-from data_profiler.glossary import Glossary
 from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
 from data_profiler.profile import Column, Concept, Profile, Range, Statistics, Table, Value
 
@@ -144,6 +143,30 @@ def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
     assert laid.glossary["first_name"] == Concept(("frstnm",)), "not split into frst and nm"
 
 
+def _read(table: tuple[str, ...] | None, column: tuple[str, ...]) -> Overrides:
+    """Overrides that read the name of `cntct` as `table`, and of its `frst_nm` as `column`."""
+    given = TableOverride(reading=table, columns={"frst_nm": ColumnOverride(reading=column)})
+    return Overrides(glossary={"name": Concept(("nm",))}, tables={"cntct": given})
+
+
+def test_the_readings_of_the_overrides_are_taken_as_given() -> None:
+    (table,) = _read(("contact",), ("fist", "name")).laid_over(_PROFILE).tables
+    assert table.reading == ("contact",)
+    assert table.columns[0].reading == ("fist", "name")
+    assert table.columns[1].reading is None, "a column of no reading given"
+    given = _read(("contact",), ("fist", "name")).tables["cntct"]
+    assert given.laid_over(_PROFILE.tables[0]) == _PROFILE.tables[0], "not by a scan"
+
+
+def test_a_reading_given_comes_before_the_one_read() -> None:
+    (table,) = _PROFILE.tables
+    read = replace(
+        table, columns=(replace(table.columns[0], reading=("fist", "nm")), table.columns[1])
+    )
+    (laid,) = _read(None, ("fist", "name")).laid_over(replace(_PROFILE, tables=(read,))).tables
+    assert laid.columns[0].reading == ("fist", "name")
+
+
 @pytest.mark.parametrize(
     ("overrides", "problem"),
     [
@@ -153,8 +176,16 @@ def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
         ),
         (Overrides(tables={"cust": TableOverride()}), "tables that are not profiled: cust"),
         (_marked("lst_nm"), "columns of cntct it does not have: lst_nm"),
+        (
+            _read(None, ("fist",)),
+            "readings of names of cntct that read no concept .*, or not one of each: frst_nm",
+        ),
+        (
+            _read(("contract",), ("fist", "name")),
+            "readings of names of cntct that read no concept .*: cntct",
+        ),
     ],
-    ids=["an abbreviation", "a table", "a column"],
+    ids=["an abbreviation", "a table", "a column", "a reading too short", "a reading amiss"],
 )
 def test_an_override_of_what_the_profile_does_not_have_is_refused_naming_it(
     overrides: Overrides, problem: str
@@ -182,14 +213,12 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     laid = Overrides.read(_EXAMPLE).laid_over(example_profile)
     columns = {f"{t.name}.{c.name}": c for t in laid.tables for c in t.columns}
     assert columns["cntct.lst_nm"].sensitivity is Sensitivity.PERSONAL
-    words = {"segment": Concept(("seg",)), "code": Concept(("cd",))}
-    glossary = Glossary({**laid.glossary, **words})
-    assert glossary.harmonized(["cust", "addr"]) == "customer_address", "of two abbreviations"
-    assert glossary.harmonized(["ap", "seg", "cd"]) == "segment_code", "the prefix omitted"
+    assert laid.glossary["address"].abbreviations == ("addr", "adr")
+    assert columns["cust.ap_ap_nm"].reading == ("airplus", "contact_person", "name")
 
 
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 3"):
+    with pytest.raises(OverridesError, match="format 1, but only format 4"):
         Overrides.read(path)

@@ -1,28 +1,34 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
 The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments: concepts of the glossary, the sensitivity of a column
-the detectors miss - or find where it is none, which gives back no values `scan` took out -, and the
-sentinels of a column, in place of those of the tool. Concepts are named by their words, tables and
-columns by their original names, as keys, so that a person writes no more than what is given.
+project, the same for all its environments: concepts of the glossary, the reading of the name of a
+table or column, the sensitivity of a column the detectors miss - or find where it is none, which
+gives back no values `scan` took out -, and the sentinels of a column, in place of those of the
+tool. Concepts are named by their words, tables and columns by their original names, as keys, so
+that a person writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
 counts, before the module `disclosure` decides what of its values the profile holds, so that the
 profile holds no values of a column marked sensitive. The stages that read the profile - `report`,
-and `describe`, which takes the concepts as well - lay them over it whole, so that a
-mark given after a scan withholds the values there without a scan again; the sentinels a column was
-counted with, they leave as they are. A column has the marks the overrides give it and no others: a
-mark taken out gives back no values until `scan` counts the column again, and sentinels changed
-count only once it does. A concept given comes before those proposed: it takes the place of the
-one of its word, and its abbreviations are taken from the others, a concept left without any
-dropped, so that a term given is of no concept but those given.
+and `describe`, which takes the concepts as well - lay them over it whole, so that a mark given
+after a scan withholds the values there without a scan again; the sentinels a column was counted
+with, they leave as they are. A column has the marks the overrides give it and no others: a mark
+taken out gives back no values until `scan` counts the column again, and sentinels changed count
+only once it does. A concept given comes before those proposed: it takes the place of the one of
+its word, and its abbreviations are taken from the others, a concept left without any dropped, so
+that a term given is of no concept but those given. A reading given comes before the one read; it
+is laid over by the stages that read the profile alone, not by `scan`, so that the profile never
+holds it as read, and it counts once `describe` has split the name, as a reading agrees with the
+terms of its name.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
 not have and the sentinels given of a column whose values the database writes as no text, which
-has none; it does not check the concepts, which it does not use. A stage that reads the profile
-refuses a table or a column the profile does not have, and an abbreviation no name of it has.
+has none; it does not check the concepts and readings, which it does not use. A stage that reads
+the profile refuses a table or a column the profile does not have, an abbreviation no name of it
+has, and a reading of a name that is not one of its terms, as the vocabulary splits it: of another
+number of words, or a word of no concept of the term at its place.
 """
 
 from collections.abc import Collection, Mapping
@@ -35,11 +41,11 @@ from pydantic import TypeAdapter
 from data_profiler.detect import Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.documents import DocumentError, read_document
-from data_profiler.glossary import occurrences
+from data_profiler.glossary import Glossary, Vocabulary, agrees, occurrences
 from data_profiler.profile import Concept, Profile, Table
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 3
+_FORMAT: Final = 4
 
 
 class OverridesError(Exception):
@@ -54,21 +60,27 @@ class ColumnOverride:
         sensitivity: The sensitivity of the column, or None where it is not given.
         sentinels: The values that stand for no value in the column, in place of those of the
             tool, none where empty; None where they are not given.
+        reading: The word of the concept each term of its name stands for, in their order, or
+            None where it is not given.
     """
 
     sensitivity: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
+    reading: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
 class TableOverride:
-    """What is given by hand of the columns of a table.
+    """What is given by hand of a table and its columns.
 
     Attributes:
         columns: What is given of each column, by its original name.
+        reading: The word of the concept each term of the name of the table stands for, in their
+            order, or None where it is not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
+    reading: tuple[str, ...] | None = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -95,6 +107,44 @@ class TableOverride:
         self._refuse_missing(table)
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
         return replace(table, columns=tuple(columns))
+
+    def read(self, table: Table, vocabulary: Vocabulary, glossary: Glossary) -> Table:
+        """`table`, its name and the names of its columns read as given.
+
+        Args:
+            table: The table.
+            vocabulary: The vocabulary the names are split by, as `describe` splits them.
+            glossary: The glossary whose concepts the readings name.
+
+        Returns:
+            The table, each reading given in place of the one read.
+
+        Raises:
+            OverridesError: A column is named that the table does not have, or a reading is given
+                that is no reading of the terms of its name.
+        """
+        self._refuse_missing(table)
+        given = [(table.name, self.reading)]
+        given += [(name, column.reading) for name, column in self.columns.items()]
+        unread = [
+            name
+            for name, reading in given
+            if reading is not None and not agrees(glossary.terms(name, vocabulary), reading)
+        ]
+        if unread:
+            raise OverridesError(
+                f"the overrides give readings of names of {table.name} that read no concept of a"
+                f" term at its place, or not one of each: {', '.join(unread)}"
+            )
+        columns = (
+            replace(column, reading=override.reading)
+            if (override := self.columns.get(column.name)) is not None
+            and override.reading is not None
+            else column
+            for column in table.columns
+        )
+        read = self.reading if self.reading is not None else table.reading
+        return replace(table, columns=tuple(columns), reading=read)
 
     def agrees_with(self, table: Table) -> bool:
         """Whether `table` agrees with what is given: marked, and counted with the sentinels given.
@@ -159,7 +209,7 @@ class TableOverride:
 
 @dataclass(frozen=True)
 class Overrides:
-    """What is given by hand of a profile: concepts, sensitivity and sentinels of columns.
+    """What is given by hand of a profile: concepts, readings, sensitivity and sentinels.
 
     Attributes:
         glossary: The concepts given, by their words.
@@ -216,13 +266,16 @@ class Overrides:
             profile: The profile.
 
         Returns:
-            The profile, the concepts of the overrides in its glossary before its own, its columns
-            marked with the sensitivity they give, and only so, and without the values of those
-            marked sensitive.
+            The profile, the concepts of the overrides in its glossary before its own, the
+            readings they give of the names of its tables and columns in place of those read, its
+            columns marked with the sensitivity they give, and only so, and without the values of
+            those marked sensitive.
 
         Raises:
             OverridesError: The overrides give an abbreviation that no name of the profile has,
-                or name a table or column the profile does not have.
+                name a table or column the profile does not have, or give a reading of a name that
+                is no reading of its terms, as the vocabulary of the profile splits it: of another
+                number of words, or a word of no concept of the term at its place.
         """
         taken = {term for concept in self.glossary.values() for term in concept.abbreviations}
         concepts = _laid_over(self.glossary, taken, profile.glossary)
@@ -233,9 +286,15 @@ class Overrides:
                 "the overrides give abbreviations, in lower case as terms are, that no name of"
                 " the profile has: " + ", ".join(unknown)
             )
+        vocabulary = Vocabulary.of(replace(profile, glossary=concepts))
+        glossary = Glossary(concepts)
         given = self.selected([table.name for table in profile.tables])
         tables = (
-            disclose(given[table.name].laid_over(table), profile.types) for table in profile.tables
+            disclose(
+                given[table.name].read(given[table.name].laid_over(table), vocabulary, glossary),
+                profile.types,
+            )
+            for table in profile.tables
         )
         return replace(profile, tables=tuple(tables), glossary=concepts)
 
