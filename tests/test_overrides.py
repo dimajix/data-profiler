@@ -132,6 +132,18 @@ def test_the_concepts_of_the_overrides_are_taken_as_given() -> None:
     assert replaced.glossary["contact"] == Concept(("cntct",), "A contact."), "of the same word"
 
 
+def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
+    (table,) = _PROFILE.tables
+    profile = replace(
+        _PROFILE,
+        tables=(
+            replace(table, columns=(*table.columns, replace(table.columns[0], name="frstnm"))),
+        ),
+    )
+    laid = Overrides(glossary={"first_name": Concept(("frstnm",))}).laid_over(profile)
+    assert laid.glossary["first_name"] == Concept(("frstnm",)), "not split into frst and nm"
+
+
 @pytest.mark.parametrize(
     ("overrides", "problem"),
     [
@@ -172,8 +184,8 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     assert columns["cntct.lst_nm"].sensitivity is Sensitivity.PERSONAL
     words = {"segment": Concept(("seg",)), "code": Concept(("cd",))}
     glossary = Glossary({**laid.glossary, **words})
-    assert glossary.harmonized("cust_addr") == "customer_address", "of two abbreviations"
-    assert glossary.harmonized("ap_seg_cd") == "segment_code", "the prefix omitted"
+    assert glossary.harmonized(["cust", "addr"]) == "customer_address", "of two abbreviations"
+    assert glossary.harmonized(["ap", "seg", "cd"]) == "segment_code", "the prefix omitted"
 
 
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:

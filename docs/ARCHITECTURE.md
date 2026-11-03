@@ -65,8 +65,8 @@ environment.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
-    and composing harmonized names from the words of the concepts of the glossary, which the
-    profile holds.
+    those written together by the vocabulary of the profile, and composing harmonized names from
+    the words of the concepts of the glossary, which the profile holds.
 *   **`data_profiler.describe`** - the stage `describe`: the glossary's concepts and the columns'
     names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
@@ -144,6 +144,10 @@ from the profile.
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
     is in none.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`.
+*   **Vocabulary** - the terms a term written together is split into: those found in the names of
+    a profile, and the abbreviations of its concepts. A term is split only where other terms of the
+    vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and an
+    abbreviation of a concept never.
 *   **Concept** - an entry of the glossary: a word, from which harmonized names are composed, the
     terms it is written as, its abbreviations - `cust` and `kd` for `customer` -, and its
     description, in English, from which the language model proposes names and descriptions. A
@@ -180,11 +184,11 @@ from the profile.
     glossary is kept; a profile scanned with other semantic types loses its tables. A profile that
     cannot be read, or one of another schema, is refused and never overwritten: it may be the work
     of hours.
-2.  `describe` splits the original names of all tables and columns into terms, and asks the
-    language model for the concept of each term of none, showing it the tables and columns the term
-    appears in. From the concepts of its terms, and from each column's statistics, matches and
-    sample, it asks for the column's name and description. Overrides are taken as given. The
-    result is the profile, with glossary and suggestions.
+2.  `describe` splits the original names of all tables and columns into terms, those written
+    together by the vocabulary, and asks the language model for the concept of each term of none,
+    showing it the tables and columns the term appears in. From the concepts of its terms, and from
+    each column's statistics, matches and sample, it asks for the column's name and description.
+    Overrides are taken as given. The result is the profile, with glossary and suggestions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML.
 
 ## Principles

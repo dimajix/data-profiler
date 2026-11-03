@@ -6,6 +6,9 @@ columns:
 - {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 19800}}
 - {name: pos_no, type: smallint, statistics: {nulls: 0, distinct: 9}}
 - {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 340}}
+- name: prodgrp_cd
+  type: varchar(4)
+  statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
 - {name: qty, type: integer, statistics: {nulls: 0, distinct: 25}}
 - {name: unt_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
 - {name: dscnt_pct, type: "decimal(5,2)", statistics: {nulls: 52000, distinct: 8}}

@@ -28,7 +28,7 @@ from typing import Any, Final
 from yaml import safe_dump, safe_load
 
 from data_profiler.commands import run
-from data_profiler.glossary import Glossary, occurrences, terms
+from data_profiler.glossary import Glossary, Vocabulary, occurrences
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Column, Concept, Profile, ProfileError, Table
 from data_profiler.project import Project, ProjectError
@@ -128,7 +128,10 @@ def _trial(arguments: Any) -> None:
     }
 
     places = occurrences(profile)
-    needed = {term for _, column in chosen for term in terms(column.name) if term in places}
+    vocabulary = Vocabulary.of(profile)
+    needed = {
+        term for _, column in chosen for term in vocabulary.split(column.name) if term in places
+    }
     # The word of each term of one concept in the glossary; a term of several is asked for again.
     glossary = Glossary(profile.glossary)
     words = {term: found[0] for term in places if len(found := glossary.words(term)) == 1}
@@ -146,13 +149,14 @@ def _trial(arguments: Any) -> None:
 
     for table, column in chosen:
         facts = _facts(table, column, samples[table.name].columns.get(column.name, []))
-        named = {term: words.get(term, "?") for term in terms(column.name)}
+        split = vocabulary.split(column.name)
+        named = {term: words.get(term, "?") for term in split}
         prompt = _COLUMN_PROMPT.format(
             column=column.name,
             table=table.name,
             facts=facts,
             words=", ".join(f'"{term}" for "{word}"' for term, word in named.items()),
-            composed=_composed(column.name, words) or "-",
+            composed=_composed(split, words) or "-",
         )
         answer, seconds = _ask(arguments, prompt, _SUGGESTION)
         answers["columns"][f"{table.name}.{column.name}"] = {
@@ -180,13 +184,13 @@ def _brief(found: tuple[Table, Column], samples: dict[str, Sample]) -> str:
     return f" ({'; '.join(parts)})"
 
 
-def _composed(name: str, words: dict[str, str]) -> str | None:
-    """The harmonized name of `name`, from the word of each of its terms."""
+def _composed(split: list[str], words: dict[str, str]) -> str | None:
+    """The harmonized name of a name of the terms `split`, from the word of each."""
     concepts: dict[str, list[str]] = {}
     for term, word in words.items():
         concepts.setdefault(word, []).append(term)
     glossary = Glossary({word: Concept(tuple(found)) for word, found in concepts.items()})
-    return glossary.harmonized(name)
+    return glossary.harmonized(split)
 
 
 def _facts(table: Table, column: Column, values: Sequence[object]) -> str:
