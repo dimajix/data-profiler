@@ -2,6 +2,6 @@
 # orders and their items, under the abbreviated names such a system has; its texts of a semantic
 # type have their match, by which they are generated, each table in a file of its own in `tables/`.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: 9
+format: 10
 catalog: crm
 schema: sales

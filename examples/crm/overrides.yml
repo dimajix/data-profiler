@@ -1,10 +1,11 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
-# concepts of the glossary - a customer; an address, written in two ways; and a prefix that marks a
-# custom column, left out of the names -, the sensitivity of a column the detectors miss - here the
-# names of persons, which no detector recognises -, and the sentinels of a column in place of those
-# of the tool - here the postal codes of a delivery, which are empty where none is given, or would
-# be zeros.
-format: 3
+# concepts of the glossary - a customer; an address, written in two ways; a prefix that marks a
+# custom column, left out of the names; a contact person, written as that prefix is; and the terms
+# of three names that stand for the one or the other -, the readings of those three names, the
+# sensitivity of a column the detectors miss - here the names of persons, which no detector
+# recognises -, and the sentinels of a column in place of those of the tool - here the postal codes
+# of a delivery, which are empty where none is given, or would be zeros.
+format: 4
 glossary:
   customer:
     abbreviations: [cust]
@@ -18,10 +19,24 @@ glossary:
       Marks a column added to the CRM for AirPlus, a custom column; it says nothing of what the
       column holds.
     omitted: true
+  contact_person:
+    abbreviations: [ap]
+    description: The person a customer is reached through, one of its contacts.
+  identifier:
+    abbreviations: [id]
+  name:
+    abbreviations: [nm]
+  segment:
+    abbreviations: [seg]
+  code:
+    abbreviations: [cd]
 tables:
   cust:
     columns:
       cust_nm: {sensitivity: personal}
+      cust_ap_id: {reading: [customer, contact_person, identifier]}
+      ap_ap_nm: {sensitivity: personal, reading: [airplus, contact_person, name]}
+      ap_seg_cd: {reading: [airplus, segment, code]}
   cntct:
     columns:
       frst_nm: {sensitivity: personal}

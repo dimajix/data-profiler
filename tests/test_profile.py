@@ -22,6 +22,7 @@ from data_profiler.profile import (
     Run,
     Statistics,
     Table,
+    Term,
     Value,
 )
 
@@ -212,6 +213,37 @@ def test_an_updated_profile_has_the_table_in_place_of_its_own_or_beside_them_sor
     assert _PROFILE.updated(added).tables == (added, cust), "beside them, sorted by name"
 
 
+def test_a_table_updated_keeps_the_terms_and_readings_of_its_names() -> None:
+    cust = _PROFILE.tables[0]
+    named = replace(cust.columns[0], terms=(Term("cust", ("customer",)), Term("id")))
+    read = replace(named, reading=("customer", "id"))
+    described = replace(
+        cust,
+        columns=(read, *cust.columns[1:]),
+        terms=(Term("cust", ("customer",)),),
+        reading=("customer",),
+    )
+    profile = replace(_PROFILE, tables=(described,))
+    gone = replace(cust.columns[1], name="CUST_NO")
+    (updated,) = profile.updated(replace(cust, rows=1, columns=(cust.columns[0], gone))).tables
+    assert (updated.rows, updated.terms, updated.reading) == (1, described.terms, described.reading)
+    assert updated.columns[0] == read, "the terms and reading of a column of the same name"
+    assert updated.columns[1] == gone, "none of a column of another name"
+
+
+def test_the_terms_and_readings_of_a_profile_are_written_and_read_unchanged(tmp_path: Path) -> None:
+    cust = _PROFILE.tables[0]
+    column = replace(
+        cust.columns[0], terms=(Term("cust", ("customer",)), Term("id")), reading=("customer", "id")
+    )
+    profile = replace(_PROFILE, tables=(replace(cust, columns=(column, *cust.columns[1:])),))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+    written = _content(tmp_path / "tables" / "CUST.yml")["columns"][0]
+    assert written["terms"] == [{"text": "cust", "concepts": ["customer"]}, {"text": "id"}]
+    assert written["reading"] == ["customer", "id"]
+
+
 def test_a_restricted_profile_has_the_tables_named_alone() -> None:
     profile = _PROFILE.updated(replace(_PROFILE.tables[0], name="ORD"))
     assert [table.name for table in profile.restricted({"ORD", "PROD"}).tables] == ["ORD"]
@@ -244,13 +276,21 @@ def test_a_run_that_did_not_finish_is_resumed_and_one_that_did_followed_by_a_new
     assert Profile.updating(tmp_path, "crm", "sales", (), later).run == Run(started=later)
 
 
-def test_a_scan_with_other_types_updates_the_profile_without_its_tables(
+def test_a_scan_with_other_types_keeps_the_tables_without_their_matches_and_values(
     tmp_path: Path, account_number: SemanticType
 ) -> None:
-    _PROFILE.write(tmp_path)
+    cust = _PROFILE.tables[0]
+    read = replace(cust, reading=("customer",))
+    replace(_PROFILE, tables=(read,), run=Run(_STARTED)).write(tmp_path)
     updating = Profile.updating(tmp_path, "crm", "sales", (account_number,), _NOW)
-    assert (updating.tables, updating.types) == ((), (account_number,))
+    assert (updating.types, updating.run) == ((account_number,), Run(_NOW)), "in a new run"
     assert updating.glossary == _PROFILE.glossary, "the glossary is kept"
+    (table,) = updating.tables
+    assert table.reading == ("customer",), "what describe filled is kept"
+    assert [c.matches for c in table.columns] == [()] * len(cust.columns)
+    assert [c.values for c in table.columns] == [()] * len(cust.columns)
+    assert [c.statistics.range for c in table.columns] == [None] * len(cust.columns)
+    assert [c.statistics.nulls for c in table.columns] == [c.statistics.nulls for c in cust.columns]
 
 
 def test_a_scan_of_another_schema_refuses_the_profile(tmp_path: Path) -> None:

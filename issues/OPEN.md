@@ -22,7 +22,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 | [10](10-the-stage-describe.md) | open | high | feature | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. Part of epic [02](02-first-version-epic.md). |
-| [28](28-terms-and-readings.md) | open | high | feature | The terms of a name are computed whenever they are needed, and which concept a term of several stands for is said nowhere, so that the split of a name changes unseen with the profile, a name of a term repeated in two meanings cannot be read, and a scan would lose what was found of the names. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 

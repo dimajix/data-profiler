@@ -1,4 +1,4 @@
-"""The glossary: original names split into terms, and harmonized names composed from their words.
+"""The glossary: original names split into terms, and harmonized names composed from readings.
 
 An original name - of a table or of a column - is split into its terms at everything that is no
 letter and no digit, at a change from a lower case letter to an upper case one, before the last of
@@ -15,18 +15,20 @@ covered in part would split most abbreviations, `strt` into `st` and `rt`. An ab
 concept is never split, so that a person stops a wrong split by giving the term a concept.
 
 The glossary of a profile is its concepts, each a word with the terms it is written as, its
-abbreviations, once for the whole schema. A term stands for the concept it is an abbreviation of;
-one of several concepts, for none yet that is known. A harmonized name is composed of the words of
-the concepts of the terms of the original name, each word split as a name is, in `snake_case`: a
-term of digits stands for itself, and a concept omitted is left out.
+abbreviations, once for the whole schema. A term may stand for the concepts it is an abbreviation
+of, its candidates; which one it stands for in a name, the reading of the name says, one word for
+each term. A harmonized name is composed of the words of its reading, each split as a name is, in
+`snake_case`: a term of digits stands for itself, and a concept omitted is left out. A reading
+that no longer agrees with the terms of its name - of another length, or a word that is no
+candidate of its term - is none.
 """
 
 import re
 import unicodedata
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Iterator, Mapping
 from typing import Final, Self
 
-from data_profiler.profile import Concept, Profile, Table
+from data_profiler.profile import Column, Concept, Profile, Table, Term
 
 # What separates the terms of a name, whatever else splits them: anything but letters and digits.
 _SEPARATORS: Final = re.compile(r"[\W_]+")
@@ -82,14 +84,37 @@ def occurrences(profile: Profile) -> dict[str, list[str]]:
     """
     vocabulary = Vocabulary.of(profile)
     found: dict[str, list[str]] = {}
-    for table in profile.tables:
-        names = [(table.name, table.name)]
-        names += [(column.name, f"{table.name}.{column.name}") for column in table.columns]
-        for name, where in names:
-            for term in dict.fromkeys(vocabulary.split(name)):
-                if not term.isdigit():
-                    found.setdefault(term, []).append(where)
+    for named, where in _places(profile):
+        for term in dict.fromkeys(vocabulary.split(named.name)):
+            if not term.isdigit():
+                found.setdefault(term, []).append(where)
     return found
+
+
+def unknown(profile: Profile) -> dict[str, list[str]]:
+    """Each term of the names of `profile` of no concept, as describe split them, with its names.
+
+    Args:
+        profile: The profile, its names split.
+
+    Returns:
+        Each term without candidates, but of digits, among the terms of the names, in the order it
+        first appears, with the names it appears in, in their order, as `occurrences` gives them;
+        none of a name not split.
+    """
+    found: dict[str, list[str]] = {}
+    for named, where in _places(profile):
+        for term in dict.fromkeys(term.text for term in named.terms or () if not term.candidates):
+            found.setdefault(term, []).append(where)
+    return found
+
+
+def _places(profile: Profile) -> Iterator[tuple[Table | Column, str]]:
+    """Each table and column of `profile`, with where it is, as `occurrences` names it."""
+    for table in profile.tables:
+        yield table, table.name
+        for column in table.columns:
+            yield column, f"{table.name}.{column.name}"
 
 
 class Vocabulary:
@@ -159,6 +184,22 @@ class Vocabulary:
         return covers[0]
 
 
+def agrees(terms: tuple[Term, ...] | None, reading: tuple[str, ...] | None) -> bool:
+    """Whether `reading` reads `terms`: as long as they are, each word a candidate of its term.
+
+    Args:
+        terms: The terms of a name, or None where it is not split.
+        reading: The reading of the name, or None where it is not read.
+
+    Returns:
+        Whether both are there and of one length, and each word is a candidate of the term at its
+        place.
+    """
+    if terms is None or reading is None or len(terms) != len(reading):
+        return False
+    return all(word in term.candidates for term, word in zip(terms, reading, strict=True))
+
+
 class Glossary:
     """The concepts of a profile by the terms they are written as: the words of its names."""
 
@@ -181,28 +222,45 @@ class Glossary:
         """
         return tuple(self._words.get(term, ()))
 
-    def harmonized(self, parts: list[str]) -> str | None:
-        """The harmonized name of a name split into `parts`: the words of their concepts.
+    def terms(self, name: str, vocabulary: Vocabulary) -> tuple[Term, ...]:
+        """The terms of `name`, as `vocabulary` splits it, each with its concepts.
 
         Args:
-            parts: The terms of the original name, of a table or a column, as the vocabulary
-                splits it.
+            name: The original name, of a table or a column.
+            vocabulary: The vocabulary the name is split by.
 
         Returns:
-            The harmonized name, without the words of the concepts omitted; None while a term of
-            the name is of no concept, or of several, or has a word of neither letters nor
-            digits, or where no word is left.
+            The terms, in their order, each with the words of the concepts it is an abbreviation
+            of; none of a term of digits.
         """
+        return tuple(
+            Term(term, () if term.isdigit() else self.words(term))
+            for term in vocabulary.split(name)
+        )
+
+    def harmonized(self, named: Table | Column) -> str | None:
+        """The harmonized name of `named`: the words of its reading, in snake_case.
+
+        Args:
+            named: A table or a column, with the terms and the reading of its name.
+
+        Returns:
+            The harmonized name, without the words of the concepts omitted; None where its name
+            has no reading that agrees with its terms, a word of it is of no concept of the
+            glossary or of neither letters nor digits, or no word is left.
+        """
+        reading = named.reading
+        if reading is None or not agrees(named.terms, reading):
+            return None
         words = []
-        for term in parts:
-            if term.isdigit():
-                words.append(term)
+        for word in reading:
+            if word.isdigit():
+                words.append(word)
                 continue
-            found = self.words(term)
-            if len(found) != 1:
+            concept = self._concepts.get(word)
+            if concept is None:
                 return None
-            (word,) = found
-            if self._concepts[word].omitted:
+            if concept.omitted:
                 continue
             composed = "_".join(terms(word))
             if not composed:
@@ -210,12 +268,11 @@ class Glossary:
             words.append(composed)
         return "_".join(words) or None
 
-    def collisions(self, table: Table, vocabulary: Vocabulary) -> dict[str, tuple[str, ...]]:
+    def collisions(self, table: Table) -> dict[str, tuple[str, ...]]:
         """Each harmonized name of two columns of `table` or more, with their original names.
 
         Args:
-            table: The table.
-            vocabulary: The vocabulary the names of its columns are split by.
+            table: The table, its columns with the terms and readings of their names.
 
         Returns:
             Each harmonized name that two columns or more have, in the order of the table, with
@@ -223,7 +280,7 @@ class Glossary:
         """
         found: dict[str, list[str]] = {}
         for column in table.columns:
-            name = self.harmonized(vocabulary.split(column.name))
+            name = self.harmonized(column)
             if name is not None:
                 found.setdefault(name, []).append(column.name)
         return {name: tuple(columns) for name, columns in found.items() if len(columns) > 1}

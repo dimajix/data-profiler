@@ -1,9 +1,11 @@
 """Tests of the glossary: names split into terms, and harmonized names composed of their words."""
 
+from dataclasses import replace
+
 import pytest
 
-from data_profiler.glossary import Glossary, Vocabulary, occurrences, terms
-from data_profiler.profile import Column, Concept, Profile, Statistics, Table
+from data_profiler.glossary import Glossary, Vocabulary, agrees, occurrences, terms, unknown
+from data_profiler.profile import Column, Concept, Profile, Statistics, Table, Term
 
 
 @pytest.mark.parametrize(
@@ -84,6 +86,20 @@ def test_each_part_of_a_term_written_together_is_split_again() -> None:
     ], "but an abbreviation of a concept"
 
 
+def test_the_terms_of_no_concept_are_those_of_no_candidates_as_the_names_were_split() -> None:
+    split = (Term("cust", ("customer",)), Term("xy"), Term("2"), Term("xy"))
+    columns = (
+        Column("cust_xy2xy", "varchar(10)", Statistics(0, 1), terms=split),
+        Column("xy_nm", "varchar(10)", Statistics(0, 1), terms=(Term("xy"), Term("nm"))),
+        Column("ab_cd", "varchar(10)", Statistics(0, 1)),
+    )
+    profile = _profile(Table(name="cust", rows=1, columns=columns, terms=(split[0],)))
+    assert unknown(profile) == {
+        "xy": ["cust.cust_xy2xy", "cust.xy_nm"],
+        "nm": ["cust.xy_nm"],
+    }, "but of digits, and of a name not split"
+
+
 def test_each_term_is_found_with_the_names_it_appears_in_each_once() -> None:
     column = Column(name="ord_ord_no", type="bigint", statistics=Statistics(0, 1))
     profile = Profile(
@@ -127,7 +143,15 @@ def test_a_term_stands_for_the_words_of_the_concepts_it_is_an_abbreviation_of() 
     assert glossary.words("nm") == ()
 
 
-def test_a_harmonized_name_is_composed_of_the_words_of_its_terms() -> None:
+def _named(*read: tuple[str, str]) -> Column:
+    """A column of a name of the terms of `read`, each read as the word beside it, its candidate."""
+    terms = tuple(Term(text) if text.isdigit() else Term(text, (word,)) for text, word in read)
+    name = "_".join(text for text, _ in read)
+    reading = tuple(word for _, word in read)
+    return Column(name, "varchar(10)", Statistics(0, 1), terms=terms, reading=reading)
+
+
+def test_a_harmonized_name_is_composed_of_the_words_of_its_reading() -> None:
     glossary = Glossary(
         {
             "customer": Concept(("cust", "kd")),
@@ -136,16 +160,36 @@ def test_a_harmonized_name_is_composed_of_the_words_of_its_terms() -> None:
             "e-mail": Concept(("eml",)),
         }
     )
-    assert glossary.harmonized(terms("cust_brth")) == "customer_date_of_birth"
-    assert glossary.harmonized(terms("KD_ADDR2")) == "customer_address_2", "of either abbreviation"
-    assert glossary.harmonized(terms("eml_addr")) == "e_mail_address"
+    assert glossary.harmonized(_named(("cust", "customer"), ("brth", "date of birth"))) == (
+        "customer_date_of_birth"
+    )
+    assert glossary.harmonized(_named(("kd", "customer"), ("addr", "Address"), ("2", "2"))) == (
+        "customer_address_2"
+    ), "of either abbreviation, and the digits of a term of digits"
+    assert glossary.harmonized(_named(("eml", "e-mail"), ("addr", "Address"))) == "e_mail_address"
     words = Glossary({"dateOfBirth": Concept(("brth",))})
-    assert words.harmonized(terms("brth")) == "date_of_birth"
+    assert words.harmonized(_named(("brth", "dateOfBirth"))) == "date_of_birth"
 
 
-def test_a_name_of_a_term_of_several_concepts_is_not_composed() -> None:
+def test_a_reading_agrees_with_its_terms_where_each_word_is_a_candidate_of_its_term() -> None:
+    terms = (Term("st", ("status", "street")), Term("cd", ("code",)), Term("2"))
+    assert agrees(terms, ("street", "code", "2"))
+    assert not agrees(terms, ("code", "code", "2")), "a word of no candidate"
+    assert not agrees(terms, ("street", "code")), "of another length"
+    assert not agrees(terms, ("street", "code", "3")), "other digits"
+    assert not agrees(terms, None)
+    assert not agrees(None, ("street", "code", "2"))
+
+
+def test_a_name_of_no_reading_that_agrees_with_its_terms_has_no_harmonized_name() -> None:
     glossary = _glossary(status=("st",), street=("st",), code=("cd",))
-    assert glossary.harmonized(terms("st_cd")) is None, "while which one it stands for is not known"
+    named = _named(("st", "status"), ("cd", "code"))
+    assert glossary.harmonized(named) == "status_code"
+    assert glossary.harmonized(replace(named, reading=None)) is None, "not read"
+    assert glossary.harmonized(replace(named, terms=None)) is None, "not split"
+    assert glossary.harmonized(replace(named, reading=("street", "code"))) is None, (
+        "no longer of the candidates of its terms"
+    )
 
 
 def test_a_concept_omitted_is_left_out_of_the_names() -> None:
@@ -156,39 +200,25 @@ def test_a_concept_omitted_is_left_out_of_the_names() -> None:
             "code": Concept(("cd",)),
         }
     )
-    assert glossary.harmonized(terms("ap_seg_cd")) == "segment_code"
-    assert glossary.harmonized(terms("ap")) is None, "where no word is left"
+    named = _named(("ap", "airplus"), ("seg", "segment"), ("cd", "code"))
+    assert glossary.harmonized(named) == "segment_code"
+    assert glossary.harmonized(_named(("ap", "airplus"))) is None, "where no word is left"
 
 
-def test_no_name_is_composed_while_a_term_has_no_word() -> None:
-    glossary = _glossary(customer=("cust",), date=("dt",))
-    assert glossary.harmonized(terms("cust_crt_dt")) is None
-    assert glossary.harmonized(terms("__")) is None
-    assert _glossary(**{" - ": ("x",)}).harmonized(terms("x")) is None, "a word of nothing"
+def test_no_name_is_composed_of_a_word_of_no_concept_or_of_nothing() -> None:
+    glossary = _glossary(customer=("cust",), **{" - ": ("x",)})
+    assert glossary.harmonized(_named(("cust", "customer"), ("dt", "date"))) is None
+    assert glossary.harmonized(_named(("x", " - "))) is None, "a word of nothing"
 
 
 def test_columns_of_the_same_harmonized_name_are_a_collision() -> None:
     glossary = Glossary(
         {"airplus": Concept(("ap",), omitted=True), "status": Concept(("sts", "st"))}
     )
-    statistics = Statistics(0, 1)
     columns = (
-        Column("ap_sts", "varchar(1)", statistics),
-        Column("id", "bigint", statistics),
-        Column("st", "varchar(1)", statistics),
+        _named(("ap", "airplus"), ("sts", "status")),
+        Column("id", "bigint", Statistics(0, 1)),
+        _named(("st", "status")),
     )
     table = Table(name="t", rows=1, columns=columns)
-    assert glossary.collisions(table, Vocabulary.of(_profile(table))) == {
-        "status": ("ap_sts", "st")
-    }, "id has no name"
-
-
-def test_the_names_of_the_example_are_composed_from_words_given(example_profile: Profile) -> None:
-    glossary = Glossary({f"word_{term}": Concept((term,)) for term in occurrences(example_profile)})
-    vocabulary = Vocabulary.of(example_profile)
-    for table in example_profile.tables:
-        for column in table.columns:
-            split = vocabulary.split(column.name)
-            name = glossary.harmonized(split)
-            assert name is not None, column.name
-            assert name == "_".join(f"word_{term}" for term in split)
+    assert glossary.collisions(table) == {"status": ("ap_sts", "st")}, "id has no name"

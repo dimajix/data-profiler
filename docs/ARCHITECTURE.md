@@ -27,7 +27,8 @@ environment.
     take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
-    profiled, or give sentinels of a column of no text.
+    profiled, give sentinels of a column of no text, or a reading of a name that is no reading of
+    its terms.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -65,10 +66,12 @@ environment.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
-    those written together by the vocabulary of the profile, and composing harmonized names from
-    the words of the concepts of the glossary, which the profile holds.
-*   **`data_profiler.describe`** - the stage `describe`: the glossary's concepts and the columns'
-    names and descriptions, proposed by the language model.
+    those written together by the vocabulary of the profile, each with its candidates among the
+    concepts of the glossary, which the profile holds, and composing harmonized names from the
+    readings of the names.
+*   **`data_profiler.describe`** - the stage `describe`: the names of the tables and columns split
+    into their terms and read, by steps of their own without the language model; and the
+    glossary's concepts and the columns' names and descriptions, proposed by the language model.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
@@ -85,9 +88,9 @@ environment.
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `grouping`, `overrides`, `disclosure` and `workspace`, `describe` uses
 `glossary`, `overrides` and `workspace`, `report` the profile alone, and `glossary` for its names;
-`cli` runs the stages, gives the overrides to `scan`, and lays them over the profile the other
-stages read. The semantic types of a project reach `scan` from `project`, and every stage after it
-from the profile.
+`cli` runs the stages, gives the overrides to `scan` and `describe`, and lays them over the
+profile `report` reads. The semantic types of a project reach `scan` from `project`, and every
+stage after it from the profile.
 
 ## The domain
 
@@ -143,7 +146,14 @@ from the profile.
     each two columns are filled in, it holds its columns and its coherence, and a column does not
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
     is in none.
-*   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`.
+*   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`. The
+    profile holds the terms of each name, as `describe` split it, each with the concepts it is an
+    abbreviation of, its candidates, as the glossary had them then.
+*   **Reading** - the concept each term of a name stands for, one word for each term at its place:
+    `ap_ap_nm` read as AirPlus, contact person and name. `describe` reads a name whose terms have
+    one candidate each, and keeps a reading while it agrees with the terms; which concept a term of
+    several stands for, the language model chooses, or an override gives. A harmonized name is
+    composed from the reading alone.
 *   **Vocabulary** - the terms a term written together is split into: those found in the names of
     a profile, and the abbreviations of its concepts. A term is split only where other terms of the
     vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and an
@@ -156,12 +166,13 @@ from the profile.
 *   **Suggestion** - the harmonized name and the description proposed for a column, in English, the
     name composed from the words of the glossary.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: concepts of the glossary, the sensitivity and the sentinels of a
-    column. What it gives is taken as given by every stage: by `scan`, which counts the columns
-    with their sentinels and marks them, as by `describe` and `report`, which lay the concepts and
-    marks over the profile; sentinels changed count once `scan` counts the column again. A concept
-    given takes the place of the one proposed of its word, and its abbreviations are taken from the
-    others.
+    laid over a generated profile: concepts of the glossary, the reading of a name, the sensitivity
+    and the sentinels of a column. What it gives is taken as given by every stage: by `scan`, which
+    counts the columns with their sentinels and marks them, by `describe`, which splits and reads
+    the names by the concepts given, as by `report`, which lays the concepts, readings and marks
+    over the profile; sentinels changed count once `scan` counts the column again, and a reading
+    given once `describe` has split its name. A concept given takes the place of the one proposed
+    of its word, and its abbreviations are taken from the others.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -180,15 +191,19 @@ from the profile.
     of enumerations of the columns of no sensitivity, written after every table: a scan that fails
     keeps the tables before it, and the next scan resumes its run, skipping the tables it counted,
     unless the overrides now give their columns otherwise. It updates the profile there is: the
-    tables no longer selected are dropped, the others kept until they are counted anew, and the
-    glossary is kept; a profile scanned with other semantic types loses its tables. A profile that
-    cannot be read, or one of another schema, is refused and never overwritten: it may be the work
-    of hours.
+    tables no longer selected are dropped, the others kept until they are counted anew, and what
+    the other stages filled is kept - the glossary, and the terms and readings of the names that
+    stay; a profile scanned with other semantic types keeps its tables without their matches,
+    values and ranges, until they are counted anew. A profile that cannot be read, or one of
+    another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
-    together by the vocabulary, and asks the language model for the concept of each term of none,
-    showing it the tables and columns the term appears in. From the concepts of its terms, and from
-    each column's statistics, matches and sample, it asks for the column's name and description.
-    Overrides are taken as given. The result is the profile, with glossary and suggestions.
+    together by the vocabulary, each with its candidates, and reads each name whose terms have one
+    candidate each. It asks the language model for the concept of each term of none, showing it the
+    tables and columns the term appears in, splits the names again, and asks it for the reading of
+    each name of a term of several concepts. From the reading of its name, and from each column's
+    statistics, matches and sample, it asks for the column's name and description. Overrides are
+    taken as given. The result is the profile, with terms, readings, glossary and suggestions; of
+    these, the terms and readings are made today, without the language model.
 3.  `report` renders the profile, with the overrides laid over it, as HTML.
 
 ## Principles
@@ -211,14 +226,19 @@ The design repeats a few decisions; new code follows them.
     database is a new dialect, not a change across the code. What the tables hold is counted or
     sampled by queries that the part that reads their rows builds from the building blocks of the
     dialect: metadata belongs to the source, counting and sampling to the parts that do them.
+*   **Every attribute of the profile is filled by one step.** A step - `scan`, a step of
+    `describe` - replaces in a profile there is the attributes it fills alone, and keeps all others,
+    so that a stage run again loses nothing another found: a scan keeps the terms and readings of
+    the names, and splitting the names again keeps a reading that still agrees. Which step fills
+    which attribute is said once, in the module docs of `data_profiler.profile`.
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes names and descriptions from what they
     found, and nothing else.
 *   **One word per concept.** Harmonized names are composed from the words of the concepts of the
-    glossary, so that the same concept reads the same in every table, under whichever of its
-    abbreviations it is written; a name of a term of several concepts has none, as long as which
-    one it stands for is not known. Where two columns of a table come to the same name, the report
-    shows it, rather than one name taking the place of the other.
+    glossary, through the reading of each name, so that the same concept reads the same in every
+    table, under whichever of its abbreviations it is written; a name of no reading has none.
+    Where two columns of a table come to the same name, the report shows it, rather than one name
+    taking the place of the other.
 *   **The stages share nothing but the profile and the workspace.** Each stage can be run again on
     its own: `describe` with another model without querying the database, `report` without
     either.

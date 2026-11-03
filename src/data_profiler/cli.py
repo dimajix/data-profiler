@@ -2,9 +2,10 @@
 
 It runs a stage on one environment of a project, the project in the current directory if none is
 given: `scan` the tables of its database into its profile and workspace, the overrides of the
-project taken as given, `report` its profile, the overrides laid over it, into its report, without
-the database. The project completes the variables of the process by its `.env`, so that
-certificates and proxies set there reach the connection to the database.
+project taken as given, `describe` the names of its profile, by the concepts of the profile and of
+the overrides, into its profile, and `report` its profile, the overrides laid over it, into its
+report, the last two without the database. The project completes the variables of the process by
+its `.env`, so that certificates and proxies set there reach the connection to the database.
 `data_profiler.commands.run` configures the log and ends the program when the stage fails.
 """
 
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Final
 
 from data_profiler.commands import run
+from data_profiler.describe import describe
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Profile, ProfileError
 from data_profiler.project import Project, ProjectError
@@ -46,6 +48,7 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     stages: dict[str, tuple[Callable[[Path, str], None], str]] = {
         "scan": (_scan, "scan the tables of an environment of a project"),
+        "describe": (_describe, "split and read the names of the profile of an environment"),
         "report": (_report, "render the profile of an environment of a project as HTML"),
     }
     for name, (stage, summary) in stages.items():
@@ -70,6 +73,15 @@ def _scan(directory: Path, name: str) -> None:
     with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
         scan(source, project.tables, workspace, project.types, overrides, environment.profile)
+    _logger.info("Wrote the profile of %s to %s", name, environment.profile)
+
+
+def _describe(directory: Path, name: str) -> None:
+    """Describes the profile of the environment `name` of the project in `directory`."""
+    project = Project.read(directory, os.environ)
+    environment = project.environment(name)
+    overrides = Overrides.read(project.overrides)
+    describe(Profile.read(environment.profile), overrides).write(environment.profile)
     _logger.info("Wrote the profile of %s to %s", name, environment.profile)
 
 

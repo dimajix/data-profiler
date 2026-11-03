@@ -1,6 +1,6 @@
 # 28 — Terms and readings
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Describe
@@ -68,6 +68,34 @@ The interface first, put before the maintainer.
 - **The report.** Harmonized names from the readings; whether it shows the terms with their
   candidates, and the names without a reading.
 
+## How
+
+As agreed with the maintainer:
+
+- **`profile.Term`** - its text and its candidates; `Table` and `Column` hold `terms`, None while
+  the name is not split, and `reading`, one word for each term, the digits of a term of digits,
+  None while it is not read. The profile is of format 10. Which step fills which attribute, its
+  module docs say.
+- **`describe.describe(profile, overrides)`** - the stage, of two steps: split, by the vocabulary
+  and the glossary of the profile with the overrides laid over it, and read; it returns the profile
+  as it was read, with the terms and readings alone added. `data-profiler describe ENVIRONMENT`
+  writes it, without the database; its steps are not run one by one.
+- **`glossary.agrees(terms, reading)`**, and **`Glossary.harmonized(named)`** of a table or column,
+  from its reading where it agrees; `Glossary.collisions(table)` again without the vocabulary,
+  which the report no longer needs for the names.
+- **The overrides**, of format 4, give `reading` of a table and of a column, laid over by
+  `Overrides.laid_over` alone, not by `scan`; a reading given of another number of words than the
+  terms of its name, as the vocabulary splits it, or of a word of no concept of its term, is
+  refused.
+- **`Profile.updated`** keeps the terms and readings of the table and of its columns of the same
+  names; **`Profile.updating`** keeps the tables of a profile of other semantic types, without
+  their matches, values and ranges, in a new run.
+- **The report** lists the terms of no concept by `glossary.unknown`, from the terms describe
+  split, not by splitting the names again, so that it shows one split of a name, the one held.
+- **The example** has `cust.cust_ap_id` and `cust.ap_ap_nm`, read by its overrides, the second a
+  term repeated in two meanings, and `ap_seg_cd` read by them as well, as `ap` is now of two
+  concepts.
+
 ## Done when
 
 - The interface is agreed with the maintainer.
@@ -83,3 +111,12 @@ The interface first, put before the maintainer.
   decided: the meanings of the terms of a name, which 27 was to hold term by term, became the
   terms and the reading of the name, each filled by a step of its own, and every step keeps what
   the others found.
+
+- **2026-11-03** — Done as agreed with the maintainer (see How). The report has no harmonized names
+  before `describe` has run: they are composed from the readings alone.
+
+- **2026-11-03** — After the review of the maintainer: the report listed the terms of no concept
+  by splitting the names again with the vocabulary of today, so that it could show two splits of
+  one name; it takes them from the terms held now. The method of `TableOverride` that lays the
+  readings given over a table is named `readings_laid_over`, as the maintainer decided, not `read`,
+  which loads a document everywhere else.

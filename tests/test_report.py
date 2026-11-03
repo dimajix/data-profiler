@@ -1,10 +1,12 @@
 """Tests of the stage report: a profile made by hand, rendered as HTML."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from data_profiler.detect import EMAIL, PHONE, Sensitivity
+from data_profiler.glossary import terms
 from data_profiler.profile import (
     Column,
     Concept,
@@ -15,49 +17,78 @@ from data_profiler.profile import (
     Range,
     Statistics,
     Table,
+    Term,
     Value,
 )
 from data_profiler.report import ReportError, render, write_report
+
+
+def _read[Named: (Table, Column)](named: Named, *words: str) -> Named:
+    """`named`, its name split into terms of one candidate each, `words`, and read by them."""
+    split = zip(terms(named.name), words, strict=True)
+    return replace(named, terms=tuple(Term(text, (word,)) for text, word in split), reading=words)
+
 
 _PROFILE = Profile(
     catalog="crm",
     schema="sales",
     tables=(
-        Table(
-            name="cust",
-            rows=1200,
-            columns=(
-                Column(
-                    name="cust_typ_cd",
-                    type="varchar(2)",
-                    statistics=Statistics(
-                        300, 2, Lengths(1, 2), Range("<b>", None), (Value("", 40), Value("-", 20))
+        _read(
+            Table(
+                name="cust",
+                rows=1200,
+                columns=(
+                    _read(
+                        Column(
+                            name="cust_typ_cd",
+                            type="varchar(2)",
+                            statistics=Statistics(
+                                300,
+                                2,
+                                Lengths(1, 2),
+                                Range("<b>", None),
+                                (Value("", 40), Value("-", 20)),
+                            ),
+                            values=(Value("<script>alert(1)</script>", 800), Value("B", 100)),
+                        ),
+                        "customer",
+                        "type",
+                        "code",
                     ),
-                    values=(Value("<script>alert(1)</script>", 800), Value("B", 100)),
+                    Column(
+                        name="eml_adr",
+                        type="varchar(120)",
+                        statistics=Statistics(0, 1150),
+                        matches=(Match(EMAIL, 0.982, 0.99),),
+                        terms=(Term("eml"), Term("adr")),
+                    ),
+                    Column(
+                        name="cust_nm",
+                        type="varchar(80)",
+                        statistics=Statistics(0, 1100),
+                        marked=Sensitivity.PERSONAL,
+                    ),
+                    _read(
+                        Column(name="ap_tel_no", type="varchar(20)", statistics=Statistics(0, 2)),
+                        "airplus",
+                        "telephone",
+                        "number",
+                    ),
+                    _read(
+                        Column(
+                            name="tel_no",
+                            type="varchar(20)",
+                            statistics=Statistics(0, 2, range=Range("", "0301234567")),
+                            matches=(Match(PHONE, 0.6, 0.6),),
+                            marked=Sensitivity.NONE,
+                        ),
+                        "telephone",
+                        "number",
+                    ),
                 ),
-                Column(
-                    name="eml_adr",
-                    type="varchar(120)",
-                    statistics=Statistics(0, 1150),
-                    matches=(Match(EMAIL, 0.982, 0.99),),
-                ),
-                Column(
-                    name="cust_nm",
-                    type="varchar(80)",
-                    statistics=Statistics(0, 1100),
-                    marked=Sensitivity.PERSONAL,
-                ),
-                Column(name="ap_tel_no", type="varchar(20)", statistics=Statistics(0, 2)),
-                Column(name="custtyp", type="varchar(1)", statistics=Statistics(0, 2)),
-                Column(
-                    name="tel_no",
-                    type="varchar(20)",
-                    statistics=Statistics(0, 2, range=Range("", "0301234567")),
-                    matches=(Match(PHONE, 0.6, 0.6),),
-                    marked=Sensitivity.NONE,
-                ),
+                groups=(Group(("eml_adr", "tel_no"), 0.947),),
             ),
-            groups=(Group(("eml_adr", "tel_no"), 0.947),),
+            "customer",
         ),
         Table(
             name="empty",
@@ -72,8 +103,6 @@ _PROFILE = Profile(
         "airplus": Concept(("ap",), omitted=True),
         "telephone": Concept(("tel",)),
         "number": Concept(("no",)),
-        "void": Concept(("empty",)),
-        "blank": Concept(("empty",)),
     },
 )
 
@@ -103,7 +132,7 @@ def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
 
 def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -> None:
     page = _page()
-    assert "7 columns · 2 columns sensitive" in page
+    assert "6 columns · 2 columns sensitive" in page
     assert "personal (marked)" in page
     assert '<span class="sensitivity"> personal </span>' in page, "found by a match, not marked"
     assert page.count('class="sensitive"') == 2, "a column of no sensitivity is not shown as one"
@@ -132,14 +161,14 @@ def test_the_glossary_shows_each_concept_and_where_the_terms_of_none_appear() ->
     (_, unknown) = page.split("Terms of no concept")
     assert '<td class="original">eml</td> <td> cust.eml_adr </td>' in unknown
     assert '"original">typ<' not in unknown, "a term of a concept"
+    assert '"original">nm<' not in unknown, "a term of a name not split"
 
 
-def test_a_table_of_a_term_of_several_concepts_is_shown_without_a_harmonized_name() -> None:
-    assert '<h2> empty <span class="rows">0 rows</span> </h2>' in _page(), "void or blank"
-
-
-def test_a_harmonized_name_is_composed_of_the_terms_written_together_split() -> None:
-    assert "<td>customer_type</td>" in _page(), "of custtyp, by cust and typ of other names"
+def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:
+    page = _page()
+    assert '<span class="harmonized">→ customer</span>' in page, "of a table"
+    assert "<td>customer_type_code</td>" in page
+    assert '<td class="original">eml_adr</td> <td>\u2013</td>' in page, "of a name not read"
 
 
 def test_a_report_shows_the_harmonized_names_two_columns_share() -> None:

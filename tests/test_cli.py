@@ -41,7 +41,9 @@ def test_an_environment_is_scanned_into_its_directory(
     assert [table.name for table in scanned.tables] == sorted(t.name for t in example.tables)
     assert [kind.name for kind in scanned.types] == ["order-number"], "of project.yml"
     marked = [c for t in scanned.tables for c in t.columns if c.marked is Sensitivity.PERSONAL]
-    assert sorted(c.name for c in marked) == ["cust_nm", "frst_nm", "lst_nm"], "of overrides.yml"
+    assert sorted(c.name for c in marked) == ["ap_ap_nm", "cust_nm", "frst_nm", "lst_nm"], (
+        "of overrides.yml"
+    )
     given = [c for t in scanned.tables for c in t.columns if c.sentinels is not None]
     assert [(c.name, c.sentinels) for c in given] == [("dlvr_pst_cd", ("", "00000"))]
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
@@ -79,6 +81,18 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
     page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
     assert "<h1>crm.sales</h1>" in page
     assert "personal (marked)" in page, "the overrides of the project are laid over"
+
+
+def test_the_profile_of_an_environment_is_described_into_its_directory(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    shutil.copy(_EXAMPLE / "overrides.yml", project)
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    assert command_line(main, "describe", "simulation", "--project", str(project)) == 0
+    described = Profile.read(project / "simulation" / "profile")
+    assert all(column.terms is not None for t in described.tables for column in t.columns)
+    assert described.glossary == example_profile.glossary, "nothing of the overrides"
 
 
 def test_the_profile_of_an_environment_is_reported_without_its_password(

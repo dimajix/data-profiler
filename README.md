@@ -13,10 +13,12 @@ It works in three stages, each of which can be run again on its own:
   numbers, postal codes, card numbers, dates and more - by deterministic detectors, checked on a
   sample and, where they can, verified on the whole table; and which columns of a table are filled
   together, such as the street, the postal code and the city of a delivery address.
-- **describe** asks a small language model, running locally in Ollama, for a harmonized English
-  name and a description of every column. The names are composed from one glossary of the concepts
-  of the whole schema - each a word, its abbreviations and a description -, so that the same
-  concept reads the same in every table, whichever abbreviation it is written as.
+- **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
+  those written together as well - and reads each, a concept for every term, and asks a small
+  language model, running locally in Ollama, for a harmonized English name and a description of
+  every column. The names are composed from one glossary of the concepts of the whole schema -
+  each a word, its abbreviations and a description -, so that the same concept reads the same in
+  every table, whichever abbreviation it is written as.
 - **report** renders the result as HTML.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
@@ -133,12 +135,13 @@ environments:
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given:
   concepts of the glossary, each under its word with its abbreviations, its description and,
-  where it is to be left out of the names, `omitted: true`; the sensitivity of a column the
-  detectors miss, such as the names of persons; and the values that stand for no value in a
-  column, its sentinels, in place of those of the tool: `sentinels: ["", "00000"]`, or
-  `sentinels: []` for none. `examples/crm/overrides.yml` shows them all; `scan` counts and marks
-  the columns as they give, and `report` lays them over the profile, and so will `describe`, once
-  it is made.
+  where it is to be left out of the names, `omitted: true`; the reading of the name of a table or
+  column, a concept for each of its terms, `reading: [airplus, contact_person, name]`; the
+  sensitivity of a column the detectors miss, such as the names of persons; and the values that
+  stand for no value in a column, its sentinels, in place of those of the tool:
+  `sentinels: ["", "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows them
+  all; `scan` counts and marks the columns as they give, `describe` splits and reads the names by
+  the concepts they give, and `report` lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -150,22 +153,30 @@ which writes the profile to `examples/crm/simulation/profile/` - `profile.yml` o
 a file of each table in `tables/` -, and the samples and enumerations of the tables to the
 workspace `examples/crm/simulation/workspace/`, which keeps itself out of version control. The
 profile is written after every table and updated, not replaced, by the next scan: the tables no
-longer selected are dropped, and the glossary is kept. A scan that failed or was interrupted is
-resumed by the next one, which counts only the tables it did not; once a scan has counted every
-table, the next one counts them all anew. A profile that cannot be read - of an older
+longer selected are dropped, and what `describe` filled is kept. A scan that failed or was
+interrupted is resumed by the next one, which counts only the tables it did not; once a scan has
+counted every table, the next one counts them all anew. A profile that cannot be read - of an older
 format, for one - or of another schema is refused, never overwritten; it is removed by hand before
 it is scanned anew. Without `--project`, the project is the current directory. The progress goes to
 standard error; with `--debug` before the command, the log holds the statements sent and the values
 of the database, and stays on the machine.
 
-The profile is rendered as a report by
+The names of the profile are split into their terms and read by
+
+```bash
+uv run data-profiler describe simulation --project examples/crm
+```
+
+without the database, by the concepts of the profile and of the overrides; it writes them into the
+profile. The profile is rendered as a report by
 
 ```bash
 uv run data-profiler report simulation --project examples/crm
 ```
 
 which lays the overrides of the project over it and writes `examples/crm/simulation/report.html`:
-one file, which a browser shows and prints on its own, without the database.
+one file, which a browser shows and prints on its own, without the database. Its harmonized names
+are composed from the readings, so that a profile not described has none.
 
 ### Running Tests
 
