@@ -8,7 +8,7 @@ import pytest
 
 from data_profiler.detect import DATE, Detector, SemanticType, Sensitivity
 from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
-from data_profiler.profile import Match, Profile, ProfileError, Table
+from data_profiler.profile import Concept, Match, Profile, ProfileError, Table
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace, WorkspaceError
@@ -16,6 +16,8 @@ from data_profiler.workspace import Workspace, WorkspaceError
 # How far the approximate number of distinct values may lie from the true one: four times the
 # standard error the dialect asks for.
 _TOLERANCE = 0.02
+# A glossary of one concept, as a profile scanned before has it.
+_GLOSSARY = {"customer": Concept(("cust",), "A person or company that buys.")}
 # How far the coherence of a group, found in a sample, may lie from the one it was made with.
 _COHERENCE = 0.01
 
@@ -195,12 +197,12 @@ def test_a_scan_keeps_the_glossary_and_drops_the_tables_no_longer_selected(
     source: Source, tmp_path: Path
 ) -> None:
     gone = Table(name="gone", rows=0, columns=())
-    Profile(catalog="crm", schema="sales", tables=(gone,), glossary={"cust": "customer"}).write(
+    Profile(catalog="crm", schema="sales", tables=(gone,), glossary=_GLOSSARY).write(
         tmp_path / "profile"
     )
     scanned = _scanned(source, "cust", tmp_path)
     assert [table.name for table in scanned.tables] == ["cust"]
-    assert scanned.glossary == {"cust": "customer"}
+    assert scanned.glossary == _GLOSSARY
     assert not (tmp_path / "profile" / "tables" / "gone.yml").exists()
 
 
@@ -211,7 +213,7 @@ def test_a_profile_scanned_with_other_types_loses_its_tables(
         catalog="crm",
         schema="sales",
         tables=example_profile.tables,
-        glossary={"cust": "customer"},
+        glossary=_GLOSSARY,
         types=(account_number,),
     ).write(tmp_path / "profile")
     _failing_at(tmp_path, "prod")
@@ -220,7 +222,7 @@ def test_a_profile_scanned_with_other_types_loses_its_tables(
     profile = Profile.read(tmp_path / "profile")
     assert [table.name for table in profile.tables] == ["cust"], "only what is counted anew"
     assert profile.types == ()
-    assert profile.glossary == {"cust": "customer"}, "the glossary is kept all the same"
+    assert profile.glossary == _GLOSSARY, "the glossary is kept all the same"
 
 
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(

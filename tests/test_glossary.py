@@ -2,8 +2,8 @@
 
 import pytest
 
-from data_profiler.glossary import harmonized, occurrences, terms
-from data_profiler.profile import Column, Profile, Statistics, Table
+from data_profiler.glossary import Glossary, occurrences, terms
+from data_profiler.profile import Column, Concept, Profile, Statistics, Table
 
 
 @pytest.mark.parametrize(
@@ -52,24 +52,76 @@ def test_the_terms_of_the_example_are_found_with_their_tables_and_columns(
     assert list(found)[:4] == ["cntct", "id", "cust", "typ"], "in the order they first appear"
 
 
+def _glossary(**concepts: tuple[str, ...]) -> Glossary:
+    """The glossary of `concepts`, each word with its abbreviations."""
+    return Glossary({word: Concept(abbreviations) for word, abbreviations in concepts.items()})
+
+
+def test_a_term_stands_for_the_words_of_the_concepts_it_is_an_abbreviation_of() -> None:
+    glossary = _glossary(customer=("cust", "kd"), status=("st",), street=("st", "strt"))
+    assert glossary.words("kd") == ("customer",)
+    assert glossary.words("st") == ("status", "street"), "in the order of the glossary"
+    assert glossary.words("nm") == ()
+
+
 def test_a_harmonized_name_is_composed_of_the_words_of_its_terms() -> None:
-    glossary = {"cust": "customer", "brth": "date of birth", "addr": "Address", "eml": "e-mail"}
-    assert harmonized("cust_brth", glossary) == "customer_date_of_birth"
-    assert harmonized("cust_brth", {**glossary, "brth": "dateOfBirth"}) == "customer_date_of_birth"
-    assert harmonized("CUST_ADDR2", glossary) == "customer_address_2"
-    assert harmonized("eml_addr", glossary) == "e_mail_address"
+    glossary = Glossary(
+        {
+            "customer": Concept(("cust", "kd")),
+            "date of birth": Concept(("brth",)),
+            "Address": Concept(("addr",)),
+            "e-mail": Concept(("eml",)),
+        }
+    )
+    assert glossary.harmonized("cust_brth") == "customer_date_of_birth"
+    assert glossary.harmonized("KD_ADDR2") == "customer_address_2", "of either abbreviation"
+    assert glossary.harmonized("eml_addr") == "e_mail_address"
+    words = Glossary({"dateOfBirth": Concept(("brth",))})
+    assert words.harmonized("brth") == "date_of_birth"
+
+
+def test_a_name_of_a_term_of_several_concepts_is_not_composed() -> None:
+    glossary = _glossary(status=("st",), street=("st",), code=("cd",))
+    assert glossary.harmonized("st_cd") is None, "while which one it stands for is not known"
+
+
+def test_a_concept_omitted_is_left_out_of_the_names() -> None:
+    glossary = Glossary(
+        {
+            "airplus": Concept(("ap",), "Marks a custom column of the CRM.", omitted=True),
+            "segment": Concept(("seg",)),
+            "code": Concept(("cd",)),
+        }
+    )
+    assert glossary.harmonized("ap_seg_cd") == "segment_code"
+    assert glossary.harmonized("ap") is None, "where no word is left"
 
 
 def test_no_name_is_composed_while_a_term_has_no_word() -> None:
-    assert harmonized("cust_crt_dt", {"cust": "customer", "dt": "date"}) is None
-    assert harmonized("__", {}) is None
-    assert harmonized("cust_x", {"cust": "customer", "x": " - "}) is None, "a word of nothing"
+    glossary = _glossary(customer=("cust",), date=("dt",))
+    assert glossary.harmonized("cust_crt_dt") is None
+    assert glossary.harmonized("__") is None
+    assert _glossary(**{" - ": ("x",)}).harmonized("x") is None, "a word of nothing"
+
+
+def test_columns_of_the_same_harmonized_name_are_a_collision() -> None:
+    glossary = Glossary(
+        {"airplus": Concept(("ap",), omitted=True), "status": Concept(("sts", "st"))}
+    )
+    statistics = Statistics(0, 1)
+    columns = (
+        Column("ap_sts", "varchar(1)", statistics),
+        Column("id", "bigint", statistics),
+        Column("st", "varchar(1)", statistics),
+    )
+    table = Table(name="t", rows=1, columns=columns)
+    assert glossary.collisions(table) == {"status": ("ap_sts", "st")}, "id has no name"
 
 
 def test_the_names_of_the_example_are_composed_from_words_given(example_profile: Profile) -> None:
-    words = {term: f"word_{term}" for term in occurrences(example_profile)}
+    glossary = Glossary({f"word_{term}": Concept((term,)) for term in occurrences(example_profile)})
     for table in example_profile.tables:
         for column in table.columns:
-            name = harmonized(column.name, words)
+            name = glossary.harmonized(column.name)
             assert name is not None, column.name
             assert name == "_".join(f"word_{term}" for term in terms(column.name))

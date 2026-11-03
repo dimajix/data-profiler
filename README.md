@@ -14,8 +14,9 @@ It works in three stages, each of which can be run again on its own:
   sample and, where they can, verified on the whole table; and which columns of a table are filled
   together, such as the street, the postal code and the city of a delivery address.
 - **describe** asks a small language model, running locally in Ollama, for a harmonized English
-  name and a description of every column. The names are composed from one glossary of the terms of
-  the whole schema - mostly abbreviations -, so that the same term reads the same in every table.
+  name and a description of every column. The names are composed from one glossary of the concepts
+  of the whole schema - each a word, its abbreviations and a description -, so that the same
+  concept reads the same in every table, whichever abbreviation it is written as.
 - **report** renders the result as HTML.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
@@ -130,12 +131,14 @@ environments:
   database itself. For the example, copy
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
-- **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: the
-  word of a term, the sensitivity of a column the detectors miss, such as the names of persons,
-  and the values that stand for no value in a column, its sentinels, in place of those of the
-  tool: `sentinels: ["", "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows
-  all three; `scan` counts and marks the columns as they give, and `report` lays them over the
-  profile, and so will `describe`, once it is made.
+- **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given:
+  concepts of the glossary, each under its word with its abbreviations, its description and,
+  where it is to be left out of the names, `omitted: true`; the sensitivity of a column the
+  detectors miss, such as the names of persons; and the values that stand for no value in a
+  column, its sentinels, in place of those of the tool: `sentinels: ["", "00000"]`, or
+  `sentinels: []` for none. `examples/crm/overrides.yml` shows them all; `scan` counts and marks
+  the columns as they give, and `report` lays them over the profile, and so will `describe`, once
+  it is made.
 
 With the simulation environment loaded, as above, the example is scanned by
 

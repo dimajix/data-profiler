@@ -3,10 +3,11 @@
 The document holds its styles inside, and no script, so that it can be sent and printed as it is.
 It shows each table with its columns - their original and harmonized names, types, statistics,
 the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of
-their enumerations and each of their sentinels -, with the groups of its columns filled together,
-and the glossary, each term with its word and where it appears. It renders what the profile holds,
-and nothing of the workspace: the values in it are those the profile may hold, which the template
-escapes.
+their enumerations and each of their sentinels -, with the groups of its columns filled together
+and the harmonized names two of its columns share; and the glossary, each concept with its
+abbreviations and description, and each term of no concept with where it appears. It renders what
+the profile holds, and nothing of the workspace: the values in it are those the profile may hold,
+which the template escapes.
 """
 
 from pathlib import Path
@@ -15,10 +16,10 @@ from typing import Final
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.files import write_whole
-from data_profiler.glossary import harmonized, occurrences
+from data_profiler.glossary import Glossary, occurrences
 from data_profiler.profile import Profile
 
-# The places a term of the glossary is shown with, before the number of the others.
+# The places a term of no concept is shown with, before the number of the others.
 _PLACES: Final = 8
 
 _TEMPLATES: Final = Environment(
@@ -36,7 +37,7 @@ class ReportError(Exception):
 
 def render(profile: Profile) -> str:
     """The report of `profile`, one HTML document with its styles inside."""
-    glossary = profile.glossary
+    glossary = Glossary(profile.glossary)
     columns = [column for table in profile.tables for column in table.columns]
     return _TEMPLATES.get_template("report.html").render(
         profile=profile,
@@ -45,9 +46,12 @@ def render(profile: Profile) -> str:
         end=lambda value: "withheld" if value is None else value,
         # A share of no rows is none, written as a dash, as the template writes what is not known.
         share=lambda count, rows: f"{count / rows:.0%}" if rows else "\u2013",
-        terms=occurrences(profile),
+        unknown={
+            term: names for term, names in occurrences(profile).items() if not glossary.words(term)
+        },
         places=_PLACES,
-        harmonized=lambda name: harmonized(name, glossary),
+        harmonized=glossary.harmonized,
+        collisions=glossary.collisions,
     )
 
 

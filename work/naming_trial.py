@@ -28,9 +28,9 @@ from typing import Any, Final
 from yaml import safe_dump, safe_load
 
 from data_profiler.commands import run
-from data_profiler.glossary import harmonized, occurrences, terms
+from data_profiler.glossary import Glossary, occurrences, terms
 from data_profiler.overrides import Overrides, OverridesError
-from data_profiler.profile import Column, Profile, ProfileError, Table
+from data_profiler.profile import Column, Concept, Profile, ProfileError, Table
 from data_profiler.project import Project, ProjectError
 from data_profiler.source import as_text
 from data_profiler.workspace import Sample, Workspace, WorkspaceError
@@ -129,7 +129,9 @@ def _trial(arguments: Any) -> None:
 
     places = occurrences(profile)
     needed = {term for _, column in chosen for term in terms(column.name) if term in places}
-    words: dict[str, str] = dict(profile.glossary)
+    # The word of each term of one concept in the glossary; a term of several is asked for again.
+    glossary = Glossary(profile.glossary)
+    words = {term: found[0] for term in places if len(found := glossary.words(term)) == 1}
     answers: dict[str, Any] = {"model": arguments.model, "terms": {}, "columns": {}}
     for term in sorted(needed - set(words)):
         shown = "\n".join(
@@ -150,7 +152,7 @@ def _trial(arguments: Any) -> None:
             table=table.name,
             facts=facts,
             words=", ".join(f'"{term}" for "{word}"' for term, word in named.items()),
-            composed=harmonized(column.name, words) or "-",
+            composed=_composed(column.name, words) or "-",
         )
         answer, seconds = _ask(arguments, prompt, _SUGGESTION)
         answers["columns"][f"{table.name}.{column.name}"] = {
@@ -176,6 +178,15 @@ def _brief(found: tuple[Table, Column], samples: dict[str, Sample]) -> str:
     if shown:
         parts.append("values: " + ", ".join(shown))
     return f" ({'; '.join(parts)})"
+
+
+def _composed(name: str, words: dict[str, str]) -> str | None:
+    """The harmonized name of `name`, from the word of each of its terms."""
+    concepts: dict[str, list[str]] = {}
+    for term, word in words.items():
+        concepts.setdefault(word, []).append(term)
+    glossary = Glossary({word: Concept(tuple(found)) for word, found in concepts.items()})
+    return glossary.harmonized(name)
 
 
 def _facts(table: Table, column: Column, values: Sequence[object]) -> str:

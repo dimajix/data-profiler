@@ -1,6 +1,6 @@
 # 27 — Glossary of concepts
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Describe
@@ -77,6 +77,27 @@ The interface first, put before the maintainer.
 - **What is no longer used.** `glossary.occurrences` and `glossary.harmonized` as they are, and
   the glossary of the overrides of format 2, `cust: customer`, which a project rewrites.
 
+## How
+
+As agreed with the maintainer:
+
+- **`profile.Concept`** - its abbreviations, its description, None where none is given, and
+  whether it is omitted; `Profile.glossary` holds the concepts by their words. The profile is of
+  format 9. An abbreviation given twice in one concept is not refused.
+- **`glossary.Glossary`** - made of the concepts once, so that the words of a term are found by an
+  index, not by a search of the glossary for each name: `words` of a term, `harmonized` of a name,
+  and `collisions` of the columns of a table. A name of a term of several concepts has no
+  harmonized name. The function `harmonized` of the module is gone.
+- **The overrides**, of format 3, give concepts by their words. A concept given takes the place of
+  the one proposed of its word, and its abbreviations are taken from the others, a concept left
+  without any dropped. An abbreviation no name has is refused.
+- **The report** shows each concept with its abbreviations and its description, and whether it is
+  omitted; the terms of no concept with where they appear; and the harmonized names two columns
+  of a table share.
+- **The example** has a column `cust.ap_seg_cd`, whose prefix `ap` is AirPlus, omitted; its
+  overrides give that concept, and an address of two abbreviations.
+- **The meanings** of the terms of a name are not part of this issue (see History).
+
 ## Done when
 
 - The interface is agreed with the maintainer.
@@ -94,3 +115,16 @@ The interface first, put before the maintainer.
   language model can propose names from them, an abbreviation may be of several concepts, its
   meaning chosen from the context, and a prefix such as `ap_` may be left out of the names. It comes
   before 24, whose vocabulary are the abbreviations of the glossary.
+
+- **2026-11-03** — While it was implemented, the maintainer decided otherwise of the meanings of
+  "What is decided": a mapping of each term of a name to its concept loses the order of the terms,
+  and cannot read a term repeated in two meanings, `ap_ap_nm`. They became the terms and the
+  reading of the name, each filled by a step of `describe` of its own, in
+  [28](28-terms-and-readings.md), with the example of a term of two concepts; this issue holds the
+  concepts alone, and a name of a term of several concepts has no harmonized name until 28.
+
+- **2026-11-03** — Done as agreed with the maintainer (see How). The trial of
+  [04](04-can-a-small-model-name-columns.md), `work/naming_trial.py`, takes the word of a term of
+  one concept from the glossary, and asks for the others again. No override resolves a collision
+  yet: one of the name of a column comes with [10](10-the-stage-describe.md), with the names it
+  proposes.
