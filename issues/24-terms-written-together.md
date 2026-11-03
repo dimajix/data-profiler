@@ -4,6 +4,7 @@
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
+**Epic:** [02](02-first-version-epic.md)
 **Summary:** Terms written together without a separator, `LFADR` in `KD_LFADR_PLZ`, stay one term, so that the glossary needs a word for every combination of terms, and the same term reads differently where it is written together.
 
 ## The problem
@@ -59,3 +60,6 @@ The interface first, put before the maintainer.
 
 - **2026-11-03** — Opened from the comparison with an earlier draft of a profile, which split the
   names by a vocabulary gained from the schema itself.
+
+- **2026-11-03** — Made a part of the first version ([02](02-first-version-epic.md)), as the
+  maintainer decided, since it comes before or with [10](10-the-stage-describe.md).

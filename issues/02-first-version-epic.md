@@ -35,6 +35,8 @@ of these questions, in the order in which the later ones rest on the earlier.
 - [08](08-detection.md) - semantic types, their sensitivity, and the detectors.
 - [09](09-the-glossary.md) - original names split into terms, and harmonized names composed from
   their words, without a language model.
+- [24](24-terms-written-together.md) - terms written together split by the vocabulary of the
+  schema, before or with the words of the glossary.
 - [10](10-the-stage-describe.md) - the stage `describe`: the words of the terms and the names of
   the columns, proposed by the language model.
 - [11](11-overrides.md) - corrections written by hand, laid over the profile.
@@ -53,3 +55,7 @@ Not in the first version: PDF, the relationships between tables, other databases
 
 - **2026-10-29** — Opened with the plan of the first version, agreed with the maintainer after
   [01](01-initial-project-setup.md).
+
+- **2026-11-03** — [24](24-terms-written-together.md) added to the order, after
+  [09](09-the-glossary.md), as the maintainer decided: terms written together are split before
+  the language model is asked for their words.
