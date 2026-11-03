@@ -8,6 +8,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
+| [26](26-overrides-read-by-scan.md) | open | high | bug | A profile written by scan holds the range and the values of the columns an override marks sensitive, as scan does not read the overrides, so that the profile, which is shared, holds what the overrides were to withhold. |
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
 ## Profile
