@@ -46,6 +46,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [24](24-terms-written-together.md) | done | Terms written together without a separator, `LFADR` in `KD_LFADR_PLZ`, stay one term, so that the glossary needs a word for every combination of terms, and the same term reads differently where it is written together. |
 | [27](27-glossary-of-concepts.md) | done | The glossary gives each term one word and nothing else, so that two abbreviations of one concept are two entries, an abbreviation of several meanings has one of them, a prefix that means nothing becomes part of every name, and the language model is told no more of a term than a word. |
 | [28](28-terms-and-readings.md) | done | The terms of a name are computed whenever they are needed, and which concept a term of several stands for is said nowhere, so that the split of a name changes unseen with the profile, a name of a term repeated in two meanings cannot be read, and a scan would lose what was found of the names. |
+| [29](29-the-word-of-a-concept-as-a-term.md) | open | A concept is written only as its abbreviations, not as its word, so that a name written in full - `name`, `customer_id` - finds no concept until its word is given once more as an abbreviation, and a concept cannot be given without abbreviations at all. |
 
 ## Report
 
