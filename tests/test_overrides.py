@@ -290,5 +290,7 @@ def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 7"):
+    with pytest.raises(
+        OverridesError, match=r"format 1\.0, of another major version than the format 7\.0"
+    ):
         Overrides.read(path)

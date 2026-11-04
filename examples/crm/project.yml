@@ -1,5 +1,5 @@
 # The example project: the tables of the example CRM, profiled in the simulation environment.
-format: 4
+format: "4.0"
 # The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
 # The language model of Ollama the names are described by.

@@ -234,7 +234,7 @@ def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
 ) -> None:
     (tmp_path / "profile").mkdir()
     (tmp_path / "profile" / "profile.yml").write_text("format: 5\n", encoding="utf-8")
-    with pytest.raises(ProfileError, match="only format"):
+    with pytest.raises(ProfileError, match="of another major version"):
         _scanned(source, "cust", tmp_path)
     assert (tmp_path / "profile" / "profile.yml").read_text(encoding="utf-8") == "format: 5\n"
 

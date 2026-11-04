@@ -30,11 +30,11 @@ from dotenv import dotenv_values
 from pydantic import TypeAdapter
 
 from data_profiler.detect import SemanticType
-from data_profiler.documents import DocumentError, read_document
+from data_profiler.documents import DocumentError, Version, read_document
 from data_profiler.profile import SemanticTypes
 
-FORMAT: Final = 4
-"""The version of the format of the configuration of a project, raised as `profile.FORMAT` is."""
+FORMAT: Final = Version(4, 0)
+"""The version of the format of the configuration of a project, raised as `documents` says."""
 
 # The name of an environment, which is the name of its directory, the same on every system, and an
 # argument of the command line, never taken for an option there.

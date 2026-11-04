@@ -7,7 +7,7 @@
 # column the detectors miss - here the names of persons, which no detector recognises -, and the
 # sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
 # are empty where none is given, or would be zeros.
-format: 7
+format: "7.0"
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
