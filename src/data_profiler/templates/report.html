@@ -11,6 +11,7 @@
 <body>
 <header>
   <h1>{{ profile.catalog }}.{{ profile.schema }}</h1>
+  {% if profile.description %}<p class="about">{{ profile.description }}</p>{% endif %}
   <p class="summary">
     {{ "{:,}".format(profile.tables | length) }} tables ·
     {{ "{:,}".format(column_count) }} columns ·
@@ -33,6 +34,7 @@
     {% if name %}<span class="harmonized">→ {{ name }}</span>{% endif %}
     <span class="rows">{{ "{:,}".format(table.rows) }} rows</span>
   </h2>
+  {% if table.description %}<p class="about">{{ table.description }}</p>{% endif %}
   <table>
     <thead>
       <tr>

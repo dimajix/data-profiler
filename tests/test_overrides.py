@@ -260,6 +260,8 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
     assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
     assert overrides.tables["cust"].columns["cust_ap_id"].name == "contact_person_id"
+    assert overrides.description is not None, "what the database holds"
+    assert overrides.tables["ord_itm"].description is not None, "what a table holds"
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
@@ -270,11 +272,15 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     assert columns["cntct.lst_nm"].sensitivity is Sensitivity.PERSONAL
     assert laid.glossary["address"].abbreviations == ("addr", "adr")
     assert columns["cust.ap_ap_nm"].reading == ("airplus", "contact_person", "name")
+    tables = {table.name: table for table in laid.tables}
+    assert laid.description == Overrides.read(_EXAMPLE).description
+    assert tables["ord_itm"].description == Overrides.read(_EXAMPLE).tables["ord_itm"].description
+    assert tables["ord"].description is None, "a table of none given"
 
 
 def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
-    path.write_text("format: 6\nglossary:\n  name: {}\n", encoding="utf-8")
+    path.write_text("format: 7\nglossary:\n  name: {}\n", encoding="utf-8")
     overrides = Overrides.read(path)
     assert overrides.glossary == {"name": Concept()}
     laid = overrides.laid_over(_PROFILE)
@@ -284,5 +290,5 @@ def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 6"):
+    with pytest.raises(OverridesError, match="format 1, but only format 7"):
         Overrides.read(path)

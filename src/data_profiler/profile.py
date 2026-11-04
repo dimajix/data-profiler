@@ -18,8 +18,8 @@ and sentinels of their columns; the stage describe fills the terms of the names 
 columns by its step that splits them, the glossary by its step that proposes concepts, the readings
 by its step that reads the names, and the descriptions of the columns by its step that describes
 them. The overrides fill none: what they give, the stages lay over the profile they read - the names
-given among it, which a profile written holds none of -, and scan takes the marks and sentinels they
-give.
+given and the descriptions of the database and of the tables among it, which a profile written holds
+none of -, and scan takes the marks and sentinels they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
@@ -51,7 +51,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 12
+FORMAT: Final = 13
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -337,6 +337,8 @@ class Table:
             at its place, the digits of a term of digits; None where it is not read.
         name_given: The harmonized name given by hand, by an override, in place of the one composed
             from its reading; None where none is given, and in a profile written.
+        description: What the table holds, in English, given by hand, by an override; None where
+            none is given, and in a profile written.
     """
 
     name: str
@@ -348,6 +350,7 @@ class Table:
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
     name_given: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -399,6 +402,8 @@ class Profile:
         types: The semantic types of the project the tables were scanned with, beside those of
             the tool.
         run: The last run of scan, or None where no scan wrote the profile.
+        description: What the database holds, in English, given by hand, by an override; None
+            where none is given, and in a profile written.
     """
 
     catalog: str
@@ -407,6 +412,7 @@ class Profile:
     glossary: Mapping[str, Concept] = field(default_factory=dict)
     types: SemanticTypes = ()
     run: Run | None = None
+    description: str | None = None
 
     @classmethod
     def read(cls, directory: Path) -> "Profile":
@@ -438,6 +444,7 @@ class Profile:
             glossary=head.glossary,
             types=head.types,
             run=head.run,
+            description=head.description,
         )
 
     @classmethod
@@ -526,6 +533,7 @@ class Profile:
             run=self.run,
             glossary=self.glossary,
             types=self.types,
+            description=self.description,
         )
         try:
             write_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT, head)
@@ -603,6 +611,7 @@ class _Head:
     run: Run | None = None
     glossary: Mapping[str, Concept] = field(default_factory=dict)
     types: SemanticTypes = ()
+    description: str | None = None
 
 
 def _unmatched(table: Table) -> Table:

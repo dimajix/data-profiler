@@ -95,6 +95,12 @@ def _content(path: Path) -> Any:
 
 def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     assert Profile.read(_written(tmp_path)) == _PROFILE
+    (table,) = _PROFILE.tables
+    described = replace(
+        _PROFILE, description="A CRM.", tables=(replace(table, description="All."),)
+    )
+    described.write(tmp_path)
+    assert Profile.read(tmp_path) == described, "with what the database and a table hold"
 
 
 def test_a_profile_is_written_as_its_head_and_a_file_of_each_table(tmp_path: Path) -> None:

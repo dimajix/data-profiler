@@ -96,7 +96,7 @@ def test_the_profile_of_an_environment_is_described_into_its_directory(
         table.name: {"columns": {c.name: {"description": "Given."} for c in table.columns}}
         for table in example_profile.tables
     }
-    document = {"format": 6, "glossary": given, "tables": descriptions}
+    document = {"format": 7, "glossary": given, "tables": descriptions}
     (project / "overrides.yml").write_text(safe_dump(document), encoding="utf-8")
     (project / "simulation").mkdir()
     proposed = {"customer": Concept(("cust",))}

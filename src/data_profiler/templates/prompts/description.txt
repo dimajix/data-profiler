@@ -1,0 +1,51 @@
+{#- The question of the description of `column`, of `table`, shown what is known of it, and what
+    the database and the table hold, where it is given. #}
+{% from "brief.txt" import brief with context %}
+{% set statistics = column.statistics %}
+{% set name = glossary.harmonized(column) %}
+{% set table_name = glossary.harmonized(table) %}
+You help to document the tables of a database whose names are made of English abbreviations.
+{% if database %}
+What the database holds: {{ database }}
+{% endif %}
+Here is what is known of the column "{{ column.name }}" of the table "{{ table.name }}":
+
+{% if name is not none %}
+- its name reads: {{ name }}
+{% endif %}
+{% for word in (column.reading or ()) | unique(case_sensitive=true) %}
+{% set concept = glossary.concept(word) %}
+{% if concept is not none and concept.description %}
+- {{ word }}: {{ concept.description }}
+{% endif %}
+{% endfor %}
+{% if table_name is not none %}
+- the name of the table reads: {{ table_name }}
+{% endif %}
+{% if table.description %}
+- what the table holds: {{ table.description }}
+{% endif %}
+- type: {{ brief(table, column) }}
+- rows of the table: {{ table.rows }}, of them null: {{ statistics.nulls }},
+{{- " " }}holding a value that stands for none: {{ statistics.sentinel_rows }}
+- distinct values: {{ statistics.distinct }}
+{% if statistics.lengths is not none %}
+- lengths: {{ statistics.lengths.shortest }} to {{ statistics.lengths.longest }}
+{% endif %}
+{% if statistics.range is not none %}
+- range: {{ end(statistics.range.smallest) }} to {{ end(statistics.range.largest) }}
+{% endif %}
+{% if column.values %}
+- its values, with their rows:
+{%- for value in column.values[:enumerated_shown] %}
+{{- ", " if not loop.first else " " }}{{ value.value }} ({{ value.rows }})
+{%- endfor %}
+
+{% endif %}
+- the columns beside it: {{ beside(column, table) | join(", ") or "none" }}
+{% for group in table.groups if column.name in group.columns %}
+- filled in the same rows as: {{ group.columns | reject("equalto", column.name) | join(", ") }}
+{% endfor %}
+
+Describe in one or two sentences what the column holds, for a person who knows the business but
+not the database. Do not repeat its name, and do not make up what the facts do not say.

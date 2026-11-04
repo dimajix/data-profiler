@@ -21,17 +21,25 @@ values and those of its sample, the columns beside it and those filled together 
 
 The steps see the profile with the overrides laid over it, so that the concepts given count and no
 term of one, no name of a reading given and no column of a description given is asked for; but they
-fill the profile as it was read, which holds nothing of the overrides. The language model is asked
-only for what the profile lacks, and the profile is written after each concept proposed and each
-table read or described, so that a run interrupted is resumed by the next; `forgotten` drops what
-the steps of the language model filled, to describe a profile anew, by another model. The model sees
-the values of the samples of a column, but their nulls and sentinels, as far as the module
-`disclosure` lets the profile hold them, as what it answers goes into the profile; an answer not of
-the form asked for is passed over, with a warning. Without a language model, the steps that ask it
-are left out: the glossary loses what no name has, and the names are split and read by the
-candidates of their terms alone, but no concept is proposed, no reading chosen and no column
-described, while what a model filled before is kept; the profile is written once, at the end, as
-nothing is asked that a run interrupted would lose.
+fill the profile as it was read, which holds nothing of the overrides. Every question shows the
+model what the database holds, and what the tables it is of hold, where the overrides give it. The
+language model is asked only for what the profile lacks, and the profile is written after each
+concept proposed and each table read or described, so that a run interrupted is resumed by the next;
+`forgotten` drops what the steps of the language model filled, to describe a profile anew, by
+another model. The model sees the values of the samples of a column, but their nulls and sentinels,
+as far as the module `disclosure` lets the profile hold them, as what it answers goes into the
+profile; an answer not of the form asked for is passed over, with a warning. Without a language
+model, the steps that ask it are left out: the glossary loses what no name has, and the names are
+split and read by the candidates of their terms alone, but no concept is proposed, no reading chosen
+and no column described, while what a model filled before is kept; the profile is written once, at
+the end, as nothing is asked that a run interrupted would lose.
+
+The questions to the model are Jinja2 templates in `data_profiler/templates/prompts/`, one of each,
+holding as much of it as they can - its text, its conditions and its loops -, and what they share,
+how a column is shown, a macro of its own. The code gives a template the objects it shows, and the
+values of a sample only as the module `disclosure` lets them be shown, never the sample itself, and
+renders it in a sandbox that refuses attributes of an underscore, so that a template changed shows
+no value withheld.
 """
 
 import logging
@@ -41,6 +49,8 @@ from itertools import islice
 from pathlib import Path
 from typing import Final
 
+from jinja2 import PackageLoader, StrictUndefined
+from jinja2.sandbox import SandboxedEnvironment
 from pydantic import TypeAdapter, ValidationError
 
 from data_profiler.detect import SemanticType, is_filled
@@ -89,44 +99,17 @@ _DESCRIPTION: Final = TypeAdapter(_Description)
 # words may be chosen, the form of each question says.
 _CHOICES: Final = TypeAdapter(dict[str, str])
 
-# The words of the glossary are not shown: a small model shown them takes one of them for every
-# term after.
-_CONCEPT_PROMPT: Final = """\
-You help to document the tables of a database whose names are made of English abbreviations.
-The abbreviation "{term}" appears in these names of tables and columns, each column with its type,
-what it was recognised as, and a few of its values:
-
-{places}
-
-Which English word, or few words, does "{term}" stand for in all of them? An abbreviation is mostly
-the word shortened, its letters in the order of the word: "cd" for "code", "qty" for "quantity".
-Answer with the word alone, in lower case, without the abbreviation, and describe in one sentence
-what the word means, not the abbreviation, for a person who knows the business but not the
-database.
-"""
-
-_READING_PROMPT: Final = """\
-You help to document the tables of a database whose names are made of English abbreviations.
-{subject}
-
-Its name is made of these terms, in their order, each the word or an abbreviation of a concept:
-
-{terms}
-
-Some of them may stand for one of several concepts. Which concept does each of those stand for in
-this name? Answer for each with the word of its concept.
-"""
-
-
-_DESCRIPTION_PROMPT: Final = """\
-You help to document the tables of a database whose names are made of English abbreviations.
-Here is what is known of the column "{column}" of the table "{table}":
-
-{facts}
-
-Describe in one or two sentences what the column holds, for a person who knows the business but
-not the database. Do not repeat its name, and do not make up what the facts do not say.
-"""
+# The prompts, each a template of its own: rendered as text, nothing escaped, as a prompt is no
+# HTML, and no name left undefined; in a sandbox, which refuses attributes of an underscore, so that
+# no template reaches a sample past `_Asking._values`.
+_PROMPTS: Final = SandboxedEnvironment(
+    loader=PackageLoader("data_profiler", "templates/prompts"),
+    autoescape=False,
+    undefined=StrictUndefined,
+    trim_blocks=True,
+    lstrip_blocks=True,
+    keep_trailing_newline=True,
+)
 
 
 def describe(
@@ -292,13 +275,7 @@ class _Asking:
         split = _split(profile, self._overrides)
         # The places with the overrides laid over them, so that the marks given count.
         for term, found in unknown(self._overrides.laid_over(split)).items():
-            lines = []
-            for table, named, where in found[:_PLACES]:
-                if isinstance(named, Table):
-                    lines.append(f"- table {where}")
-                else:
-                    lines.append(f"- column {where}: {self._brief(table, named)}")
-            prompt = _CONCEPT_PROMPT.format(term=term, places="\n".join(lines))
+            prompt = self._prompt("concept.txt", term=term, places=found)
             proposal = self._asked(prompt, _PROPOSAL, _PROPOSAL.json_schema())
             word = snake_case(proposal.word) if proposal is not None else ""
             if proposal is None or not word:
@@ -369,27 +346,7 @@ class _Asking:
             table: Its table, with the overrides laid over it.
             glossary: The concepts, those of the overrides among them.
         """
-        facts = []
-        name = glossary.harmonized(column)
-        if name is not None:
-            facts.append(f"- its name reads: {name}")
-        for word in dict.fromkeys(column.reading or ()):
-            concept = glossary.concept(word)
-            if concept is not None and concept.description:
-                facts.append(f"- {word}: {concept.description}")
-        named = glossary.harmonized(table)
-        if named is not None:
-            facts.append(f"- the name of the table reads: {named}")
-        facts.append(f"- type: {self._brief(table, column)}")
-        facts.extend(_statistics(column, table))
-        facts.append(f"- the columns beside it: {', '.join(_beside(column, table)) or 'none'}")
-        for group in table.groups:
-            if column.name in group.columns:
-                together = [other for other in group.columns if other != column.name]
-                facts.append(f"- filled in the same rows as: {', '.join(together)}")
-        prompt = _DESCRIPTION_PROMPT.format(
-            column=column.name, table=table.name, facts="\n".join(facts)
-        )
+        prompt = self._prompt("description.txt", column=column, table=table, glossary=glossary)
         answer = self._asked(prompt, _DESCRIPTION, _DESCRIPTION.json_schema())
         description = answer.description.strip() if answer is not None else ""
         if not description:
@@ -422,17 +379,11 @@ class _Asking:
         ):
             return None
         keys = [f"{place}_{term.text}" for place, term in enumerate(found, 1)]
-        lines = []
-        choices: dict[str, tuple[str, ...]] = {}
-        for key, term in zip(keys, found, strict=True):
-            if len(term.candidates) == 1:
-                lines.append(f'- "{term.text}" ({key}): {term.candidates[0]}')
-                continue
-            choices[key] = term.candidates
-            meanings = "; ".join(_meaning(word, glossary) for word in term.candidates)
-            lines.append(f'- "{term.text}" ({key}): one of {meanings}')
-        subject = self._subject(named, table)
-        prompt = _READING_PROMPT.format(subject=subject, terms="\n".join(lines))
+        terms = list(zip(keys, found, strict=True))
+        choices = {key: term.candidates for key, term in terms if len(term.candidates) > 1}
+        prompt = self._prompt(
+            "reading.txt", named=named, table=table, terms=terms, choices=choices, glossary=glossary
+        )
         properties = {
             key: {"type": "string", "enum": list(words)} for key, words in choices.items()
         }
@@ -448,27 +399,19 @@ class _Asking:
         _logger.info("Read the name %s as %s", named.name, ", ".join(reading))
         return reading
 
-    def _subject(self, named: Table | Column, table: Table) -> str:
-        """What the question of the reading of the name of `named`, of `table`, is about."""
-        if isinstance(named, Table):
-            shown = ", ".join(column.name for column in table.columns[:_COLUMNS])
-            more = ", ..." if len(table.columns) > _COLUMNS else ""
-            return f'It is about the table "{table.name}", of the columns {shown}{more}.'
-        beside = ", ".join(_beside(named, table)) or "none"
-        return (
-            f'It is about the column "{named.name}" of the table "{table.name}":'
-            f" {self._brief(table, named)}. The columns beside it are {beside}."
+    def _prompt(self, name: str, **shown: object) -> str:
+        """The prompt of the template `name`, of what is `shown`, the database and the samples."""
+        return _PROMPTS.get_template(name).render(
+            **shown,
+            # Of the overrides, as the profile read holds none, nor the profile laid over another.
+            database=self._overrides.description,
+            values=self._values,
+            beside=_beside,
+            end=_end,
+            places_shown=_PLACES,
+            columns_shown=_COLUMNS,
+            enumerated_shown=_ENUMERATED,
         )
-
-    def _brief(self, table: Table, column: Column) -> str:
-        """The type of `column`, of `table`, what it was recognised as, and a few of its values."""
-        parts = [column.type, *(f"recognised as {match.type.name}" for match in column.matches)]
-        values = self._values(table, column)
-        if column.sensitive:
-            parts.append(f"{column.sensitivity.value} data, its values not shown")
-        elif values:
-            parts.append("values: " + ", ".join(values))
-        return "; ".join(parts)
 
     def _values(self, table: Table, column: Column) -> list[str]:
         """A few distinct values of the sample of `column`, of `table`, as far as they are shown."""
@@ -493,28 +436,9 @@ class _Asking:
             return None
 
 
-def _statistics(column: Column, table: Table) -> list[str]:
-    """What is counted of `column`, of `table`, as lines of facts."""
-    statistics = column.statistics
-    facts = []
-    facts.append(
-        f"- rows of the table: {table.rows}, of them null: {statistics.nulls},"
-        f" holding a value that stands for none: {statistics.sentinel_rows}"
-    )
-    facts.append(f"- distinct values: {statistics.distinct}")
-    if statistics.lengths is not None:
-        lengths = statistics.lengths
-        facts.append(f"- lengths: {lengths.shortest} to {lengths.longest}")
-    if statistics.range is not None:
-        ends = (statistics.range.smallest, statistics.range.largest)
-        smallest, largest = ("not shown" if end is None else repr(end) for end in ends)
-        facts.append(f"- range: {smallest} to {largest}")
-    if column.values:
-        counted = ", ".join(
-            f"{value.value} ({value.rows})" for value in column.values[:_ENUMERATED]
-        )
-        facts.append(f"- its values, with their rows: {counted}")
-    return facts
+def _end(value: object) -> str:
+    """An end of a range, as a prompt shows it: written as Python writes it, or not shown."""
+    return "not shown" if value is None else repr(value)
 
 
 def _beside(column: Column, table: Table) -> list[str]:
@@ -522,9 +446,3 @@ def _beside(column: Column, table: Table) -> list[str]:
     names = [found.name for found in table.columns]
     index = names.index(column.name)
     return names[max(0, index - _NEIGHBOURS) : index] + names[index + 1 : index + 1 + _NEIGHBOURS]
-
-
-def _meaning(word: str, glossary: Glossary) -> str:
-    """`word`, with the description of its concept in parentheses, where it has one."""
-    concept = glossary.concept(word)
-    return f"{word} ({concept.description})" if concept and concept.description else word

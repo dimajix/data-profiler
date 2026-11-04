@@ -1,0 +1,33 @@
+{#- The question of the concept of a term of none, shown the names it appears in, what the
+    database holds and what their tables hold, where it is given. The words of the glossary are not
+    shown: a small model shown them takes one of them for every term after. #}
+{% from "brief.txt" import brief with context %}
+You help to document the tables of a database whose names are made of English abbreviations.
+{% if database %}
+What the database holds: {{ database }}
+{% endif %}
+The abbreviation "{{ term }}" appears in these names of tables and columns, each column with its type,
+what it was recognised as, and a few of its values:
+
+{% for table, named, where in places[:places_shown] %}
+{% if named is sameas table %}
+- table {{ where }}
+{% else %}
+- column {{ where }}: {{ brief(table, named) }}
+{% endif %}
+{% endfor %}
+{% set described = places[:places_shown] | map(attribute=0) | unique(attribute="name")
+    | selectattr("description") | list %}
+{% if described %}
+
+What the tables hold:
+{% for table in described %}
+- {{ table.name }}: {{ table.description }}
+{% endfor %}
+{% endif %}
+
+Which English word, or few words, does "{{ term }}" stand for in all of them? An abbreviation is mostly
+the word shortened, its letters in the order of the word: "cd" for "code", "qty" for "quantity".
+Answer with the word alone, in lower case, without the abbreviation, and describe in one sentence
+what the word means, not the abbreviation, for a person who knows the business but not the
+database.

@@ -1,12 +1,12 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
 The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments: concepts of the glossary, the reading of the name of a
-table or column, the harmonized name of a table or column and the description of a column, the
-sensitivity of a column the detectors miss - or find where it is none, which gives back no values
-`scan` took out -, and the sentinels of a column, in place of those of the tool. Concepts are named
-by their words, tables and columns by their original names, as keys, so that a person writes no more
-than what is given.
+project, the same for all its environments: what the database holds, concepts of the glossary, the
+reading of the name of a table or column, the harmonized name of a table or column, the description
+of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
+which gives back no values `scan` took out -, and the sentinels of a column, in place of those of
+the tool. Concepts are named by their words, tables and columns by their original names, as keys, so
+that a person writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
@@ -28,7 +28,8 @@ counts once `describe` has split the name, as a reading agrees with the terms of
 given comes before the one composed from the reading, so that it resolves a collision of harmonized
 names, and a description given before the one proposed; both are laid over by the stages that read
 the profile alone, as a reading is, and a column of a description given is not described by the
-language model.
+language model. The descriptions of the database and of a table are laid over the same way, and
+shown to the language model with what it is asked of.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -66,7 +67,7 @@ from data_profiler.profile import Concept, Profile, Table
 _logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 6
+_FORMAT: Final = 7
 
 
 class OverridesError(Exception):
@@ -106,11 +107,13 @@ class TableOverride:
             order, or None where it is not given.
         name: The harmonized name of the table, in snake_case, in place of the one composed from
             its reading, or None where it is not given.
+        description: What the table holds, or None where it is not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
     reading: tuple[str, ...] | None = None
     name: str | None = None
+    description: str | None = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -150,7 +153,8 @@ class TableOverride:
 
         Returns:
             The table, each reading given in place of the one read, each name given as its
-            `name_given`, and each description given in place of the one proposed.
+            `name_given`, each description given of a column in place of the one proposed, and the
+            description given of the table in place of what it holds.
 
         Raises:
             OverridesError: A column is named that the table does not have, a reading is given that
@@ -192,7 +196,14 @@ class TableOverride:
                 )
             )
         reading = table.reading if self.reading is None else self.reading
-        return replace(table, columns=tuple(columns), reading=reading, name_given=self.name)
+        description = table.description if self.description is None else self.description
+        return replace(
+            table,
+            columns=tuple(columns),
+            reading=reading,
+            name_given=self.name,
+            description=description,
+        )
 
     def agrees_with(self, table: Table) -> bool:
         """Whether `table` agrees with what is given: marked, and counted with the sentinels given.
@@ -257,13 +268,15 @@ class TableOverride:
 
 @dataclass(frozen=True)
 class Overrides:
-    """What is given by hand of a profile: concepts, readings, sensitivity and sentinels.
+    """What is given by hand of a profile: concepts, readings, descriptions, sensitivity, sentinels.
 
     Attributes:
+        description: What the database holds, or None where it is not given.
         glossary: The concepts given, by their words.
         tables: What is given of each table, by its original name.
     """
 
+    description: str | None = None
     glossary: Mapping[str, Concept] = field(default_factory=dict)
     tables: Mapping[str, TableOverride] = field(default_factory=dict)
 
@@ -336,8 +349,9 @@ class Overrides:
             The profile, the concepts of the overrides in its glossary before its own, the
             readings they give of the names of its tables and columns in place of those read, the
             names they give as their `name_given`, the descriptions they give of its columns in
-            place of those proposed, its columns marked with the sensitivity they give, and only
-            so, and without the values of those marked sensitive.
+            place of those proposed, and of it and its tables in place of what they hold, its
+            columns marked with the sensitivity they
+            give, and only so, and without the values of those marked sensitive.
 
         Raises:
             OverridesError: The overrides name a table or column the profile does not have, or
@@ -358,7 +372,8 @@ class Overrides:
             )
             for table in profile.tables
         )
-        return replace(profile, tables=tuple(tables))
+        description = profile.description if self.description is None else self.description
+        return replace(profile, tables=tuple(tables), description=description)
 
     def _with_concepts(self, profile: Profile) -> Profile:
         """`profile`, the concepts given in its glossary before its own."""

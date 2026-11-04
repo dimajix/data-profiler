@@ -1,13 +1,16 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
-# concepts of the glossary - a customer; an address, written in two ways; a prefix that marks a
-# custom column, left out of the names; a contact person, written as that prefix is; the terms of
-# three names that stand for the one or the other; and an IBAN, written as its word alone -, the
-# readings of those three names, a name given in place of the one composed from a reading and a
-# description in place of the one proposed, the sensitivity of a column the detectors miss - here
-# the names of persons, which no detector recognises -, and the sentinels of a column in place of
-# those of the tool - here the postal codes of a delivery, which are empty where none is given, or
-# would be zeros.
-format: 6
+# what the database and one of its tables hold, concepts of the glossary - a customer; an address,
+# written in two ways; a prefix that marks a custom column, left out of the names; a contact person,
+# written as that prefix is; the terms of three names that stand for the one or the other; and an
+# IBAN, written as its word alone -, the readings of those three names, a name given in place of the
+# one composed from a reading and a description in place of the one proposed, the sensitivity of a
+# column the detectors miss - here the names of persons, which no detector recognises -, and the
+# sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
+# are empty where none is given, or would be zeros.
+format: 7
+description: >-
+  The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
+  addresses, the products it sells, and the orders of its customers.
 glossary:
   customer:
     abbreviations: [cust]
@@ -50,3 +53,5 @@ tables:
   ord:
     columns:
       dlvr_pst_cd: {sentinels: ["", "00000"]}
+  ord_itm:
+    description: The positions of an order, one product each, with its quantity and price.

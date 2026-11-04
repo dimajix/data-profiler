@@ -109,6 +109,10 @@ th {
     min-width: 16em;
 }
 
+.about {
+    max-width: 50em;
+}
+
 section {
     break-inside: avoid-page;
 }

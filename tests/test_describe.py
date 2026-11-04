@@ -320,6 +320,30 @@ def test_a_name_of_a_term_of_several_concepts_is_read_by_the_model(tmp_path: Pat
     assert llm.forms[0]["properties"] == {"2_st": {"type": "string", "enum": ["status", "street"]}}
 
 
+def test_the_model_is_shown_what_the_database_and_a_table_hold_where_it_is_given(
+    tmp_path: Path,
+) -> None:
+    overrides = Overrides(
+        description="The CRM of a wholesaler.",
+        tables={"cust": TableOverride(description="The customers of the wholesaler.")},
+    )
+    llm = _Answers(
+        _proposal("type"), json.dumps({"3_st": "status"}), descriptions=("Its type.", "Its kind.")
+    )
+    profile = _profile("cust_typ_st", "typ", glossary=_GLOSSARY)
+    described = _described(profile, tmp_path, overrides, llm)
+    concept, reading = llm.prompts
+    description, _ = llm.descriptions
+    for prompt in (concept, reading, description):
+        assert "\nWhat the database holds: The CRM of a wholesaler.\n" in prompt
+    assert concept.count("- cust: The customers of the wholesaler.") == 1, "the table once"
+    assert "What the tables hold:\n- cust: The customers of the wholesaler.\n" in concept
+    assert 'What the table "cust" holds: The customers of the wholesaler.\nIt is about' in reading
+    assert "- what the table holds: The customers of the wholesaler.\n" in description
+    assert described.description is None, "the profile written holds nothing of the overrides"
+    assert described.tables[0].description is None
+
+
 def test_a_term_repeated_in_two_meanings_is_read_in_each(tmp_path: Path) -> None:
     glossary = {
         "customer": Concept(("cust",)),

@@ -1,0 +1,10 @@
+{#- What a prompt shows of a column: its type, what it was recognised as, and a few of its values,
+    as far as they are shown; `values` gives them, as the module disclosure lets them be shown. #}
+{% macro brief(table, column) -%}
+{% set shown = values(table, column) -%}
+{{ column.type }}
+{%- for match in column.matches %}; recognised as {{ match.type.name }}{% endfor %}
+{%- if column.sensitive %}; {{ column.sensitivity.value }} data, its values not shown
+{%- elif shown %}; values: {{ shown | join(", ") }}
+{%- endif %}
+{%- endmacro %}
