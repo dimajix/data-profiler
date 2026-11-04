@@ -154,6 +154,7 @@ def describe(
         WorkspaceError: The sample of a table cannot be read.
         ProfileError: The profile cannot be written.
     """
+    overrides.warn_unused(profile)
     describing = _Describing(overrides, llm, workspace, directory, profile.types)
     profile = describing.described(describing.names_read(describing.proposed(profile)))
     profile.write(directory)

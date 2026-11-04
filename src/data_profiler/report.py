@@ -52,6 +52,7 @@ def render(profile: Profile, overrides: Overrides) -> str:
         OverridesError: The overrides name what the profile does not have, as
             `Overrides.laid_over` says.
     """
+    overrides.warn_unused(profile)
     profile = overrides.laid_over(profile)
     glossary = Glossary(profile.glossary)
     columns = [column for table in profile.tables for column in table.columns]

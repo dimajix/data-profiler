@@ -14,7 +14,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [11](11-overrides.md) | done | A wrong proposal cannot be corrected for good: a correction made in the profile is lost at the next run of describe. |
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 | [26](26-overrides-read-by-scan.md) | done | A profile written by scan holds the range and the values of the columns an override marks sensitive, as scan does not read the overrides, so that the profile, which is shared, holds what the overrides were to withhold. |
-| [30](30-abbreviations-given-that-no-name-has.md) | open | An abbreviation the overrides give that no name of the profile has ends `describe` and `report` with an error, though the overrides are the same for all environments of a project and its glossary may well hold terms of tables that one environment does not have, or not yet. |
+| [30](30-abbreviations-given-that-no-name-has.md) | done | An abbreviation the overrides give that no name of the profile has ends `describe` and `report` with an error, though the overrides are the same for all environments of a project and its glossary may well hold terms of tables that one environment does not have, or not yet. |
 
 ## Scan
 

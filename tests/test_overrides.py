@@ -214,10 +214,6 @@ def test_a_name_given_other_than_in_snake_case_is_refused_naming_it() -> None:
 @pytest.mark.parametrize(
     ("overrides", "problem"),
     [
-        (
-            Overrides(glossary={"customer": Concept(("CUST",))}),
-            "abbreviations, in lower case as terms are, that no name of the profile has: CUST",
-        ),
         (Overrides(tables={"cust": TableOverride()}), "tables that are not profiled: cust"),
         (_marked("lst_nm"), "columns of cntct it does not have: lst_nm"),
         (
@@ -229,13 +225,26 @@ def test_a_name_given_other_than_in_snake_case_is_refused_naming_it() -> None:
             "readings of names of cntct that read no concept .*: cntct",
         ),
     ],
-    ids=["an abbreviation", "a table", "a column", "a reading too short", "a reading amiss"],
+    ids=["a table", "a column", "a reading too short", "a reading amiss"],
 )
 def test_an_override_of_what_the_profile_does_not_have_is_refused_naming_it(
     overrides: Overrides, problem: str
 ) -> None:
     with pytest.raises(OverridesError, match=problem):
         overrides.laid_over(_PROFILE)
+
+
+def test_an_abbreviation_given_that_no_name_has_is_warned_of_and_laid_over(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    given = {"customer": Concept(("CUST", "kd")), "contact": Concept(("cntct",)), "type": Concept()}
+    overrides = Overrides(glossary=given)
+    overrides.warn_unused(_PROFILE)
+    assert caplog.messages == [
+        "The overrides give abbreviations, in lower case as terms are, that no name of the profile"
+        " has: CUST, kd"
+    ], "not the word of a concept given"
+    assert overrides.laid_over(_PROFILE).glossary["customer"] == given["customer"]
 
 
 def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:

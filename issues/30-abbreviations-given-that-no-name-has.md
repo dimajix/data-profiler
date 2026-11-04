@@ -1,6 +1,6 @@
 # 30 — Abbreviations given that no name has
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** high
 **Area:** Profile
@@ -40,3 +40,10 @@ have, `CUST`, which matches no term of a name, as terms are in lower case.
 
 - **2026-11-04** — Opened, as the maintainer decided: an abbreviation given that no name has is to
   be a warning, not an error.
+
+- **2026-11-04** — Done as the maintainer decided: `Overrides.warn_unused` warns of the
+  abbreviations given that no name of a profile has, naming them, and `describe` and `report` call
+  it once before they lay the overrides over; `Overrides.laid_over` no longer refuses them. It
+  takes back what [27](27-glossary-of-concepts.md) decided, "an abbreviation no name has is
+  refused". A word given that no name has is warned of no more than it was refused, since
+  [29](29-the-word-of-a-concept-as-a-term.md).
