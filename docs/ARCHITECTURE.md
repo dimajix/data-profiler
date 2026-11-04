@@ -95,9 +95,9 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `sampling`, `matching`, `grouping`, `overrides`, `disclosure`, `values` and `workspace`, `describe`
 uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and `workspace`, `report` the profile
 and `overrides`, which it lays over it, and `glossary` for its names; `cli` runs the stages, gives
-the overrides to each, and the language model, made by `llm` as the project names it, to `describe`.
-The semantic types of a project reach `scan` from `project`, and every stage after it from the
-profile.
+the overrides to each, and the language model, made by `llm` as the project names it, to `describe`,
+unless it is to ask none. The semantic types of a project reach `scan` from `project`, and every
+stage after it from the profile.
 
 ## The domain
 
@@ -225,8 +225,9 @@ profile.
     reading given and no column of a description given is asked for. The language model is asked
     only for what the profile lacks, and the profile is written after each concept and each table
     read or described, so that a run interrupted is resumed; `describe --anew` drops first what the
-    language model filled. The result is the profile, with terms, glossary, readings and
-    descriptions.
+    language model filled, and `describe --without-llm` asks it nothing, doing what needs no model
+    alone: the names split, and read where each term has one candidate, the profile written once at
+    the end. The result is the profile, with terms, glossary, readings and descriptions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML: the harmonized names and
     descriptions of the columns, and the concepts proposed told apart from those given.
 

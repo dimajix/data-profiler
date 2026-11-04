@@ -48,7 +48,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [27](27-glossary-of-concepts.md) | done | The glossary gives each term one word and nothing else, so that two abbreviations of one concept are two entries, an abbreviation of several meanings has one of them, a prefix that means nothing becomes part of every name, and the language model is told no more of a term than a word. |
 | [28](28-terms-and-readings.md) | done | The terms of a name are computed whenever they are needed, and which concept a term of several stands for is said nowhere, so that the split of a name changes unseen with the profile, a name of a term repeated in two meanings cannot be read, and a scan would lose what was found of the names. |
 | [29](29-the-word-of-a-concept-as-a-term.md) | done | A concept is written only as its abbreviations, not as its word, so that a name written in full - `name`, `customer_id` - finds no concept until its word is given once more as an abbreviation, and a concept cannot be given without abbreviations at all. |
-| [31](31-describe-without-llm.md) | open | `describe` cannot run without the language model of its project, though splitting the names and reading those of one candidate for each term needs none, so that a person working on the glossary waits for Ollama at every run, and cannot run it at all where Ollama is not there. |
+| [31](31-describe-without-llm.md) | done | `describe` cannot run without the language model of its project, though splitting the names and reading those of one candidate for each term needs none, so that a person working on the glossary waits for Ollama at every run, and cannot run it at all where Ollama is not there. |
 
 ## Report
 

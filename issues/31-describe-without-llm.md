@@ -1,6 +1,6 @@
 # 31 — describe without a language model
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -42,3 +42,19 @@ skips those that ask it.
 ## History
 
 - **2026-11-04** — Opened, as the maintainer decided: a flag `--without-llm` of `describe`.
+
+- **2026-11-04** — Done as decided: `describe` takes `llm: LanguageModel | None`, and without one
+  its steps that ask the model ask nothing - `proposed` drops what no name has alone, `_choice`
+  chooses none, `described` describes none -, so that no warning of an answer missing is given.
+  On the command line, `--anew` chose one of two stages, `_describe` and `_describe_anew`, as a
+  boolean that switches a function becomes two; two options independent of each other would make
+  four, and are flags of one `_describe` instead, its stage made of the options of the command, so
+  that argparse stays in `main` and the stages stay typed.
+
+- **2026-11-04** — Restructured, as the maintainer agreed after the review: the steps that need no
+  model are functions of the module - `_held`, the glossary without what no name has, and
+  `_names_kept`, the names split anew and read by their candidates -, and those that ask it the
+  class `_Asking`, which holds a model that is never None, so that no step asks whether there is
+  one. Without a model, the profile is written once, at the end, as nothing is asked that a run
+  interrupted would lose. The signature of `describe` stays, its workspace as well, as the
+  maintainer decided.

@@ -2,22 +2,22 @@
 
 Its steps follow one another, each filling attributes of the profile of its own and keeping all
 others. The first splits each name into its terms, those written together by the vocabulary of the
-profile, and gives each term its candidates, the concepts written as it. The second asks the
-language model for a concept of each term of none, shown the names it appears in: a word and a
-description, which go into the glossary of the profile; a word the glossary has takes the term as
-one more abbreviation of its concept. It drops first the abbreviations no name has any longer, and a
-concept no name is written as any longer, by its word or an abbreviation. The names are then split
-again, so that the concepts proposed are candidates, and the third step reads each name. A reading
-is kept while the terms of its name are as they were split before, their candidates among them, and
-agree with it, so that a reading chosen is not lost by a split that stayed the same, and a term that
-gained a candidate has its name read anew. Else a name whose terms have one candidate each, or are
-of digits, is read by them; one of a term of several, the language model reads, shown the candidates
-with their descriptions, choosing for each such term one of them; and any other, of a term of none,
-is left unread. The terms a split finds are written with the readings of their names alone, table by
-table, so that the profile never holds a reading of other terms than its own. The fourth asks the
-language model for the description of each column of none, shown the reading of its name with the
-descriptions of its concepts, what is counted of it, its values and those of its sample, the columns
-beside it and those filled together with it.
+profile, and gives each term its candidates, the concepts written as it; by these terms, it drops
+from the glossary the abbreviations no name has any longer, and a concept no name is written as any
+longer, by its word or an abbreviation. The second asks the language model for a concept of each
+term of none, shown the names it appears in: a word and a description, which go into the glossary of
+the profile; a word the glossary has takes the term as one more abbreviation of its concept. The
+names are then split again, so that the concepts proposed are candidates, and the third step reads
+each name. A reading is kept while the terms of its name are as they were split before, their
+candidates among them, and agree with it, so that a reading chosen is not lost by a split that
+stayed the same, and a term that gained a candidate has its name read anew. Else a name whose terms
+have one candidate each, or are of digits, is read by them; one of a term of several, the language
+model reads, shown the candidates with their descriptions, choosing for each such term one of them;
+and any other, of a term of none, is left unread. The terms a split finds are written with the
+readings of their names alone, table by table, so that the profile never holds a reading of other
+terms than its own. The fourth asks the language model for the description of each column of none,
+shown the reading of its name with the descriptions of its concepts, what is counted of it, its
+values and those of its sample, the columns beside it and those filled together with it.
 
 The steps see the profile with the overrides laid over it, so that the concepts given count and no
 term of one, no name of a reading given and no column of a description given is asked for; but they
@@ -27,7 +27,11 @@ table read or described, so that a run interrupted is resumed by the next; `forg
 the steps of the language model filled, to describe a profile anew, by another model. The model sees
 the values of the samples of a column, but their nulls and sentinels, as far as the module
 `disclosure` lets the profile hold them, as what it answers goes into the profile; an answer not of
-the form asked for is passed over, with a warning.
+the form asked for is passed over, with a warning. Without a language model, the steps that ask it
+are left out: the glossary loses what no name has, and the names are split and read by the
+candidates of their terms alone, but no concept is proposed, no reading chosen and no column
+described, while what a model filled before is kept; the profile is written once, at the end, as
+nothing is asked that a run interrupted would lose.
 """
 
 import logging
@@ -128,7 +132,7 @@ not the database. Do not repeat its name, and do not make up what the facts do n
 def describe(
     profile: Profile,
     overrides: Overrides,
-    llm: LanguageModel,
+    llm: LanguageModel | None,
     workspace: Workspace,
     directory: Path,
 ) -> None:
@@ -136,14 +140,14 @@ def describe(
 
     The profile is written after each concept proposed, after each table whose names are split and
     read anew, the terms and readings of a table together, and after each table a column of which
-    is described.
+    is described; without a language model, once, at the end.
 
     Args:
         profile: The profile, as it was read from `directory`, or as `forgotten` left it.
         overrides: The overrides of the project, whose concepts, readings and descriptions count
             beside those of the profile.
         llm: The language model that proposes the concepts, reads the names and describes the
-            columns.
+            columns, or None to ask none.
         workspace: Where the samples of the tables are, whose values the model is shown.
         directory: The directory of the profile.
 
@@ -155,8 +159,13 @@ def describe(
         ProfileError: The profile cannot be written.
     """
     overrides.warn_unused(profile)
-    describing = _Describing(overrides, llm, workspace, directory, profile.types)
-    profile = describing.described(describing.names_read(describing.proposed(profile)))
+    profile = _held(profile, overrides)
+    if llm is None:
+        _logger.info("Describing without a language model: no concept proposed or column described")
+        profile = _names_kept(profile, overrides)
+    else:
+        asking = _Asking(overrides, llm, workspace, directory, profile.types)
+        profile = asking.described(asking.names_read(asking.proposed(profile)))
     profile.write(directory)
     columns = [column for table in profile.tables for column in table.columns]
     readings = [table.reading for table in profile.tables] + [c.reading for c in columns]
@@ -194,11 +203,52 @@ def forgotten(profile: Profile) -> Profile:
     return replace(profile, tables=tuple(tables), glossary={})
 
 
+def _split(profile: Profile, overrides: Overrides) -> Profile:
+    """`profile`, each name split into its terms, by the concepts of it and of `overrides`."""
+    laid = overrides.laid_over(profile)
+    vocabulary = Vocabulary.of(laid)
+    glossary = Glossary(laid.glossary)
+    tables = []
+    for table in profile.tables:
+        columns = tuple(_terms(column, vocabulary, glossary) for column in table.columns)
+        tables.append(_terms(replace(table, columns=columns), vocabulary, glossary))
+    return replace(profile, tables=tuple(tables))
+
+
 def _terms[Named: (Table, Column)](
     named: Named, vocabulary: Vocabulary, glossary: Glossary
 ) -> Named:
     """`named`, its name split into its terms, each with its candidates."""
     return replace(named, terms=glossary.terms(named.name, vocabulary))
+
+
+def _held(profile: Profile, overrides: Overrides) -> Profile:
+    """`profile`, of its concepts those a name has a term of, without the abbreviations none has.
+
+    The names are split, by the concepts of it and of `overrides`, to find the terms they have,
+    but stay as they are, so that the profile holds no terms of other readings than its own.
+    """
+    split = _split(profile, overrides)
+    names: list[Table | Column] = [*split.tables]
+    names += [column for table in split.tables for column in table.columns]
+    held = {term.text for named in names for term in named.terms or ()}
+    glossary = {}
+    for word, concept in profile.glossary.items():
+        if any(term in held for term in written_as(word, concept)):
+            left = tuple(term for term in concept.abbreviations if term in held)
+            glossary[word] = replace(concept, abbreviations=left)
+    return replace(profile, glossary=glossary)
+
+
+def _names_kept(profile: Profile, overrides: Overrides) -> Profile:
+    """`profile`, its names split anew, by the concepts of it and of `overrides`, and `_kept`."""
+    split = _split(profile, overrides)
+    tables = []
+    for before, table in zip(profile.tables, split.tables, strict=True):
+        pairs = zip(before.columns, table.columns, strict=True)
+        columns = tuple(_kept(old, column) for old, column in pairs)
+        tables.append(_kept(before, replace(table, columns=columns)))
+    return replace(split, tables=tuple(tables))
 
 
 def _kept[Named: (Table, Column)](before: Named, named: Named) -> Named:
@@ -214,8 +264,8 @@ def _kept[Named: (Table, Column)](before: Named, named: Named) -> Named:
     return replace(named, reading=tuple(term.candidates[0] for term in named.terms))
 
 
-class _Describing:
-    """The steps of describe on a profile, by the overrides, the language model and the samples."""
+class _Asking:
+    """The steps of describe that ask the language model, shown the samples of the workspace."""
 
     def __init__(
         self,
@@ -233,25 +283,13 @@ class _Describing:
         self._types = types
         self._samples: dict[str, Sample] = {}
 
-    def split(self, profile: Profile) -> Profile:
-        """`profile`, each name split into its terms, by the concepts of it and of the overrides."""
-        laid = self._overrides.laid_over(profile)
-        vocabulary = Vocabulary.of(laid)
-        glossary = Glossary(laid.glossary)
-        tables = []
-        for table in profile.tables:
-            columns = tuple(_terms(column, vocabulary, glossary) for column in table.columns)
-            tables.append(_terms(replace(table, columns=columns), vocabulary, glossary))
-        return replace(profile, tables=tuple(tables))
-
     def proposed(self, profile: Profile) -> Profile:
         """`profile`, a concept proposed of each term of none, written after each.
 
         The names are split to find the terms of none, but the profile is written as it was but
         its glossary, so that it holds no terms of other readings than its own.
         """
-        split = self.split(profile)
-        profile = replace(profile, glossary=_held(split).glossary)
+        split = _split(profile, self._overrides)
         # The places with the overrides laid over them, so that the marks given count.
         for term, found in unknown(self._overrides.laid_over(split)).items():
             lines = []
@@ -277,19 +315,14 @@ class _Describing:
         return profile
 
     def names_read(self, profile: Profile) -> Profile:
-        """`profile`, its names split, and read: by `_kept`, else by the language model.
+        """`profile`, its names split, and read: by `_names_kept`, else by the language model.
 
         The model is asked for a name where it is read by neither, none is given, and each of its
         terms has a candidate; the profile is written after each table split or read otherwise
         than before, its terms and readings together.
         """
-        split = self.split(profile)
-        tables = []
-        for before, table in zip(profile.tables, split.tables, strict=True):
-            pairs = zip(before.columns, table.columns, strict=True)
-            kept_columns = tuple(_kept(old, column) for old, column in pairs)
-            tables.append(_kept(before, replace(table, columns=kept_columns)))
-        kept = replace(split, tables=tuple(tables))
+        kept = _names_kept(profile, self._overrides)
+        tables = list(kept.tables)
         laid = self._overrides.laid_over(kept)
         glossary = Glossary(laid.glossary)
         for index, shown in enumerate(laid.tables):
@@ -301,7 +334,7 @@ class _Describing:
             reading = self._choice(shown, shown, glossary) or table.reading
             tables[index] = replace(table, columns=columns, reading=reading)
             if tables[index] != profile.tables[index]:
-                replace(profile, tables=(*tables, *profile.tables[index + 1 :])).write(
+                replace(profile, tables=(*tables[: index + 1], *profile.tables[index + 1 :])).write(
                     self._directory
                 )
         return replace(profile, tables=tuple(tables))
@@ -495,16 +528,3 @@ def _meaning(word: str, glossary: Glossary) -> str:
     """`word`, with the description of its concept in parentheses, where it has one."""
     concept = glossary.concept(word)
     return f"{word} ({concept.description})" if concept and concept.description else word
-
-
-def _held(profile: Profile) -> Profile:
-    """`profile`, its concepts of a term a name has alone, without the abbreviations no name has."""
-    names: list[Table | Column] = [*profile.tables]
-    names += [column for table in profile.tables for column in table.columns]
-    held = {term.text for named in names for term in named.terms or ()}
-    glossary = {}
-    for word, concept in profile.glossary.items():
-        if any(term in held for term in written_as(word, concept)):
-            left = tuple(term for term in concept.abbreviations if term in held)
-            glossary[word] = replace(concept, abbreviations=left)
-    return replace(profile, glossary=glossary)
