@@ -62,6 +62,7 @@ _PROFILE = Profile(
         "name": Concept(("nm",)),
         "number": Concept(("nm", "no")),
         "airplus": Concept(("ap",), "Marks a custom column.", omitted=True),
+        "iban": Concept(),
     },
 )
 
@@ -133,7 +134,8 @@ def test_the_glossary_is_written_as_each_concept_under_its_word(tmp_path: Path) 
             "description": "Marks a custom column.",
             "omitted": True,
         },
-    }
+        "iban": {},
+    }, "a concept without abbreviations without them"
 
 
 @pytest.mark.parametrize("name", ["../CUST", "con", ".hidden"])

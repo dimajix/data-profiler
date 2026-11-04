@@ -493,6 +493,8 @@ def test_the_names_of_the_example_are_read_with_its_overrides(
     assert glossary.harmonized(columns["cust_ap_id"]) == "contact_person_id", "the name given"
     assert columns["cust_ap_id"].reading == ("customer", "contact_person", "identifier")
     assert glossary.harmonized(columns["ap_seg_cd"]) == "segment_code", "the prefix omitted"
+    (iban,) = (c for t in laid.tables for c in t.columns if c.name == "iban")
+    assert iban.reading == ("iban",), "by a concept given of its word alone"
 
 
 def test_a_scan_keeps_the_terms_and_readings_describe_filled(

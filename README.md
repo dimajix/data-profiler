@@ -141,17 +141,18 @@ environments:
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
 - **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given:
-  concepts of the glossary, each under its word with its abbreviations, its description and, where
-  it is to be left out of the names, `omitted: true`; the reading of the name of a table or column,
-  a concept for each of its terms, `reading: [airplus, contact_person, name]`; the harmonized name
-  of a table or column, in snake_case, in place of the one composed from its reading, as where two
-  columns would share one, `name: contact_person_id`; the description of a column, in place of the
-  one proposed; the sensitivity of a column the detectors miss, such as the names of persons; and
-  the values that stand for no value in a column, its sentinels, in place of those of the tool:
-  `sentinels: ["", "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows them
-  all; `scan` counts and marks the columns as they give, `describe` splits and reads the names by
-  the concepts they give and asks the language model for nothing given, and `report` lays them over
-  the profile.
+  concepts of the glossary, each under its word, which is a term of it where it is one, with its
+  abbreviations and its description, where they are given - `iban: {}` gives a word alone -, and,
+  where it is to be left out of the names, `omitted: true`; the reading of the name of a table or
+  column, a concept for each of its terms, `reading: [airplus, contact_person, name]`; the
+  harmonized name of a table or column, in snake_case, in place of the one composed from its
+  reading, as where two columns would share one, `name: contact_person_id`; the description of a
+  column, in place of the one proposed; the sensitivity of a column the detectors miss, such as the
+  names of persons; and the values that stand for no value in a column, its sentinels, in place of
+  those of the tool: `sentinels: ["", "00000"]`, or `sentinels: []` for none.
+  `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns as they give,
+  `describe` splits and reads the names by the concepts they give and asks the language model for
+  nothing given, and `report` lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 

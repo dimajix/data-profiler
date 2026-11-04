@@ -1,6 +1,6 @@
 # 29 — The word of a concept as a term
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -71,3 +71,8 @@ The interface first, put before the maintainer.
   would leave its other abbreviations of no concept, and have the language model asked for them at
   every run of `describe`. As the profile may hold a concept without abbreviations now, its format
   is raised with step 2.
+
+- **2026-11-04** — Step 2, and with it done: the abbreviations of a concept are optional, none
+  where none is given, in the overrides of format 6 and the profile of format 12, which may hold
+  a concept without abbreviations since step 1; a profile of format 11 is refused, and removed to
+  be scanned again. The example gives `iban: {}`, by which the column `iban` is read.

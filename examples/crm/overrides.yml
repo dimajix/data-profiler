@@ -1,12 +1,13 @@
 # What is given by hand of the profiles of the example project, the same for all its environments:
 # concepts of the glossary - a customer; an address, written in two ways; a prefix that marks a
-# custom column, left out of the names; a contact person, written as that prefix is; and the terms
-# of three names that stand for the one or the other -, the readings of those three names, a name
-# given in place of the one composed from a reading and a description in place of the one proposed,
-# the sensitivity of a column the detectors miss - here the names of persons, which no detector
-# recognises -, and the sentinels of a column in place of those of the tool - here the postal codes
-# of a delivery, which are empty where none is given, or would be zeros.
-format: 5
+# custom column, left out of the names; a contact person, written as that prefix is; the terms of
+# three names that stand for the one or the other; and an IBAN, written as its word alone -, the
+# readings of those three names, a name given in place of the one composed from a reading and a
+# description in place of the one proposed, the sensitivity of a column the detectors miss - here
+# the names of persons, which no detector recognises -, and the sentinels of a column in place of
+# those of the tool - here the postal codes of a delivery, which are empty where none is given, or
+# would be zeros.
+format: 6
 glossary:
   customer:
     abbreviations: [cust]
@@ -31,6 +32,7 @@ glossary:
     abbreviations: [seg]
   code:
     abbreviations: [cd]
+  iban: {}
 tables:
   cust:
     columns:

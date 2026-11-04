@@ -246,6 +246,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     overrides = Overrides.read(_EXAMPLE)
     assert overrides.glossary["address"].abbreviations == ("addr", "adr")
     assert overrides.glossary["airplus"].omitted
+    assert overrides.glossary["iban"] == Concept(), "without abbreviations and a description"
     marked = overrides.tables["cntct"].columns["frst_nm"]
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
     assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
@@ -262,8 +263,17 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     assert columns["cust.ap_ap_nm"].reading == ("airplus", "contact_person", "name")
 
 
+def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path) -> None:
+    path = tmp_path / "overrides.yml"
+    path.write_text("format: 6\nglossary:\n  name: {}\n", encoding="utf-8")
+    overrides = Overrides.read(path)
+    assert overrides.glossary == {"name": Concept()}
+    laid = overrides.laid_over(_PROFILE)
+    assert laid.glossary["name"] == Concept(), "though no name has its word"
+
+
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
-    with pytest.raises(OverridesError, match="format 1, but only format 5"):
+    with pytest.raises(OverridesError, match="format 1, but only format 6"):
         Overrides.read(path)

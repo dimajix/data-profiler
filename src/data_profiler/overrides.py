@@ -61,7 +61,7 @@ from data_profiler.glossary import (
 from data_profiler.profile import Concept, Profile, Table
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 5
+_FORMAT: Final = 6
 
 
 class OverridesError(Exception):
