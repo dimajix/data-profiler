@@ -201,6 +201,14 @@ def test_an_abbreviation_given_that_no_name_has_is_warned_of(
     ]
 
 
+def test_a_report_shows_what_the_database_and_a_table_hold_where_it_is_given() -> None:
+    given = TableOverride(columns=_MARKED, description="The customers.")
+    page = _page(Overrides(description="A CRM.", tables={"cust": given}))
+    assert '</h1> <p class="about">A CRM.</p>' in page
+    assert '</h2> <p class="about">The customers.</p>' in page
+    assert page.count('class="about"') == 2, "not of a table of none given"
+
+
 def test_a_concept_given_is_told_apart_from_those_proposed() -> None:
     given = {"customer": Concept(("cust",), "Who buys."), "name": Concept(())}
     page = _page(_overrides(glossary=given))

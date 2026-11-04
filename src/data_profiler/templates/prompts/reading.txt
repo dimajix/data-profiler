@@ -1,7 +1,14 @@
 {#- The question of the concept of each term of several, `choices`, in the name of `named`, a table
-    or a column of `table`: each term with its key, those of several with their descriptions. #}
+    or a column of `table`: each term with its key, those of several with their descriptions; what
+    the database and the table hold, where it is given, before what the question is about. #}
 {% from "brief.txt" import brief with context %}
 You help to document the tables of a database whose names are made of English abbreviations.
+{% if database %}
+What the database holds: {{ database }}
+{% endif %}
+{% if table.description %}
+What the table "{{ table.name }}" holds: {{ table.description }}
+{% endif %}
 {% if named is sameas table %}
 It is about the table "{{ table.name }}", of the columns
 {{- " " ~ table.columns[:columns_shown] | map(attribute="name") | join(", ") }}

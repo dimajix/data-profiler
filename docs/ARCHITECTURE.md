@@ -176,20 +176,23 @@ stage after it from the profile.
 *   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
 *   **Description** - what a column holds, in English, for a person who knows the business but not
     the database, proposed by the language model from the reading of its name, its statistics, its
-    matches and its sample; its name is the harmonized one.
+    matches and its sample; its name is the harmonized one. What a table and the database hold are
+    descriptions as well, given by hand alone, and shown to the language model with every question
+    of them.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: concepts of the glossary, the reading of a name, the harmonized
-    name of a table or column, the description of a column, and the sensitivity and the sentinels of
-    a column. What it gives is taken as given by every stage: by `scan`, which counts the columns
-    with their sentinels and marks them, by `describe`, which splits and reads the names by the
-    concepts given and asks the language model for nothing given, as by `report`, which lays the
-    concepts, readings, names, descriptions and marks over the profile; sentinels changed count once
-    `scan` counts the column again, and a reading given once `describe` has split its name. A name
-    given comes before the one composed from the reading, so that it resolves a collision of
-    harmonized names. A concept given takes the place of the one proposed of its word, keeping of it
-    the abbreviations proposed beside those given, and the terms it is written as are taken from the
-    abbreviations of the others; the word of another stays a term of it, so that a term given may
-    stand for either, as the reading of its name says.
+    laid over a generated profile: what the database holds, concepts of the glossary, the reading of
+    a name, the harmonized name of a table or column, the description of a table or column, and the
+    sensitivity and the sentinels of a column. What the database and a table hold, the language
+    model is shown with every question of them. What it gives is taken as given by every stage: by
+    `scan`, which counts the columns with their sentinels and marks them, by `describe`, which
+    splits and reads the names by the concepts given and asks the language model for nothing given,
+    as by `report`, which lays the concepts, readings, names, descriptions and marks over the
+    profile; sentinels changed count once `scan` counts the column again, and a reading given once
+    `describe` has split its name. A name given comes before the one composed from the reading, so
+    that it resolves a collision of harmonized names. A concept given takes the place of the one
+    proposed of its word, keeping of it the abbreviations proposed beside those given, and the terms
+    it is written as are taken from the abbreviations of the others; the word of another stays a
+    term of it, so that a term given may stand for either, as the reading of its name says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -229,8 +232,9 @@ stage after it from the profile.
     language model filled, and `describe --without-llm` asks it nothing, doing what needs no model
     alone: the names split, and read where each term has one candidate, the profile written once at
     the end. The result is the profile, with terms, glossary, readings and descriptions.
-3.  `report` renders the profile, with the overrides laid over it, as HTML: the harmonized names and
-    descriptions of the columns, and the concepts proposed told apart from those given.
+3.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
+    each table hold, the harmonized names and descriptions of the columns, and the concepts proposed
+    told apart from those given.
 
 ## Principles
 

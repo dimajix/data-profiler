@@ -1,6 +1,6 @@
 # 32 — Descriptions of the database and its tables
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -97,3 +97,14 @@ As discussed with the maintainer:
   prompts are rendered as before, to the character: 256 prompts of the example, with terms of
   several concepts, ranges, values and a table of more columns than are shown, compared before and
   after.
+
+- **2026-11-04** — Step 2, and with it done, as the maintainer followed the proposals: the
+  overrides of format 7 give `description` of the database and of a table, laid over the profile
+  as the description of a column is - `Profile.description` and `Table.description`, of format 13,
+  None in a profile written, so that one proposed by the language model has its place later. Every
+  prompt shows what the database holds; the question of a reading and of a description what the
+  table holds, and the question of a concept what the tables of the places shown hold. The report
+  shows both, under the heading of the profile and of the table. The example gives a description
+  of the database and of `ord_itm`. After the review, each is shown as "What the database holds:
+  …" and "What the table … holds: …", that of the table before what a question of a reading is
+  about, so that "its name" after it is read as the name asked of.

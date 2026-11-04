@@ -1,9 +1,13 @@
-{#- The question of the description of `column`, of `table`, shown what is known of it. #}
+{#- The question of the description of `column`, of `table`, shown what is known of it, and what
+    the database and the table hold, where it is given. #}
 {% from "brief.txt" import brief with context %}
 {% set statistics = column.statistics %}
 {% set name = glossary.harmonized(column) %}
 {% set table_name = glossary.harmonized(table) %}
 You help to document the tables of a database whose names are made of English abbreviations.
+{% if database %}
+What the database holds: {{ database }}
+{% endif %}
 Here is what is known of the column "{{ column.name }}" of the table "{{ table.name }}":
 
 {% if name is not none %}
@@ -17,6 +21,9 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 {% endfor %}
 {% if table_name is not none %}
 - the name of the table reads: {{ table_name }}
+{% endif %}
+{% if table.description %}
+- what the table holds: {{ table.description }}
 {% endif %}
 - type: {{ brief(table, column) }}
 - rows of the table: {{ table.rows }}, of them null: {{ statistics.nulls }},

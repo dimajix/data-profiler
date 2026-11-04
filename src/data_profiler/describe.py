@@ -21,17 +21,18 @@ values and those of its sample, the columns beside it and those filled together 
 
 The steps see the profile with the overrides laid over it, so that the concepts given count and no
 term of one, no name of a reading given and no column of a description given is asked for; but they
-fill the profile as it was read, which holds nothing of the overrides. The language model is asked
-only for what the profile lacks, and the profile is written after each concept proposed and each
-table read or described, so that a run interrupted is resumed by the next; `forgotten` drops what
-the steps of the language model filled, to describe a profile anew, by another model. The model sees
-the values of the samples of a column, but their nulls and sentinels, as far as the module
-`disclosure` lets the profile hold them, as what it answers goes into the profile; an answer not of
-the form asked for is passed over, with a warning. Without a language model, the steps that ask it
-are left out: the glossary loses what no name has, and the names are split and read by the
-candidates of their terms alone, but no concept is proposed, no reading chosen and no column
-described, while what a model filled before is kept; the profile is written once, at the end, as
-nothing is asked that a run interrupted would lose.
+fill the profile as it was read, which holds nothing of the overrides. Every question shows the
+model what the database holds, and what the tables it is of hold, where the overrides give it. The
+language model is asked only for what the profile lacks, and the profile is written after each
+concept proposed and each table read or described, so that a run interrupted is resumed by the next;
+`forgotten` drops what the steps of the language model filled, to describe a profile anew, by
+another model. The model sees the values of the samples of a column, but their nulls and sentinels,
+as far as the module `disclosure` lets the profile hold them, as what it answers goes into the
+profile; an answer not of the form asked for is passed over, with a warning. Without a language
+model, the steps that ask it are left out: the glossary loses what no name has, and the names are
+split and read by the candidates of their terms alone, but no concept is proposed, no reading chosen
+and no column described, while what a model filled before is kept; the profile is written once, at
+the end, as nothing is asked that a run interrupted would lose.
 
 The questions to the model are Jinja2 templates in `data_profiler/templates/prompts/`, one of each,
 holding as much of it as they can - its text, its conditions and its loops -, and what they share,
@@ -399,9 +400,11 @@ class _Asking:
         return reading
 
     def _prompt(self, name: str, **shown: object) -> str:
-        """The prompt of the template `name`, of what is `shown` and the values of the samples."""
+        """The prompt of the template `name`, of what is `shown`, the database and the samples."""
         return _PROMPTS.get_template(name).render(
             **shown,
+            # Of the overrides, as the profile read holds none, nor the profile laid over another.
+            database=self._overrides.description,
             values=self._values,
             beside=_beside,
             end=_end,
