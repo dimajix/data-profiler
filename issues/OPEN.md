@@ -15,6 +15,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
+| [31](31-describe-without-llm.md) | open | medium | feature | `describe` cannot run without the language model of its project, though splitting the names and reading those of one candidate for each term needs none, so that a person working on the glossary waits for Ollama at every run, and cannot run it at all where Ollama is not there. |
 
 ## Architecture
 
