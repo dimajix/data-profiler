@@ -28,7 +28,7 @@ environment.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
     profiled, give sentinels of a column of no text, or a reading of a name that is no reading of
-    its terms.
+    its terms, and warned of where they give an abbreviation no name has.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.

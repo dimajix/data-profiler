@@ -34,12 +34,15 @@ An override that names what is not profiled is refused, naming it: `scan` refuse
 not select before it counts anything, and, once it has counted the table, a column the table does
 not have and the sentinels given of a column whose values the database writes as no text, which has
 none; it does not check the concepts, readings and names, which it does not use. A stage that reads
-the profile refuses a table or a column the profile does not have, an abbreviation no name of it
-has, a reading of a name that is not one of its terms, as the vocabulary splits it - of another
-number of words, or a word of no concept of the term at its place -, and a name given other than in
-snake_case.
+the profile refuses a table or a column the profile does not have, a reading of a name that is not
+one of its terms, as the vocabulary splits it - of another number of words, or a word of no concept
+of the term at its place -, and a name given other than in snake_case. An abbreviation given that no
+name of the profile has is no mistake, as the overrides are the same for all environments of a
+project, whose tables differ: a stage that reads the profile warns of it, once, so that one written
+in another case than the terms of the names, which are in lower case, is seen.
 """
 
+import logging
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -59,6 +62,8 @@ from data_profiler.glossary import (
     written_as,
 )
 from data_profiler.profile import Concept, Profile, Table
+
+_logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
 _FORMAT: Final = 6
@@ -302,6 +307,25 @@ class Overrides:
             )
         return {name: self.tables.get(name, TableOverride()) for name in names}
 
+    def warn_unused(self, profile: Profile) -> None:
+        """Warns of the abbreviations given that no name of `profile` has, naming them.
+
+        A word given that no name has is not warned of, as a concept is given by its word whatever
+        the names are.
+
+        Args:
+            profile: The profile the overrides are laid over.
+        """
+        abbreviations = {t for concept in self.glossary.values() for t in concept.abbreviations}
+        # Split by the concepts given, as an abbreviation given is no longer split.
+        unused = sorted(abbreviations - set(occurrences(self._with_concepts(profile))))
+        if unused:
+            _logger.warning(
+                "The overrides give abbreviations, in lower case as terms are, that no name of the"
+                " profile has: %s",
+                ", ".join(unused),
+            )
+
     def laid_over(self, profile: Profile) -> Profile:
         """`profile` with what the overrides give taken as given.
 
@@ -316,25 +340,14 @@ class Overrides:
             so, and without the values of those marked sensitive.
 
         Raises:
-            OverridesError: The overrides give an abbreviation that no name of the profile has,
-                name a table or column the profile does not have, or give a reading of a name that
-                is no reading of its terms, as the vocabulary of the profile splits it: of another
-                number of words, or a word of no concept of the term at its place, or a name other
-                than in snake_case.
+            OverridesError: The overrides name a table or column the profile does not have, or
+                give a reading of a name that is no reading of its terms, as the vocabulary of the
+                profile splits it: of another number of words, or a word of no concept of the term
+                at its place, or a name other than in snake_case.
         """
-        taken = {t for word, concept in self.glossary.items() for t in written_as(word, concept)}
-        concepts = _laid_over(self.glossary, taken, profile.glossary)
-        # Split by the concepts given, as an abbreviation given is no longer split; a word given
-        # no name has is no mistake, as a concept is given by its word whatever the names are.
-        abbreviations = {t for concept in self.glossary.values() for t in concept.abbreviations}
-        unknown = sorted(abbreviations - set(occurrences(replace(profile, glossary=concepts))))
-        if unknown:
-            raise OverridesError(
-                "the overrides give abbreviations, in lower case as terms are, that no name of"
-                " the profile has: " + ", ".join(unknown)
-            )
-        vocabulary = Vocabulary.of(replace(profile, glossary=concepts))
-        glossary = Glossary(concepts)
+        profile = self._with_concepts(profile)
+        vocabulary = Vocabulary.of(profile)
+        glossary = Glossary(profile.glossary)
         given = self.selected([table.name for table in profile.tables])
         tables = (
             disclose(
@@ -345,18 +358,21 @@ class Overrides:
             )
             for table in profile.tables
         )
-        return replace(profile, tables=tuple(tables), glossary=concepts)
+        return replace(profile, tables=tuple(tables))
+
+    def _with_concepts(self, profile: Profile) -> Profile:
+        """`profile`, the concepts given in its glossary before its own."""
+        return replace(profile, glossary=_laid_over(self.glossary, profile.glossary))
 
 
-def _laid_over(
-    given: Mapping[str, Concept], taken: Collection[str], proposed: Mapping[str, Concept]
-) -> dict[str, Concept]:
-    """The concepts `given`, written as the terms `taken`, with those `proposed` without them.
+def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) -> dict[str, Concept]:
+    """The concepts `given`, with those `proposed` without the terms the given are written as.
 
     A concept proposed of the word of one given adds to it the abbreviations it has left; one of
     another word is dropped once all its abbreviations are taken, and keeps its word, which is
     taken from none: one without abbreviations, written as its word alone, is kept.
     """
+    taken = {term for word, concept in given.items() for term in written_as(word, concept)}
     concepts = dict(given)
     for word, concept in proposed.items():
         left = tuple(term for term in concept.abbreviations if term not in taken)

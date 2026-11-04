@@ -148,6 +148,20 @@ def test_a_name_written_as_the_words_of_concepts_is_read_by_them(tmp_path: Path)
     assert described.glossary["name"] == Concept(()), "kept by its word, without its abbreviation"
 
 
+def test_an_abbreviation_given_that_no_name_has_is_warned_of_once(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    overrides = Overrides(glossary={"order": Concept(("ord",))})
+    _described(_profile("cust_nm", glossary=_GLOSSARY), tmp_path, overrides)
+    warned = [
+        message for message in caplog.messages if "that no name of the profile has" in message
+    ]
+    assert warned == [
+        "The overrides give abbreviations, in lower case as terms are, that no name of the profile"
+        " has: ord"
+    ], "once a run, and the run goes on"
+
+
 def test_a_reading_is_kept_while_the_terms_of_its_name_stay_as_they_were_split(
     tmp_path: Path,
 ) -> None:

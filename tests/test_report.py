@@ -190,6 +190,17 @@ def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:
     assert '<td class="original">eml_adr</td> <td>\u2013</td>' in page, "of a name not read"
 
 
+def test_an_abbreviation_given_that_no_name_has_is_warned_of(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    page = _page(_overrides(glossary={"order": Concept(("ord",))}))
+    assert "<td> order </td>" in page
+    assert caplog.messages == [
+        "The overrides give abbreviations, in lower case as terms are, that no name of the profile"
+        " has: ord"
+    ]
+
+
 def test_a_concept_given_is_told_apart_from_those_proposed() -> None:
     given = {"customer": Concept(("cust",), "Who buys."), "name": Concept(())}
     page = _page(_overrides(glossary=given))
