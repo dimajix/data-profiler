@@ -77,7 +77,8 @@ environment.
 *   **`data_profiler.describe`** - the stage `describe`: the names of the tables and columns split
     into their terms, by a step of its own without the language model, and read - by the one
     candidate of each term, else by the language model -; and the glossary's concepts and the
-    columns' descriptions, proposed by the language model.
+    columns' descriptions, proposed by the language model, asked by prompts rendered from Jinja2
+    templates in `data_profiler/templates/prompts/`.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an

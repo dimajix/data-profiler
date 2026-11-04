@@ -1,0 +1,32 @@
+{#- The question of the concept of each term of several, `choices`, in the name of `named`, a table
+    or a column of `table`: each term with its key, those of several with their descriptions. #}
+{% from "brief.txt" import brief with context %}
+You help to document the tables of a database whose names are made of English abbreviations.
+{% if named is sameas table %}
+It is about the table "{{ table.name }}", of the columns
+{{- " " ~ table.columns[:columns_shown] | map(attribute="name") | join(", ") }}
+{%- if table.columns | length > columns_shown %}, ...{% endif %}.
+{% else %}
+It is about the column "{{ named.name }}" of the table "{{ table.name }}":
+{{- " " ~ brief(table, named) }}.
+{{- " " }}The columns beside it are {{ beside(named, table) | join(", ") or "none" }}.
+{% endif %}
+
+Its name is made of these terms, in their order, each the word or an abbreviation of a concept:
+
+{% for key, term in terms %}
+{% if key in choices %}
+- "{{ term.text }}" ({{ key }}): one of
+{%- for word in choices[key] %}
+{% set concept = glossary.concept(word) %}
+{{- "; " if not loop.first else " " }}{{ word }}
+{%- if concept and concept.description %} ({{ concept.description }}){% endif %}
+{% endfor %}
+
+{% else %}
+- "{{ term.text }}" ({{ key }}): {{ term.candidates[0] }}
+{% endif %}
+{% endfor %}
+
+Some of them may stand for one of several concepts. Which concept does each of those stand for in
+this name? Answer for each with the word of its concept.

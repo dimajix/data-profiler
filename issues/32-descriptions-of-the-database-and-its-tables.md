@@ -1,6 +1,6 @@
 # 32 — Descriptions of the database and its tables
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -86,3 +86,14 @@ As discussed with the maintainer:
 
 - **2026-11-04** — The maintainer asked that the prompts be rendered by templates, holding as much
   of them as they can, conditions and loops among them; it is the first step of this issue.
+
+- **2026-11-04** — Step 1: the prompts are Jinja2 templates in `data_profiler/templates/prompts/`,
+  `concept.txt`, `reading.txt` and `description.txt`, and the macro `brief` of a column they share
+  in `brief.txt`; their environment escapes nothing, refuses undefined names, and is a sandbox, so
+  that no template reaches a sample past `values`. The code gives them the objects they show, the
+  functions `values` of the values a sample may show, `beside` of the columns beside one and `end`
+  of an end of a range, as the report is given its functions, and the numbers of what is shown;
+  which terms are of several, the keys the form of the answer asks for, it gives as well. The
+  prompts are rendered as before, to the character: 256 prompts of the example, with terms of
+  several concepts, ranges, values and a table of more columns than are shown, compared before and
+  after.
