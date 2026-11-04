@@ -8,6 +8,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
+| [30](30-abbreviations-given-that-no-name-has.md) | open | high | bug | An abbreviation the overrides give that no name of the profile has ends `describe` and `report` with an error, though the overrides are the same for all environments of a project and its glossary may well hold terms of tables that one environment does not have, or not yet. |
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
 ## Describe
