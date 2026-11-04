@@ -7,20 +7,21 @@ several upper case letters that a lower case one follows, and between letters an
 and `2`. A term is in lower case, so that `CUST` and `cust` are one.
 
 Terms written together without anything that separates them - `lfadr` in `KD_LFADR_PLZ` - are
-split by the vocabulary of the profile: the terms found in its names, and the abbreviations of its
-concepts. A term is split where other terms of the vocabulary, of two characters at least, cover it
-whole, into the fewest of them, the longer first where two splits have as many; each part is split
-again the same way. Where they leave a character uncovered, it stays whole: a split of a term
-covered in part would split most abbreviations, `strt` into `st` and `rt`. An abbreviation of a
-concept is never split, so that a person stops a wrong split by giving the term a concept.
+split by the vocabulary of the profile: the terms found in its names, and the terms its concepts are
+written as. A term is split where other terms of the vocabulary, of two characters at least, cover
+it whole, into the fewest of them, the longer first where two splits have as many; each part is
+split again the same way. Where they leave a character uncovered, it stays whole: a split of a term
+covered in part would split most abbreviations, `strt` into `st` and `rt`. A term a concept is
+written as is never split, so that a person stops a wrong split by giving the term a concept.
 
-The glossary of a profile is its concepts, each a word with the terms it is written as, its
-abbreviations, once for the whole schema. A term may stand for the concepts it is an abbreviation
-of, its candidates; which one it stands for in a name, the reading of the name says, one word for
-each term. A harmonized name is composed of the words of its reading, each split as a name is, in
-`snake_case`: a term of digits stands for itself, and a concept omitted is left out; a name given by
-hand comes before it. A reading that no longer agrees with the terms of its name - of another
-length, or a word that is no candidate of its term - is none.
+The glossary of a profile is its concepts, once for the whole schema, each a word with the terms it
+is written as: its word, where the word is one term, and its abbreviations - `customer` as
+`customer`, `cust` and `kd`, `contact_person`, of two terms, as its abbreviations alone. A term may
+stand for the concepts written as it, its candidates; which one it stands for in a name, the
+reading of the name says, one word for each term. A harmonized name is composed of the words of its
+reading, each split as a name is, in `snake_case`: a term of digits stands for itself, and a concept
+omitted is left out; a name given by hand comes before it. A reading that no longer agrees with the
+terms of its name - of another length, or a word that is no candidate of its term - is none.
 """
 
 import re
@@ -70,6 +71,21 @@ def snake_case(name: str) -> str:
         `Address2`; empty where it has no letters and digits.
     """
     return "_".join(terms(name))
+
+
+def written_as(word: str, concept: Concept) -> tuple[str, ...]:
+    """The terms a concept is written as: its word, where it is one term, and its abbreviations.
+
+    Args:
+        word: The word of the concept.
+        concept: The concept.
+
+    Returns:
+        The word as `terms` writes it, where it is one term, then the abbreviations; a word of
+        several terms, `contact_person`, is written as the abbreviations alone.
+    """
+    own = terms(word)
+    return (*own, *concept.abbreviations) if len(own) == 1 else concept.abbreviations
 
 
 def _splits(part: str, index: int) -> bool:
@@ -139,31 +155,33 @@ def _places(profile: Profile) -> Iterator[Place]:
 class Vocabulary:
     """The terms a term written together is split into, of a profile.
 
-    They are the terms found in its names and the abbreviations of its concepts, which are never
-    split.
+    They are the terms found in its names and the terms its concepts are written as, which are
+    never split.
     """
 
-    def __init__(self, found: Collection[str], abbreviations: Collection[str]) -> None:
-        """Takes the terms found in the names, and the abbreviations of the concepts."""
-        self._kept = frozenset(abbreviations)
-        self._parts = frozenset(t for t in (*found, *abbreviations) if len(t) >= _SHORTEST)
+    def __init__(self, found: Collection[str], written: Collection[str]) -> None:
+        """Takes the terms found in the names, and the terms the concepts are written as."""
+        self._kept = frozenset(written)
+        self._parts = frozenset(t for t in (*found, *written) if len(t) >= _SHORTEST)
 
     @classmethod
     def of(cls, profile: Profile) -> Self:
-        """The vocabulary of `profile`: the terms of its names, and its abbreviations.
+        """The vocabulary of `profile`: the terms of its names, and those of its concepts.
 
         Args:
             profile: The profile.
 
         Returns:
             The vocabulary, of the terms `terms` finds in the names of the tables and columns, but
-            those of digits, and of the abbreviations of the concepts.
+            those of digits, and of the terms its concepts are written as.
         """
         names = [table.name for table in profile.tables]
         names += [column.name for table in profile.tables for column in table.columns]
         found = {term for name in names for term in terms(name) if not term.isdigit()}
-        abbreviations = {t for concept in profile.glossary.values() for t in concept.abbreviations}
-        return cls(found, abbreviations)
+        written = {
+            t for word, concept in profile.glossary.items() for t in written_as(word, concept)
+        }
+        return cls(found, written)
 
     def split(self, name: str) -> list[str]:
         """The terms of `name`, as `terms` gives them, those written together split.
@@ -227,7 +245,7 @@ class Glossary:
         self._concepts = concepts
         self._words: dict[str, list[str]] = {}
         for word, concept in concepts.items():
-            for term in dict.fromkeys(concept.abbreviations):
+            for term in dict.fromkeys(written_as(word, concept)):
                 self._words.setdefault(term, []).append(word)
 
     def concept(self, word: str) -> Concept | None:
@@ -235,7 +253,7 @@ class Glossary:
         return self._concepts.get(word)
 
     def words(self, term: str) -> tuple[str, ...]:
-        """The words of the concepts `term` is an abbreviation of, in the order of the glossary.
+        """The words of the concepts written as `term`, in the order of the glossary.
 
         Args:
             term: A term, in lower case.
@@ -253,8 +271,8 @@ class Glossary:
             vocabulary: The vocabulary the name is split by.
 
         Returns:
-            The terms, in their order, each with the words of the concepts it is an abbreviation
-            of; none of a term of digits.
+            The terms, in their order, each with the words of the concepts written as it; none of
+            a term of digits.
         """
         return tuple(
             Term(term, () if term.isdigit() else self.words(term))

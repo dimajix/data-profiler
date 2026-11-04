@@ -12,6 +12,7 @@ from data_profiler.glossary import (
     snake_case,
     terms,
     unknown,
+    written_as,
 )
 from data_profiler.profile import Column, Concept, Profile, Statistics, Table, Term
 
@@ -61,6 +62,19 @@ def test_a_term_written_together_is_split_by_the_abbreviations_of_the_concepts()
     glossary = {"customer": Concept(("kd",)), "number": Concept(("nr",))}
     profile = _profile(_table("kd", "kdnr"), glossary=glossary)
     assert Vocabulary.of(profile).split("kdnr") == ["kd", "nr"], "nr is in no name on its own"
+
+
+def test_a_term_written_together_is_split_by_the_words_of_the_concepts() -> None:
+    glossary = {"customer": Concept(("kd",)), "name": Concept(("nm",))}
+    profile = _profile(_table("kd", "customername"), glossary=glossary)
+    assert Vocabulary.of(profile).split("customername") == ["customer", "name"], (
+        "neither is in a name on its own"
+    )
+
+
+def test_the_word_of_a_concept_is_never_split() -> None:
+    profile = _profile(_table("t", "user_name", "username"), glossary={"username": Concept(())})
+    assert Vocabulary.of(profile).split("username") == ["username"]
 
 
 def test_an_abbreviation_of_a_concept_is_never_split() -> None:
@@ -153,6 +167,19 @@ def test_a_term_stands_for_the_words_of_the_concepts_it_is_an_abbreviation_of() 
     assert glossary.words("kd") == ("customer",)
     assert glossary.words("st") == ("status", "street"), "in the order of the glossary"
     assert glossary.words("nm") == ()
+
+
+def test_a_term_stands_for_the_concept_whose_word_it_is() -> None:
+    glossary = _glossary(customer=("cust",), name=("nm", "name"), contact_person=("ap",))
+    assert glossary.words("customer") == ("customer",)
+    assert glossary.words("name") == ("name",), "once, though its abbreviation as well"
+    assert glossary.words("contact") == (), "not of a word of two terms"
+
+
+def test_a_concept_is_written_as_its_word_where_it_is_one_term_and_as_its_abbreviations() -> None:
+    assert written_as("Customer", Concept(("cust", "kd"))) == ("customer", "cust", "kd")
+    assert written_as("contact_person", Concept(("ap",))) == ("ap",)
+    assert written_as("e-mail", Concept(("eml",))) == ("eml",), "of two terms as split"
 
 
 def _named(*read: tuple[str, str]) -> Column:

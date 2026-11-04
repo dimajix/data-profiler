@@ -51,7 +51,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 11
+FORMAT: Final = 12
 """The version of the format a profile is written in.
 
 It is raised with every change to the fields of the classes below, or to the files they are
@@ -232,9 +232,9 @@ class Term:
 
     Attributes:
         text: The term, in lower case.
-        concepts: The words of the concepts it is an abbreviation of, its candidates, in the order
-            of the glossary when it was split; none of a term of digits, which stands for itself,
-            or of a term of no concept.
+        concepts: The words of the concepts written as it, its candidates, in the order of the
+            glossary when it was split; none of a term of digits, which stands for itself, or of a
+            term of no concept.
     """
 
     text: str
@@ -374,13 +374,14 @@ class Concept:
     An abbreviation may be of several concepts, which a term of a name may each stand for.
 
     Attributes:
-        abbreviations: The terms it is written as, in lower case.
+        abbreviations: The terms it is written as beside its word, in lower case, none where none
+            is given; its word is a term of it where it is one, as `glossary.written_as` tells.
         description: What it means, in English; None where none is given.
         omitted: Whether it is left out of harmonized names, as a prefix that marks a custom
             column, which says nothing of what the column holds.
     """
 
-    abbreviations: tuple[str, ...]
+    abbreviations: tuple[str, ...] = ()
     description: str | None = None
     omitted: bool = False
 
