@@ -226,8 +226,8 @@ stage after it from the profile.
     only for what the profile lacks, and the profile is written after each concept and each table
     read or described, so that a run interrupted is resumed; `describe --anew` drops first what the
     language model filled, and `describe --without-llm` asks it nothing, doing what needs no model
-    alone: the names split, and read where each term has one candidate. The result is the profile,
-    with terms, glossary, readings and descriptions.
+    alone: the names split, and read where each term has one candidate, the profile written once at
+    the end. The result is the profile, with terms, glossary, readings and descriptions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML: the harmonized names and
     descriptions of the columns, and the concepts proposed told apart from those given.
 
