@@ -49,6 +49,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [28](28-terms-and-readings.md) | done | The terms of a name are computed whenever they are needed, and which concept a term of several stands for is said nowhere, so that the split of a name changes unseen with the profile, a name of a term repeated in two meanings cannot be read, and a scan would lose what was found of the names. |
 | [29](29-the-word-of-a-concept-as-a-term.md) | done | A concept is written only as its abbreviations, not as its word, so that a name written in full - `name`, `customer_id` - finds no concept until its word is given once more as an abbreviation, and a concept cannot be given without abbreviations at all. |
 | [31](31-describe-without-llm.md) | done | `describe` cannot run without the language model of its project, though splitting the names and reading those of one candidate for each term needs none, so that a person working on the glossary waits for Ollama at every run, and cannot run it at all where Ollama is not there. |
+| [32](32-a-description-of-the-database.md) | open | Nothing tells the language model what the database is about - the business it serves, what its tables hold -, so that it proposes concepts, chooses readings and describes columns from the names, values and statistics of one column alone, without the context a person who knows the business has. |
 
 ## Report
 
