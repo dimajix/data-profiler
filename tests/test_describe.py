@@ -162,6 +162,34 @@ def test_an_abbreviation_given_that_no_name_has_is_warned_of_once(
     ], "once a run, and the run goes on"
 
 
+def test_without_a_model_the_names_are_split_and_read_by_their_candidates_alone(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    glossary = {**_GLOSSARY, "order": Concept(("ord",))}
+    (table,) = _profile("cust_nm", "cust_st_cd", "xy_cd", "st_nm", glossary=glossary).tables
+    nm, st_cd, xy_cd, st_nm = table.columns
+    terms = (Term("cust", ("customer",)), Term("st", ("status", "street")), Term("cd", ("code",)))
+    chosen = replace(st_cd, terms=terms, reading=("customer", "street", "code"))
+    columns = (replace(nm, description="Filled before."), chosen, xy_cd, st_nm)
+    profile = replace(_profile(glossary=glossary), tables=(replace(table, columns=columns),))
+    workspace = Workspace.open(tmp_path / "workspace", profile.catalog, profile.schema)
+    describe(profile, Overrides(), None, workspace, tmp_path / "profile")
+    described = Profile.read(tmp_path / "profile")
+    (table,) = described.tables
+    assert [column.reading for column in table.columns] == [
+        ("customer", "name"),
+        ("customer", "street", "code"),
+        None,
+        None,
+    ], "a reading chosen before kept, a term of no concept and one of two left unread"
+    assert table.columns[2].terms == (Term("xy"), Term("cd", ("code",))), "split all the same"
+    assert table.columns[0].description == "Filled before.", "kept"
+    assert table.columns[1].description is None, "none proposed"
+    assert "order" not in described.glossary, "a concept of no term dropped"
+    assert "xy" not in {t for concept in described.glossary.values() for t in concept.abbreviations}
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING], "no answer missed"
+
+
 def test_a_reading_is_kept_while_the_terms_of_its_name_stay_as_they_were_split(
     tmp_path: Path,
 ) -> None:

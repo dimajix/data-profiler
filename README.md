@@ -186,7 +186,10 @@ column. A concept proposed, a reading chosen or a description proposed wrongly i
 `overrides.yml`, which comes first. It asks only for what the profile lacks, and writes the profile
 after each concept and each table read or described, so that a run interrupted is resumed by the
 next; `--anew` drops first what the language model filled, to describe the profile anew, with
-another model, say. The profile is rendered as a report by
+another model, say. `--without-llm` asks no language model, and the project needs none: the names
+are split and read where each term has one concept, but no concept is proposed, no concept of a term
+of several chosen and no column described, while what a model filled before is kept - a quick round
+while the glossary is built in `overrides.yml`. The profile is rendered as a report by
 
 ```bash
 uv run data-profiler report simulation --project examples/crm

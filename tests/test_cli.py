@@ -110,6 +110,29 @@ def test_the_profile_of_an_environment_is_described_into_its_directory(
     assert Profile.read(project / "simulation" / "profile").glossary == {}, "dropped first"
 
 
+def test_the_profile_of_an_environment_is_described_without_a_language_model(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    configuration = (project / "project.yml").read_text(encoding="utf-8")
+    without = "".join(line for line in configuration.splitlines(True) if "llm" not in line)
+    (project / "project.yml").write_text(without, encoding="utf-8")
+    (table, *others) = example_profile.tables
+    described = replace(table, columns=(replace(table.columns[0], description="Proposed."),))
+    proposed = replace(
+        example_profile, tables=(described, *others), glossary={"x": Concept(("x",))}
+    )
+    proposed.write(project / "simulation" / "profile")
+    arguments = ("describe", "simulation", "--project", str(project), "--without-llm")
+    assert command_line(main, *arguments) == 0, "though the project names no language model"
+    profile = Profile.read(project / "simulation" / "profile")
+    assert all(column.terms is not None for t in profile.tables for column in t.columns), "split"
+    assert profile.glossary == {}, "the concept of no term dropped, and none proposed"
+    assert profile.tables[0].columns[0].description == "Proposed.", "kept"
+    assert command_line(main, *arguments, "--anew") == 0, "both options together"
+    profile = Profile.read(project / "simulation" / "profile")
+    assert profile.tables[0].columns[0].description is None, "dropped first, and none proposed"
+
+
 def test_the_profile_of_an_environment_is_reported_without_its_password(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:

@@ -27,7 +27,9 @@ table read or described, so that a run interrupted is resumed by the next; `forg
 the steps of the language model filled, to describe a profile anew, by another model. The model sees
 the values of the samples of a column, but their nulls and sentinels, as far as the module
 `disclosure` lets the profile hold them, as what it answers goes into the profile; an answer not of
-the form asked for is passed over, with a warning.
+the form asked for is passed over, with a warning. Without a language model, the steps that ask it
+ask nothing: the names are split and read by the candidates of their terms alone, and no concept is
+proposed and no column described, while what a model filled before is kept.
 """
 
 import logging
@@ -128,7 +130,7 @@ not the database. Do not repeat its name, and do not make up what the facts do n
 def describe(
     profile: Profile,
     overrides: Overrides,
-    llm: LanguageModel,
+    llm: LanguageModel | None,
     workspace: Workspace,
     directory: Path,
 ) -> None:
@@ -143,7 +145,7 @@ def describe(
         overrides: The overrides of the project, whose concepts, readings and descriptions count
             beside those of the profile.
         llm: The language model that proposes the concepts, reads the names and describes the
-            columns.
+            columns, or None to ask none.
         workspace: Where the samples of the tables are, whose values the model is shown.
         directory: The directory of the profile.
 
@@ -155,6 +157,8 @@ def describe(
         ProfileError: The profile cannot be written.
     """
     overrides.warn_unused(profile)
+    if llm is None:
+        _logger.info("Describing without a language model: no concept proposed or column described")
     describing = _Describing(overrides, llm, workspace, directory, profile.types)
     profile = describing.described(describing.names_read(describing.proposed(profile)))
     profile.write(directory)
@@ -220,7 +224,7 @@ class _Describing:
     def __init__(
         self,
         overrides: Overrides,
-        llm: LanguageModel,
+        llm: LanguageModel | None,
         workspace: Workspace,
         directory: Path,
         types: Sequence[SemanticType],
@@ -248,10 +252,13 @@ class _Describing:
         """`profile`, a concept proposed of each term of none, written after each.
 
         The names are split to find the terms of none, but the profile is written as it was but
-        its glossary, so that it holds no terms of other readings than its own.
+        its glossary, so that it holds no terms of other readings than its own. Without a model,
+        its glossary loses what no name has alone.
         """
         split = self.split(profile)
         profile = replace(profile, glossary=_held(split).glossary)
+        if self._llm is None:
+            return profile
         # The places with the overrides laid over them, so that the marks given count.
         for term, found in unknown(self._overrides.laid_over(split)).items():
             lines = []
@@ -310,8 +317,10 @@ class _Describing:
         """`profile`, each of its columns of no description described by the language model.
 
         A column of a description given is not asked for; the profile is written after each table
-        a column of which was described.
+        a column of which was described. Without a model, none is.
         """
+        if self._llm is None:
+            return profile
         laid = self._overrides.laid_over(profile)
         glossary = Glossary(laid.glossary)
         tables = list(profile.tables)
@@ -378,11 +387,13 @@ class _Describing:
             glossary: The concepts, those of the overrides among them.
 
         Returns:
-            The reading, or None where the model is not to be asked, or chooses no candidate.
+            The reading, or None where the model is not to be asked, there is none, or it
+            chooses no candidate.
         """
         found = named.terms
         if (
-            found is None
+            self._llm is None
+            or found is None
             or named.reading is not None
             or any(not term.candidates for term in found)
             or all(len(term.candidates) == 1 for term in found)
@@ -451,12 +462,18 @@ class _Describing:
     def _asked[T](
         self, prompt: str, adapter: TypeAdapter[T], form: Mapping[str, object]
     ) -> T | None:
-        """The answer to `prompt` in `form`, parsed by `adapter`, or None where it is not of it."""
-        answer = self._llm.answer(prompt, form)
+        """The answer to `prompt` in `form`, parsed by `adapter`, or None where it is not of it.
+
+        The steps ask nothing without a model; None where there is none, as it answers nothing.
+        """
+        llm = self._llm
+        if llm is None:
+            return None
+        answer = llm.answer(prompt, form)
         try:
             return adapter.validate_json(answer)
         except ValidationError:
-            _logger.warning("An answer of %s was not of the form asked for", self._llm.name)
+            _logger.warning("An answer of %s was not of the form asked for", llm.name)
             return None
 
 
