@@ -191,8 +191,10 @@ def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:
 
 
 def test_a_concept_given_is_told_apart_from_those_proposed() -> None:
-    page = _page(_overrides(glossary={"customer": Concept(("cust",), "Who buys.")}))
+    given = {"customer": Concept(("cust",), "Who buys."), "name": Concept(())}
+    page = _page(_overrides(glossary=given))
     assert '<td> customer </td> <td class="original">cust</td> <td>Who buys.</td>' in page
+    assert '<td> name </td> <td class="original">\u2013</td>' in page, "of no abbreviations"
     assert '<td> type <span class="proposed">(proposed)</span> </td>' in page
 
 

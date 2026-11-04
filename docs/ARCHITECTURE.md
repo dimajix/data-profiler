@@ -154,8 +154,8 @@ profile.
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
     is in none.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`. The
-    profile holds the terms of each name, as `describe` split it, each with the concepts it is an
-    abbreviation of, its candidates, as the glossary had them then.
+    profile holds the terms of each name, as `describe` split it, each with the concepts written as
+    it, its candidates, as the glossary had them then.
 *   **Reading** - the concept each term of a name stands for, one word for each term at its place:
     `ap_ap_nm` read as AirPlus, contact person and name. `describe` reads a name whose terms have
     one candidate each, and keeps a reading while the terms of its name stay as they were split,
@@ -164,13 +164,14 @@ profile.
     a profile never holds a reading of other terms than its own. A harmonized name is composed from
     the reading alone, unless an override gives the name.
 *   **Vocabulary** - the terms a term written together is split into: those found in the names of
-    a profile, and the abbreviations of its concepts. A term is split only where other terms of the
-    vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and an
-    abbreviation of a concept never.
+    a profile, and the terms its concepts are written as. A term is split only where other terms of
+    the vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and a term a
+    concept is written as never.
 *   **Concept** - an entry of the glossary: a word, from which harmonized names are composed, the
-    terms it is written as, its abbreviations - `cust` and `kd` for `customer` -, and its
-    description, in English, from which the language model proposes descriptions of columns. A
-    concept omitted is left out of the harmonized names, as a prefix that marks a custom column.
+    terms it is written as - its word, where the word is one term, and its abbreviations:
+    `customer`, `cust` and `kd` for `customer` -, and its description, in English, from which the
+    language model proposes descriptions of columns. A concept omitted is left out of the harmonized
+    names, as a prefix that marks a custom column.
 *   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
 *   **Description** - what a column holds, in English, for a person who knows the business but not
     the database, proposed by the language model from the reading of its name, its statistics, its
@@ -185,7 +186,9 @@ profile.
     `scan` counts the column again, and a reading given once `describe` has split its name. A name
     given comes before the one composed from the reading, so that it resolves a collision of
     harmonized names. A concept given takes the place of the one proposed of its word, keeping of it
-    the abbreviations proposed beside those given, and its abbreviations are taken from the others.
+    the abbreviations proposed beside those given, and the terms it is written as are taken from the
+    abbreviations of the others; the word of another stays a term of it, so that a term given may
+    stand for either, as the reading of its name says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -262,7 +265,7 @@ The design repeats a few decisions; new code follows them.
     give it.
 *   **One word per concept.** Harmonized names are composed from the words of the concepts of the
     glossary, through the reading of each name, so that the same concept reads the same in every
-    table, under whichever of its abbreviations it is written; a name of no reading has none. Where
+    table, under whichever of its terms it is written; a name of no reading has none. Where
     two columns of a table come to the same name, the report shows it, rather than one name taking
     the place of the other. An override gives a name in place of the composed one, which resolves a
     collision.

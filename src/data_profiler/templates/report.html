@@ -130,7 +130,7 @@
           {{ word }}{% if concept.omitted %} <span class="omitted">(omitted)</span>{% endif %}
           {% if word not in given %} <span class="proposed">(proposed)</span>{% endif %}
         </td>
-        <td class="original">{{ concept.abbreviations | join(", ") }}</td>
+        <td class="original">{{ concept.abbreviations | join(", ") or "–" }}</td>
         <td>{{ concept.description or "–" }}</td>
       </tr>
     {% endfor %}

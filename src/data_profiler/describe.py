@@ -2,21 +2,22 @@
 
 Its steps follow one another, each filling attributes of the profile of its own and keeping all
 others. The first splits each name into its terms, those written together by the vocabulary of the
-profile, and gives each term its candidates, the concepts it is an abbreviation of. The second asks
-the language model for a concept of each term of none, shown the names it appears in: a word and a
+profile, and gives each term its candidates, the concepts written as it. The second asks the
+language model for a concept of each term of none, shown the names it appears in: a word and a
 description, which go into the glossary of the profile; a word the glossary has takes the term as
 one more abbreviation of its concept. It drops first the abbreviations no name has any longer, and a
-concept left without any. The names are then split again, so that the concepts proposed are
-candidates, and the third step reads each name. A reading is kept while the terms of its name are as
-they were split before, their candidates among them, and agree with it, so that a reading chosen is
-not lost by a split that stayed the same, and a term that gained a candidate has its name read anew.
-Else a name whose terms have one candidate each, or are of digits, is read by them; one of a term of
-several, the language model reads, shown the candidates with their descriptions, choosing for each
-such term one of them; and any other, of a term of none, is left unread. The terms a split finds are
-written with the readings of their names alone, table by table, so that the profile never holds a
-reading of other terms than its own. The fourth asks the language model for the description of each
-column of none, shown the reading of its name with the descriptions of its concepts, what is counted
-of it, its values and those of its sample, the columns beside it and those filled together with it.
+concept no name is written as any longer, by its word or an abbreviation. The names are then split
+again, so that the concepts proposed are candidates, and the third step reads each name. A reading
+is kept while the terms of its name are as they were split before, their candidates among them, and
+agree with it, so that a reading chosen is not lost by a split that stayed the same, and a term that
+gained a candidate has its name read anew. Else a name whose terms have one candidate each, or are
+of digits, is read by them; one of a term of several, the language model reads, shown the candidates
+with their descriptions, choosing for each such term one of them; and any other, of a term of none,
+is left unread. The terms a split finds are written with the readings of their names alone, table by
+table, so that the profile never holds a reading of other terms than its own. The fourth asks the
+language model for the description of each column of none, shown the reading of its name with the
+descriptions of its concepts, what is counted of it, its values and those of its sample, the columns
+beside it and those filled together with it.
 
 The steps see the profile with the overrides laid over it, so that the concepts given count and no
 term of one, no name of a reading given and no column of a description given is asked for; but they
@@ -40,7 +41,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from data_profiler.detect import SemanticType, is_filled
 from data_profiler.disclosure import disclose_texts
-from data_profiler.glossary import Glossary, Vocabulary, agrees, snake_case, unknown
+from data_profiler.glossary import Glossary, Vocabulary, agrees, snake_case, unknown, written_as
 from data_profiler.llm import LanguageModel
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Column, Concept, Profile, Table
@@ -104,7 +105,7 @@ _READING_PROMPT: Final = """\
 You help to document the tables of a database whose names are made of English abbreviations.
 {subject}
 
-Its name is made of these terms, in their order, each an abbreviation of a concept:
+Its name is made of these terms, in their order, each the word or an abbreviation of a concept:
 
 {terms}
 
@@ -496,13 +497,13 @@ def _meaning(word: str, glossary: Glossary) -> str:
 
 
 def _held(profile: Profile) -> Profile:
-    """`profile`, its concepts without the abbreviations no name has, and without those of none."""
+    """`profile`, its concepts of a term a name has alone, without the abbreviations no name has."""
     names: list[Table | Column] = [*profile.tables]
     names += [column for table in profile.tables for column in table.columns]
     held = {term.text for named in names for term in named.terms or ()}
     glossary = {}
     for word, concept in profile.glossary.items():
-        left = tuple(term for term in concept.abbreviations if term in held)
-        if left:
+        if any(term in held for term in written_as(word, concept)):
+            left = tuple(term for term in concept.abbreviations if term in held)
             glossary[word] = replace(concept, abbreviations=left)
     return replace(profile, glossary=glossary)

@@ -15,7 +15,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
-| [29](29-the-word-of-a-concept-as-a-term.md) | open | medium | feature | A concept is written only as its abbreviations, not as its word, so that a name written in full - `name`, `customer_id` - finds no concept until its word is given once more as an abbreviation, and a concept cannot be given without abbreviations at all. Part of epic [02](02-first-version-epic.md). |
+| [29](29-the-word-of-a-concept-as-a-term.md) | in progress | medium | feature | A concept is written only as its abbreviations, not as its word, so that a name written in full - `name`, `customer_id` - finds no concept until its word is given once more as an abbreviation, and a concept cannot be given without abbreviations at all. Part of epic [02](02-first-version-epic.md). |
 
 ## Architecture
 

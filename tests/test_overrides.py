@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import SemanticType, Sensitivity
+from data_profiler.glossary import Glossary
 from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
 from data_profiler.profile import Column, Concept, Profile, Range, Statistics, Table, Value
 
@@ -133,6 +134,23 @@ def test_the_concepts_of_the_overrides_are_taken_as_given() -> None:
     assert joined.glossary["type_code"] == Concept(("cd", "typ"), "A code."), (
         "with the abbreviations proposed of its word beside those given"
     )
+
+
+def test_the_word_of_a_concept_given_is_taken_from_the_concepts_proposed() -> None:
+    proposed = {**_PROFILE.glossary, "label": Concept(("name",)), "first": Concept(())}
+    laid = Overrides(glossary={"name": Concept(())}).laid_over(replace(_PROFILE, glossary=proposed))
+    assert "label" not in laid.glossary, "left without any abbreviation"
+    assert laid.glossary["name"] == Concept(()), "though no name has its word"
+    assert laid.glossary["first"] == Concept(()), "a concept proposed of its word alone is kept"
+
+
+def test_a_term_given_that_is_the_word_of_a_concept_proposed_stands_for_either() -> None:
+    (table,) = _PROFILE.tables
+    column = replace(table.columns[1], name="contact_cd")
+    profile = replace(_PROFILE, tables=(replace(table, columns=(*table.columns, column)),))
+    laid = Overrides(glossary={"person": Concept(("contact",))}).laid_over(profile)
+    assert laid.glossary["contact"] == Concept(("cntct",)), "kept, and written as its word"
+    assert Glossary(laid.glossary).words("contact") == ("person", "contact")
 
 
 def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:

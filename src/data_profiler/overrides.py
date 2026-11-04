@@ -17,15 +17,18 @@ after a scan withholds the values there without a scan again; the sentinels a co
 with, they leave as they are. A column has the marks the overrides give it and no others: a mark
 taken out gives back no values until `scan` counts the column again, and sentinels changed count
 only once it does. A concept given comes before those proposed: it takes the place of the one of its
-word, keeping of it only the abbreviations it was proposed with beside those given, and its
-abbreviations are taken from the others, a concept left without any dropped, so that a term given is
-of no concept but those given, and a term proposed as one more abbreviation of a concept given is
-one of it. A reading given comes before the one read; it is laid over by the stages that read the
-profile alone, not by `scan`, so that the profile never holds it as read, and it counts once
-`describe` has split the name, as a reading agrees with the terms of its name. A name given comes
-before the one composed from the reading, so that it resolves a collision of harmonized names, and a
-description given before the one proposed; both are laid over by the stages that read the profile
-alone, as a reading is, and a column of a description given is not described by the language model.
+word, keeping of it only the abbreviations it was proposed with beside those given, and the terms it
+is written as - its abbreviations, and its word where it is one term - are taken from the
+abbreviations of the others, a concept they take all of dropped, so that a term given is of no
+concept but those given, unless it is the word of another, a term of it whatever is given, of which
+the reading of its name tells which it stands for, and a term proposed as one more abbreviation of a
+concept given is one of it. A reading given comes before the one read; it is laid over by the stages
+that read the profile alone, not by `scan`, so that the profile never holds it as read, and it
+counts once `describe` has split the name, as a reading agrees with the terms of its name. A name
+given comes before the one composed from the reading, so that it resolves a collision of harmonized
+names, and a description given before the one proposed; both are laid over by the stages that read
+the profile alone, as a reading is, and a column of a description given is not described by the
+language model.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -47,7 +50,14 @@ from pydantic import TypeAdapter
 from data_profiler.detect import Sensitivity
 from data_profiler.disclosure import disclose
 from data_profiler.documents import DocumentError, read_document
-from data_profiler.glossary import Glossary, Vocabulary, agrees, occurrences, snake_case
+from data_profiler.glossary import (
+    Glossary,
+    Vocabulary,
+    agrees,
+    occurrences,
+    snake_case,
+    written_as,
+)
 from data_profiler.profile import Concept, Profile, Table
 
 # The version of the format of the overrides, raised as `profile.FORMAT` is.
@@ -312,10 +322,12 @@ class Overrides:
                 number of words, or a word of no concept of the term at its place, or a name other
                 than in snake_case.
         """
-        taken = {term for concept in self.glossary.values() for term in concept.abbreviations}
+        taken = {t for word, concept in self.glossary.items() for t in written_as(word, concept)}
         concepts = _laid_over(self.glossary, taken, profile.glossary)
-        # Split by the concepts given, as an abbreviation given is no longer split.
-        unknown = sorted(taken - set(occurrences(replace(profile, glossary=concepts))))
+        # Split by the concepts given, as an abbreviation given is no longer split; a word given
+        # no name has is no mistake, as a concept is given by its word whatever the names are.
+        abbreviations = {t for concept in self.glossary.values() for t in concept.abbreviations}
+        unknown = sorted(abbreviations - set(occurrences(replace(profile, glossary=concepts))))
         if unknown:
             raise OverridesError(
                 "the overrides give abbreviations, in lower case as terms are, that no name of"
@@ -339,18 +351,18 @@ class Overrides:
 def _laid_over(
     given: Mapping[str, Concept], taken: Collection[str], proposed: Mapping[str, Concept]
 ) -> dict[str, Concept]:
-    """The concepts `given`, whose abbreviations are `taken`, with those `proposed` without them.
+    """The concepts `given`, written as the terms `taken`, with those `proposed` without them.
 
-    A concept proposed of the word of one given adds to it the abbreviations it has left.
+    A concept proposed of the word of one given adds to it the abbreviations it has left; one of
+    another word is dropped once all its abbreviations are taken, and keeps its word, which is
+    taken from none: one without abbreviations, written as its word alone, is kept.
     """
     concepts = dict(given)
     for word, concept in proposed.items():
         left = tuple(term for term in concept.abbreviations if term not in taken)
-        if not left:
-            continue
         if word in given:
             concepts[word] = replace(given[word], abbreviations=(*given[word].abbreviations, *left))
-        else:
+        elif left or not concept.abbreviations:
             concepts[word] = replace(concept, abbreviations=left)
     return concepts
 

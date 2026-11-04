@@ -18,7 +18,7 @@ It works in three stages, each of which can be run again on its own:
   language model, running locally in Ollama, for the concepts of the terms of none, and for a
   description of every column. Harmonized English names are composed from one glossary of the
   concepts of the whole schema - each a word, its abbreviations and a description -, so that the
-  same concept reads the same in every table, whichever abbreviation it is written as.
+  same concept reads the same in every table, whether written as its word or an abbreviation.
 - **report** renders the result as HTML.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
