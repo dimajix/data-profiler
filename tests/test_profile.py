@@ -106,7 +106,7 @@ def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
 def test_a_profile_is_written_as_its_head_and_a_file_of_each_table(tmp_path: Path) -> None:
     _written(tmp_path)
     head, table = _content(tmp_path / "profile.yml"), _content(tmp_path / "tables" / "CUST.yml")
-    assert (head["format"], table["format"]) == (FORMAT, FORMAT), "each with its format"
+    assert (head["format"], table["format"]) == (str(FORMAT), str(FORMAT)), "each with its format"
     assert "tables" not in head
     assert (table["name"], table["rows"]) == ("CUST", 1250000)
 

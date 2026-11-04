@@ -46,18 +46,16 @@ from data_profiler.detect import (
     project_type,
     semantic_type,
 )
-from data_profiler.documents import DocumentError, read_document, write_document
+from data_profiler.documents import DocumentError, Version, read_document, write_document
 from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = 13
-"""The version of the format a profile is written in.
+FORMAT: Final = Version(13, 0)
+"""The version of the format a profile is written in, raised as `documents` says.
 
-It is raised with every change to the fields of the classes below, or to the files they are
-written to: a field added is unknown to the version before, a field removed or renamed is missing
-for the version after. A profile of another format is refused, an older one as well: it is removed
-and scanned again, not converted.
+A change to the files the classes below are written to is incompatible as well. A profile of
+another major version is removed and scanned again, not converted.
 """
 
 
@@ -425,12 +423,12 @@ class Profile:
             The profile, its tables sorted by name.
 
         Raises:
-            ProfileError: A file cannot be read, is no YAML, holds no fields, is of another
-                format, a field is missing, unknown or of the wrong type, a semantic type of the
-                project cannot be made, as `detect.project_type` says, a match names a type
-                neither of the tool nor of the project, the file of a table holds a table of
-                another name, or the groups of a table name a column it does not have, or one
-                twice.
+            ProfileError: A file cannot be read, is no YAML, holds no fields, names no version
+                of a format, is of another major version or of a newer minor version, a field is
+                missing, unknown or of the wrong type, a semantic type of the project cannot be
+                made, as `detect.project_type` says, a match names a type neither of the tool
+                nor of the project, the file of a table holds a table of another name, or the
+                groups of a table name a column it does not have, or one twice.
         """
         try:
             head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)

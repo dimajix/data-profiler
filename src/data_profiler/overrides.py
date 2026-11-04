@@ -53,7 +53,7 @@ from pydantic import TypeAdapter
 
 from data_profiler.detect import Sensitivity
 from data_profiler.disclosure import disclose
-from data_profiler.documents import DocumentError, read_document
+from data_profiler.documents import DocumentError, Version, read_document
 from data_profiler.glossary import (
     Glossary,
     Vocabulary,
@@ -66,8 +66,8 @@ from data_profiler.profile import Concept, Profile, Table
 
 _logger = logging.getLogger(__name__)
 
-# The version of the format of the overrides, raised as `profile.FORMAT` is.
-_FORMAT: Final = 7
+# The version of the format of the overrides, raised as `documents` says.
+_FORMAT: Final = Version(7, 0)
 
 
 class OverridesError(Exception):
@@ -291,8 +291,9 @@ class Overrides:
             The overrides.
 
         Raises:
-            OverridesError: The file cannot be read, is no YAML, is of another format, or a
-                field is missing, unknown or of the wrong type.
+            OverridesError: The file cannot be read, is no YAML, names no version of a format, is
+                of another major version or of a newer minor version, or a field is missing,
+                unknown or of the wrong type.
         """
         if not path.exists():
             return cls()

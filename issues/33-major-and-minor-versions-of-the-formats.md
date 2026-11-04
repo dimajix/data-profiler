@@ -1,6 +1,6 @@
 # 33 — Major and minor versions of the formats
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Architecture
@@ -69,3 +69,15 @@ As discussed with the maintainer:
 
 - **2026-11-04** — Opened, as the maintainer decided: the version is raised only by incompatible
   changes as its major part, by compatible ones as its minor part.
+
+- **2026-11-04** — Done, as decided and as the maintainer agreed after the review:
+  `documents.Version`, a frozen dataclass of a major and a minor part, not a pair, as its parts are
+  of one type and could be swapped unseen, is the version `read_document` reads and
+  `write_document` writes, as `"13.0"`; a plain number is read as of minor version 0, and a number
+  of a fraction, `13.1` unquoted, is refused as no version. The three formats stay at their
+  versions, `Version(13, 0)`, `Version(7, 0)` and `Version(4, 0)`, as a document of the version
+  before is read by the scheme of two parts. The rule is stated in the module docs of `documents`,
+  not in the doc comment of `profile.FORMAT`, as it holds for all three formats; `profile.FORMAT`
+  adds what is its own, that the files of a profile changed are incompatible as well. The example
+  project, its overrides and the example profile of the simulation write their versions the new
+  way.

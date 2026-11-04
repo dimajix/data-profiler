@@ -39,7 +39,9 @@ environment.
     the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, those of
     the profile and the configuration of a project among them, each the fields of one class with
-    the version of its format; what is wrong with one is named, field by field.
+    the version of its format, of a major and a minor part, so that a document of an older minor
+    version is read with the defaults of what it lacks; what is wrong with one is named, field by
+    field.
 *   **`data_profiler.files`** - files written whole or not at all, for documents and the
     workspace, under names every system takes - the names of tables among them.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and

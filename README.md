@@ -100,7 +100,7 @@ test, prod - in a directory named after the environment. `examples/crm/` is a pr
 simulation environment:
 
 ```yaml
-format: 4
+format: "4.0"
 tables: .*
 llm: qwen3.5:2b
 environments:
@@ -167,11 +167,12 @@ workspace `examples/crm/simulation/workspace/`, which keeps itself out of versio
 profile is written after every table and updated, not replaced, by the next scan: the tables no
 longer selected are dropped, and what `describe` filled is kept. A scan that failed or was
 interrupted is resumed by the next one, which counts only the tables it did not; once a scan has
-counted every table, the next one counts them all anew. A profile that cannot be read - of an older
-format, for one - or of another schema is refused, never overwritten; it is removed by hand before
-it is scanned anew. Without `--project`, the project is the current directory. The progress goes to
-standard error; with `--debug` before the command, the log holds the statements sent and the values
-of the database, and stays on the machine.
+counted every table, the next one counts them all anew. A profile that cannot be read - of another
+major version of its format, for one - or of another schema is refused, never overwritten; it is
+removed by hand before it is scanned anew. One of an older minor version is read as it is. Without
+`--project`, the project is the current directory. The progress goes to standard error; with
+`--debug` before the command, the log holds the statements sent and the values of the database, and
+stays on the machine.
 
 The names of the profile are split into their terms and read by
 

@@ -242,7 +242,7 @@ def test_tables_that_are_no_regular_expression_are_refused(tmp_path: Path) -> No
 
 def test_a_configuration_that_is_no_document_of_a_project_is_refused(tmp_path: Path) -> None:
     configuration = _CONFIGURATION.replace("format: 4", "format: 3")
-    with pytest.raises(ProjectError, match=r"project\.yml is of format 3"):
+    with pytest.raises(ProjectError, match=r"project\.yml is of format 3\.0"):
         _project(tmp_path, configuration)
 
 

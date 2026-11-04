@@ -1,5 +1,6 @@
-"""Tests of documents: written and read as YAML in a format, refused where they are not one."""
+"""Tests of documents: written and read as YAML in a version of a format, refused where not one."""
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -8,7 +9,7 @@ import pytest
 from pydantic import TypeAdapter
 from yaml import safe_dump, safe_load
 
-from data_profiler.documents import DocumentError, read_document, write_document
+from data_profiler.documents import DocumentError, Version, read_document, write_document
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ class _Whole:
 
 
 _ADAPTER: Final = TypeAdapter(_Whole)
-_VERSION: Final = 3
+_VERSION: Final = Version(3, 2)
 _WHOLE: Final = _Whole(name="whole", parts=(_Part("one"), _Part("two")))
 
 
@@ -54,13 +55,13 @@ def test_a_document_written_and_read_is_unchanged(tmp_path: Path) -> None:
 def test_a_document_is_written_with_its_format_first(tmp_path: Path) -> None:
     content = safe_load(_written(tmp_path).read_text(encoding="utf-8"))
     assert list(content) == ["format", "name", "parts"]
-    assert content["format"] == _VERSION
+    assert content["format"] == "3.2", "the version is written as a string, its two parts apart"
 
 
 def test_a_field_that_has_its_default_is_not_written(tmp_path: Path) -> None:
     path = tmp_path / "document.yml"
     write_document(path, _ADAPTER, _VERSION, _Whole(name="whole"))
-    assert safe_load(path.read_text(encoding="utf-8")) == {"format": _VERSION, "name": "whole"}
+    assert safe_load(path.read_text(encoding="utf-8")) == {"format": "3.2", "name": "whole"}
     assert read_document(path, _ADAPTER, _VERSION) == _Whole(name="whole")
 
 
@@ -73,18 +74,66 @@ def test_a_document_written_over_another_replaces_it(tmp_path: Path) -> None:
     assert left == ["document.yml"], "no temporary file is left"
 
 
+def _of_format(tmp_path: Path, version: str) -> Path:
+    """The document of `_WHOLE`, its field `format` written as `version`."""
+    path = _written(tmp_path)
+    text = path.read_text(encoding="utf-8")
+    assert "format: '3.2'" in text, "the version is written as the field is replaced"
+    path.write_text(text.replace("format: '3.2'", f"format: {version}"), encoding="utf-8")
+    return path
+
+
+def test_a_document_of_an_older_minor_version_is_read_with_the_defaults_of_what_it_lacks(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "document.yml"
+    path.write_text("format: '3.0'\nname: whole\n", encoding="utf-8")
+    assert read_document(path, _ADAPTER, _VERSION) == _Whole(name="whole")
+
+
+def test_a_format_given_as_a_number_is_of_minor_version_0(tmp_path: Path) -> None:
+    assert read_document(_of_format(tmp_path, "3"), _ADAPTER, _VERSION) == _WHOLE
+
+
+def test_a_document_of_a_newer_minor_version_is_refused_as_newer_than_the_tool(
+    tmp_path: Path,
+) -> None:
+    path = _of_format(tmp_path, "'3.3'")
+    with pytest.raises(
+        DocumentError,
+        match=r"format 3\.3, newer than the format 3\.2 that is read: the tool is older",
+    ):
+        read_document(path, _ADAPTER, _VERSION)
+
+
 @pytest.mark.parametrize(
     ("version", "named"),
-    [("99", "99"), ("'3'", "'3'"), ("true", "True")],
-    ids=["a later format", "a format as text", "a format that is no number"],
+    [("'4.0'", "4.0"), ("'2.2'", "2.2"), ("4", "4.0")],
+    ids=["a later major version", "an earlier major version", "a major version as a number"],
 )
-def test_a_document_of_another_format_is_refused_naming_both(
+def test_a_document_of_another_major_version_is_refused_naming_both(
     tmp_path: Path, version: str, named: str
 ) -> None:
-    path = _written(tmp_path)
-    text = path.read_text(encoding="utf-8").replace(f"format: {_VERSION}", f"format: {version}")
-    path.write_text(text, encoding="utf-8")
-    with pytest.raises(DocumentError, match=f"format {named}, but only format {_VERSION}"):
+    path = _of_format(tmp_path, version)
+    with pytest.raises(
+        DocumentError,
+        match=rf"format {re.escape(named)}, of another major version than the format 3\.2",
+    ):
+        read_document(path, _ADAPTER, _VERSION)
+
+
+@pytest.mark.parametrize(
+    ("version", "named"),
+    [("3.2", "3.2"), ("'3'", "'3'"), ("'3.2.1'", "'3.2.1'"), ("true", "True")],
+    ids=["a number of a fraction", "a major version alone as text", "three parts", "no number"],
+)
+def test_a_document_of_a_format_that_is_no_version_is_refused(
+    tmp_path: Path, version: str, named: str
+) -> None:
+    path = _of_format(tmp_path, version)
+    with pytest.raises(
+        DocumentError, match=f"names the format {re.escape(named)}, which is no version"
+    ):
         read_document(path, _ADAPTER, _VERSION)
 
 

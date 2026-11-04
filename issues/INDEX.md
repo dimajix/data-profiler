@@ -75,7 +75,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [02](02-first-version-epic.md) | open | The tool does not exist yet: nothing scans a database, proposes names for its columns or reports what was found. |
-| [33](33-major-and-minor-versions-of-the-formats.md) | open | The version of a format is raised with every change to its fields, and a document of another version is refused, so that a field added as optional makes every profile be scanned again and every `overrides.yml` and `project.yml` be edited by hand, though the document the version before wrote is read as it was. |
+| [33](33-major-and-minor-versions-of-the-formats.md) | done | The version of a format is raised with every change to its fields, and a document of another version is refused, so that a field added as optional makes every profile be scanned again and every `overrides.yml` and `project.yml` be edited by hand, though the document the version before wrote is read as it was. |
 
 ## Tooling and process
 
