@@ -7,8 +7,25 @@ import pytest
 
 from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.glossary import Glossary
-from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
-from data_profiler.profile import Column, Concept, Profile, Range, Statistics, Table, Value
+from data_profiler.overrides import (
+    ColumnOverride,
+    DiscriminatorOverride,
+    EntityOverride,
+    Overrides,
+    OverridesError,
+    TableOverride,
+)
+from data_profiler.profile import (
+    Column,
+    Concept,
+    Discriminator,
+    Entity,
+    Profile,
+    Range,
+    Statistics,
+    Table,
+    Value,
+)
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
 
@@ -247,6 +264,149 @@ def test_an_abbreviation_given_that_no_name_has_is_warned_of_and_laid_over(
     assert overrides.laid_over(_PROFILE).glossary["customer"] == given["customer"]
 
 
+def _discriminated(given: tuple[tuple[str, ...], ...] | None = None) -> Table:
+    """The table of `_PROFILE`, its contacts by telephone or by fax, and by e-mail.
+
+    Its discriminator is counted with the values `given` of entities, or found where None.
+    """
+    (table,) = _PROFILE.tables
+    frst_nm, kind = table.columns
+    kinds = (Value("TEL", 2), Value("EML", 1), Value("FAX", 1))
+    entities = (
+        Entity(("TEL", "FAX"), 3, {"frst_nm": 3, "cntct_typ_cd": 3}),
+        Entity(("EML",), 1, {"frst_nm": 0, "cntct_typ_cd": 1}),
+    )
+    return replace(
+        table,
+        rows=4,
+        columns=(frst_nm, replace(kind, values=kinds)),
+        discriminator=Discriminator("cntct_typ_cd", entities, given),
+    )
+
+
+def _entities(column: str = "cntct_typ_cd", **entities: tuple[str, ...]) -> TableOverride:
+    """What gives the discriminator `column` of `cntct`, of entities of the values given."""
+    given = {name: EntityOverride(values) for name, values in entities.items()}
+    return TableOverride(discriminator=DiscriminatorOverride(column, given))
+
+
+def _laid(given: TableOverride, table: Table) -> Table:
+    """`table`, in the profile of its own, with `given` laid over it by a stage that reads it."""
+    (laid,) = (
+        Overrides(tables={"cntct": given}).laid_over(replace(_PROFILE, tables=(table,))).tables
+    )
+    return laid
+
+
+def test_the_entities_given_are_named_and_described_where_their_values_are() -> None:
+    phone = EntityOverride(("TEL",), "A contact by telephone.")
+    given = TableOverride(discriminator=DiscriminatorOverride("cntct_typ_cd", {"phone": phone}))
+    table = _discriminated((("TEL",),))
+    laid = _laid(given, table)
+    assert laid.discriminator is not None
+    by_phone, by_mail = laid.discriminator.entities
+    assert (by_phone.name_given, by_phone.description) == ("phone", "A contact by telephone.")
+    assert (by_mail.name_given, by_mail.description) == (None, None), "an entity of none given"
+    assert given.laid_over(table) == table, "not by a scan"
+
+
+@pytest.mark.parametrize(
+    ("given", "counted"),
+    [
+        (_entities(phone=("TEL",)), None),
+        (_entities(phone=("TEL",)), (("TEL",), ("FAX",))),
+        (_entities("frst_nm", anna=("Anna",)), (("Anna",),)),
+    ],
+    ids=["found", "counted with others", "another column"],
+)
+def test_no_names_are_laid_over_entities_of_a_discriminator_counted_otherwise_than_given(
+    given: TableOverride, counted: tuple[tuple[str, ...], ...] | None
+) -> None:
+    table = _discriminated(counted)
+    assert _laid(given, table).discriminator == table.discriminator, "until a scan counts it so"
+
+
+def test_a_table_agrees_with_the_overrides_where_it_was_discriminated_as_given() -> None:
+    found = _discriminated()
+    counted = _discriminated((("TEL",), ("EML",)))
+    assert TableOverride().agrees_with(found), "none given, whatever is found"
+    assert not TableOverride().agrees_with(counted), "counted with entities no longer given"
+    assert not TableOverride(discriminator=False).agrees_with(found)
+    assert TableOverride(discriminator=False).agrees_with(replace(found, discriminator=None))
+    assert _entities(phone=("TEL",), mail=("EML",)).agrees_with(counted)
+    assert not _entities(mail=("EML",), phone=("TEL",)).agrees_with(counted), "in another order"
+    assert not _entities(phone=("TEL",), mail=("EML",)).agrees_with(found)
+    assert _entities().agrees_with(_discriminated(())), "of no entity given"
+    assert not _entities().agrees_with(replace(found, discriminator=None))
+
+
+def test_a_table_discriminated_as_given_is_refused_where_its_discriminator_cannot_be_one() -> None:
+    table = _discriminated()
+    given = replace(
+        _entities("frst_nm"), columns={"frst_nm": ColumnOverride(sensitivity=Sensitivity.PERSONAL)}
+    )
+    counted = replace(table, discriminator=Discriminator("frst_nm", (), ()))
+    with pytest.raises(OverridesError, match="as frst_nm, a column they mark of a sensitivity"):
+        given.agrees_with(counted)
+
+
+@pytest.mark.parametrize(
+    ("given", "problem"),
+    [
+        (_entities("kind"), "columns of cntct it does not have: kind"),
+        (
+            replace(
+                _entities("frst_nm"),
+                columns={"frst_nm": ColumnOverride(sensitivity=Sensitivity.PERSONAL)},
+            ),
+            "discriminator of cntct as frst_nm, a column they mark of a sensitivity",
+        ),
+        (_entities(phone=("TEL",), fax=("FAX", "TEL")), "a value of it twice among its entities"),
+        (_entities(phone=(), fax=(), mail=("EML",)), "and entities of no values: phone, fax"),
+        (_entities(Phone=("TEL",)), "names of cntct other than in snake_case: Phone"),
+    ],
+    ids=["a column missing", "a column sensitive", "a value twice", "no values", "a name"],
+)
+def test_a_discriminator_given_that_cannot_be_one_is_refused(
+    given: TableOverride, problem: str
+) -> None:
+    with pytest.raises(OverridesError, match=problem):
+        _laid(given, _discriminated())
+
+
+def test_a_discriminator_given_of_values_the_profile_does_not_hold_is_no_mistake() -> None:
+    table = _discriminated((("PAGER",),))
+    frst_nm, kind = table.columns
+    unvalued = replace(table, columns=(frst_nm, replace(kind, values=())))
+    given = _entities(pager=("PAGER",))
+    assert _laid(given, unvalued).discriminator is None, "dropped with the values, not refused"
+
+
+def test_a_table_counted_with_a_discriminator_given_of_no_values_held_agrees_unwarned(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    given = _entities(pager=("PAGER",))
+    (table,) = _PROFILE.tables
+    counted = replace(table, discriminator=Discriminator("cntct_typ_cd", (), (("PAGER",),)))
+    assert given.agrees_with(counted), "counted with it, of an environment of no pagers"
+    Overrides(tables={"cntct": given}).warn_unused(replace(_PROFILE, tables=(counted,)))
+    assert caplog.messages == []
+
+
+def test_a_discriminator_given_otherwise_than_counted_is_warned_of(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    profile = replace(_PROFILE, tables=(_discriminated(),))
+    Overrides(tables={"cntct": _entities(phone=("TEL",))}).warn_unused(profile)
+    assert caplog.messages == [
+        "The overrides give the discriminators of tables otherwise than the profile was counted"
+        " with, until scan counts them again: cntct"
+    ]
+    caplog.clear()
+    Overrides().warn_unused(profile)
+    assert caplog.messages == [], "a discriminator found, none given"
+
+
 def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:
     assert Overrides.read(tmp_path / "overrides.yml") == Overrides()
 
@@ -262,12 +422,27 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     assert overrides.tables["cust"].columns["cust_ap_id"].name == "contact_person_id"
     assert overrides.description is not None, "what the database holds"
     assert overrides.tables["ord_itm"].description is not None, "what a table holds"
+    discriminator = overrides.tables["prtnr"].discriminator
+    assert isinstance(discriminator, DiscriminatorOverride)
+    assert discriminator.column == "prtnr_typ_cd"
+    assert discriminator.entities["customer"].values == ("K",)
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
     example_profile: Profile,
 ) -> None:
-    laid = Overrides.read(_EXAMPLE).laid_over(example_profile)
+    overrides = Overrides.read(_EXAMPLE)
+    given = overrides.tables["prtnr"].discriminator
+    assert isinstance(given, DiscriminatorOverride)
+    # The business partners as a scan with the overrides counts them: as found, with the values
+    # given.
+    counted = tuple(
+        replace(table, discriminator=replace(table.discriminator, given=given.values))
+        if table.discriminator is not None
+        else table
+        for table in example_profile.tables
+    )
+    laid = overrides.laid_over(replace(example_profile, tables=counted))
     columns = {f"{t.name}.{c.name}": c for t in laid.tables for c in t.columns}
     assert columns["cntct.lst_nm"].sensitivity is Sensitivity.PERSONAL
     assert laid.glossary["address"].abbreviations == ("addr", "adr")
@@ -276,6 +451,14 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     assert laid.description == Overrides.read(_EXAMPLE).description
     assert tables["ord_itm"].description == Overrides.read(_EXAMPLE).tables["ord_itm"].description
     assert tables["ord"].description is None, "a table of none given"
+    discriminator = tables["prtnr"].discriminator
+    assert discriminator is not None
+    assert [entity.name_given for entity in discriminator.entities] == [
+        "customer",
+        "supplier",
+        "prospect",
+        "employee",
+    ], "each of the entities that holds the values given of it"
 
 
 def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path) -> None:
@@ -287,10 +470,16 @@ def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path
     assert laid.glossary["name"] == Concept(), "though no name has its word"
 
 
+def test_a_table_is_given_no_discriminator_by_false(tmp_path: Path) -> None:
+    path = tmp_path / "overrides.yml"
+    path.write_text('format: "7.1"\ntables:\n  cntct: {discriminator: false}\n', encoding="utf-8")
+    assert Overrides.read(path).tables["cntct"] == TableOverride(discriminator=False)
+
+
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
     with pytest.raises(
-        OverridesError, match=r"format 1\.0, of another major version than the format 7\.0"
+        OverridesError, match=r"format 1\.0, of another major version than the format 7\.1"
     ):
         Overrides.read(path)

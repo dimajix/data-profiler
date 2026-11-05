@@ -153,9 +153,13 @@ environments:
   column, in place of the one proposed, and of a table, which the language model is shown as well;
   the sensitivity of a column the detectors miss, such as the names of persons; and the values that
   stand for no value in a column, its sentinels, in place of those of the tool: `sentinels: ["",
-  "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows them all; `scan` counts
-  and marks the columns as they give, `describe` splits and reads the names by the concepts they
-  give and asks the language model for nothing given, and `report` lays them over the profile.
+  "00000"]`, or `sentinels: []` for none; and the discriminator of a table, the column whose values
+  tell its entities apart, with entities under their harmonized names, each with its values - the
+  others it is found of join it - and its description, `discriminator: {column: prtnr_typ_cd,
+  entities: {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
+  `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, and tells the
+  entities apart, as they give, `describe` splits and reads the names by the concepts they give and
+  asks the language model for nothing given, and `report` lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 

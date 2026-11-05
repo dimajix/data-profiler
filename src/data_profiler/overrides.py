@@ -4,9 +4,11 @@ The overrides of a project are a document of their own, `overrides.yml` in the d
 project, the same for all its environments: what the database holds, concepts of the glossary, the
 reading of the name of a table or column, the harmonized name of a table or column, the description
 of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
-which gives back no values `scan` took out -, and the sentinels of a column, in place of those of
-the tool. Concepts are named by their words, tables and columns by their original names, as keys, so
-that a person writes no more than what is given.
+which gives back no values `scan` took out -, the sentinels of a column, in place of those of the
+tool, and the discriminator of a table, with the names, values and descriptions of its entities, or
+`false` for none, whatever is found. Concepts are named by their words, entities by their harmonized
+names, tables and columns by their original names, as keys, so that a person writes no more than
+what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
@@ -29,25 +31,34 @@ given comes before the one composed from the reading, so that it resolves a coll
 names, and a description given before the one proposed; both are laid over by the stages that read
 the profile alone, as a reading is, and a column of a description given is not described by the
 language model. The descriptions of the database and of a table are laid over the same way, and
-shown to the language model with what it is asked of.
+shown to the language model with what it is asked of. A discriminator given is taken by `scan`,
+which counts the table with it, and counts once it counts the table again, as sentinels do: the
+profile holds the values given of its entities that a discriminator was counted with. The names and
+descriptions of its entities are laid over by the stages that read the profile, each of the entity
+that holds the values given of one, where the discriminator was counted with those given; where it
+was not, they warn of it.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
 not have and the sentinels given of a column whose values the database writes as no text, which has
-none; it does not check the concepts, readings and names, which it does not use. A stage that reads
-the profile refuses a table or a column the profile does not have, a reading of a name that is not
-one of its terms, as the vocabulary splits it - of another number of words, or a word of no concept
-of the term at its place -, and a name given other than in snake_case. An abbreviation given that no
-name of the profile has is no mistake, as the overrides are the same for all environments of a
-project, whose tables differ: a stage that reads the profile warns of it, once, so that one written
-in another case than the terms of the names, which are in lower case, is seen.
+none, and a discriminator given of a column they mark of a sensitivity, of entities of no values, or
+of a value twice - of a column of no values the profile holds, and of values given that the column
+does not hold, it warns, leaving them out, as the overrides are the same for all environments -; it
+does not check the concepts, readings and names, which it does not use. A stage that reads the
+profile refuses a table or a column the profile does not have, a reading of a name that is not one
+of its terms, as the vocabulary splits it - of another number of words, or a word of no concept of
+the term at its place -, a name given other than in snake_case, that of an entity among them, and a
+discriminator given as `scan` does. An abbreviation given that no name of the profile has is no
+mistake, as the overrides are the same for all environments of a project, whose tables differ: a
+stage that reads the profile warns of it, once, so that one written in another case than the terms
+of the names, which are in lower case, is seen.
 """
 
 import logging
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import TypeAdapter
 
@@ -62,12 +73,12 @@ from data_profiler.glossary import (
     snake_case,
     written_as,
 )
-from data_profiler.profile import Concept, Profile, Table
+from data_profiler.profile import Concept, Discriminator, Profile, Table
 
 _logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `documents` says.
-_FORMAT: Final = Version(7, 0)
+_FORMAT: Final = Version(7, 1)
 
 
 class OverridesError(Exception):
@@ -98,6 +109,45 @@ class ColumnOverride:
 
 
 @dataclass(frozen=True)
+class EntityOverride:
+    """What is given by hand of an entity of a table: its values, and what it holds.
+
+    Attributes:
+        values: Values of the discriminator its rows hold, as text, one at least; the others it is
+            found of join them.
+        description: What it holds, or None where it is not given.
+    """
+
+    values: tuple[str, ...]
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class DiscriminatorOverride:
+    """The discriminator of a table given by hand, and its entities by their harmonized names.
+
+    Attributes:
+        column: The name of the column whose values tell the entities apart, an enumeration of no
+            sensitivity.
+        entities: What is given of its entities, by their harmonized names, in snake_case; the
+            values given of none join them, or are of entities found as `scan` finds them.
+    """
+
+    column: str
+    entities: Mapping[str, EntityOverride] = field(default_factory=dict)
+
+    @property
+    def values(self) -> tuple[tuple[str, ...], ...]:
+        """The values of each of its entities, in their order, as a discriminator records them."""
+        return tuple(entity.values for entity in self.entities.values())
+
+
+# What the overrides give of the discriminator of a table: the discriminator, or False for none,
+# whatever is found; None where they give nothing of it.
+type GivenDiscriminator = DiscriminatorOverride | Literal[False] | None
+
+
+@dataclass(frozen=True)
 class TableOverride:
     """What is given by hand of a table and its columns.
 
@@ -108,12 +158,15 @@ class TableOverride:
         name: The harmonized name of the table, in snake_case, in place of the one composed from
             its reading, or None where it is not given.
         description: What the table holds, or None where it is not given.
+        discriminator: The discriminator of its entities, or False where it has none, whatever is
+            found; None where it is not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
     reading: tuple[str, ...] | None = None
     name: str | None = None
     description: str | None = None
+    discriminator: GivenDiscriminator = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -123,6 +176,11 @@ class TableOverride:
             for name, column in self.columns.items()
             if column.sentinels is not None
         }
+
+    @property
+    def _discriminator(self) -> DiscriminatorOverride | None:
+        """The discriminator given, or None where none is, or False."""
+        return self.discriminator if isinstance(self.discriminator, DiscriminatorOverride) else None
 
     def laid_over(self, table: Table) -> Table:
         """`table`, each of its columns marked with the sensitivity given of it, and only so.
@@ -135,11 +193,15 @@ class TableOverride:
             the module `disclosure` to decide on.
 
         Raises:
-            OverridesError: A column is named that the table does not have.
+            OverridesError: A column is named that the table does not have, or a discriminator is
+                given of a column they mark of a sensitivity, or of entities of no values, or of a
+                value twice.
         """
         self._refuse_missing(table)
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
-        return replace(table, columns=tuple(columns))
+        marked = replace(table, columns=tuple(columns))
+        self._refuse_discriminator(marked)
+        return marked
 
     def described_laid_over(
         self, table: Table, vocabulary: Vocabulary, glossary: Glossary
@@ -153,8 +215,9 @@ class TableOverride:
 
         Returns:
             The table, each reading given in place of the one read, each name given as its
-            `name_given`, each description given of a column in place of the one proposed, and the
-            description given of the table in place of what it holds.
+            `name_given`, each description given of a column in place of the one proposed, the
+            description given of the table in place of what it holds, and the name and the
+            description given of each entity of its discriminator, where it is the one given.
 
         Raises:
             OverridesError: A column is named that the table does not have, a reading is given that
@@ -174,9 +237,11 @@ class TableOverride:
                 f"the overrides give readings of names of {table.name} that read no concept of a"
                 f" term at its place, or not one of each: {', '.join(unread)}"
             )
+        entities = [] if self._discriminator is None else list(self._discriminator.entities)
         refused = [
             name for name, _, named in given if named is not None and snake_case(named) != named
         ]
+        refused += [name for name in entities if snake_case(name) != name]
         if refused:
             raise OverridesError(
                 f"the overrides give names of {table.name} other than in snake_case: "
@@ -203,21 +268,29 @@ class TableOverride:
             reading=reading,
             name_given=self.name,
             description=description,
+            discriminator=self._named(table.discriminator),
         )
 
     def agrees_with(self, table: Table) -> bool:
-        """Whether `table` agrees with what is given: marked, and counted with the sentinels given.
+        """Whether `table` agrees with what is given: marked, counted and discriminated as given.
 
         Args:
             table: The table.
 
         Returns:
-            True where `laid_over` would leave the table as it is and each column was counted with
-            the sentinels given of it; False where it would mark its columns otherwise, a column
-            was counted with others, or the table lacks a column that is named.
+            True where `laid_over` would leave the table as it is, each column was counted with the
+            sentinels given of it, and the table was discriminated as given: its discriminator
+            counted with the values given of its entities, none where False is given, and one
+            found or none where nothing is given; False where it would mark its columns otherwise,
+            a column was counted with others, the table was discriminated otherwise, or it lacks a
+            column that is named.
+
+        Raises:
+            OverridesError: The discriminator given is refused, as `laid_over` says.
         """
         return (
             not self._missing(table)
+            and _as_given(self.discriminator, table.discriminator)
             and self.laid_over(table) == table
             and not self._counted_otherwise(table)
         )
@@ -244,8 +317,11 @@ class TableOverride:
             )
 
     def _missing(self, table: Table) -> list[str]:
-        """The columns given that `table` does not have, sorted by their names."""
-        return sorted(set(self.columns) - {column.name for column in table.columns})
+        """The columns given, the discriminator among them, that `table` does not have, sorted."""
+        named = set(self.columns)
+        if self._discriminator is not None:
+            named.add(self._discriminator.column)
+        return sorted(named - {column.name for column in table.columns})
 
     def _refuse_missing(self, table: Table) -> None:
         """Refuses what is given of the columns `table` does not have, naming them."""
@@ -260,6 +336,50 @@ class TableOverride:
         given = self.sentinels
         return sorted(c.name for c in table.columns if c.sentinels != given.get(c.name))
 
+    def _refuse_discriminator(self, table: Table) -> None:
+        """Refuses the discriminator given of `table`, its columns marked, where it cannot be one.
+
+        What it holds is not judged here, nor a sensitivity its matches find: the values given of
+        an environment that does not hold them, `scan` leaves out, warning of them, as the
+        overrides are of all environments.
+
+        Raises:
+            OverridesError: The overrides mark its column of a sensitivity, or an entity is given
+                of no values, or a value is given of two entities.
+        """
+        given = self._discriminator
+        if given is None:
+            return
+        column = table.column(given.column)
+        where = f"the overrides give the discriminator of {table.name} as {column.name}"
+        if column.marked is not None and column.sensitive:
+            raise OverridesError(f"{where}, a column they mark of a sensitivity")
+        empty = [name for name, entity in given.entities.items() if not entity.values]
+        if empty:
+            raise OverridesError(f"{where}, and entities of no values: {', '.join(empty)}")
+        values = [value for values in given.values for value in values]
+        if len(values) != len(set(values)):
+            raise OverridesError(f"{where}, and a value of it twice among its entities")
+
+    def _named(self, discriminator: Discriminator | None) -> Discriminator | None:
+        """`discriminator`, its entities named and described as given, where it was counted so.
+
+        An entity is named after the entity given whose values it holds.
+        """
+        given = self._discriminator
+        if given is None or discriminator is None or not _as_given(given, discriminator):
+            return discriminator
+        names = {value: name for name, entity in given.entities.items() for value in entity.values}
+        entities = []
+        for entity in discriminator.entities:
+            name = next((names[value] for value in entity.values if value in names), None)
+            entities.append(
+                entity
+                if name is None
+                else replace(entity, name_given=name, description=given.entities[name].description)
+            )
+        return replace(discriminator, entities=tuple(entities))
+
     def _marked(self, name: str) -> Sensitivity | None:
         """The sensitivity given of the column `name`, or None where none is."""
         given = self.columns.get(name)
@@ -268,7 +388,7 @@ class TableOverride:
 
 @dataclass(frozen=True)
 class Overrides:
-    """What is given by hand of a profile: concepts, readings, descriptions, sensitivity, sentinels.
+    """What is given by hand of a profile: concepts, names, descriptions, columns, discriminators.
 
     Attributes:
         description: What the database holds, or None where it is not given.
@@ -322,10 +442,12 @@ class Overrides:
         return {name: self.tables.get(name, TableOverride()) for name in names}
 
     def warn_unused(self, profile: Profile) -> None:
-        """Warns of the abbreviations given that no name of `profile` has, naming them.
+        """Warns of what is given that `profile` does not take, naming it.
 
-        A word given that no name has is not warned of, as a concept is given by its word whatever
-        the names are.
+        An abbreviation given that no name of it has is warned of; a word given that no name has
+        is not, as a concept is given by its word whatever the names are. A discriminator given of
+        a table that was discriminated otherwise is warned of as well, as it counts, and the names
+        of its entities are laid over, only once `scan` counts the table again.
 
         Args:
             profile: The profile the overrides are laid over.
@@ -339,6 +461,19 @@ class Overrides:
                 " profile has: %s",
                 ", ".join(unused),
             )
+        otherwise = [
+            table.name
+            for table in profile.tables
+            if not _as_given(
+                self.tables.get(table.name, TableOverride()).discriminator, table.discriminator
+            )
+        ]
+        if otherwise:
+            _logger.warning(
+                "The overrides give the discriminators of tables otherwise than the profile was"
+                " counted with, until scan counts them again: %s",
+                ", ".join(otherwise),
+            )
 
     def laid_over(self, profile: Profile) -> Profile:
         """`profile` with what the overrides give taken as given.
@@ -350,15 +485,17 @@ class Overrides:
             The profile, the concepts of the overrides in its glossary before its own, the
             readings they give of the names of its tables and columns in place of those read, the
             names they give as their `name_given`, the descriptions they give of its columns in
-            place of those proposed, and of it and its tables in place of what they hold, its
-            columns marked with the sensitivity they
-            give, and only so, and without the values of those marked sensitive.
+            place of those proposed, and of it and its tables in place of what they hold, the
+            names and descriptions they give of the entities of a discriminator as given, its
+            columns marked with the sensitivity they give, and only so, and without the values of
+            those marked sensitive.
 
         Raises:
             OverridesError: The overrides name a table or column the profile does not have, or
                 give a reading of a name that is no reading of its terms, as the vocabulary of the
                 profile splits it: of another number of words, or a word of no concept of the term
-                at its place, or a name other than in snake_case.
+                at its place, or a name other than in snake_case, or a discriminator that cannot be
+                one, as `TableOverride.laid_over` says.
         """
         profile = self._with_concepts(profile)
         vocabulary = Vocabulary.of(profile)
@@ -379,6 +516,19 @@ class Overrides:
     def _with_concepts(self, profile: Profile) -> Profile:
         """`profile`, the concepts given in its glossary before its own."""
         return replace(profile, glossary=_laid_over(self.glossary, profile.glossary))
+
+
+def _as_given(given: GivenDiscriminator, discriminator: Discriminator | None) -> bool:
+    """Whether a table of `discriminator` was discriminated as `given`, as `agrees_with` says."""
+    if given is None:
+        return discriminator is None or discriminator.given is None
+    if given is False:
+        return discriminator is None
+    return (
+        discriminator is not None
+        and discriminator.column == given.column
+        and discriminator.given == given.values
+    )
 
 
 def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) -> dict[str, Concept]:

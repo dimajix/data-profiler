@@ -7,7 +7,14 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import DATE, Detector, SemanticType, Sensitivity
-from data_profiler.overrides import ColumnOverride, Overrides, OverridesError, TableOverride
+from data_profiler.overrides import (
+    ColumnOverride,
+    DiscriminatorOverride,
+    EntityOverride,
+    Overrides,
+    OverridesError,
+    TableOverride,
+)
 from data_profiler.profile import Concept, Match, Profile, ProfileError, Table
 from data_profiler.scan import scan
 from data_profiler.source import Source
@@ -300,6 +307,41 @@ def test_a_run_resumed_counts_a_table_anew_whose_sentinels_the_overrides_give_ot
     assert table.rows != -1, "counted anew"
     (column,) = [column for column in table.columns if column.name == "dlvr_pst_cd"]
     assert (column.sentinels, column.statistics.sentinels) == ((), ())
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_discriminator_the_overrides_give_otherwise(
+    source: Source, tmp_path: Path
+) -> None:
+    scanned = _scanned(source, "prtnr", tmp_path)
+    assert scanned.run is not None
+    (prtnr,) = scanned.tables
+    assert prtnr.discriminator is not None, "found"
+    # A run that did not finish, its table told apart from those a scan counts.
+    unfinished = replace(scanned, run=replace(scanned.run, finished=None))
+    unfinished.updated(replace(prtnr, rows=-1)).write(tmp_path / "profile")
+    given = Overrides(tables={"prtnr": TableOverride(discriminator=False)})
+    (table,) = _scanned(source, "prtnr", tmp_path, overrides=given).tables
+    assert table.rows != -1, "counted anew"
+    assert table.discriminator is None, "none, as given"
+
+
+def test_a_scan_tells_the_entities_apart_by_the_discriminator_the_overrides_give(
+    source: Source, tmp_path: Path
+) -> None:
+    entities = {"customer": EntityOverride(("K",)), "other": EntityOverride(("KX",))}
+    given = TableOverride(discriminator=DiscriminatorOverride("prtnr_typ_cd", entities))
+    overrides = Overrides(tables={"prtnr": given})
+    (table,) = _scanned(source, "prtnr", tmp_path, overrides=overrides).tables
+    assert table.discriminator is not None
+    assert table.discriminator.given == (("K",), ("KX",)), "the values given it was counted with"
+    assert [entity.values for entity in table.discriminator.entities] == [
+        ("K",),
+        ("L", "LX"),
+        ("I",),
+        ("M",),
+        ("KX",),
+    ]
+    assert given.agrees_with(table)
 
 
 def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(

@@ -117,7 +117,7 @@
   </p>
   {% endfor %}
   {% set discriminator = table.discriminator %}
-  {% if discriminator %}
+  {% if discriminator and discriminator.entities %}
   {% set of_none = table.rows - discriminator.rows %}
   <table class="entities">
     <caption>
@@ -129,6 +129,9 @@
         <th>Column</th>
         {% for entity in discriminator.entities %}
         <th class="number">
+          {% if entity.name_given %}
+          <span class="harmonized">{{ entity.name_given }}</span><br>
+          {% endif %}
           <span class="value">{{ entity.values | join(", ") }}</span><br>
           {{ "{:,}".format(entity.rows) }} rows
         </th>
@@ -146,6 +149,11 @@
     {% endfor %}
     </tbody>
   </table>
+  {% for entity in discriminator.entities if entity.description %}
+  <p class="about">
+    <span class="harmonized">{{ entity.name_given }}</span> – {{ entity.description }}
+  </p>
+  {% endfor %}
   {% endif %}
 </section>
 {% endfor %}

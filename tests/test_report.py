@@ -7,7 +7,13 @@ import pytest
 
 from data_profiler.detect import EMAIL, PHONE, Sensitivity
 from data_profiler.glossary import terms
-from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
+from data_profiler.overrides import (
+    ColumnOverride,
+    DiscriminatorOverride,
+    EntityOverride,
+    Overrides,
+    TableOverride,
+)
 from data_profiler.profile import (
     Column,
     Concept,
@@ -150,15 +156,20 @@ def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
     assert 'Filled together: <span class="original">eml_adr, tel_no</span> (95%)' in _page()
 
 
-def test_a_report_shows_the_entities_by_the_share_of_their_rows_each_column_is_filled_in() -> None:
+def _discriminated(given: tuple[tuple[str, ...], ...] | None = None) -> Profile:
+    """`_PROFILE`, its customers of two entities by their type, counted with the values `given`."""
     (table, empty) = _PROFILE.tables
     filled = {column.name: 400 for column in table.columns}
     entities = (
         Entity(("<script>alert(1)</script>",), 800, {**filled, "eml_adr": 800}),
         Entity(("B",), 100, {**filled, "eml_adr": 0, "tel_no": 100}),
     )
-    discriminated = replace(table, discriminator=Discriminator("cust_typ_cd", entities))
-    page = _page(profile=replace(_PROFILE, tables=(discriminated, empty)))
+    discriminated = replace(table, discriminator=Discriminator("cust_typ_cd", entities, given))
+    return replace(_PROFILE, tables=(discriminated, empty))
+
+
+def test_a_report_shows_the_entities_by_the_share_of_their_rows_each_column_is_filled_in() -> None:
+    page = _page(profile=_discriminated())
     assert 'Entities by <span class="original">cust_typ_cd</span>' in page
     assert "300 rows of none" in page, "the rows of no value of the discriminator"
     assert '<span class="value">B</span><br> 100 rows' in page, "each entity by its values"
@@ -166,6 +177,16 @@ def test_a_report_shows_the_entities_by_the_share_of_their_rows_each_column_is_f
     assert (
         '<td class="original">eml_adr</td> <td class="number">100%</td> <td class="number">0%</td>'
     ) in page, "the share of the rows of each entity a column is filled in"
+
+
+def test_a_report_shows_the_names_and_descriptions_given_of_entities() -> None:
+    business = EntityOverride(("B",), "A <i>company</i>.")
+    given = DiscriminatorOverride("cust_typ_cd", {"business": business})
+    overrides = Overrides(tables={"cust": TableOverride(columns=_MARKED, discriminator=given)})
+    page = _page(overrides, _discriminated((("B",),)))
+    assert '<span class="harmonized">business</span><br> <span class="value">B</span>' in page
+    described = '<span class="harmonized">business</span> \u2013 A &lt;i&gt;company&lt;/i&gt;.'
+    assert described in page, "its description escaped"
 
 
 def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -> None:

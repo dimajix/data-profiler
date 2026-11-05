@@ -27,8 +27,10 @@ environment.
     take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
-    profiled, give sentinels of a column of no text, or a reading of a name that is no reading of
-    its terms, and warned of where they give an abbreviation no name has.
+    profiled, give sentinels of a column of no text, a reading of a name that is no reading of its
+    terms, or a discriminator that cannot be one, and warned of where they give an abbreviation no
+    name has, or a discriminator a table was not counted with; `scan` warns of the values of
+    entities given that a table does not hold.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -160,12 +162,14 @@ and every stage after it from the profile.
     is in none.
 *   **Entity** - the rows of a table of one entity of the business, where a table holds several:
     those of some values of its discriminator, each with the rows each column is filled in, so that
-    the columns of its own are seen. Two values are of two entities where several columns are
-    filled in nearly all the rows of the one and in nearly none of the other; counted on the whole
-    table.
+    the columns of its own are seen. Two values are of two entities where several columns are filled
+    in nearly all the rows of the one and in nearly none of the other; counted on the whole table.
+    An override gives entities by their values, and a harmonized name and a description of each,
+    which the values found of none join.
 *   **Discriminator** - the column whose values tell the entities of a table apart: an enumeration
     of no sensitivity, as in the single-table inheritance of a mapping of objects to tables. A
-    table has one at most, and none where it holds the rows of one entity alone.
+    table has one at most, and none where it holds the rows of one entity alone, unless an override
+    gives it.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`. The
     profile holds the terms of each name, as `describe` split it, each with the concepts written as
     it, its candidates, as the glossary had them then.
@@ -193,13 +197,15 @@ and every stage after it from the profile.
     of them.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
     laid over a generated profile: what the database holds, concepts of the glossary, the reading of
-    a name, the harmonized name of a table or column, the description of a table or column, and the
-    sensitivity and the sentinels of a column. What the database and a table hold, the language
-    model is shown with every question of them. What it gives is taken as given by every stage: by
-    `scan`, which counts the columns with their sentinels and marks them, by `describe`, which
-    splits and reads the names by the concepts given and asks the language model for nothing given,
-    as by `report`, which lays the concepts, readings, names, descriptions and marks over the
-    profile; sentinels changed count once `scan` counts the column again, and a reading given once
+    a name, the harmonized name of a table or column, the description of a table or column, the
+    sensitivity and the sentinels of a column, and the discriminator of a table, with the values,
+    the name and the description of its entities, or none. What the database and a table hold, the
+    language model is shown with every question of them. What it gives is taken as given by every
+    stage: by `scan`, which counts the columns with their sentinels, marks them and tells the
+    entities apart by the discriminator given, by `describe`, which splits and reads the names by
+    the concepts given and asks the language model for nothing given, as by `report`, which lays the
+    concepts, readings, names, descriptions and marks over the profile; sentinels and
+    discriminators changed count once `scan` counts the table again, and a reading given once
     `describe` has split its name. A name given comes before the one composed from the reading, so
     that it resolves a collision of harmonized names. A concept given takes the place of the one
     proposed of its word, keeping of it the abbreviations proposed beside those given, and the terms
@@ -220,16 +226,17 @@ and every stage after it from the profile.
     SQL. The columns filled together in the sample are named as groups. Of the enumerations of no
     sensitivity, the one whose values tell entities of the rows apart is the discriminator, its
     entities counted by one more query. The overrides of the project give the sentinels of a column
-    in place of those of the tool, and mark the columns the detectors miss. The result is the
-    profile, with the ranges and the values of enumerations of the columns of no sensitivity,
-    written after every table: a scan that fails keeps the tables before it, and the next scan
-    resumes its run, skipping the tables it counted, unless the overrides now give their columns
-    otherwise. It updates the profile there is: the tables no longer selected are dropped, the
-    others kept until they are counted anew, and what the other stages filled is kept - the
-    glossary, the terms and readings of the names that stay, and the descriptions of the columns; a
-    profile scanned with other semantic types keeps its tables without their matches, values, ranges
-    and discriminators, until they are counted anew. A profile that cannot be read, or one of
-    another schema, is refused and never overwritten: it may be the work of hours.
+    in place of those of the tool, mark the columns the detectors miss, and give the discriminator
+    of a table and entities of it, or none. The result is the profile, with the ranges and the
+    values of enumerations of the columns of no sensitivity, written after every table: a scan that
+    fails keeps the tables before it, and the next scan resumes its run, skipping the tables it
+    counted, unless the overrides now give their columns or their discriminators otherwise. It
+    updates the profile there is: the tables no longer selected are dropped, the others kept until
+    they are counted anew, and what the other stages filled is kept - the glossary, the terms and
+    readings of the names that stay, and the descriptions of the columns; a profile scanned with
+    other semantic types keeps its tables without their matches, values, ranges and discriminators,
+    until they are counted anew. A profile that cannot be read, or one of another schema, is refused
+    and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,
@@ -248,8 +255,8 @@ and every stage after it from the profile.
     the end. The result is the profile, with terms, glossary, readings and descriptions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
     each table hold, the harmonized names and descriptions of the columns, the entities of a table
-    by the share of their rows each column is filled in, and the concepts proposed told apart from
-    those given.
+    by the share of their rows each column is filled in, with the names and descriptions given of
+    them, and the concepts proposed told apart from those given.
 
 ## Principles
 

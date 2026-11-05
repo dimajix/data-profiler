@@ -1,16 +1,17 @@
 """The stage report: a profile rendered as one HTML document, which a browser shows on its own.
 
-The document holds its styles inside, and no script, so that it can be sent and printed as it is.
-It shows the profile with the overrides of the project laid over it: what the database holds, where
-it is given; each table, with what it holds, where it is given, and with its columns -
-their original names and harmonized names, composed from their readings or given, descriptions,
-types, statistics, the shares of their nulls and sentinels among them, semantic types, sensitivity,
-the values of their enumerations and each of their sentinels -, with the groups of its columns
-filled together, the harmonized names two of its columns share, and its entities, by the share of
-their rows each column is filled in; and the glossary, each concept with its abbreviations and
-description, those proposed told apart from those given, and each term of no concept, as describe
-split the names, with where it appears. It renders what the profile holds, and nothing of the
-workspace: the values in it are those the profile may hold, which the template escapes.
+The document holds its styles inside, and no script, so that it can be sent and printed as it is. It
+shows the profile with the overrides of the project laid over it: what the database holds, where it
+is given; each table, with what it holds, where it is given, and with its columns - their original
+names and harmonized names, composed from their readings or given, descriptions, types, statistics,
+the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of their
+enumerations and each of their sentinels -, with the groups of its columns filled together, the
+harmonized names two of its columns share, and its entities, by the share of their rows each column
+is filled in, with their names and descriptions, where they are given; and the glossary, each
+concept with its abbreviations and description, those proposed told apart from those given, and each
+term of no concept, as describe split the names, with where it appears. It renders what the profile
+holds, and nothing of the workspace: the values in it are those the profile may hold, which the
+template escapes.
 """
 
 from pathlib import Path

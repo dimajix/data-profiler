@@ -18,8 +18,9 @@ matches, values, marks and sentinels of their columns; the stage describe fills 
 names of the tables and columns by its step that splits them, the glossary by its step that proposes
 concepts, the readings by its step that reads the names, and the descriptions of the columns by its
 step that describes them. The overrides fill none: what they give, the stages lay over the profile
-they read - the names given and the descriptions of the database and of the tables among it, which a
-profile written holds none of -, and scan takes the marks and sentinels they give.
+they read - the names given and the descriptions of the database, of the tables and of the entities
+among it, which a profile written holds none of -, and scan takes the marks, the sentinels and the
+discriminators they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
@@ -329,11 +330,17 @@ class Entity:
         filled: The number of its rows each column of the table is filled in - holds a value,
             neither null nor a sentinel -, by the name of the column, of every column of the table
             in its order.
+        name_given: Its harmonized name given by hand, by an override; None where none is given,
+            and in a profile written.
+        description: What it holds, in English, given by hand, by an override; None where none is
+            given, and in a profile written.
     """
 
     values: tuple[str, ...]
     rows: int
     filled: Mapping[str, int]
+    name_given: str | None = None
+    description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -344,12 +351,16 @@ class Discriminator:
 
     Attributes:
         column: The name of the column, an enumeration of no sensitivity.
-        entities: Its entities, at least two, the one of the most rows first; a value is of one
-            entity at most.
+        entities: Its entities, the one of the most rows first, at least two where it is found
+            rather than given, and none where it is given of a column that holds no value the
+            profile holds; a value is of one entity at most.
+        given: The values of each entity the overrides gave, in their order, that it was counted
+            with; None where it was found, none given.
     """
 
     column: str
     entities: tuple[Entity, ...]
+    given: tuple[tuple[str, ...], ...] | None = None
 
     @property
     def rows(self) -> int:
@@ -369,7 +380,7 @@ class Table:
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
         discriminator: The column whose values tell the entities of its rows apart, with those
-            entities; None where no column does.
+            entities; None where no column does, or the overrides give it none.
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
