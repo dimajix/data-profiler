@@ -4,10 +4,12 @@
 # written as that prefix is; the terms of three names that stand for the one or the other; and an
 # IBAN, written as its word alone -, the readings of those three names, a name given in place of the
 # one composed from a reading and a description in place of the one proposed, the sensitivity of a
-# column the detectors miss - here the names of persons, which no detector recognises -, and the
+# column the detectors miss - here the names of persons, which no detector recognises -, the
 # sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
-# are empty where none is given, or would be zeros.
-format: "7.0"
+# are empty where none is given, or would be zeros -, and the discriminator of the business
+# partners, its entities named by one value each, which the others it is found of join, and
+# described.
+format: "7.1"
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
@@ -55,3 +57,15 @@ tables:
       dlvr_pst_cd: {sentinels: ["", "00000"]}
   ord_itm:
     description: The positions of an order, one product each, with its quantity and price.
+  prtnr:
+    discriminator:
+      column: prtnr_typ_cd
+      entities:
+        customer:
+          values: [K]
+          description: A company that buys from the company, with its credit limit and terms.
+        supplier:
+          values: [L]
+          description: A company the company buys from, paid to its bank account.
+        prospect: {values: [I]}
+        employee: {values: [M]}

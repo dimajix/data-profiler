@@ -1,12 +1,13 @@
 """The database the tool reads: a schema of it, its tables and columns, and the queries sent to it.
 
-A `Source` sends queries and nothing else, and lists the tables and columns of its schema. Every
-statement it sends is written by its `Dialect`: whole, where it lists them, and of the building
-blocks the dialect offers, where another part counts or samples what the tables hold. A failure is
-told by the database, its endpoint and what was done; what the database said, which may hold a value
-of it, stays in the cause of the error. Trino is reached by HTTPS, whose certificates and proxies
-come from the variables of the process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a
-certificate of a CA of one's own, `NO_PROXY` for a database a proxy does not reach.
+A `Source` sends queries and nothing else, lists the tables and columns of its schema, and reads a
+table grouped by each of some columns alone, in one pass. Every statement it sends is written by its
+`Dialect`: whole, where it lists them, and of the building blocks the dialect offers, where another
+part counts or samples what the tables hold. A failure is told by the database, its endpoint and
+what was done; what the database said, which may hold a value of it, stays in the cause of the
+error. Trino is reached by HTTPS, whose certificates and proxies come from the variables of the
+process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's own,
+`NO_PROXY` for a database a proxy does not reach.
 """
 
 import logging
@@ -250,6 +251,41 @@ class Source(ABC):
         if not found:
             raise SourceError(f"{self.catalog}.{self.schema} has no table {table}")
         return {str(column): str(kind) for column, kind in found}
+
+    def grouped(
+        self, table: str, columns: Sequence[str], expressions: Sequence[str], step: str
+    ) -> list[tuple[int, object, tuple[object, ...]]]:
+        """The groups of `table` by each of `columns` alone, each with `expressions` of its rows.
+
+        The table is read once for all the columns, by one statement `Dialect.grouped` writes.
+
+        Args:
+            table: The table, of the schema of the source.
+            columns: The columns to group by, each on its own.
+            expressions: The expressions of the rows of each group, as the dialect writes them.
+            step: What the statement does, for the message of a failure.
+
+        Returns:
+            Each group: the place of its column among `columns`, its value of the column - None
+            of the rows the column is null in -, and the values of `expressions` of its rows.
+
+        Raises:
+            SourceError: The database fails at `step`.
+            TypeError: A row is grouped by other than one column, which the dialect would have to
+                make sure of.
+        """
+        dialect = self.dialect
+        grouping = [*map(dialect.column, columns), *map(dialect.grouping, columns)]
+        statement = dialect.grouped([*grouping, *expressions], table, columns)
+        groups = []
+        for row in self.query(statement, step):
+            # The row belongs to the one column whose grouping is 0; the others are null in it.
+            groupings = row[len(columns) : 2 * len(columns)]
+            if groupings.count(0) != 1:
+                raise TypeError(f"the query grouped a row of {table} by other than one column")
+            index = groupings.index(0)
+            groups.append((index, row[index], row[2 * len(columns) :]))
+        return groups
 
     def __enter__(self) -> Self:
         """Returns the source, whose connection is closed at the end of the block."""

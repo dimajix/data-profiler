@@ -96,6 +96,16 @@ th {
     margin: 8px 0 0;
 }
 
+.entities {
+    width: auto;
+    margin: 16px 0 0;
+}
+
+.entities caption {
+    text-align: left;
+    padding: 0 0 4px;
+}
+
 .collision {
     color: var(--accent);
 }

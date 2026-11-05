@@ -8,11 +8,13 @@ value a column keeps is checked on its own all the same, by the types of the too
 project, and withheld where it is of a sensitive type - a phone number at the end of the range of
 a column of which few values are phone numbers, an IBAN of a column whose sample held none -, and a
 long one is cut to its first characters, ending in `…`, so that the end of the range of a column of
-free texts does not fill the profile. A table disclosed again is disclosed as before, or loses
-more: what a mark of none would give back, it cannot. The sentinels of a column are no values of
-it, and stay whatever its sensitivity: those of the tool are fixed texts, and those given are of the
-overrides of the project, which are shared as the profile is. The values of a sample shown to the
-language model are judged the same way, as what it answers goes into the profile.
+free texts does not fill the profile. The values of the discriminator of a table are values of its
+column: a table keeps its discriminator where the column keeps each of them as it is, and loses it
+else, as the entities are told apart by them. A table disclosed again is disclosed as before, or
+loses more: what a mark of none would give back, it cannot. The sentinels of a column are no values
+of it, and stay whatever its sensitivity: those of the tool are fixed texts, and those given are of
+the overrides of the project, which are shared as the profile is. The values of a sample shown to
+the language model are judged the same way, as what it answers goes into the profile.
 """
 
 from collections.abc import Iterable, Iterator, Sequence
@@ -36,9 +38,16 @@ def disclose(table: Table, types: Sequence[SemanticType]) -> Table:
 
     Returns:
         The table, each column of no sensitivity with what it keeps of its range and values, each
-        column of a sensitivity without either.
+        column of a sensitivity without either; its discriminator where its column keeps each of
+        its values, none else.
     """
-    return replace(table, columns=tuple(_disclosed(column, types) for column in table.columns))
+    disclosed = replace(table, columns=tuple(_disclosed(column, types) for column in table.columns))
+    discriminator = table.discriminator
+    if discriminator is not None:
+        kept = {value.value for value in disclosed.column(discriminator.column).values}
+        if any(value not in kept for e in discriminator.entities for value in e.values):
+            discriminator = None
+    return replace(disclosed, discriminator=discriminator)
 
 
 def disclose_texts(

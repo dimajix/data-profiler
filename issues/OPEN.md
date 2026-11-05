@@ -16,7 +16,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [34](34-primary-keys.md) | open | high | feature | Nothing tells which columns identify the rows of a table, so that a data model derived from the profile has no keys, and no reference of another table can be found to them. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
 | [35](35-references-between-tables.md) | open | high | feature | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
-| [36](36-entities-of-a-table.md) | open | high | feature | A table that holds the rows of several entities of the business - told apart by a simple condition, such as the value of a column of their kind, each with columns of its own filled - is profiled as one, so that nothing tells which entities it holds and which columns belong to each. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
 
 ## Describe
 

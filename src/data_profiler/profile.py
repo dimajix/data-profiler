@@ -13,13 +13,14 @@ name.
 
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
-profile, the rows, runs and groups of its tables, and the types, statistics, matches, values, marks
-and sentinels of their columns; the stage describe fills the terms of the names of the tables and
-columns by its step that splits them, the glossary by its step that proposes concepts, the readings
-by its step that reads the names, and the descriptions of the columns by its step that describes
-them. The overrides fill none: what they give, the stages lay over the profile they read - the names
-given and the descriptions of the database and of the tables among it, which a profile written holds
-none of -, and scan takes the marks and sentinels they give.
+profile, the rows, runs, groups and discriminators of its tables, and the types, statistics,
+matches, values, marks and sentinels of their columns; the stage describe fills the terms of the
+names of the tables and columns by its step that splits them, the glossary by its step that proposes
+concepts, the readings by its step that reads the names, and the descriptions of the columns by its
+step that describes them. The overrides fill none: what they give, the stages lay over the profile
+they read - the names given and the descriptions of the database, of the tables and of the entities
+among it, which a profile written holds none of -, and scan takes the marks, the sentinels and the
+discriminators they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
@@ -51,7 +52,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(13, 0)
+FORMAT: Final = Version(13, 1)
 """The version of the format a profile is written in, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -320,6 +321,54 @@ class Group:
 
 
 @dataclass(frozen=True)
+class Entity:
+    """The rows of a table of one entity of the business: those of some values of its discriminator.
+
+    Attributes:
+        values: The values of the discriminator its rows hold, as text, the most frequent first.
+        rows: The number of its rows.
+        filled: The number of its rows each column of the table is filled in - holds a value,
+            neither null nor a sentinel -, by the name of the column, of every column of the table
+            in its order.
+        name_given: Its harmonized name given by hand, by an override; None where none is given,
+            and in a profile written.
+        description: What it holds, in English, given by hand, by an override; None where none is
+            given, and in a profile written.
+    """
+
+    values: tuple[str, ...]
+    rows: int
+    filled: Mapping[str, int]
+    name_given: str | None = None
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class Discriminator:
+    """The column whose values tell the entities of a table apart, and those entities.
+
+    The rows of the table whose discriminator is null or a sentinel are of no entity.
+
+    Attributes:
+        column: The name of the column, an enumeration of no sensitivity.
+        entities: Its entities, the one of the most rows first, at least two where it is found
+            rather than given, and none where it is given of a column that holds no value the
+            profile holds; a value is of one entity at most.
+        given: The values of each entity the overrides gave, in their order, that it was counted
+            with; None where it was found, none given.
+    """
+
+    column: str
+    entities: tuple[Entity, ...]
+    given: tuple[tuple[str, ...], ...] | None = None
+
+    @property
+    def rows(self) -> int:
+        """The number of the rows of its entities."""
+        return sum(entity.rows for entity in self.entities)
+
+
+@dataclass(frozen=True)
 class Table:
     """A table of the schema, under its original name, and what was found about it.
 
@@ -330,6 +379,8 @@ class Table:
         columns: Its columns, in the order of the table.
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
+        discriminator: The column whose values tell the entities of its rows apart, with those
+            entities; None where no column does, or the overrides give it none.
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
@@ -345,10 +396,29 @@ class Table:
     rows: int
     columns: tuple[Column, ...]
     groups: tuple[Group, ...] = ()
+    discriminator: Discriminator | None = None
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
     name_given: str | None = None
     description: str | None = None
+
+    def column(self, name: str) -> Column:
+        """Its column of the name `name`.
+
+        Args:
+            name: The name of the column in the database.
+
+        Returns:
+            The column.
+
+        Raises:
+            KeyError: The table has no column of the name, which a caller that names one makes
+                sure of.
+        """
+        for column in self.columns:
+            if column.name == name:
+                return column
+        raise KeyError(name)
 
 
 @dataclass(frozen=True)
@@ -427,8 +497,10 @@ class Profile:
                 of a format, is of another major version or of a newer minor version, a field is
                 missing, unknown or of the wrong type, a semantic type of the project cannot be
                 made, as `detect.project_type` says, a match names a type neither of the tool
-                nor of the project, the file of a table holds a table of another name, or the
-                groups of a table name a column it does not have, or one twice.
+                nor of the project, the file of a table holds a table of another name, the groups
+                of a table name a column it does not have, or one twice, or its discriminator
+                names a column it does not have, an entity of it not the filled rows of each
+                column, or two entities the same value.
         """
         try:
             head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
@@ -460,7 +532,8 @@ class Profile:
         first write is no profile either. A profile scanned with other semantic types keeps its
         tables, but their matches, which may name a type it no longer has, and the values and
         ranges of their columns, which a type it has now may find sensitive, until they are
-        counted anew; its glossary and what describe filled it keeps as well. The run of the
+        counted anew, and the discriminators of the tables, whose values are values of their
+        columns; its glossary and what describe filled it keeps as well. The run of the
         profile is resumed where it did not finish, and a new run begun else.
 
         Args:
@@ -471,9 +544,9 @@ class Profile:
             started: When the scan started, in UTC: the start of a new run, where it begins one.
 
         Returns:
-            The profile in `directory`, its tables without their matches, values and ranges where
-            it was scanned with other types, then in a new run; an empty one of `types` where
-            there is none; with its run resumed, or a new one.
+            The profile in `directory`, its tables without their matches, values, ranges and
+            discriminators where it was scanned with other types, then in a new run; an empty one
+            of `types` where there is none; with its run resumed, or a new one.
 
         Raises:
             ProfileError: The profile cannot be read, as `read` says, or is of another schema.
@@ -613,12 +686,12 @@ class _Head:
 
 
 def _unmatched(table: Table) -> Table:
-    """`table`, its columns without their matches, values and ranges."""
+    """`table` without its discriminator, its columns without their matches, values and ranges."""
     columns = (
         replace(column, matches=(), values=(), statistics=replace(column.statistics, range=None))
         for column in table.columns
     )
-    return replace(table, columns=tuple(columns))
+    return replace(table, columns=tuple(columns), discriminator=None)
 
 
 def _described(table: Table, kept: Table) -> Table:
@@ -653,8 +726,9 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
 
     Raises:
         DocumentError: The file cannot be read as a document of a table.
-        ProfileError: The file holds a table of another name than its own, or a group names a
-            column the table does not have, or the groups name one twice.
+        ProfileError: The file holds a table of another name than its own, a group names a
+            column the table does not have, or the groups name one twice, or the discriminator is
+            not one of the table, as `_refuse_discriminator` says.
     """
     table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
@@ -670,7 +744,32 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
             if name in grouped:
                 raise ProfileError(f"{path}: the groups name the column {name!r} twice")
             grouped.add(name)
+    if table.discriminator is not None:
+        _refuse_discriminator(path, table.discriminator, names)
     return table
+
+
+def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Collection[str]) -> None:
+    """Refuses `discriminator` where it is not one of a table of the columns `names`.
+
+    Raises:
+        ProfileError: The discriminator names a column not of `names`, an entity gives the filled
+            rows of other columns than those of `names`, or two entities name the same value.
+    """
+    if discriminator.column not in names:
+        raise ProfileError(
+            f"{path}: the discriminator is the column {discriminator.column!r}, which the table"
+            " does not have"
+        )
+    if any(set(entity.filled) != set(names) for entity in discriminator.entities):
+        raise ProfileError(f"{path}: an entity does not give the filled rows of each column")
+    # The values are not named: they are values of the database, which no message holds.
+    values: set[str] = set()
+    for entity in discriminator.entities:
+        for value in entity.values:
+            if value in values:
+                raise ProfileError(f"{path}: the discriminator names a value of two entities")
+            values.add(value)
 
 
 _HEAD_ADAPTER: Final = TypeAdapter(_Head)

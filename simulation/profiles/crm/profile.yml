@@ -1,7 +1,9 @@
 # An example profile in the manner of a CRM: customers, their addresses and contacts, products,
-# orders and their items, under the abbreviated names such a system has; its texts of a semantic
-# type have their match, by which they are generated, each table in a file of its own in `tables/`.
+# orders and their items, and its business partners - customers, suppliers, prospects and employees
+# in one table, told apart by their kind -, under the abbreviated names such a system has; its texts
+# of a semantic type have their match, by which they are generated, each table in a file of its own
+# in `tables/`.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '13.0'
+format: '13.1'
 catalog: crm
 schema: sales

@@ -11,8 +11,10 @@ It works in three stages, each of which can be run again on its own:
   the range of its values, its nulls and the values that stand for none, such as empty texts or
   `9999-12-31`, whether it is an enumeration of few values, and what its values are - phone
   numbers, postal codes, card numbers, dates and more - by deterministic detectors, checked on a
-  sample and, where they can, verified on the whole table; and which columns of a table are filled
-  together, such as the street, the postal code and the city of a delivery address.
+  sample and, where they can, verified on the whole table; which columns of a table are filled
+  together, such as the street, the postal code and the city of a delivery address; and, where a
+  table holds the rows of several entities - customers, suppliers and employees -, the column whose
+  values tell them apart, and which columns each of them fills.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
   language model, running locally in Ollama, for the concepts of the terms of none, and for a
@@ -151,9 +153,13 @@ environments:
   column, in place of the one proposed, and of a table, which the language model is shown as well;
   the sensitivity of a column the detectors miss, such as the names of persons; and the values that
   stand for no value in a column, its sentinels, in place of those of the tool: `sentinels: ["",
-  "00000"]`, or `sentinels: []` for none. `examples/crm/overrides.yml` shows them all; `scan` counts
-  and marks the columns as they give, `describe` splits and reads the names by the concepts they
-  give and asks the language model for nothing given, and `report` lays them over the profile.
+  "00000"]`, or `sentinels: []` for none; and the discriminator of a table, the column whose values
+  tell its entities apart, with entities under their harmonized names, each with its values - the
+  others it is found of join it - and its description, `discriminator: {column: prtnr_typ_cd,
+  entities: {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
+  `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, and tells the
+  entities apart, as they give, `describe` splits and reads the names by the concepts they give and
+  asks the language model for nothing given, and `report` lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 

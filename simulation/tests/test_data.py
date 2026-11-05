@@ -1,5 +1,6 @@
 """Tests of the rows of test data: their columns have the statistics of the profile."""
 
+from dataclasses import replace
 from datetime import date, datetime
 from random import Random
 
@@ -20,7 +21,17 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
 )
-from data_profiler.profile import Column, Group, Lengths, Match, Statistics, Table, Value
+from data_profiler.profile import (
+    Column,
+    Discriminator,
+    Entity,
+    Group,
+    Lengths,
+    Match,
+    Statistics,
+    Table,
+    Value,
+)
 from simulation import SimulationError
 from simulation.data import rows
 
@@ -118,6 +129,61 @@ def test_the_columns_of_a_group_are_filled_in_the_same_rows_as_far_as_they_can_b
     assert strt == pst, "the empty texts of a column are not filled either"
     assert cty < strt, "filled in fewer rows, within those of the others"
     assert other != strt, "a column of no group is filled in rows of its own"
+
+
+def _entities(*entities: Entity, nulls: int = 100) -> Table:
+    """A table of 1000 rows of `entities`, told apart by `kind`, of the values A, B and C.
+
+    Its column `own` is filled in 400 rows, `kind` in all but `nulls`.
+    """
+    kind = Column(
+        "kind",
+        "varchar(1)",
+        Statistics(nulls, 3, Lengths(1, 1)),
+        values=(Value("A", 500), Value("B", 300), Value("C", 100)),
+    )
+    own = _column("own", "varchar(5)", 600, 50, Lengths(5, 5))
+    return replace(_table(kind, own), discriminator=Discriminator("kind", entities))
+
+
+def test_the_rows_of_an_entity_hold_its_values_and_its_columns_as_it_counts_them() -> None:
+    table = _entities(
+        Entity(("A", "C"), 600, {"kind": 600, "own": 350}),
+        Entity(("B",), 300, {"kind": 300, "own": 0}),
+    )
+    made = rows(table, Random(0))
+    kinds = [kind for kind, _ in made]
+    assert [kinds.count(value) for value in ("A", "B", "C", None)] == [500, 300, 100, 100]
+    filled = [kind for kind, own in made if own is not None]
+    assert (filled.count("A") + filled.count("C"), filled.count("B")) == (350, 0)
+    assert filled.count(None) == 50, "the rest of its rows in the rows of no entity"
+
+
+@pytest.mark.parametrize(
+    ("entities", "problem"),
+    [
+        ((Entity(("A",), 600, {"kind": 600, "own": 0}),), "not its own"),
+        (
+            (
+                Entity(("A", "C"), 600, {"kind": 600, "own": 700}),
+                Entity(("B",), 300, {"kind": 300, "own": 0}),
+            ),
+            "filled in 700 rows",
+        ),
+    ],
+    ids=["rows of other values", "filled in more rows"],
+)
+def test_entities_that_cannot_be_generated_are_refused_naming_the_column(
+    entities: tuple[Entity, ...], problem: str
+) -> None:
+    with pytest.raises(SimulationError, match=f"t\\.(kind|own): .*{problem}"):
+        rows(_entities(*entities), Random(0))
+
+
+def test_the_nulls_of_a_discriminator_are_to_be_the_rows_of_no_entity() -> None:
+    table = _entities(Entity(("A", "B", "C"), 900, {"kind": 900, "own": 400}), nulls=50)
+    with pytest.raises(SimulationError, match=r"t\.kind: its nulls and sentinels are not"):
+        rows(table, Random(0))
 
 
 # A sentinel of five rows, which is no day.
