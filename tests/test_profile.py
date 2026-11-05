@@ -120,6 +120,13 @@ def _content(path: Path) -> Any:
     return safe_load(path.read_text(encoding="utf-8"))
 
 
+def test_a_column_of_a_table_is_found_by_its_name() -> None:
+    (table, *_) = _PROFILE.tables
+    assert table.column("CUST_TYP_CD") == table.columns[2]
+    with pytest.raises(KeyError):
+        table.column("CUST_TYP")
+
+
 def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     assert Profile.read(_written(tmp_path)) == _PROFILE
     (table,) = _PROFILE.tables

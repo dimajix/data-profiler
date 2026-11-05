@@ -41,14 +41,13 @@ def disclose(table: Table, types: Sequence[SemanticType]) -> Table:
         column of a sensitivity without either; its discriminator where its column keeps each of
         its values, none else.
     """
-    columns = tuple(_disclosed(column, types) for column in table.columns)
+    disclosed = replace(table, columns=tuple(_disclosed(column, types) for column in table.columns))
     discriminator = table.discriminator
     if discriminator is not None:
-        (column,) = (column for column in columns if column.name == discriminator.column)
-        kept = {value.value for value in column.values}
+        kept = {value.value for value in disclosed.column(discriminator.column).values}
         if any(value not in kept for e in discriminator.entities for value in e.values):
             discriminator = None
-    return replace(table, columns=columns, discriminator=discriminator)
+    return replace(disclosed, discriminator=discriminator)
 
 
 def disclose_texts(

@@ -391,6 +391,24 @@ class Table:
     name_given: str | None = None
     description: str | None = None
 
+    def column(self, name: str) -> Column:
+        """Its column of the name `name`.
+
+        Args:
+            name: The name of the column in the database.
+
+        Returns:
+            The column.
+
+        Raises:
+            KeyError: The table has no column of the name, which a caller that names one makes
+                sure of.
+        """
+        for column in self.columns:
+            if column.name == name:
+                return column
+        raise KeyError(name)
+
 
 @dataclass(frozen=True)
 class Run:
