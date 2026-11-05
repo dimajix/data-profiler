@@ -13,6 +13,8 @@ from data_profiler.profile import (
     FORMAT,
     Column,
     Concept,
+    Discriminator,
+    Entity,
     Group,
     Lengths,
     Match,
@@ -55,6 +57,31 @@ _PROFILE = Profile(
                 ),
             ),
             groups=(Group(("CUST_NM", "CUST_EML"), 0.912),),
+            discriminator=Discriminator(
+                "CUST_TYP_CD",
+                (
+                    Entity(
+                        ("P",),
+                        1100000,
+                        {
+                            "CUST_ID": 1100000,
+                            "CUST_NM": 1099688,
+                            "CUST_TYP_CD": 1100000,
+                            "CUST_EML": 1100000,
+                        },
+                    ),
+                    Entity(
+                        ("B",),
+                        150000,
+                        {
+                            "CUST_ID": 150000,
+                            "CUST_NM": 150000,
+                            "CUST_TYP_CD": 150000,
+                            "CUST_EML": 0,
+                        },
+                    ),
+                ),
+            ),
         ),
     ),
     glossary={
@@ -150,6 +177,43 @@ def test_a_table_whose_name_is_no_name_of_a_file_is_refused(tmp_path: Path, name
     with pytest.raises(ProfileError, match="no name of a file"):
         profile.write(tmp_path)
     assert not tmp_path.joinpath("profile.yml").exists(), "nothing is written"
+
+
+def _with_entities(tmp_path: Path, *entities: Entity, column: str = "CUST_TYP_CD") -> Path:
+    """The directory of `_PROFILE`, its table of a discriminator of `column` of `entities`."""
+    (table,) = _PROFILE.tables
+    discriminated = replace(table, discriminator=Discriminator(column, entities))
+    replace(_PROFILE, tables=(discriminated,)).write(tmp_path)
+    return tmp_path
+
+
+def test_a_discriminator_of_a_column_the_table_does_not_have_is_refused(tmp_path: Path) -> None:
+    (table,) = _PROFILE.tables
+    assert table.discriminator is not None
+    entities = table.discriminator.entities
+    with pytest.raises(ProfileError, match="the column 'CUST_KIND', which the table does not have"):
+        Profile.read(_with_entities(tmp_path, *entities, column="CUST_KIND"))
+
+
+def test_an_entity_that_does_not_give_the_filled_rows_of_each_column_is_refused(
+    tmp_path: Path,
+) -> None:
+    (table,) = _PROFILE.tables
+    assert table.discriminator is not None
+    first, second = table.discriminator.entities
+    fewer = replace(second, filled={"CUST_ID": 150000})
+    with pytest.raises(ProfileError, match="does not give the filled rows of each column"):
+        Profile.read(_with_entities(tmp_path, first, fewer))
+
+
+def test_a_value_of_two_entities_is_refused_without_naming_it(tmp_path: Path) -> None:
+    (table,) = _PROFILE.tables
+    assert table.discriminator is not None
+    first, second = table.discriminator.entities
+    twice = replace(second, values=("B", "P"))
+    with pytest.raises(ProfileError, match="a value of two entities") as refused:
+        Profile.read(_with_entities(tmp_path, first, twice))
+    assert "'P'" not in str(refused.value), "a value of the database"
 
 
 def _of_a_project(account_number: SemanticType) -> Profile:
@@ -302,6 +366,7 @@ def test_a_scan_with_other_types_keeps_the_tables_without_their_matches_and_valu
     assert [c.matches for c in table.columns] == [()] * len(cust.columns)
     assert [c.values for c in table.columns] == [()] * len(cust.columns)
     assert [c.statistics.range for c in table.columns] == [None] * len(cust.columns)
+    assert table.discriminator is None, "whose values are values of its column"
     assert [c.statistics.nulls for c in table.columns] == [c.statistics.nulls for c in cust.columns]
 
 

@@ -1,0 +1,132 @@
+format: '13.1'
+name: prtnr
+rows: 6000
+columns:
+- {name: prtnr_id, type: bigint, statistics: {nulls: 0, distinct: 6000}}
+- name: prtnr_typ_cd
+  type: varchar(2)
+  statistics: {nulls: 0, distinct: 6, lengths: {shortest: 1, longest: 2}}
+  values:
+  - {value: K, rows: 2600}
+  - {value: L, rows: 1194}
+  - {value: I, rows: 1000}
+  - {value: M, rows: 800}
+  - {value: KX, rows: 400}
+  - {value: LX, rows: 6}
+- name: prtnr_nm
+  type: varchar(80)
+  statistics: {nulls: 0, distinct: 5900, lengths: {shortest: 3, longest: 60}}
+- {name: crt_dt, type: date, statistics: {nulls: 0, distinct: 3000}}
+- name: cust_no
+  type: varchar(10)
+  statistics: {nulls: 3000, distinct: 3000, lengths: {shortest: 10, longest: 10}}
+- {name: crdt_lmt_amt, type: "decimal(12,2)", statistics: {nulls: 3150, distinct: 300}}
+- name: pymt_trm_cd
+  type: varchar(3)
+  statistics: {nulls: 3000, distinct: 4, lengths: {shortest: 3, longest: 3}}
+- name: splr_no
+  type: varchar(10)
+  statistics: {nulls: 4800, distinct: 1200, lengths: {shortest: 10, longest: 10}}
+- name: vat_id
+  type: varchar(14)
+  statistics: {nulls: 4850, distinct: 1150, lengths: {shortest: 11, longest: 11}}
+- name: bnk_acct
+  type: varchar(34)
+  statistics: {nulls: 4800, distinct: 1200, lengths: {shortest: 22, longest: 22}}
+  matches: [{type: iban, sample: 1.0, table: 1.0}]
+- name: emp_no
+  type: varchar(8)
+  statistics: {nulls: 5200, distinct: 800, lengths: {shortest: 8, longest: 8}}
+- name: dept_cd
+  type: varchar(4)
+  statistics: {nulls: 5200, distinct: 12, lengths: {shortest: 2, longest: 4}}
+- {name: hire_dt, type: date, statistics: {nulls: 5200, distinct: 700}}
+- name: src_cd
+  type: varchar(3)
+  statistics: {nulls: 5000, distinct: 6, lengths: {shortest: 2, longest: 3}}
+- {name: cntct_dt, type: date, statistics: {nulls: 5050, distinct: 600}}
+- {name: lead_scr, type: integer, statistics: {nulls: 5000, distinct: 100}}
+groups:
+- {columns: [cust_no, crdt_lmt_amt, pymt_trm_cd], coherence: 0.967}
+- {columns: [splr_no, vat_id, bnk_acct], coherence: 0.972}
+- {columns: [emp_no, dept_cd, hire_dt], coherence: 1.0}
+- {columns: [src_cd, cntct_dt, lead_scr], coherence: 0.967}
+discriminator:
+  column: prtnr_typ_cd
+  entities:
+  - values: [K, KX]
+    rows: 3000
+    filled:
+      prtnr_id: 3000
+      prtnr_typ_cd: 3000
+      prtnr_nm: 3000
+      crt_dt: 3000
+      cust_no: 3000
+      crdt_lmt_amt: 2850
+      pymt_trm_cd: 3000
+      splr_no: 0
+      vat_id: 0
+      bnk_acct: 0
+      emp_no: 0
+      dept_cd: 0
+      hire_dt: 0
+      src_cd: 0
+      cntct_dt: 0
+      lead_scr: 0
+  - values: [L, LX]
+    rows: 1200
+    filled:
+      prtnr_id: 1200
+      prtnr_typ_cd: 1200
+      prtnr_nm: 1200
+      crt_dt: 1200
+      cust_no: 0
+      crdt_lmt_amt: 0
+      pymt_trm_cd: 0
+      splr_no: 1200
+      vat_id: 1150
+      bnk_acct: 1200
+      emp_no: 0
+      dept_cd: 0
+      hire_dt: 0
+      src_cd: 0
+      cntct_dt: 0
+      lead_scr: 0
+  - values: [I]
+    rows: 1000
+    filled:
+      prtnr_id: 1000
+      prtnr_typ_cd: 1000
+      prtnr_nm: 1000
+      crt_dt: 1000
+      cust_no: 0
+      crdt_lmt_amt: 0
+      pymt_trm_cd: 0
+      splr_no: 0
+      vat_id: 0
+      bnk_acct: 0
+      emp_no: 0
+      dept_cd: 0
+      hire_dt: 0
+      src_cd: 1000
+      cntct_dt: 950
+      lead_scr: 1000
+  - values: [M]
+    rows: 800
+    filled:
+      prtnr_id: 800
+      prtnr_typ_cd: 800
+      prtnr_nm: 800
+      crt_dt: 800
+      cust_no: 0
+      crdt_lmt_amt: 0
+      pymt_trm_cd: 0
+      splr_no: 0
+      vat_id: 0
+      bnk_acct: 0
+      emp_no: 800
+      dept_cd: 800
+      hire_dt: 800
+      src_cd: 0
+      cntct_dt: 0
+      lead_scr: 0

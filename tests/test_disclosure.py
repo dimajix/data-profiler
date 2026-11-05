@@ -4,7 +4,16 @@ from dataclasses import replace
 
 from data_profiler.detect import PHONE, POSTAL_CODE, SemanticType, Sensitivity
 from data_profiler.disclosure import disclose, disclose_texts
-from data_profiler.profile import Column, Match, Range, Statistics, Table, Value
+from data_profiler.profile import (
+    Column,
+    Discriminator,
+    Entity,
+    Match,
+    Range,
+    Statistics,
+    Table,
+    Value,
+)
 
 _VALUES = (Value("10115", 7), Value("99998", 3))
 
@@ -98,6 +107,32 @@ def test_a_long_value_is_cut_to_a_hundred_characters() -> None:
     disclosed = _disclosed(column)
     assert disclosed.statistics.range == Range("b", cut)
     assert disclosed.values == (Value(cut, 2), Value("b", 1))
+
+
+def _discriminated(column: Column) -> Table:
+    """A table of `column`, whose values tell its entities apart, and of no other column."""
+    entities = tuple(
+        Entity((value.value,), value.rows, {column.name: value.rows}) for value in column.values
+    )
+    return Table(
+        name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
+    )
+
+
+def test_a_discriminator_of_no_sensitivity_is_kept() -> None:
+    table = _discriminated(_code())
+    assert disclose(table, ()).discriminator == table.discriminator
+
+
+def test_a_discriminator_marked_sensitive_is_dropped_with_its_values() -> None:
+    table = _discriminated(_code(marked=Sensitivity.PERSONAL))
+    assert disclose(table, ()).discriminator is None
+
+
+def test_a_discriminator_of_a_value_withheld_is_dropped() -> None:
+    values = (Value("Anna", 5), Value("+49 30 1234567", 5))
+    table = _discriminated(Column("kind", "varchar(20)", Statistics(0, 2), values=values))
+    assert disclose(table, ()).discriminator is None, "its entities are told apart by it"
 
 
 def test_a_table_disclosed_again_is_disclosed_as_before() -> None:

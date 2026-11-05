@@ -61,13 +61,15 @@ environment.
     same way.
 *   **`data_profiler.grouping`** - the groups of a table: its columns filled together, found in its
     sample.
+*   **`data_profiler.entities`** - the entities of a table: its rows told apart by the values of
+    its discriminator, counted by one query built the same way.
 *   **`data_profiler.disclosure`** - what of the values of a table goes into the profile: the
     ranges and the values of enumerations of its columns of no sensitivity, and the values of their
     samples shown to the language model, whose answers go into it.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples, detector
-    matches and groups of the selected tables, written to the profile table by table.
+    matches, groups and entities of the selected tables, written to the profile table by table.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
@@ -95,12 +97,12 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching`, `grouping`, `overrides`, `disclosure`, `values` and `workspace`, `describe`
-uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and `workspace`, `report` the profile
-and `overrides`, which it lays over it, and `glossary` for its names; `cli` runs the stages, gives
-the overrides to each, and the language model, made by `llm` as the project names it, to `describe`,
-unless it is to ask none. The semantic types of a project reach `scan` from `project`, and every
-stage after it from the profile.
+`sampling`, `matching`, `grouping`, `entities`, `overrides`, `disclosure`, `values` and `workspace`,
+`describe` uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and `workspace`, `report` the
+profile and `overrides`, which it lays over it, and `glossary` for its names; `cli` runs the stages,
+gives the overrides to each, and the language model, made by `llm` as the project names it, to
+`describe`, unless it is to ask none. The semantic types of a project reach `scan` from `project`,
+and every stage after it from the profile.
 
 ## The domain
 
@@ -156,6 +158,14 @@ stage after it from the profile.
     each two columns are filled in, it holds its columns and its coherence, and a column does not
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
     is in none.
+*   **Entity** - the rows of a table of one entity of the business, where a table holds several:
+    those of some values of its discriminator, each with the rows each column is filled in, so that
+    the columns of its own are seen. Two values are of two entities where several columns are
+    filled in nearly all the rows of the one and in nearly none of the other; counted on the whole
+    table.
+*   **Discriminator** - the column whose values tell the entities of a table apart: an enumeration
+    of no sensitivity, as in the single-table inheritance of a mapping of objects to tables. A
+    table has one at most, and none where it holds the rows of one entity alone.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`. The
     profile holds the terms of each name, as `describe` split it, each with the concepts written as
     it, its candidates, as the glossary had them then.
@@ -207,17 +217,19 @@ stage after it from the profile.
     of every column whose distinct count is at most the threshold of an enumeration; and it takes a
     sample into the workspace. The detectors check the values of the sample, its sentinels aside;
     the semantic types they find are verified on the whole table by the patterns of the detectors in
-    SQL. The columns filled together in the sample are named as groups. The overrides of the project
-    give the sentinels of a column in place of those of the tool, and mark the columns the detectors
-    miss. The result is the profile, with the ranges and the values of enumerations of the columns
-    of no sensitivity, written after every table: a scan that fails keeps the tables before it, and
-    the next scan resumes its run, skipping the tables it counted, unless the overrides now give
-    their columns otherwise. It updates the profile there is: the tables no longer selected are
-    dropped, the others kept until they are counted anew, and what the other stages filled is kept -
-    the glossary, the terms and readings of the names that stay, and the descriptions of the
-    columns; a profile scanned with other semantic types keeps its tables without their matches,
-    values and ranges, until they are counted anew. A profile that cannot be read, or one of another
-    schema, is refused and never overwritten: it may be the work of hours.
+    SQL. The columns filled together in the sample are named as groups. Of the enumerations of no
+    sensitivity, the one whose values tell entities of the rows apart is the discriminator, its
+    entities counted by one more query. The overrides of the project give the sentinels of a column
+    in place of those of the tool, and mark the columns the detectors miss. The result is the
+    profile, with the ranges and the values of enumerations of the columns of no sensitivity,
+    written after every table: a scan that fails keeps the tables before it, and the next scan
+    resumes its run, skipping the tables it counted, unless the overrides now give their columns
+    otherwise. It updates the profile there is: the tables no longer selected are dropped, the
+    others kept until they are counted anew, and what the other stages filled is kept - the
+    glossary, the terms and readings of the names that stay, and the descriptions of the columns; a
+    profile scanned with other semantic types keeps its tables without their matches, values, ranges
+    and discriminators, until they are counted anew. A profile that cannot be read, or one of
+    another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,
@@ -235,8 +247,9 @@ stage after it from the profile.
     alone: the names split, and read where each term has one candidate, the profile written once at
     the end. The result is the profile, with terms, glossary, readings and descriptions.
 3.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
-    each table hold, the harmonized names and descriptions of the columns, and the concepts proposed
-    told apart from those given.
+    each table hold, the harmonized names and descriptions of the columns, the entities of a table
+    by the share of their rows each column is filled in, and the concepts proposed told apart from
+    those given.
 
 ## Principles
 

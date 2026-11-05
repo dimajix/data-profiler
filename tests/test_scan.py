@@ -51,7 +51,7 @@ def _failing_at(tmp_path: Path, table: str) -> None:
     (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
 
 
-def test_a_scanned_profile_has_the_statistics_matches_and_groups_its_tables_were_made_with(
+def test_a_scanned_profile_has_the_statistics_matches_groups_and_entities_it_was_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = _scanned(source, ".*", tmp_path)
@@ -77,6 +77,7 @@ def test_a_scanned_profile_has_the_statistics_matches_and_groups_its_tables_were
                 assert scanned_matches.get(match.type) == match, (
                     f"{where}: its {match.type.name} is found again, in sample and on table"
                 )
+        assert table.discriminator == expected.discriminator, f"{table.name}: its entities"
         assert [g.columns for g in table.groups] == [g.columns for g in expected.groups], table.name
         for group, given in zip(table.groups, expected.groups, strict=True):
             assert abs(group.coherence - given.coherence) <= _COHERENCE, (

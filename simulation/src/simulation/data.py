@@ -5,7 +5,10 @@ each of them used at least once, and its nulls and sentinels are spread over the
 the rows of a column are taken in an order of their own, its nulls and sentinels in the first of
 them. The columns of a group share their order, so that they are filled in the same rows as far as
 their nulls and sentinels allow: the column of more of them is filled within the rows of the column
-of fewer.
+of fewer. A table of a discriminator holds the values of its column in as many rows as the profile
+counts each, the rows of each entity those of its values, and each column is filled in as many rows
+of each entity as the entity counts, its nulls and sentinels in the others; the discriminator is a
+column of text.
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
@@ -41,7 +44,7 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
 )
-from data_profiler.profile import Column, Lengths, Table
+from data_profiler.profile import Column, Discriminator, Lengths, Table
 from simulation import SimulationError
 
 # The first day of the dates and times generated, its first moment, and how many days they span.
@@ -79,7 +82,7 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
     """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
 
     The columns of each of its groups are filled in the same rows, as far as their nulls and
-    sentinels allow.
+    sentinels allow, and in as many rows of each entity of its discriminator as the entity counts.
 
     Args:
         table: The table, with the statistics of its columns.
@@ -90,17 +93,104 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
 
     Raises:
         SimulationError: A column has a type that is not generated, or statistics that no values
-            can have.
+            can have, or the entities of its discriminator rows that its column or the statistics
+            of a column do not have.
     """
     shared = {}
     for found in table.groups:
         order = random.sample(range(table.rows), table.rows)
         shared.update(dict.fromkeys(found.columns, order))
+    discriminator = table.discriminator
+    kinds = [] if discriminator is None else _kinds(table, discriminator, random)
     columns = []
     for column in table.columns:
         order = shared.get(column.name) or random.sample(range(table.rows), table.rows)
-        columns.append(_values(table, column, order, random))
+        if discriminator is None:
+            columns.append(_values(table, column, order, random))
+        elif column.name == discriminator.column:
+            columns.append(_discriminated(table, column, kinds, random))
+        else:
+            within = _within(table, column, discriminator, order, kinds)
+            columns.append(_values(table, column, within, random))
     return list(zip(*columns, strict=True))
+
+
+def _kinds(
+    table: Table, discriminator: Discriminator, random: Random
+) -> list[tuple[int, str] | None]:
+    """Of each row of `table`, its entity, by its place, and its value; None of a row of none."""
+    (column,) = (column for column in table.columns if column.name == discriminator.column)
+    counted = {value.value: value.rows for value in column.values}
+    kinds: list[tuple[int, str] | None] = []
+    for index, entity in enumerate(discriminator.entities):
+        held = all(value in counted for value in entity.values)
+        if not held or sum(counted[value] for value in entity.values) != entity.rows:
+            raise SimulationError(
+                f"{table.name}.{column.name}: the rows of the values of an entity are not its own"
+            )
+        for value in entity.values:
+            kinds += [(index, value)] * counted[value]
+    if len(kinds) > table.rows:
+        raise SimulationError(f"{table.name}: its entities have more rows than the table")
+    kinds += [None] * (table.rows - len(kinds))
+    random.shuffle(kinds)
+    return kinds
+
+
+def _discriminated(
+    table: Table, column: Column, kinds: list[tuple[int, str] | None], random: Random
+) -> list[object]:
+    """The values of the discriminator `column`: of each row its value, else a null or sentinel."""
+    kind, _ = _type(column)
+    if kind != "varchar":
+        raise SimulationError(f"{table.name}.{column.name}: no discriminator of {column.type}")
+    statistics = column.statistics
+    empty: list[object] = [None] * statistics.nulls
+    for sentinel in statistics.sentinels:
+        empty += [sentinel.value] * sentinel.rows
+    if len(empty) != kinds.count(None):
+        raise SimulationError(
+            f"{table.name}.{column.name}: its nulls and sentinels are not the rows of no entity"
+        )
+    random.shuffle(empty)
+    rest = iter(empty)
+    return [next(rest) if found is None else found[1] for found in kinds]
+
+
+def _within(
+    table: Table,
+    column: Column,
+    discriminator: Discriminator,
+    order: list[int],
+    kinds: list[tuple[int, str] | None],
+) -> list[int]:
+    """`order`, the rows of each entity that `column` is not filled in first, as many as it counts.
+
+    Within each entity, and within the rows of none, the rows keep their order, so that the columns
+    of a group are filled in the same rows of each.
+    """
+    statistics = column.statistics
+    present = table.rows - statistics.nulls - statistics.sentinel_rows
+    segments: dict[int | None, list[int]] = {}
+    for row in order:
+        found = kinds[row]
+        segments.setdefault(None if found is None else found[0], []).append(row)
+    wanted: dict[int | None, int] = {
+        index: entity.filled[column.name] for index, entity in enumerate(discriminator.entities)
+    }
+    wanted[None] = present - sum(wanted.values())
+    empty: list[int] = []
+    filled: list[int] = []
+    for index, count in wanted.items():
+        rows = segments.get(index, [])
+        if not 0 <= count <= len(rows):
+            of = "an entity" if index is not None else "no entity"
+            raise SimulationError(
+                f"{table.name}.{column.name}: filled in {count} rows of {of}, of {len(rows)}"
+            )
+        empty += rows[: len(rows) - count]
+        filled += rows[len(rows) - count :]
+    return empty + filled
 
 
 def _values(table: Table, column: Column, order: list[int], random: Random) -> list[object]:

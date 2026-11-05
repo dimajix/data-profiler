@@ -116,6 +116,37 @@
     ({{ "{:.0%}".format(group.coherence) }})
   </p>
   {% endfor %}
+  {% set discriminator = table.discriminator %}
+  {% if discriminator %}
+  {% set of_none = table.rows - discriminator.rows %}
+  <table class="entities">
+    <caption>
+      Entities by <span class="original">{{ discriminator.column }}</span>, the rows each column
+      is filled in{% if of_none %} – {{ "{:,}".format(of_none) }} rows of none{% endif %}
+    </caption>
+    <thead>
+      <tr>
+        <th>Column</th>
+        {% for entity in discriminator.entities %}
+        <th class="number">
+          <span class="value">{{ entity.values | join(", ") }}</span><br>
+          {{ "{:,}".format(entity.rows) }} rows
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+    {% for column in table.columns %}
+      <tr>
+        <td class="original">{{ column.name }}</td>
+        {% for entity in discriminator.entities %}
+        <td class="number">{{ share(entity.filled[column.name], entity.rows) }}</td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 </section>
 {% endfor %}
 
