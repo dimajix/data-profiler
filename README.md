@@ -9,12 +9,13 @@ It works in three stages, each of which can be run again on its own:
 
 - **scan** reads the selected tables, by a list or a regular expression, and finds for every column
   the range of its values, its nulls and the values that stand for none, such as empty texts or
-  `9999-12-31`, whether it is an enumeration of few values, and what its values are - phone
-  numbers, postal codes, card numbers, dates and more - by deterministic detectors, checked on a
-  sample and, where they can, verified on the whole table; which columns of a table are filled
-  together, such as the street, the postal code and the city of a delivery address; and, where a
-  table holds the rows of several entities - customers, suppliers and employees -, the column whose
-  values tell them apart, and which columns each of them fills.
+  `9999-12-31`, whether it is an enumeration of few values, and what its values are - phone numbers,
+  postal codes, card numbers, dates and more - by deterministic detectors, checked on a sample and,
+  where they can, verified on the whole table; which columns identify the rows of a table, its keys
+  of one column and of two, and which of them is its primary key; which columns of a table are
+  filled together, such as the street, the postal code and the city of a delivery address; and,
+  where a table holds the rows of several entities - customers, suppliers and employees -, the
+  column whose values tell them apart, and which columns each of them fills.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
   language model, running locally in Ollama, for the concepts of the terms of none, and for a

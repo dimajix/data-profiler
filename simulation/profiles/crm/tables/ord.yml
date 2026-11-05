@@ -1,4 +1,4 @@
-format: '13.1'
+format: '13.2'
 name: ord
 rows: 20000
 columns:
@@ -47,5 +47,7 @@ columns:
   type: varchar(34)
   statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
   matches: [{type: iban, sample: 1.0, table: 1.0}]
+keys: [[ord_id], [ord_no]]
+primary_key: {columns: [ord_id]}
 groups:
 - {columns: [dlvr_strt_nm, dlvr_pst_cd, dlvr_cty_nm], coherence: 0.994}

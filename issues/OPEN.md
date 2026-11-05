@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [34](34-primary-keys.md) | open | high | feature | Nothing tells which columns identify the rows of a table, so that a data model derived from the profile has no keys, and no reference of another table can be found to them. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
+| [34](34-primary-keys.md) | in progress | high | feature | Nothing tells which columns identify the rows of a table, so that a data model derived from the profile has no keys, and no reference of another table can be found to them. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
 | [35](35-references-between-tables.md) | open | high | feature | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
 
 ## Describe

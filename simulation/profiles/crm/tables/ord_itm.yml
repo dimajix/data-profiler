@@ -1,4 +1,4 @@
-format: '13.1'
+format: '13.2'
 name: ord_itm
 rows: 61000
 columns:
@@ -12,3 +12,5 @@ columns:
 - {name: qty, type: integer, statistics: {nulls: 0, distinct: 25}}
 - {name: unt_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
 - {name: dscnt_pct, type: "decimal(5,2)", statistics: {nulls: 52000, distinct: 8}}
+keys: [[ord_itm_id], [ord_id, pos_no]]
+primary_key: {columns: [ord_itm_id]}

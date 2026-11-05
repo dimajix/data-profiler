@@ -22,6 +22,7 @@ from data_profiler.profile import (
     Group,
     Lengths,
     Match,
+    PrimaryKey,
     Profile,
     Range,
     Statistics,
@@ -150,6 +151,19 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
     assert "<td> 1 … 2 </td>" in page, "the lengths of a text"
     assert "email 98% / 99%" in page, "a match with its shares in the sample and on the table"
     assert '<td class="number">\u2013</td>' in page, "no share of nulls of a table without rows"
+
+
+def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:
+    (table, empty) = _PROFILE.tables
+    keyed = replace(
+        table, keys=(("eml_adr",), ("cust_nm", "tel_no")), primary_key=PrimaryKey(("eml_adr",))
+    )
+    page = _page(profile=replace(_PROFILE, tables=(keyed, empty)))
+    assert (
+        'Keys: <span class="original">eml_adr</span> (primary) ·'
+        ' <span class="original">cust_nm, tel_no</span> </p>'
+    ) in page
+    assert page.count('<p class="keys">') == 1, "none of a table of no keys"
 
 
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:

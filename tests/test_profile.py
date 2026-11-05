@@ -18,6 +18,7 @@ from data_profiler.profile import (
     Group,
     Lengths,
     Match,
+    PrimaryKey,
     Profile,
     ProfileError,
     Range,
@@ -56,6 +57,8 @@ _PROFILE = Profile(
                     matches=(Match(EMAIL, 0.982),),
                 ),
             ),
+            keys=(("CUST_ID",), ("CUST_NM", "CUST_EML")),
+            primary_key=PrimaryKey(("CUST_ID",)),
             groups=(Group(("CUST_NM", "CUST_EML"), 0.912),),
             discriminator=Discriminator(
                 "CUST_TYP_CD",
@@ -184,6 +187,24 @@ def test_a_table_whose_name_is_no_name_of_a_file_is_refused(tmp_path: Path, name
     with pytest.raises(ProfileError, match="no name of a file"):
         profile.write(tmp_path)
     assert not tmp_path.joinpath("profile.yml").exists(), "nothing is written"
+
+
+@pytest.mark.parametrize(
+    ("keys", "primary"),
+    [
+        ((("CUST_ID",), ("CUST_NO",)), PrimaryKey(("CUST_ID",))),
+        ((("CUST_ID",),), PrimaryKey(("CUST_ID", "CUST_NO"))),
+    ],
+    ids=["a key", "the primary key"],
+)
+def test_a_key_of_a_column_the_table_does_not_have_is_refused(
+    tmp_path: Path, keys: tuple[tuple[str, ...], ...], primary: PrimaryKey
+) -> None:
+    (table,) = _PROFILE.tables
+    keyed = replace(table, keys=keys, primary_key=primary)
+    replace(_PROFILE, tables=(keyed,)).write(tmp_path)
+    with pytest.raises(ProfileError, match="a key names the column 'CUST_NO', which the table"):
+        Profile.read(tmp_path)
 
 
 def _with_entities(tmp_path: Path, *entities: Entity, column: str = "CUST_TYP_CD") -> Path:

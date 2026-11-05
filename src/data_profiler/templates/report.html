@@ -105,6 +105,16 @@
     {% endfor %}
     </tbody>
   </table>
+  {% if table.keys %}
+  {% set primary = table.primary_key.columns if table.primary_key else none %}
+  <p class="keys">
+    Keys:
+    {% for key in table.keys %}
+    <span class="original">{{ key | join(", ") }}</span>{% if key == primary %} (primary){% endif %}
+    {% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
   {% for name, shared in collisions(table).items() %}
   <p class="collision">
     Same harmonized name: {{ name }} – <span class="original">{{ shared | join(", ") }}</span>

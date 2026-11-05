@@ -1,4 +1,4 @@
-format: '13.1'
+format: '13.2'
 name: prod
 rows: 350
 columns:
@@ -29,3 +29,5 @@ columns:
   type: varchar(1)
   statistics: {nulls: 0, distinct: 2, lengths: {shortest: 1, longest: 1}}
   matches: [{type: zero-one, sample: 1.0, table: 1.0}]
+keys: [[prod_id], [prod_cd]]
+primary_key: {columns: [prod_id]}

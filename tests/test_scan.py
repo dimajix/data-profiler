@@ -58,7 +58,7 @@ def _failing_at(tmp_path: Path, table: str) -> None:
     (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
 
 
-def test_a_scanned_profile_has_the_statistics_matches_groups_and_entities_it_was_made_with(
+def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_it_was_made_with(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = _scanned(source, ".*", tmp_path)
@@ -86,6 +86,9 @@ def test_a_scanned_profile_has_the_statistics_matches_groups_and_entities_it_was
                     f"{where}: its {match.type.name} is found again, in sample and on table"
                 )
         assert table.discriminator == expected.discriminator, f"{table.name}: its entities"
+        # Random values make keys of two columns by chance as well, which the table holds.
+        assert set(expected.keys) <= set(table.keys), f"{table.name}: its keys"
+        assert table.primary_key == expected.primary_key, f"{table.name}: its primary key"
         assert [g.columns for g in table.groups] == [g.columns for g in expected.groups], table.name
         for group, given in zip(table.groups, expected.groups, strict=True):
             assert abs(group.coherence - given.coherence) <= _COHERENCE, (

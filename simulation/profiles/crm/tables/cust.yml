@@ -1,4 +1,4 @@
-format: '13.1'
+format: '13.2'
 name: cust
 rows: 5000
 columns:
@@ -39,3 +39,5 @@ columns:
 - name: ap_seg_cd
   type: varchar(4)
   statistics: {nulls: 3200, distinct: 9, lengths: {shortest: 2, longest: 4}}
+keys: [[cust_id], [cust_no]]
+primary_key: {columns: [cust_id]}
