@@ -154,6 +154,10 @@ class Dialect(ABC):
         """The expression counting the distinct values of `values`, approximately."""
 
     @abstractmethod
+    def distinct_error(self) -> float:
+        """The standard error of the distinct values `distinct` counts, as a share of them."""
+
+    @abstractmethod
     def smallest(self, values: str) -> str:
         """The expression of the smallest of `values`."""
 
@@ -450,6 +454,10 @@ class _TrinoDialect(Dialect):
     def distinct(self, values: str) -> str:
         """The expression counting the distinct values of `values`, approximately."""
         return f"approx_distinct({values}, {_DISTINCT_ERROR})"
+
+    def distinct_error(self) -> float:
+        """The standard error of the distinct values `distinct` counts: half a percent."""
+        return _DISTINCT_ERROR
 
     def smallest(self, values: str) -> str:
         """The expression of the smallest of `values`."""

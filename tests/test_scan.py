@@ -20,9 +20,9 @@ from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace, WorkspaceError
 
-# How far the approximate number of distinct values may lie from the true one: four times the
-# standard error the dialect asks for.
-_TOLERANCE = 0.02
+# How far the approximate number of distinct values may lie from the true one: as many times the
+# standard error the dialect counts them with.
+_ERRORS = 4
 # A glossary of one concept, as a profile scanned before has it.
 _GLOSSARY = {"customer": Concept(("cust",), "A person or company that buys.")}
 # How far the coherence of a group, found in a sample, may lie from the one it was made with.
@@ -76,7 +76,8 @@ def test_a_scanned_profile_has_the_statistics_matches_groups_and_entities_it_was
             assert found.nulls == statistics.nulls, where
             assert found.sentinels == statistics.sentinels, where
             assert found.lengths == statistics.lengths, where
-            assert abs(found.distinct - statistics.distinct) <= _TOLERANCE * statistics.distinct, (
+            tolerance = _ERRORS * source.dialect.distinct_error() * statistics.distinct
+            assert abs(found.distinct - statistics.distinct) <= tolerance, (
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
             )
             scanned_matches = {match.type: match for match in column.matches}
