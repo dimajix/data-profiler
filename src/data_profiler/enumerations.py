@@ -54,21 +54,9 @@ def values(source: Source, table: Table) -> list[Enumeration]:
 
 def _count(source: Source, table: str, names: list[str]) -> dict[str, list[tuple[object, int]]]:
     """The values of each of the columns `names` of `table` but null, with the rows of each."""
-    dialect = source.dialect
-    expressions = [
-        *(dialect.column(name) for name in names),
-        *(dialect.grouping(name) for name in names),
-        dialect.rows(),
-    ]
-    statement = dialect.grouped(expressions, table, names)
+    step = f"counting the values of {source.name(table)}"
     by_column: dict[str, list[tuple[object, int]]] = {name: [] for name in names}
-    for row in source.query(statement, f"counting the values of {source.name(table)}"):
-        # The row belongs to the one column whose grouping is 0; the others are null in it.
-        groupings = row[len(names) : -1]
-        if groupings.count(0) != 1:
-            raise TypeError(f"the query grouped a row of {table} by other than one column")
-        index = groupings.index(0)
-        if row[index] is not None:
-            rows = counted(row[-1], f"{table}.{names[index]}")
-            by_column[names[index]].append((row[index], rows))
+    for index, value, (rows,) in source.grouped(table, names, [source.dialect.rows()], step):
+        if value is not None:
+            by_column[names[index]].append((value, counted(rows, f"{table}.{names[index]}")))
     return by_column
