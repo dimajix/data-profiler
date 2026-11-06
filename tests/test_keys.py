@@ -1,8 +1,8 @@
 """Tests of the keys of tables: of tables made by hand, and against the simulation environment.
 
-The tests of tables made by hand count them by a schema that answers, of each candidate of a
-table, as many distinct values as rows, but of those it is given, and keeps the candidates it was
-asked of, as the expressions of the dialect name them; those against the simulation environment need
+The tests of tables made by hand count them by a schema that answers, of each key indicated of a
+table, as many distinct values as rows, but of those it is given, and keeps the keys it was asked
+of, as the expressions of the dialect name them; those against the simulation environment need
 it to run.
 """
 
@@ -19,23 +19,23 @@ from data_profiler.workspace import Sample
 
 
 class _Counted(Source):
-    """A schema of `table`, whose candidates of `duplicated` have values of more than one row."""
+    """A schema of `table`, whose keys indicated of `duplicated` have values of several rows."""
 
     def __init__(self, table: Table, duplicated: Collection[tuple[str, ...]] = ()) -> None:
         with connect("trino://h/c/s", "u", "") as trino:
             super().__init__("c", "s", trino.dialect)
         names = [column.name for column in table.columns]
         # Of one column, of two and of three, as the overrides may give a key of more.
-        self._candidates = [found for size in (1, 2, 3) for found in combinations(names, size)]
+        self._indicated = [found for size in (1, 2, 3) for found in combinations(names, size)]
         self._rows = table.rows
         self._duplicated = duplicated
         self.asked: list[list[tuple[str, ...]]] = []
 
     def query(self, statement: str, step: str) -> list[tuple[object, ...]]:
-        # The candidates whose counts the statement holds, in their order in it.
+        # The keys indicated whose counts the statement holds, in their order in it.
         held = sorted(
             (statement.index(self.dialect.exactly_distinct(found)), found)
-            for found in self._candidates
+            for found in self._indicated
             if self.dialect.exactly_distinct(found) in statement
         )
         asked = [found for _, found in held]
@@ -69,7 +69,9 @@ def test_a_column_of_values_each_of_one_row_is_a_key_and_the_primary_one() -> No
     found = identify(source, table, _sample(id=[1, 2, 3], kind=[1, 1, 2]), None)
     assert found.keys == (("id",),)
     assert found.primary_key == PrimaryKey(("id",))
-    assert source.asked == [[("id",)]], "a column of few values no candidate, nor a pair with a key"
+    assert source.asked == [[("id",)]], (
+        "a column of few values not indicated, nor a pair with a key"
+    )
 
 
 def test_only_a_column_its_statistics_and_its_sample_indicate_is_verified() -> None:
@@ -88,10 +90,10 @@ def test_only_a_column_its_statistics_and_its_sample_indicate_is_verified() -> N
     )
     found = identify(source, table, sample, None)
     assert (found.keys, found.primary_key) == ((), None)
-    assert source.asked == [], "no query of no candidate"
+    assert source.asked == [], "no query where none is indicated"
 
 
-def test_a_candidate_of_values_of_more_than_one_row_in_the_table_is_no_key() -> None:
+def test_a_key_indicated_of_values_of_more_than_one_row_in_the_table_is_no_key() -> None:
     table = _table(100, _column("id", 100))
     found = identify(_Counted(table, {("id",)}), table, _sample(id=[1, 2]), None)
     assert found.keys == ()
@@ -139,7 +141,7 @@ def test_of_several_keys_the_primary_is_of_whole_numbers_before_the_first() -> N
     assert found.primary_key == PrimaryKey(("id",))
 
 
-def test_more_candidates_than_ten_are_verified_in_several_queries() -> None:
+def test_more_keys_indicated_than_ten_are_verified_in_several_queries() -> None:
     columns = [_column(f"c{place:02}", 100) for place in range(12)]
     table = _table(100, *columns)
     source = _Counted(table)
@@ -156,17 +158,17 @@ def test_a_key_of_one_column_is_the_primary_before_one_of_two_of_whole_numbers()
     assert found.primary_key == PrimaryKey(("code",))
 
 
-def test_a_primary_key_given_is_verified_with_the_candidates_and_is_the_primary() -> None:
+def test_a_primary_key_given_is_verified_with_the_keys_indicated_and_is_the_primary() -> None:
     table = _table(100, _column("id", 100), _column("ord", 50), _column("pos", 2))
     source = _Counted(table)
     sample = _sample(id=[1, 2, 3, 4], ord=[1, 1, 2, 2], pos=[1, 2, 1, 2])
     found = identify(source, table, sample, ("pos", "ord"))
     assert found.primary_key == PrimaryKey(("ord", "pos"), given=True), "in the order of the table"
     assert found.keys == (("id",), ("ord", "pos"))
-    assert source.asked == [[("id",), ("ord", "pos")]], "a candidate already"
+    assert source.asked == [[("id",), ("ord", "pos")]], "indicated already"
 
 
-def test_a_primary_key_given_that_is_no_candidate_is_verified_beside_them() -> None:
+def test_a_primary_key_given_that_is_not_indicated_is_verified_beside_them() -> None:
     table = _table(100, _column("id", 100), _column("ord", 50), _column("qty", 1))
     source = _Counted(table)
     found = identify(source, table, _sample(id=[1, 2], ord=[1, 1], qty=[1, 1]), ("ord", "qty"))

@@ -159,8 +159,8 @@ names it, to `describe`, unless it is to ask none. The semantic types of a proje
     sample and, once verified, in the whole table.
 *   **Key** - columns of a table, one or two, whose values together identify each of its rows,
     verified on the whole table, none of them a key alone. As a table may have hundreds of columns,
-    the candidates are indicated first: by the approximate distinct counts of the statistics, which
-    reach the rows, and by the sample, in which they are unique; few are verified, in few queries.
+    the keys are indicated first: by the approximate distinct counts of the statistics, which reach
+    the rows, and by the sample, in which they are unique; few are verified, in few queries.
     The **primary key** is the one that identifies the rows in a data model: of the keys, the one of
     the fewest columns, then of the types a database generates keys of, then the first, unless an
     override gives it, which is taken whether or not its values are unique - warned of where they
