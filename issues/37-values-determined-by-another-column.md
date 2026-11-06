@@ -1,6 +1,6 @@
 # 37 — Values determined by another column
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** low
 **Area:** Scan
@@ -123,3 +123,6 @@ ten expressions at most counted in one place:
   each query beside nine keys at most, so that each compares a state of the table of its own, as
   [34](34-primary-keys.md) decided; ten keys indicated take two queries, no longer one of eleven
   counts, as the maintainer agreed.
+- **2026-11-06** — Done as decided with the maintainer (see How): the column dependencies of the
+  tables of the simulation are found in their samples and verified on the whole tables by `scan`,
+  shown by the report, and rejected by the overrides where a column determines none.
