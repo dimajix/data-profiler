@@ -27,11 +27,8 @@ environment.
     take in a document, which `project` reads them in as well.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
-    profiled, give sentinels of a column of no text, a reading of a name that is no reading of its
-    terms, a discriminator that cannot be one, or a reference to what is not profiled, and warned of
-    where they give an abbreviation no name has, a discriminator a table was not counted with, or a
-    reference a column was not related with; `scan` warns of the values of entities given that a
-    table does not hold.
+    profiled or give what cannot be, and warned of where they give what a profile does not take, as
+    [PROJECT.md](PROJECT.md#the-overrides-overridesyml) says.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.

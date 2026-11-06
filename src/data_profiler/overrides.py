@@ -1,74 +1,29 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
 The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments: what the database holds, concepts of the glossary, the
-reading of the name of a table or column, the harmonized name of a table or column, the description
-of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
-which gives back no values `scan` took out -, the sentinels of a column, in place of those of the
-tool, the primary key of a table, by its columns, the reference of a column, by the table and the
-column of the key it refers to, or `false` for none, whatever is found, a column that determines no
-other, whatever is found, and the discriminator of a table, with the names, values and descriptions
-of its entities, or `false` for none, whatever is found. Concepts are named by their words, entities
-by their harmonized names, tables and columns by their original names, as keys, so that a person
-writes no more than what is given.
+project, the same for all its environments, read by `Overrides.read`: what is given of the database,
+concepts of the glossary, and what is given of each table and its columns, as the classes below
+hold it. What each override gives, which stage takes it and when it counts, and what is refused or
+warned of, is said in `docs/PROJECT.md`; here is how the stages take it.
 
-Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
-which it counts the table with, and their sensitivity: it lays the overrides over each table it
-counts, before the module `disclosure` decides what of its values the profile holds, so that the
-profile holds no values of a column marked sensitive. The stages that read the profile - `report`,
-and `describe`, which takes the concepts as well - lay them over it whole, so that a mark given
-after a scan withholds the values there without a scan again; the sentinels a column was counted
-with, they leave as they are. A column has the marks the overrides give it and no others: a mark
-taken out gives back no values until `scan` counts the column again, and sentinels changed count
-only once it does. A concept given comes before those proposed: it takes the place of the one of its
-word, keeping of it only the abbreviations it was proposed with beside those given, and the terms it
-is written as - its abbreviations, and its word where it is one term - are taken from the
-abbreviations of the others, a concept they take all of dropped, so that a term given is of no
-concept but those given, unless it is the word of another, a term of it whatever is given, of which
-the reading of its name tells which it stands for, and a term proposed as one more abbreviation of a
-concept given is one of it. A reading given comes before the one read; it is laid over by the stages
-that read the profile alone, not by `scan`, so that the profile never holds it as read, and it
-counts once `describe` has split the name, as a reading agrees with the terms of its name. A name
-given comes before the one composed from the reading, so that it resolves a collision of harmonized
-names, and a description given before the one proposed; both are laid over by the stages that read
-the profile alone, as a reading is, and a column of a description given is not described by the
-language model. The descriptions of the database and of a table are laid over the same way, and
-shown to the language model with what it is asked of. A discriminator given is taken by `scan`,
-which counts the table with it, and counts once it counts the table again, as sentinels do: the
-profile holds the values given of its entities that a discriminator was counted with. The names and
-descriptions of its entities are laid over by the stages that read the profile, each of the entity
-that holds the values given of one, where the discriminator was counted with those given; where it
-was not, they warn of it. A primary key given is taken by `scan` as well, verified with the keys it
-finds and the primary key whether or not its values are unique, which it warns of; the profile holds
-that it was given, so that it counts once `scan` counts the table again. A reference given is taken
-by `relate`: the column is not searched, but the reference measured, its coverage counted or its
-values probed, and warned of where its coverage, or the share probed of unmistakable values, falls
-below what a reference is found at, or where the column referred to is no key of one column; the
-profile holds that it was given, so that a stage that reads the profile warns of a reference given
-otherwise, until `relate` relates the tables again. A column given none has no reference and no
-reference candidates. A column given as determining none, by `determines: false`, is taken by
-`scan`, which looks for no dependency of it as a determinant; the stages that read the profile lay
-it over, dropping the column dependencies of which it is a determinant, so that a dependency found
-that is none is not shown without a scan again, and a run of `scan` resumed counts the table of one
-again.
-
-An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
-not select before it counts anything, and, once it has counted the table, a column the table does
-not have and the sentinels given of a column whose values the database writes as no text, which has
-none, a primary key of no columns or of one twice, and a discriminator given of a column they mark
-of a sensitivity, of entities of no values, or of a value twice - of a column of no values the
-profile holds, and of values given that the column does not hold, it warns, leaving them out, as the
-overrides are the same for all environments -; it does not check the concepts, readings and names,
-which it does not use. `relate` refuses a table or a column the profile does not have, and a
-reference given to one or of a column to itself, before it queries anything, and the stages that
-read the profile refuse them as well. A stage that reads the profile refuses a table or a column the
-profile does not have, a reading of a name that is not one of its terms, as the vocabulary
-splits it - of another number of words, or a word of no concept of the term at its place -, a name
-given other than in snake_case, that of an entity among them, and a discriminator given as `scan`
-does. An abbreviation given that no name of the profile has is no mistake, as the overrides are the
-same for all environments of a project, whose tables differ: a stage that reads the profile warns of
-it, once, so that one written in another case than the terms of the names, which are in lower case,
-is seen.
+`scan` takes what is given of each table it selects, a `TableOverride`, by `Overrides.selected`:
+`agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels`
+go to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
+have, a primary key that cannot be one, and sentinels the table was not counted with; its
+`primary_key` goes to the keys, `determining_none` to the column dependencies, and `discriminator`
+to the entities; and `TableOverride.laid_over` marks its columns and drops the dependencies of a
+column determining none, refusing a primary key or a discriminator that cannot be one, before the
+module `disclosure` decides what of its values the profile holds, so that the profile holds no
+values of a column marked sensitive. `relate` takes the references given, by
+`Overrides.references`, refused before it queries anything. The stages that read the profile -
+`describe` and `report` - lay the overrides over it whole, by `Overrides.laid_over`: the concepts
+given before those proposed, the references given refused as `relate` refuses them, then each table
+laid over as `scan` lays it, then read, named and described as given, by
+`TableOverride.described_laid_over`, then disclosed again, so that a mark given after a scan
+withholds the values without a scan again; `Overrides.warn_unused` warns of what is given that the
+profile does not take. `describe` shows the language model the description given of the database,
+`Overrides.description`, and `report` tells the concepts given apart from those proposed by
+`Overrides.glossary`.
 """
 
 import logging

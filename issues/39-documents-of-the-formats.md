@@ -99,3 +99,9 @@ editor completion and checks of `project.yml` and `overrides.yml`; an issue of i
   `docs/ARCHITECTURE.md`, into `docs/PROJECT.md`. The rules in the module docs of `overrides` are
   not moved yet, and stated in `docs/PROJECT.md` as well; where they live is left to the
   maintainer.
+
+- **2026-11-06** — Step 3, as the maintainer decided: the rules of the overrides - what each gives,
+  which stage takes it and when it counts, what is refused and warned of - live in
+  `docs/PROJECT.md` alone, the rules the module docs of `overrides` alone held added there; the
+  module docs say how the stages take the overrides in the code, by which methods, and point to the
+  document, as the entry of `data_profiler.overrides` in `docs/ARCHITECTURE.md` does.

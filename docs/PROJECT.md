@@ -72,13 +72,21 @@ harmonized names, all as keys, so that a person writes no more than what is give
 | the description of the database, a table or a column | `describe`, which shows the first two to the language model with every question of them and asks for no column described, and `report` | at once |
 
 A scan resumed counts again the tables the overrides now give otherwise: the marks or the sentinels
-of their columns, a column that determines none, their primary keys or their discriminators.
+of their columns, a column that determines none, their primary keys or their discriminators. A
+column has the marks the overrides give it and no others. What the stages that read the profile lay
+over it - concepts, readings, names, descriptions, the names and descriptions of entities - is never
+written to it, so that the profile holds a reading only as `describe` read it; what `scan` and
+`relate` take - marks, sentinels, primary keys, discriminators and the values of their entities,
+references - the profile holds as given, so that the stages can tell where it was counted or related
+otherwise.
 
 **A concept given comes before those proposed.** It takes the place of the concept proposed of its
-word, keeping only the abbreviations proposed beside those given; the terms it is written as are
-taken from the other concepts proposed, so that a term given stands for the concepts given alone.
-A term that is the word of another concept stays a term of that concept as well, and the reading of
-a name tells which of them it stands for.
+word, keeping only the abbreviations proposed beside those given; the terms it is written as - its
+abbreviations, and its word where it is one term - are taken from the other concepts proposed, and a
+concept proposed whose abbreviations they take all is dropped, so that a term given stands for the
+concepts given alone. A term that is the word of another concept stays a term of that concept as
+well, and the reading of a name tells which of them it stands for. A term the language model
+proposes as one more abbreviation of a concept given is one of it.
 
 **What is refused, and what is warned of.** An override that names what is not profiled, or cannot
 be what it gives, is refused, naming it:
@@ -86,20 +94,27 @@ be what it gives, is refused, naming it:
 *   `scan` refuses a table the project does not select before it counts anything; once it has
     counted a table, a column the table does not have, sentinels of a column whose values the
     database writes as no text, a primary key of no columns or of one twice, and a discriminator of
-    a column marked of a sensitivity, of entities of no values, or of a value twice. The tables
-    before it stay in the profile, as after any failure of a scan.
+    a column the overrides mark of a sensitivity, of entities of no values, or of a value twice.
+    The tables before it stay in the profile, as after any failure of a scan. It does not check the
+    concepts, readings and names, which it does not use.
 *   `relate` refuses a table or column the profile does not have, and a reference to one or of a
     column to itself, before it queries anything.
 *   The stages that read the profile refuse a table or column it does not have, a reading that is
     no reading of the terms of its name - of another number of words, or a word of no concept of
-    the term at its place -, a name other than in snake_case, that of an entity among them, and a
-    discriminator as `scan` does.
+    the term at its place -, a name other than in snake_case, that of an entity among them, a
+    discriminator as `scan` does, and a reference as `relate` does.
 
-As the overrides are the same for all environments, whose tables may differ, the stages warn, and
-go on, of an abbreviation no name of the profile has, of values of a discriminator a table does not
-hold, of a primary key whose values are not unique, of a reference whose coverage is below what a
-reference is found at or to a column that is no key of one column, and of a discriminator or a
-reference given otherwise than the profile was counted or related with.
+As the overrides are the same for all environments, whose tables may differ, the stages warn of
+some of what is given, and go on:
+
+*   `scan` warns of a discriminator given of a column of no values the profile holds, of values of
+    a discriminator the table does not hold, which it leaves out, and of a primary key whose values
+    are not unique.
+*   `relate` warns of a reference given whose coverage, or the share probed of unmistakable values,
+    is below what a reference is found at, or that refers to a column that is no key of one column.
+*   The stages that read the profile warn of an abbreviation no name of the profile has - once, so
+    that one written in another case than the terms, which are in lower case, is seen -, and of a
+    discriminator or a reference given otherwise than the profile was counted or related with.
 
 ## Recipes
 
@@ -191,8 +206,9 @@ tables:
 ### Mark a column the detectors miss
 
 No detector recognises the names of persons. A column marked sensitive shows no values in the
-profile, the report or the prompts of the language model; `sensitivity: none` takes the mark of a
-detector back, where it found a sensitive type that is none.
+profile, the report or the prompts of the language model; `sensitivity: none` takes back the
+sensitive type a detector found, where it is none - the values `scan` withheld come back once it
+counts the column again.
 
 ```yaml overrides.yml
 tables:
@@ -301,7 +317,7 @@ tables:
 
 A column of whole numbers that a key numbered from one holds as well is a candidate of several
 references; the reference given is measured, not searched. `reference: false` gives none, whatever
-is found:
+is found: the column has no reference and no reference candidates.
 
 ```yaml overrides.yml
 tables:
