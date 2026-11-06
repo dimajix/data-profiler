@@ -566,12 +566,46 @@ def test_a_reference_given_otherwise_than_related_is_warned_of(
     assert caplog.messages == ([expected] if warned else [])
 
 
-def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:
-    assert Overrides.read(tmp_path / "overrides.yml") == Overrides()
+def test_there_are_no_overrides_where_there_are_no_files() -> None:
+    assert Overrides.read([]) == Overrides()
+
+
+def test_the_overrides_of_several_files_are_merged(tmp_path: Path) -> None:
+    glossary = tmp_path / "glossary.yml"
+    glossary.write_text(
+        "format: 7\nglossary:\n  contact: {abbreviations: [cntct]}\n", encoding="utf-8"
+    )
+    marks = tmp_path / "marks.yml"
+    marks.write_text(
+        "format: 7\ntables:\n  cntct:\n    columns:\n      frst_nm: {sensitivity: personal}\n",
+        encoding="utf-8",
+    )
+    names = tmp_path / "names.yml"
+    names.write_text(
+        "format: 7\ntables:\n  cntct: {name: contact, columns: {frst_nm: {name: first_name}}}\n",
+        encoding="utf-8",
+    )
+    overrides = Overrides.read([glossary, marks, names])
+    assert overrides.glossary == {"contact": Concept(abbreviations=("cntct",))}
+    table = overrides.tables["cntct"]
+    assert table.name == "contact"
+    assert table.columns["frst_nm"] == ColumnOverride(
+        sensitivity=Sensitivity.PERSONAL, name="first_name"
+    ), "what two files give of one column"
+
+
+def test_a_field_given_in_two_files_of_the_overrides_is_refused(tmp_path: Path) -> None:
+    first = tmp_path / "first.yml"
+    first.write_text("format: 7\ntables:\n  cntct: {name: contact}\n", encoding="utf-8")
+    second = tmp_path / "second.yml"
+    second.write_text("format: 7\ntables:\n  cntct: {name: contact}\n", encoding="utf-8")
+    files = f"{re.escape(str(first))} and in {re.escape(str(second))}"
+    with pytest.raises(OverridesError, match=rf"tables\.cntct\.name is given in {files}"):
+        Overrides.read([first, second])
 
 
 def test_the_overrides_of_the_example_project_are_read() -> None:
-    overrides = Overrides.read(_EXAMPLE)
+    overrides = Overrides.read([_EXAMPLE])
     assert overrides.glossary["address"].abbreviations == ("addr", "adr")
     assert overrides.glossary["airplus"].omitted
     assert overrides.glossary["iban"] == Concept(), "without abbreviations and a description"
@@ -595,7 +629,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
     example_profile: Profile,
 ) -> None:
-    overrides = Overrides.read(_EXAMPLE)
+    overrides = Overrides.read([_EXAMPLE])
     given = overrides.tables["prtnr"].discriminator
     assert isinstance(given, DiscriminatorOverride)
     # The business partners as a scan with the overrides counts them: as found, with the values
@@ -612,8 +646,8 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
     assert laid.glossary["address"].abbreviations == ("addr", "adr")
     assert columns["cust.ap_ap_nm"].reading == ("airplus", "contact_person", "name")
     tables = {table.name: table for table in laid.tables}
-    assert laid.description == Overrides.read(_EXAMPLE).description
-    assert tables["ord_itm"].description == Overrides.read(_EXAMPLE).tables["ord_itm"].description
+    assert laid.description == Overrides.read([_EXAMPLE]).description
+    assert tables["ord_itm"].description == Overrides.read([_EXAMPLE]).tables["ord_itm"].description
     assert tables["ord"].description is None, "a table of none given"
     discriminator = tables["prtnr"].discriminator
     assert discriminator is not None
@@ -628,7 +662,7 @@ def test_the_overrides_of_the_example_project_lay_over_its_profile(
 def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 7\nglossary:\n  name: {}\n", encoding="utf-8")
-    overrides = Overrides.read(path)
+    overrides = Overrides.read([path])
     assert overrides.glossary == {"name": Concept()}
     laid = overrides.laid_over(_PROFILE)
     assert laid.glossary["name"] == Concept(), "though no name has its word"
@@ -637,7 +671,7 @@ def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path
 def test_a_table_is_given_no_discriminator_by_false(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text('format: "7.1"\ntables:\n  cntct: {discriminator: false}\n', encoding="utf-8")
-    assert Overrides.read(path).tables["cntct"] == TableOverride(discriminator=False)
+    assert Overrides.read([path]).tables["cntct"] == TableOverride(discriminator=False)
 
 
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
@@ -646,4 +680,4 @@ def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     with pytest.raises(
         OverridesError, match=r"format 1\.0, of another major version than the format 7\.4"
     ):
-        Overrides.read(path)
+        Overrides.read([path])

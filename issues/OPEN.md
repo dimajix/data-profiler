@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
-## Profile
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [40](40-overrides-in-several-files.md) | open | medium | feature | The overrides of a project are one file, `overrides.yml`, which grows with every table corrected and every concept given, so that a database of many tables has overrides of thousands of lines that cannot be split by subject - a glossary apart from the tables, a group of tables apart from the others - and that two developers correcting different tables change in the same file. |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |

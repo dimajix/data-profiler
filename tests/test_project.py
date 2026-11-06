@@ -100,8 +100,38 @@ def test_the_url_and_the_user_of_an_environment_may_be_variables(tmp_path: Path)
     assert environment.user == "kaya@dimajix.de", "the user is taken as written"
 
 
-def test_the_overrides_of_a_project_are_in_its_directory(tmp_path: Path) -> None:
-    assert _project(tmp_path).overrides == tmp_path / "overrides.yml"
+def test_the_overrides_of_a_project_are_its_file_and_the_files_of_its_directory(
+    tmp_path: Path,
+) -> None:
+    directory = tmp_path / "overrides"
+    (directory / "more").mkdir(parents=True)
+    for path in ("overrides.yml", "overrides/tables.yml", "overrides/glossary.yml"):
+        (tmp_path / path).touch()
+    for path in ("overrides/notes.txt", "overrides/names.yaml", "overrides/more/marks.yml"):
+        (tmp_path / path).touch()
+    (directory / "nested.yml").mkdir()
+    assert _project(tmp_path).overrides == [
+        tmp_path / "overrides.yml",
+        directory / "glossary.yml",
+        directory / "tables.yml",
+    ], (
+        "the file first, then those of the directory by their names, not those of other names"
+        " nor of its subdirectories"
+    )
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [(), ("overrides.yml",), ("overrides/glossary.yml",)],
+    ids=["neither", "the file alone", "the directory alone"],
+)
+def test_a_project_may_have_either_of_the_overrides_or_neither(
+    tmp_path: Path, paths: tuple[str, ...]
+) -> None:
+    (tmp_path / "overrides").mkdir()
+    for path in paths:
+        (tmp_path / path).touch()
+    assert _project(tmp_path).overrides == [tmp_path / path for path in paths]
 
 
 def test_the_language_model_of_a_project_is_named_by_its_configuration(tmp_path: Path) -> None:

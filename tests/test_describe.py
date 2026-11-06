@@ -548,7 +548,7 @@ def test_the_names_of_the_example_are_read_from_words_given(
 def test_the_names_of_the_example_are_read_with_its_overrides(
     example_profile: Profile, tmp_path: Path
 ) -> None:
-    overrides = Overrides.read(_EXAMPLE)
+    overrides = Overrides.read([_EXAMPLE])
     laid = overrides.laid_over(_described(example_profile, tmp_path, overrides))
     glossary = Glossary(laid.glossary)
     columns = {c.name: c for c in laid.tables[1].columns}
