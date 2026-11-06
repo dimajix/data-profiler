@@ -23,7 +23,7 @@ from dataclasses import replace
 from data_profiler.detect import SemanticType, is_list
 from data_profiler.enumerations import valued, values
 from data_profiler.matching import recognise, verify
-from data_profiler.profile import Column, Items, Table
+from data_profiler.profile import Column, Table
 from data_profiler.source import Source
 from data_profiler.statistics import count
 from data_profiler.workspace import Sample
@@ -123,4 +123,4 @@ def _itemized(
     ]
     found = verify(unnested, recognise(counted, Sample({column.name: split}), types))
     (item,) = valued(found, values(unnested, found)).columns
-    return replace(column, items=Items(item.statistics, item.matches, item.values))
+    return replace(column, items=item.findings)

@@ -30,7 +30,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated, Final, Self
 
 from pydantic import AfterValidator, PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
 from pydantic_core import PydanticCustomError
@@ -251,21 +251,35 @@ class Match:
     table: float | None = None
 
 
+# What is found of the values of a column - of its own, and of those of its lists - is one type,
+# which a column shows of its own as `Column.findings`, so that a rule on it is written once.
 @dataclass(frozen=True)
-class Items:
-    """The values of the lists of a column of lists, counted as the values of a column are.
+class Findings:
+    """What was found of the values of the lists of a column: statistics, types and enumeration.
 
     Attributes:
-        statistics: What is counted of the values of the lists, of the whole table: no nulls, as a
-            list holds none, their sentinels, distinct values, lengths and range.
-        matches: The semantic types found in the values of the lists, the most frequent first.
-        values: The values of the lists, if they are an enumeration of no sensitivity, the most
-            frequent first; none else.
+        statistics: What is counted of the values, of the whole table: no nulls, as a list holds
+            none.
+        matches: The semantic types found in the values, the most frequent first.
+        values: The values, if they are an enumeration of no sensitivity, the most frequent first;
+            none else.
     """
 
     statistics: Statistics
     matches: tuple[Match, ...] = ()
     values: tuple[Value, ...] = ()
+
+    @property
+    def sensitivity(self) -> Sensitivity:
+        """The sensitivity of its first match of a sensitive type, else none."""
+        for match in self.matches:
+            if match.type.sensitivity is not Sensitivity.NONE:
+                return match.type.sensitivity
+        return Sensitivity.NONE
+
+    def unmatched(self) -> Self:
+        """It without its matches, range and values, which other semantic types find otherwise."""
+        return replace(self, statistics=replace(self.statistics, range=None), matches=(), values=())
 
 
 @dataclass(frozen=True)
@@ -322,7 +336,7 @@ class Column:
     statistics: Statistics
     matches: tuple[Match, ...] = ()
     list_separator: ListSeparator | None = None
-    items: Items | None = None
+    items: Findings | None = None
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
@@ -337,6 +351,29 @@ class Column:
         return frozenset(sentinel.value for sentinel in self.statistics.sentinels)
 
     @property
+    def findings(self) -> Findings:
+        """What was found of its values: its statistics, matches and values."""
+        return Findings(self.statistics, self.matches, self.values)
+
+    def applied(self, change: Callable[[Findings], Findings]) -> Self:
+        """It with `change` made to what was found of its values, and of the values of its lists.
+
+        Args:
+            change: What becomes of what was found of values.
+
+        Returns:
+            The column, its statistics, matches and values, and its items, changed alike.
+        """
+        found = change(self.findings)
+        return replace(
+            self,
+            statistics=found.statistics,
+            matches=found.matches,
+            values=found.values,
+            items=None if self.items is None else change(self.items),
+        )
+
+    @property
     def sensitivity(self) -> Sensitivity:
         """The sensitivity given by hand, else of its first match of a sensitive type, else none.
 
@@ -345,11 +382,10 @@ class Column:
         """
         if self.marked is not None:
             return self.marked
-        items = self.items.matches if self.items is not None else ()
-        for match in (*self.matches, *items):
-            if match.type.sensitivity is not Sensitivity.NONE:
-                return match.type.sensitivity
-        return Sensitivity.NONE
+        found = self.findings.sensitivity
+        if found is Sensitivity.NONE and self.items is not None:
+            return self.items.sensitivity
+        return found
 
     @property
     def sensitive(self) -> bool:
@@ -938,23 +974,7 @@ def _unmatched(table: Table) -> Table:
 
     The values of the lists of a column lose the same as the column.
     """
-    columns = (
-        replace(
-            column,
-            matches=(),
-            values=(),
-            statistics=replace(column.statistics, range=None),
-            items=None
-            if column.items is None
-            else replace(
-                column.items,
-                matches=(),
-                values=(),
-                statistics=replace(column.items.statistics, range=None),
-            ),
-        )
-        for column in table.columns
-    )
+    columns = (column.applied(Findings.unmatched) for column in table.columns)
     return replace(table, columns=tuple(columns), discriminator=None)
 
 

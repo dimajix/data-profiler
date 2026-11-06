@@ -24,7 +24,7 @@ from dataclasses import replace
 from typing import Final
 
 from data_profiler.detect import SemanticType, is_sensitive
-from data_profiler.profile import Column, Range, Statistics, Table, Value
+from data_profiler.profile import Column, Findings, Range, Table, Value
 
 # The most characters of a value the profile holds; a value of more is cut, and its last one is `…`.
 _LONGEST: Final = 100
@@ -81,31 +81,20 @@ def _disclosed(column: Column, types: Sequence[SemanticType]) -> Column:
 
     The values of its lists keep what the column keeps, each judged on its own.
     """
-    items = column.items
     if column.sensitive:
-        return replace(
-            column,
-            statistics=replace(column.statistics, range=None),
-            values=(),
-            items=None
-            if items is None
-            else replace(items, statistics=replace(items.statistics, range=None), values=()),
-        )
-    statistics, values = _kept(column.statistics, column.values, types, column.list_separator)
-    if items is not None:
-        kept, held = _kept(items.statistics, items.values, types, None)
-        items = replace(items, statistics=kept, values=held)
-    return replace(column, statistics=statistics, values=values, items=items)
+        return column.applied(_withheld)
+    # A value of a list holds no separator, so that it is judged as itself.
+    return column.applied(lambda found: _kept(found, types, column.list_separator))
 
 
-def _kept(
-    statistics: Statistics,
-    values: tuple[Value, ...],
-    types: Sequence[SemanticType],
-    separator: str | None,
-) -> tuple[Statistics, tuple[Value, ...]]:
-    """`statistics` and `values` with the range and values they keep, lists where of `separator`."""
-    found = statistics.range
+def _withheld(findings: Findings) -> Findings:
+    """`findings` without range and values, as the profile holds those of a sensitive column."""
+    return replace(findings, statistics=replace(findings.statistics, range=None), values=())
+
+
+def _kept(findings: Findings, types: Sequence[SemanticType], separator: str | None) -> Findings:
+    """`findings` with the range and values they keep, each judged, lists where of `separator`."""
+    found = findings.statistics.range
     shown = (
         None
         if found is None
@@ -113,10 +102,13 @@ def _kept(
             _shown(found.smallest, types, separator), _shown(found.largest, types, separator)
         )
     )
-    texts = ((_shown(value.value, types, separator), value.rows) for value in values)
-    return (
-        replace(statistics, range=None if shown == Range(None, None) else shown),
-        tuple(Value(text, rows) for text, rows in texts if text is not None),
+    texts = ((_shown(value.value, types, separator), value.rows) for value in findings.values)
+    return replace(
+        findings,
+        statistics=replace(
+            findings.statistics, range=None if shown == Range(None, None) else shown
+        ),
+        values=tuple(Value(text, rows) for text, rows in texts if text is not None),
     )
 
 

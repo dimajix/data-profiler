@@ -274,7 +274,7 @@ A column of a table, under its original name and type, and what was found about 
 | `statistics` | [Statistics](#statistics) | required | What is counted of the column. |
 | `matches` | list of [Match](#match) | empty | The semantic types found in the column, the most frequent first. |
 | `list_separator` | text | absent | The separator of the values of the lists its texts are, or None where they are none. |
-| `items` | [Items](#items) | absent | The values of its lists, counted as those of a column are, or None where its texts are no lists. |
+| `items` | [Findings](#findings) | absent | The values of its lists, counted as those of a column are, or None where its texts are no lists. |
 | `values` | list of [Value](#value) | empty | The values of the column, if it is an enumeration of no sensitivity, the most frequent first; none else. |
 | `marked` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column given by hand, by an override, or None where none is given. |
 | `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with; None where none are given, and where the column has no text, which is counted without sentinels, whatever is given. |
@@ -379,15 +379,15 @@ A semantic type found in a column, with the share of its values that are of it.
 | `sample` | number | required | The share of the values of the sample, nulls and sentinels aside, that are of the type, from 0 to 1. |
 | `table` | number | absent | The share of the values of the whole table, nulls and sentinels aside, that the pattern of the detector of the type matches, from 0 to 1, or None where it was not verified. Where the detector checks a value by more than its pattern, it is at least the share the check would give; a condition of the column is judged on the sample alone. |
 
-#### Items
+#### Findings
 
-The values of the lists of a column of lists, counted as the values of a column are.
+What was found of the values of the lists of a column: statistics, types and enumeration.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `statistics` | [Statistics](#statistics) | required | What is counted of the values of the lists, of the whole table: no nulls, as a list holds none, their sentinels, distinct values, lengths and range. |
-| `matches` | list of [Match](#match) | empty | The semantic types found in the values of the lists, the most frequent first. |
-| `values` | list of [Value](#value) | empty | The values of the lists, if they are an enumeration of no sensitivity, the most frequent first; none else. |
+| `statistics` | [Statistics](#statistics) | required | What is counted of the values, of the whole table: no nulls, as a list holds none. |
+| `matches` | list of [Match](#match) | empty | The semantic types found in the values, the most frequent first. |
+| `values` | list of [Value](#value) | empty | The values, if they are an enumeration of no sensitivity, the most frequent first; none else. |
 
 #### Value
 

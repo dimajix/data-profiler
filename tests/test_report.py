@@ -21,7 +21,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
-    Items,
+    Findings,
     Lengths,
     Match,
     PrimaryKey,
@@ -167,7 +167,7 @@ def test_a_report_shows_a_column_of_lists_with_its_separator() -> None:
 def test_a_report_shows_the_values_of_the_lists_of_a_column() -> None:
     (table, *others) = _PROFILE.tables
     first, *columns = table.columns
-    items = Items(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
+    items = Findings(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
     listed = replace(first, list_separator=";", items=items)
     page = _page(
         profile=replace(_PROFILE, tables=(replace(table, columns=(listed, *columns)), *others))

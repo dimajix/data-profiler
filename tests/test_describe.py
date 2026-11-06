@@ -18,7 +18,7 @@ from data_profiler.profile import (
     Column,
     ColumnGroup,
     Concept,
-    Items,
+    Findings,
     Lengths,
     Match,
     Profile,
@@ -466,7 +466,7 @@ def test_the_model_is_told_of_a_column_of_lists_and_its_separator(tmp_path: Path
 
 def test_the_model_is_told_of_the_types_of_the_values_of_lists(tmp_path: Path) -> None:
     (table,) = _profile("curr_cds", glossary=_GLOSSARY).tables
-    items = Items(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
+    items = Findings(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
     listed = replace(table, columns=(replace(table.columns[0], list_separator=";", items=items),))
     llm = _Answers(descriptions=("The currencies.",))
     _described(replace(_profile(glossary=_GLOSSARY), tables=(listed,)), tmp_path, llm=llm)

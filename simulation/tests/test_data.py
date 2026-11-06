@@ -33,7 +33,7 @@ from data_profiler.profile import (
     ColumnGroup,
     Discriminator,
     Entity,
-    Items,
+    Findings,
     Lengths,
     Match,
     Profile,
@@ -577,7 +577,7 @@ def test_a_column_of_lists_holds_lists_of_the_values_of_its_items_of_its_lengths
         type="varchar(40)",
         statistics=Statistics(0, 200, Lengths(1, 23)),
         list_separator=";",
-        items=Items(Statistics(0, 40, Lengths(1, 2))),
+        items=Findings(Statistics(0, 40, Lengths(1, 2))),
     )
     values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
     assert is_list(values, ";", SENTINELS), "lists, some of several numbers"
@@ -587,7 +587,7 @@ def test_a_column_of_lists_holds_lists_of_the_values_of_its_items_of_its_lengths
 
 
 def test_a_column_of_lists_holds_lists_of_values_of_the_type_of_its_items() -> None:
-    items = Items(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),))
+    items = Findings(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),))
     column = Column(
         name="v",
         type="varchar(15)",

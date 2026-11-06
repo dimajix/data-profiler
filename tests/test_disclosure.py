@@ -8,7 +8,7 @@ from data_profiler.profile import (
     Column,
     Discriminator,
     Entity,
-    Items,
+    Findings,
     Match,
     Range,
     Statistics,
@@ -55,7 +55,7 @@ def test_a_column_of_a_sensitivity_keeps_neither_its_range_nor_its_values() -> N
 
 def _lists(*matches: Match) -> Column:
     """A column of lists whose values, of `matches`, are an enumeration with a range."""
-    items = Items(Statistics(0, 2, range=Range("10115", "99998")), matches, _VALUES)
+    items = Findings(Statistics(0, 2, range=Range("10115", "99998")), matches, _VALUES)
     return Column(
         name="codes",
         type="varchar(40)",

@@ -35,20 +35,16 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 {% if statistics.range is not none %}
 - range: {{ end(statistics.range.smallest) }} to {{ end(statistics.range.largest) }}
 {% endif %}
-{% if column.values %}
-- its values, with their rows:
-{%- for value in column.values[:enumerated_shown] %}
+{% for what, listed in (
+  ("its values, with their rows", column.values),
+  ("the values of its lists, with how often each is in them", column.items.values if column.items else ()),
+) if listed %}
+- {{ what }}:
+{%- for value in listed[:enumerated_shown] %}
 {{- ", " if not loop.first else " " }}{{ value.value }} ({{ value.rows }})
 {%- endfor %}
 
-{% endif %}
-{% if column.items and column.items.values %}
-- the values of its lists, with how often each is in them:
-{%- for value in column.items.values[:enumerated_shown] %}
-{{- ", " if not loop.first else " " }}{{ value.value }} ({{ value.rows }})
-{%- endfor %}
-
-{% endif %}
+{% endfor %}
 - the columns beside it: {{ beside(column, table) | join(", ") or "none" }}
 {% for group in table.column_groups if column.name in group.columns %}
 - filled in the same rows as: {{ group.columns | reject("equalto", column.name) | join(", ") }}

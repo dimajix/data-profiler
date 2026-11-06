@@ -157,3 +157,14 @@ As the maintainer decided on the questions below, and on the plan of the work:
   a profile scanned with other semantic types drops the matches and values of the items as well;
   the items are counted with the sentinels given of their column; `enumerations` and `matching`
   log the name of the source of a table, so that those of the values of a list are told apart.
+
+- **2026-11-06** — A restructuring before step 2c, as the maintainer decided after the review of
+  2b, without a change of behaviour: statistics, matches and values were a triple of a column and of
+  its items alike, whose rules were written twice - the sensitivity, what a sensitive column keeps,
+  what other semantic types drop - and the second copy had been missed once. `Items` became
+  `Findings`, what was found of values, with `sensitivity` and `unmatched`; a column shows what was
+  found of its own values as `Column.findings`, and `Column.applied` makes one change to them and
+  to its items alike, so that `disclosure` - which keeps the rule of what a sensitive column keeps,
+  `_withheld` - and `Profile.updating` cannot change the one and miss the other. The document of
+  the profile is as it was; a field of findings in place of the flat fields of a column would
+  change its format, a major version, and is not done.
