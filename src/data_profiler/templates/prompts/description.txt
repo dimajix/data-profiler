@@ -43,7 +43,7 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 
 {% endif %}
 - the columns beside it: {{ beside(column, table) | join(", ") or "none" }}
-{% for group in table.groups if column.name in group.columns %}
+{% for group in table.column_groups if column.name in group.columns %}
 - filled in the same rows as: {{ group.columns | reject("equalto", column.name) | join(", ") }}
 {% endfor %}
 

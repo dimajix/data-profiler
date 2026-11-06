@@ -33,4 +33,4 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [37](37-values-determined-by-another-column.md) | open | low | feature | Nothing tells which columns of a table are determined by another column than its key - the name of a customer repeated in each of its orders -, so that values copied from another entity, which a normalized model holds once, are not seen. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
+| [37](37-values-determined-by-another-column.md) | in progress | low | feature | Nothing tells which columns of a table are determined by another column than its key - the name of a customer repeated in each of its orders -, so that values copied from another entity, which a normalized model holds once, are not seen. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |

@@ -1,7 +1,7 @@
-"""Tests of the groups of a table: its columns filled together, found in a sample made by hand."""
+"""Tests of the column groups of a table: its columns filled together, in samples made by hand."""
 
 from data_profiler.grouping import group
-from data_profiler.profile import Column, Group, Statistics, Table, Value
+from data_profiler.profile import Column, ColumnGroup, Statistics, Table, Value
 from data_profiler.workspace import Sample
 
 # The rows of each sample of these tests.
@@ -15,7 +15,7 @@ def _filled(first: int, last: int, empty: object = None) -> list[object]:
 
 def _groups(
     columns: dict[str, list[object]], sentinels: dict[str, tuple[Value, ...]] | None = None
-) -> tuple[Group, ...]:
+) -> tuple[ColumnGroup, ...]:
     """The groups of a table of `columns`, whose statistics found `sentinels` of each, by name."""
     found = sentinels or {}
     table = Table(
@@ -26,16 +26,16 @@ def _groups(
             for name in columns
         ),
     )
-    return group(table, Sample(columns=columns)).groups
+    return group(table, Sample(columns=columns)).column_groups
 
 
 def test_columns_filled_in_the_same_rows_are_a_group() -> None:
-    assert _groups({"a": _filled(0, 39), "b": _filled(0, 39)}) == (Group(("a", "b"), 1.0),)
+    assert _groups({"a": _filled(0, 39), "b": _filled(0, 39)}) == (ColumnGroup(("a", "b"), 1.0),)
 
 
 def test_a_sentinel_of_a_column_is_not_filled_as_a_null_is_not() -> None:
     columns = {"a": _filled(0, 39), "b": _filled(0, 39, "")}
-    assert _groups(columns, {"b": (Value("", 60),)}) == (Group(("a", "b"), 1.0),)
+    assert _groups(columns, {"b": (Value("", 60),)}) == (ColumnGroup(("a", "b"), 1.0),)
     assert _groups(columns) == (), "filled where its statistics found no sentinels"
 
 
@@ -59,7 +59,7 @@ def test_columns_filled_in_nearly_every_row_or_in_too_few_take_no_part() -> None
 
 def test_every_two_columns_of_a_group_are_filled_together_in_nine_of_ten_rows() -> None:
     columns = {"a": _filled(0, 59), "b": _filled(0, 56), "c": _filled(0, 52)}
-    assert _groups(columns) == (Group(("a", "b"), 0.95),), (
+    assert _groups(columns) == (ColumnGroup(("a", "b"), 0.95),), (
         "c is close to b, at 53 of 57 rows, but not to a, at 53 of 60"
     )
 
@@ -71,4 +71,4 @@ def test_the_groups_are_in_the_order_of_their_first_columns_and_their_columns_in
         "q": _filled(50, 89),
         "b": _filled(0, 39),
     }
-    assert _groups(columns) == (Group(("p", "q"), 1.0), Group(("a", "b"), 1.0))
+    assert _groups(columns) == (ColumnGroup(("p", "q"), 1.0), ColumnGroup(("a", "b"), 1.0))

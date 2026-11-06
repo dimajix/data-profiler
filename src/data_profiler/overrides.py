@@ -45,7 +45,7 @@ values probed, and warned of where its coverage, or the share probed of unmistak
 below what a reference is found at, or where the column referred to is no key of one column; the
 profile holds that it was given, so that a stage that reads the profile warns of a reference given
 otherwise, until `relate` relates the tables again. A column given none has no reference and no
-candidates.
+reference candidates.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -671,14 +671,16 @@ def _keyed_as_given(given: tuple[str, ...] | None, primary: PrimaryKey | None) -
 def _referred_as_given(given: GivenReference, table: Table, column: str) -> bool:
     """Whether the column `column` of `table` was related as `given`, as `warn_unused` says.
 
-    It has the reference given, where one is; none and no candidates, where False is; and none
-    given, where nothing is.
+    It has the reference given, where one is; none and no reference candidates, where False is; and
+    none given, where nothing is.
     """
     references = [found for found in table.references if found.column == column]
     if given is None:
         return not any(found.given for found in references)
     if given is False:
-        return not references and all(found.column != column for found in table.candidates)
+        return not references and all(
+            found.column != column for found in table.reference_candidates
+        )
     return any(
         found.given and (found.table, found.key) == (given.table, given.column)
         for found in references

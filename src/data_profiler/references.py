@@ -25,13 +25,14 @@ where `_COVERAGE` of its values, nulls and sentinels aside, are found in it.
 
 A column of unmistakable values refers to the key of the most values found, then of the table of the
 fewest rows, the most specific. Another that refers to one key alone has that reference; one that
-refers to several has each as a candidate, none of them preferred, ranked by how the span of its
-values fits the one expected of as many values chosen at random of the key, then by whether its name
-agrees with the key, then by the rows of the table of the key. A column the overrides give a
-reference of is not searched, but measured - its coverage counted, or its values probed where they
+refers to several has each as a reference candidate, none of them preferred, ranked by how the span
+of its values fits the one expected of as many values chosen at random of the key, then by whether
+its name agrees with the key, then by the rows of the table of the key. A column the overrides give
+a reference of is not searched, but measured - its coverage counted, or its values probed where they
 are unmistakable - and warned of where that falls below what a reference is found at, or where the
-column referred to is no key of one column; a column given none has no reference and no candidates,
-and is not probed. The references name columns and tables alone, and no values of the database.
+column referred to is no key of one column; a column given none has no reference and no reference
+candidates, and is not probed. The references name columns and tables alone, and no values of the
+database.
 """
 
 import logging
@@ -108,7 +109,7 @@ class _Pair:
 
 
 def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences]) -> Profile:
-    """`profile`, each table with the references and candidates of its columns, found or given.
+    """`profile`, each table with the references and reference candidates of its columns.
 
     Args:
         source: The schema of the profile.
@@ -118,9 +119,9 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
             and of the columns they are given of, which the profile has, as their keys do.
 
     Returns:
-        The profile, each table with the references and the candidates of its columns, those it had
-        replaced: each given as given, measured, and none of a column given none; none where none
-        is found, with no query where none is indicated and none given.
+        The profile, each table with the references and the reference candidates of its columns,
+        found or given, those it had replaced: each given as given, measured, and none of a column
+        given none; none where none is found, with no query where none is indicated and none given.
 
     Raises:
         SourceError: The database fails to probe the references or to count their coverage.
@@ -170,10 +171,10 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         (references if len(named) == 1 else candidates).setdefault(table, []).extend(named)
     tables = tuple(_related(table, references, candidates) for table in profile.tables)
     _logger.info(
-        "Found the references of %d tables: %d, and %d candidates",
+        "Found the references of %d tables: %d, and %d reference candidates",
         len(tables),
         sum(len(table.references) for table in tables),
-        sum(len(table.candidates) for table in tables),
+        sum(len(table.reference_candidates) for table in tables),
     )
     return replace(profile, tables=tables)
 
@@ -360,7 +361,7 @@ def _misfit(dialect: Dialect, pair: _Pair) -> float:
 
 
 def _rank(dialect: Dialect, pair: _Pair) -> tuple[float, bool, int]:
-    """How `pair` is ranked among the candidates of its column: the best fitting first."""
+    """How `pair` is ranked among the reference candidates of its column: the best fitting first."""
     return _misfit(dialect, pair), not _named(pair), pair.target.rows
 
 
@@ -381,13 +382,13 @@ def _related(
     places = {column.name: place for place, column in enumerate(table.columns)}
 
     def ordered(found: Sequence[Reference]) -> tuple[Reference, ...]:
-        # Stable, so that the candidates of a column keep their ranks.
+        # Stable, so that the reference candidates of a column keep their ranks.
         return tuple(sorted(found, key=lambda reference: places[reference.column]))
 
     return replace(
         table,
         references=ordered(references.get(table.name, [])),
-        candidates=ordered(candidates.get(table.name, [])),
+        reference_candidates=ordered(candidates.get(table.name, [])),
     )
 
 

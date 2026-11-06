@@ -89,8 +89,10 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_i
         # Random values make keys of two columns by chance as well, which the table holds.
         assert set(expected.keys) <= set(table.keys), f"{table.name}: its keys"
         assert table.primary_key == expected.primary_key, f"{table.name}: its primary key"
-        assert [g.columns for g in table.groups] == [g.columns for g in expected.groups], table.name
-        for group, given in zip(table.groups, expected.groups, strict=True):
+        assert [g.columns for g in table.column_groups] == [
+            g.columns for g in expected.column_groups
+        ], table.name
+        for group, given in zip(table.column_groups, expected.column_groups, strict=True):
             assert abs(group.coherence - given.coherence) <= _COHERENCE, (
                 f"{table.name}: {group.columns} of {group.coherence}, made with {given.coherence}"
             )

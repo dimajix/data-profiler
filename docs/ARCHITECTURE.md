@@ -65,8 +65,8 @@ environment.
 *   **`data_profiler.keys`** - the keys of a table: the columns whose values identify its rows,
     indicated by its statistics and its sample, and verified on the whole table by exact distinct
     counts in queries built the same way, and its primary key.
-*   **`data_profiler.grouping`** - the groups of a table: its columns filled together, found in its
-    sample.
+*   **`data_profiler.grouping`** - the column groups of a table: its columns filled together,
+    found in its sample.
 *   **`data_profiler.entities`** - the entities of a table: its rows told apart by the values of
     its discriminator, counted by one query built the same way.
 *   **`data_profiler.disclosure`** - what of the values of a table goes into the profile: the
@@ -75,13 +75,14 @@ environment.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples, detector
-    matches, groups and entities of the selected tables, written to the profile table by table.
+    matches, column groups and entities of the selected tables, written to the profile table by
+    table.
 *   **`data_profiler.references`** - the references between the tables of a profile: their columns
     whose values are those of a key, indicated by the profile, probed by values of each looked up in
     the whole key, and counted on the whole table by queries built the same way, the values staying
     in the database.
-*   **`data_profiler.relate`** - the stage `relate`: the references and candidates of the tables of
-    a profile, written to it.
+*   **`data_profiler.relate`** - the stage `relate`: the references and reference candidates of
+    the tables of a profile, written to it.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
@@ -178,10 +179,10 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
     of its values found in the key, as real data hold rows whose reference is lost; none of
     unmistakable values, such as UUIDs, which are equal to those of another column by no chance. A
     column has one reference at most; where several keys may be the one, the profile holds each as a
-    **candidate**, none of them preferred. Whether a row or many refer to one of the key, the keys
-    of the table tell.
-*   **Group** - columns of a table filled together, such as the street, the postal code and the
-    city of a delivery address: in mostly the same rows of its sample, a column filled in a row
+    **reference candidate**, none of them preferred. Whether a row or many refer to one of the key,
+    the keys of the table tell.
+*   **Column group** - columns of a table filled together, such as the street, the postal code and
+    the city of a delivery address: in mostly the same rows of its sample, a column filled in a row
     where it holds a value, neither null nor a sentinel. Found by the Jaccard index of the rows
     each two columns are filled in, it holds its columns and its coherence, and a column does not
     name its group. A column filled in nearly every row, or in too few of the sample to be judged,
@@ -254,14 +255,14 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
     the semantic types they find are verified on the whole table by the patterns of the detectors in
     SQL. Its keys are indicated by the statistics and the sample, and verified on the whole table,
     and the primary key chosen among them, unless the overrides give it. The columns filled together
-    in the sample are named as groups. Of the enumerations of no sensitivity, the one whose values
-    tell entities of the rows apart is the discriminator, its entities counted by one more query.
-    The overrides of the project give the sentinels of a column in place of those of the tool, mark
-    the columns the detectors miss, and give the primary key of a table, and its discriminator and
-    entities of it, or none. The result is the profile, with the ranges and the values of
-    enumerations of the columns of no sensitivity, written after every table: a scan that fails
-    keeps the tables before it, and the next scan resumes its run, skipping the tables it counted,
-    unless the overrides now give their columns, their primary keys or their discriminators
+    in the sample are named as column groups. Of the enumerations of no sensitivity, the one whose
+    values tell entities of the rows apart is the discriminator, its entities counted by one more
+    query. The overrides of the project give the sentinels of a column in place of those of the
+    tool, mark the columns the detectors miss, and give the primary key of a table, and its
+    discriminator and entities of it, or none. The result is the profile, with the ranges and the
+    values of enumerations of the columns of no sensitivity, written after every table: a scan that
+    fails keeps the tables before it, and the next scan resumes its run, skipping the tables it
+    counted, unless the overrides now give their columns, their primary keys or their discriminators
     otherwise. It updates the profile there is: the tables no longer selected are dropped, the
     others kept until they are counted anew, and what the other stages filled is kept - the
     glossary, the terms and readings of the names that stay, and the descriptions of the columns,
@@ -278,11 +279,12 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
     up in the whole key by the database, ten keys at most in a query, so that no value leaves it;
     UUIDs, unmistakable values, refer to a key where more than half of them are found, of several to
     the one of the most, and the coverage of others is counted on the whole table, a reference where
-    nine of ten of its values are found. A column found in several keys has each as a candidate,
-    ranked. The overrides give the reference of a column, or none: it is not searched, but measured,
-    and warned of where its coverage, or the share probed of UUIDs, falls below what a reference is
-    found at. The result is the profile, with the references and candidates of every table in place
-    of those it had, written once at the end, so that a relate that fails leaves it as it was.
+    nine of ten of its values are found. A column found in several keys has each as a reference
+    candidate, ranked. The overrides give the reference of a column, or none: it is not searched,
+    but measured, and warned of where its coverage, or the share probed of UUIDs, falls below what a
+    reference is found at. The result is the profile, with the references and reference candidates
+    of every table in place of those it had, written once at the end, so that a relate that fails
+    leaves it as it was.
 3.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,
@@ -300,10 +302,10 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
     alone: the names split, and read where each term has one candidate, the profile written once at
     the end. The result is the profile, with terms, glossary, readings and descriptions.
 4.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
-    each table hold, its keys, its references and candidates and the references to it, the
-    harmonized names and descriptions of the columns, the entities of a table by the share of their
-    rows each column is filled in, with the names and descriptions given of them, and the concepts
-    proposed told apart from those given.
+    each table hold, its keys, its references and reference candidates and the references to it,
+    the harmonized names and descriptions of the columns, the entities of a table by the share of
+    their rows each column is filled in, with the names and descriptions given of them, and the
+    concepts proposed told apart from those given.
 
 ## Principles
 

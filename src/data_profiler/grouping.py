@@ -1,4 +1,4 @@
-"""The groups of a table: its columns filled together, found in its sample.
+"""The column groups of a table: its columns filled together, found in its sample.
 
 A column is filled in a row of the sample where it holds a value, neither null nor one of the
 sentinels its statistics found. A column takes part where it is filled in enough rows of the sample
@@ -20,7 +20,7 @@ from statistics import fmean
 from typing import Final
 
 from data_profiler.detect import is_filled
-from data_profiler.profile import DIGITS, Group, Table
+from data_profiler.profile import DIGITS, ColumnGroup, Table
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
@@ -33,15 +33,15 @@ _DISTANCE: Final = 0.1
 
 
 def group(table: Table, sample: Sample) -> Table:
-    """`table` with the groups of its columns filled together in `sample`.
+    """`table` with the column groups of its columns filled together in `sample`.
 
     Args:
         table: The table, its columns with their statistics, which name their sentinels.
         sample: The sample of the table, with the values of each of its columns.
 
     Returns:
-        The table with its groups, in the order of their first columns, each with its columns in
-        the order of the table; none where no columns are filled together.
+        The table with its column groups, in the order of their first columns, each with its columns
+        in the order of the table; none where no columns are filled together.
     """
     names = []
     filled = []
@@ -58,7 +58,7 @@ def group(table: Table, sample: Sample) -> Table:
         for pair in combinations(range(len(filled)), 2)
     }
     groups = tuple(
-        Group(
+        ColumnGroup(
             columns=tuple(names[member] for member in members),
             coherence=round(
                 fmean(similar[frozenset(pair)] for pair in combinations(members, 2)), DIGITS
@@ -67,8 +67,8 @@ def group(table: Table, sample: Sample) -> Table:
         for members in _clusters(len(filled), similar)
         if len(members) > 1
     )
-    _logger.info("Grouped the columns of %s: %d groups", table.name, len(groups))
-    return replace(table, groups=groups)
+    _logger.info("Grouped the columns of %s: %d column groups", table.name, len(groups))
+    return replace(table, column_groups=groups)
 
 
 def _jaccard(first: frozenset[int], second: frozenset[int]) -> float:

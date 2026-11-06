@@ -16,10 +16,10 @@ from data_profiler.overrides import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnGroup,
     Concept,
     Discriminator,
     Entity,
-    Group,
     Lengths,
     Match,
     PrimaryKey,
@@ -97,7 +97,7 @@ _PROFILE = Profile(
                         "number",
                     ),
                 ),
-                groups=(Group(("eml_adr", "tel_no"), 0.947),),
+                column_groups=(ColumnGroup(("eml_adr", "tel_no"), 0.947),),
             ),
             "customer",
         ),
@@ -190,7 +190,7 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
             Reference("eml_adr", "empty", "x", 1.0),
             Reference("tel_no", "cust", "eml_adr", None, given=True),
         ),
-        candidates=(
+        reference_candidates=(
             Reference("cust_nm", "empty", "x", 0.96),
             Reference("cust_nm", "cust", "eml_adr", 1.0),
         ),
@@ -202,8 +202,9 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
         ' <span class="original">cust.eml_adr</span> (many to one, given) </p>'
     ) in page, "a key refers one to one; unmistakable values of no coverage, given"
     assert (
-        'Candidates of <span class="original">cust_nm</span>: <span class="original">empty.x'
-        '</span> (96%) · <span class="original">cust.eml_adr</span> (100%) </p>'
+        'Reference candidates of <span class="original">cust_nm</span>:'
+        ' <span class="original">empty.x</span> (96%) ·'
+        ' <span class="original">cust.eml_adr</span> (100%) </p>'
     ) in page, "as they are ranked"
     assert ('Referred to by: <span class="original">cust.eml_adr</span> </p>') in page, (
         "of the references alone, not the candidates"

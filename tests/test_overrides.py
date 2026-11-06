@@ -535,7 +535,8 @@ def test_a_reference_given_otherwise_than_related_is_warned_of(
 ) -> None:
     (cntct, cust) = _RELATED.tables
     related = replace(
-        _RELATED, tables=(replace(cntct, references=references, candidates=candidates), cust)
+        _RELATED,
+        tables=(replace(cntct, references=references, reference_candidates=candidates), cust),
     )
     _referring(cust_id=given).warn_unused(related)
     expected = (

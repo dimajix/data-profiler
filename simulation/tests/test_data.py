@@ -22,9 +22,9 @@ from data_profiler.detect import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnGroup,
     Discriminator,
     Entity,
-    Group,
     Lengths,
     Match,
     Profile,
@@ -126,7 +126,7 @@ def test_the_columns_of_a_group_are_filled_in_the_same_rows_as_far_as_they_can_b
             _column("cty", "varchar(10)", 620, 50, Lengths(5, 5)),
             _column("other", "varchar(10)", 600, 50, Lengths(5, 5)),
         ),
-        groups=(Group(("strt", "pst", "cty"), 0.967),),
+        column_groups=(ColumnGroup(("strt", "pst", "cty"), 0.967),),
     )
     made = rows(table, _profile(), 0)
     strt, pst, cty, other = (

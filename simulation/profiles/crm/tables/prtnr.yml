@@ -1,4 +1,4 @@
-format: '13.3'
+format: '14.0'
 name: prtnr
 rows: 6000
 columns:
@@ -58,7 +58,7 @@ columns:
     range: {smallest: '1', largest: '100'}
 keys: [[prtnr_id]]
 primary_key: {columns: [prtnr_id]}
-groups:
+column_groups:
 - {columns: [cust_no, crdt_lmt_amt, pymt_trm_cd], coherence: 0.967}
 - {columns: [splr_no, vat_id, bnk_acct], coherence: 0.972}
 - {columns: [emp_no, dept_cd, hire_dt], coherence: 1.0}

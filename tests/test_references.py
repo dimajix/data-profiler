@@ -203,7 +203,7 @@ def test_a_column_found_in_several_keys_has_each_as_a_candidate_ranked() -> None
     profile = _ordering(_ranged("ref_id", "bigint", 3000, 100001, 104990), keyed=(prtnr, _CUST))
     ordered = _ordered(find(_Answering(), profile, {}))
     assert ordered.references == ()
-    assert ordered.candidates == (
+    assert ordered.reference_candidates == (
         Reference("ref_id", "cust", "cust_id", 1.0),
         Reference("ref_id", "prtnr", "prtnr_id", 1.0),
     ), "the span of the values of the customers fits theirs, not that of the partners"
@@ -261,7 +261,7 @@ def test_the_references_of_more_keys_than_ten_are_probed_and_counted_in_several_
     )
     source = _Answering()
     found = find(source, _ordering(_ranged("ref", "bigint", 3000, 100001, 104990), keyed=keyed), {})
-    assert len(_ordered(found).candidates) == 11
+    assert len(_ordered(found).reference_candidates) == 11
     probed, counted = source.sent[:2], source.sent[2:]
     assert [statement.count(' AS "key"') for statement in probed] == [10, 1]
     assert [statement.count("LEFT JOIN") for statement in counted] == [10, 1]
@@ -279,10 +279,12 @@ def test_the_references_and_candidates_a_profile_had_are_replaced() -> None:
     ordered = replace(
         profile.table("ord"),
         references=(Reference("cust_id", "cust", "cust_id", 1.0),),
-        candidates=(Reference("cust_id", "cust", "cust_guid", 1.0),) * 2,
+        reference_candidates=(Reference("cust_id", "cust", "cust_guid", 1.0),) * 2,
     )
     stale = replace(profile, tables=(_CUST, ordered))
-    assert _ordered(find(_Answering(), stale, {})) == replace(ordered, references=(), candidates=())
+    assert _ordered(find(_Answering(), stale, {})) == replace(
+        ordered, references=(), reference_candidates=()
+    )
 
 
 def test_candidates_of_no_span_known_are_ranked_by_their_names_then_their_rows() -> None:
@@ -293,7 +295,9 @@ def test_candidates_of_no_span_known_are_ranked_by_their_names_then_their_rows()
 
     keyed = (number("prtnr", 6000), number("lead", 4000), number("cust", 5000))
     column = Column("cust_no", "varchar(12)", Statistics(0, 3000, Lengths(12, 12)))
-    candidates = _ordered(find(_Answering(), _ordering(column, keyed=keyed), {})).candidates
+    candidates = _ordered(
+        find(_Answering(), _ordering(column, keyed=keyed), {})
+    ).reference_candidates
     assert [reference.table for reference in candidates] == ["cust", "lead", "prtnr"]
 
 
@@ -372,7 +376,7 @@ def test_a_column_given_no_reference_has_none_and_no_candidates_and_is_not_probe
     source = _Answering()
     profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 104999))
     ordered = _ordered(find(source, profile, {"ord": {"cust_id": False}}))
-    assert (ordered.references, ordered.candidates, source.sent) == ((), (), [])
+    assert (ordered.references, ordered.reference_candidates, source.sent) == ((), (), [])
 
 
 def test_the_references_of_the_simulation_are_found(
@@ -386,7 +390,7 @@ def test_the_references_of_the_simulation_are_found(
         for made in table.references:
             if made in related.references:
                 continue
-            ranked = [c for c in related.candidates if c.column == made.column]
+            ranked = [c for c in related.reference_candidates if c.column == made.column]
             assert ranked[0] == made, f"{table.name}.{made.column}: the first of its candidates"
     for table in found.tables:
         given = example.table(table.name).references
@@ -394,7 +398,9 @@ def test_the_references_of_the_simulation_are_found(
             f"{table.name}: no reference it was not made with"
         )
     columns = {(table.name, r.column) for table in found.tables for r in table.references}
-    candidates = {(table.name, r.column) for table in found.tables for r in table.candidates}
+    candidates = {
+        (table.name, r.column) for table in found.tables for r in table.reference_candidates
+    }
     for code in (("ord_itm", "qty"), ("ord_itm", "pos_no"), ("prtnr", "lead_scr")):
         assert code not in columns | candidates, f"{code}: a code refers to no key"
     for key in (("cust", "cust_id"), ("cntct", "cntct_id"), ("prtnr", "prtnr_id")):

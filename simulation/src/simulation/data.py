@@ -92,7 +92,7 @@ _DATES: Final = {
 def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
     """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
 
-    The columns of each of its groups are filled in the same rows, as far as their nulls and
+    The columns of each of its column groups are filled in the same rows, as far as their nulls and
     sentinels allow, and in as many rows of each entity of its discriminator as the entity counts;
     of each of its keys of two columns, the column of fewer values is numbered within the other;
     each column of a reference holds values of the key it refers to, and as many rows of values
@@ -131,7 +131,7 @@ def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
             f"{table.name}.{unreferring}: a column numbered or of a discriminator refers"
         )
     shared = {}
-    for found in table.groups:
+    for found in table.column_groups:
         order = random.sample(range(table.rows), table.rows)
         shared.update(dict.fromkeys(found.columns, order))
     kinds = [] if discriminator is None else _kinds(table, discriminator, random)

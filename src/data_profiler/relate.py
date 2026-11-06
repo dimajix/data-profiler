@@ -3,8 +3,8 @@
 It reads the profile `scan` wrote, of the schema of the source, and finds the references of its
 tables to the keys of each other by the module `references`, which queries the database, those the
 overrides of the project give taken as given: measured, not searched; the profile is written once,
-at the end, with the references and candidates of every table in place of those it had, so that a
-relate that fails leaves it as it was, and the next one begins anew.
+at the end, with the references and reference candidates of every table in place of those it had,
+so that a relate that fails leaves it as it was, and the next one begins anew.
 """
 
 import logging

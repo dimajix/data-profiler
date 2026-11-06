@@ -13,10 +13,10 @@ from data_profiler.profile import (
     FORMAT,
     Cardinality,
     Column,
+    ColumnGroup,
     Concept,
     Discriminator,
     Entity,
-    Group,
     Lengths,
     Match,
     PrimaryKey,
@@ -61,7 +61,7 @@ _PROFILE = Profile(
             ),
             keys=(("CUST_ID",), ("CUST_NM", "CUST_EML")),
             primary_key=PrimaryKey(("CUST_ID",)),
-            groups=(Group(("CUST_NM", "CUST_EML"), 0.912),),
+            column_groups=(ColumnGroup(("CUST_NM", "CUST_EML"), 0.912),),
             discriminator=Discriminator(
                 "CUST_TYP_CD",
                 (
@@ -356,15 +356,19 @@ def test_what_describe_filled_is_written_and_read_unchanged(tmp_path: Path) -> N
     assert written["description"] == "Who the customer is."
 
 
-def _related(*references: Reference, candidates: tuple[Reference, ...] = ()) -> Profile:
-    """The profile, with a table ORD whose columns refer by `references` and `candidates`."""
+def _related(*references: Reference, reference_candidates: tuple[Reference, ...] = ()) -> Profile:
+    """The profile, with a table ORD whose columns refer by `references`, `reference_candidates`."""
     columns = (
         Column(name="ORD_ID", type="bigint", statistics=Statistics(0, 100)),
         Column(name="CUST_ID", type="bigint", statistics=Statistics(0, 40)),
         Column(name="REF_NO", type="bigint", statistics=Statistics(0, 30)),
     )
     ordered = Table(
-        name="ORD", rows=100, columns=columns, references=references, candidates=candidates
+        name="ORD",
+        rows=100,
+        columns=columns,
+        references=references,
+        reference_candidates=reference_candidates,
     )
     return _PROFILE.updated(ordered)
 
@@ -373,7 +377,7 @@ def test_references_and_candidates_are_written_and_read_unchanged(tmp_path: Path
     profile = _related(
         Reference("CUST_ID", "CUST", "CUST_ID", 0.97),
         Reference("ORD_ID", "ORD", "ORD_ID", None, given=True),
-        candidates=(
+        reference_candidates=(
             Reference("REF_NO", "CUST", "CUST_ID", 1.0),
             Reference("REF_NO", "ORD", "ORD_ID", 1.0),
         ),
@@ -387,7 +391,9 @@ def test_references_and_candidates_are_written_and_read_unchanged(tmp_path: Path
         "key": "CUST_ID",
         "coverage": 0.97,
     }, "a reference found not marked as given"
-    assert [found["table"] for found in written["candidates"]] == ["CUST", "ORD"], "as ranked"
+    assert [found["table"] for found in written["reference_candidates"]] == ["CUST", "ORD"], (
+        "as ranked"
+    )
 
 
 @pytest.mark.parametrize(
@@ -406,7 +412,7 @@ def test_references_and_candidates_are_written_and_read_unchanged(tmp_path: Path
         (
             (Reference("REF_NO", "CUST", "CUST_ID", 1.0),),
             (Reference("REF_NO", "ORD", "ORD_ID", 1.0),),
-            "the column 'REF_NO' has a reference and candidates",
+            "the column 'REF_NO' has a reference and reference candidates",
         ),
         (
             (),
@@ -427,7 +433,7 @@ def test_a_reference_that_is_none_of_the_profile_is_refused(
     candidates: tuple[Reference, ...],
     refused: str,
 ) -> None:
-    _related(*references, candidates=candidates).write(tmp_path)
+    _related(*references, reference_candidates=candidates).write(tmp_path)
     with pytest.raises(ProfileError, match=refused):
         Profile.read(tmp_path)
 
@@ -443,7 +449,7 @@ def test_a_table_counted_anew_has_none_of_the_references_of_the_one_it_replaces(
 def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropped() -> None:
     profile = _related(
         Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
-        candidates=(
+        reference_candidates=(
             Reference("REF_NO", "CUST", "CUST_ID", 1.0),
             Reference("REF_NO", "ORD", "ORD_ID", 1.0),
         ),
@@ -452,7 +458,9 @@ def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropp
     dropped = replace(cust, columns=cust.columns[1:], keys=(), primary_key=None)
     (_, ordered) = profile.updated(dropped).tables
     assert ordered.references == ()
-    assert ordered.candidates == (Reference("REF_NO", "ORD", "ORD_ID", 1.0),), "to others kept"
+    assert ordered.reference_candidates == (Reference("REF_NO", "ORD", "ORD_ID", 1.0),), (
+        "to others kept"
+    )
 
 
 def test_a_column_that_is_a_key_of_its_table_refers_one_to_one_another_many_to_one() -> None:
@@ -467,7 +475,7 @@ def test_the_references_to_a_table_are_those_of_the_tables_that_refer() -> None:
     profile = _related(
         Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
         Reference("ORD_ID", "ORD", "ORD_ID", 1.0),
-        candidates=(Reference("REF_NO", "CUST", "CUST_ID", 1.0),),
+        reference_candidates=(Reference("REF_NO", "CUST", "CUST_ID", 1.0),),
     )
     ordered = profile.table("ORD")
     assert profile.referring("CUST") == [(ordered, ordered.references[0])], "no candidate"
@@ -478,14 +486,14 @@ def test_a_restricted_profile_drops_the_references_to_the_tables_it_drops() -> N
     profile = _related(
         Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
         Reference("ORD_ID", "ORD", "ORD_ID", 1.0),
-        candidates=(
+        reference_candidates=(
             Reference("REF_NO", "CUST", "CUST_ID", 1.0),
             Reference("REF_NO", "ORD", "ORD_ID", 1.0),
         ),
     )
     (ordered,) = profile.restricted({"ORD"}).tables
     assert ordered.references == (Reference("ORD_ID", "ORD", "ORD_ID", 1.0),)
-    assert ordered.candidates == (Reference("REF_NO", "ORD", "ORD_ID", 1.0),)
+    assert ordered.reference_candidates == (Reference("REF_NO", "ORD", "ORD_ID", 1.0),)
 
 
 def test_a_restricted_profile_has_the_tables_named_alone() -> None:

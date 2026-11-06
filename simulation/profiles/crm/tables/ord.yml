@@ -1,4 +1,4 @@
-format: '13.3'
+format: '14.0'
 name: ord
 rows: 20000
 columns:
@@ -66,5 +66,5 @@ references:
 - {column: cust_id, table: cust, key: cust_id, coverage: 0.98}
 - {column: cntct_uuid, table: cntct, key: cntct_uuid, coverage: null}
 - {column: dlvr_addr_guid, table: cust_addr, key: addr_guid, coverage: null}
-groups:
+column_groups:
 - {columns: [dlvr_strt_nm, dlvr_pst_cd, dlvr_cty_nm], coherence: 0.994}
