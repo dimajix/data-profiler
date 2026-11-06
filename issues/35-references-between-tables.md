@@ -137,3 +137,21 @@ found, then those given:
   renamed so, in a commit of its own before step 2. The profile finds a table by its name,
   `Profile.table`, which the simulation takes its tables from; a column has a reference, candidates
   or neither, checked as the profile is read rather than a type of its own.
+- **2026-11-06** — Step 2 built: the stage `relate`, `data-profiler relate ENVIRONMENT`, finds the
+  references by the module `references` and writes them to the profile once, at the end; the dialect
+  probes values taken at random in whole keys, `Dialect.probed` - the values taken held in memory,
+  the keys read past them -, and counts the coverage, `Dialect.covered`, of `Probe` and `Lookup`,
+  both comparing values as text, of types of one family, `Dialect.is_same_family`, and tells UUIDs
+  by their type, `Dialect.is_unmistakable`. Unlike the How, each column probed is taken by a sampled
+  read of its own, which ends once it has taken its values, rather than all of a table in one read.
+  A range overlaps the key's, rather than lies within it, as the values outside of the key may lie
+  beyond it. As the maintainer decided after the review, a run of whole numbers from the start of a
+  key refers to it only where its name holds the terms of the key and of its table: a run short of
+  the end of the key, as a code or a counter is, and one of a key of its own table, as keys numbered
+  from one are within each other; a column of nearly every value of the key refers to it whatever
+  its name. `Profile.read_of` reads a profile of a schema, for `scan` and `relate`. The report shows
+  the references of a table, one to one or many to one, as `Table.cardinality` says, its candidates
+  ranked, and the references to it, as `Profile.referring` gives them. In the simulation, the
+  references of UUIDs, of the products, of the addresses to their customers and of the items to
+  their orders are found; the customers of contacts and orders are candidates of every key numbered
+  from one, the customers first, and no code refers to a key.

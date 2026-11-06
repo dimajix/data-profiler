@@ -5,7 +5,7 @@ did not design - tables with dozens or hundreds of columns behind abbreviated na
 understandable data model of it. Trino and Starburst are the first databases it reads; it writes
 its SQL through a dialect, so that others can follow.
 
-It works in three stages, each of which can be run again on its own:
+It works in four stages, each of which can be run again on its own:
 
 - **scan** reads the selected tables, by a list or a regular expression, and finds for every column
   the range of its values, its nulls and the values that stand for none, such as empty texts or
@@ -16,6 +16,12 @@ It works in three stages, each of which can be run again on its own:
   filled together, such as the street, the postal code and the city of a delivery address; and,
   where a table holds the rows of several entities - customers, suppliers and employees -, the
   column whose values tell them apart, and which columns each of them fills.
+- **relate** finds the references between the tables: which column holds the values of a key of
+  another table, or of its own - the customer of an order, the parent of a customer -, how many of
+  its values are found in the key, and, where the keys of several tables hold them, each as a
+  candidate. A reference is indicated by the profile, probed by a hundred of its values looked up in
+  the whole key, and counted on the whole table; UUIDs, which are equal by no chance, are decided by
+  the probe alone.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
   language model, running locally in Ollama, for the concepts of the terms of none, and for a
@@ -183,6 +189,16 @@ removed by hand before it is scanned anew. One of an older minor version is read
 `--project`, the project is the current directory. The progress goes to standard error; with
 `--debug` before the command, the log holds the statements sent and the values of the database, and
 stays on the machine.
+
+The tables of the profile are related to each other by
+
+```bash
+uv run data-profiler relate simulation --project examples/crm
+```
+
+which queries the database and writes the references and candidates of every table into the
+profile, in place of those it had, once, at the end: a relate that fails leaves the profile as it
+was. A table scanned anew has no references until the tables are related again.
 
 The names of the profile are split into their terms and read by
 

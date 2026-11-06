@@ -25,6 +25,7 @@ from data_profiler.profile import (
     PrimaryKey,
     Profile,
     Range,
+    Reference,
     Statistics,
     Table,
     Term,
@@ -178,6 +179,36 @@ def test_a_report_shows_a_primary_key_given_and_whether_it_is_one_of_the_keys() 
         '<span class="original">eml_adr</span> · <span class="original">cust_nm, tel_no</span>'
         " (primary, given; not one of the keys)"
     ) in page
+
+
+def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it() -> None:
+    (table, empty) = _PROFILE.tables
+    related = replace(
+        table,
+        keys=(("eml_adr",),),
+        references=(
+            Reference("eml_adr", "empty", "x", 1.0),
+            Reference("tel_no", "cust", "eml_adr", None),
+        ),
+        candidates=(
+            Reference("cust_nm", "empty", "x", 0.96),
+            Reference("cust_nm", "cust", "eml_adr", 1.0),
+        ),
+    )
+    page = _page(profile=replace(_PROFILE, tables=(related, empty)))
+    assert (
+        'References: <span class="original">eml_adr</span> → <span class="original">empty.x'
+        '</span> (one to one, 100%) · <span class="original">tel_no</span> →'
+        ' <span class="original">cust.eml_adr</span> (many to one) </p>'
+    ) in page, "a key refers one to one; unmistakable values of no coverage"
+    assert (
+        'Candidates of <span class="original">cust_nm</span>: <span class="original">empty.x'
+        '</span> (96%) · <span class="original">cust.eml_adr</span> (100%) </p>'
+    ) in page, "as they are ranked"
+    assert ('Referred to by: <span class="original">cust.eml_adr</span> </p>') in page, (
+        "of the references alone, not the candidates"
+    )
+    assert page.count('<p class="references">') == 1, "none of a table of no references"
 
 
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:

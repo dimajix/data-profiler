@@ -11,6 +11,7 @@ from yaml import safe_dump, safe_load
 from data_profiler.detect import EMAIL, SemanticType, Sensitivity
 from data_profiler.profile import (
     FORMAT,
+    Cardinality,
     Column,
     Concept,
     Discriminator,
@@ -452,6 +453,25 @@ def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropp
     (_, ordered) = profile.updated(dropped).tables
     assert ordered.references == ()
     assert ordered.candidates == (Reference("REF_NO", "ORD", "ORD_ID", 1.0),), "to others kept"
+
+
+def test_a_column_that_is_a_key_of_its_table_refers_one_to_one_another_many_to_one() -> None:
+    (table,) = _PROFILE.tables
+    assert table.cardinality(Reference("CUST_ID", "ORD", "CUST_ID", 1.0)) is Cardinality.ONE
+    assert table.cardinality(Reference("CUST_EML", "ORD", "EML", 1.0)) is Cardinality.MANY, (
+        "of a key of two columns alone"
+    )
+
+
+def test_the_references_to_a_table_are_those_of_the_tables_that_refer() -> None:
+    profile = _related(
+        Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
+        Reference("ORD_ID", "ORD", "ORD_ID", 1.0),
+        candidates=(Reference("REF_NO", "CUST", "CUST_ID", 1.0),),
+    )
+    ordered = profile.table("ORD")
+    assert profile.referring("CUST") == [(ordered, ordered.references[0])], "no candidate"
+    assert profile.referring("ORD") == [(ordered, ordered.references[1])], "of itself as well"
 
 
 def test_a_restricted_profile_drops_the_references_to_the_tables_it_drops() -> None:

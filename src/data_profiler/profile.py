@@ -24,17 +24,18 @@ descriptions of the database, of the tables and of the entities among it, which 
 holds none of -, and scan takes the marks, the sentinels, the primary keys and the discriminators
 they give.
 
-A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
-`Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
-each table names the run that counted it, so that a run resumed can skip it. A table counted anew
-keeps the terms and the readings of its name and of the names of its columns, and the descriptions
-of its columns, which describe filled.
+A profile is begun by the stage scan, and written by the stages after it as well. Which profile a
+scan starts from is decided here, by `Profile.updating`: the one there is, its run resumed where it
+did not finish, else in a new run; each table names the run that counted it, so that a run resumed
+can skip it. A table counted anew keeps the terms and the readings of its name and of the names of
+its columns, and the descriptions of its columns, which describe filled.
 """
 
 import logging
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -384,13 +385,20 @@ class PrimaryKey:
     given: bool = False
 
 
+class Cardinality(Enum):
+    """How many rows of a table refer by a reference to one row of the key: one, or many."""
+
+    ONE = "one to one"
+    MANY = "many to one"
+
+
 @dataclass(frozen=True)
 class Reference:
     """A column of a table whose values are among those of a key of one column of a table.
 
     The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
-    row or many refer to one of the key, the keys of the table of the column tell: a column that is
-    a key of it refers one to one.
+    row or many refer to one of the key, the keys of the table of the column tell, as
+    `Table.cardinality` says.
 
     Attributes:
         column: The name of the column that refers.
@@ -476,6 +484,17 @@ class Table:
                 return column
         raise KeyError(name)
 
+    def cardinality(self, reference: Reference) -> Cardinality:
+        """How many of its rows refer by `reference`, of one of its columns, to one of the key.
+
+        Args:
+            reference: A reference of one of its columns.
+
+        Returns:
+            One, where the column is a key of it, else many.
+        """
+        return Cardinality.ONE if (reference.column,) in self.keys else Cardinality.MANY
+
 
 @dataclass(frozen=True)
 class Run:
@@ -537,6 +556,23 @@ class Profile:
     types: SemanticTypes = ()
     run: Run | None = None
     description: str | None = None
+
+    def referring(self, name: str) -> list[tuple[Table, Reference]]:
+        """The references of its tables to the table `name`, with the tables that refer.
+
+        Args:
+            name: The name of the table referred to.
+
+        Returns:
+            Each reference, with its table, of the tables and their columns in their order; none
+            where none refers to it. Candidates are not references.
+        """
+        return [
+            (table, reference)
+            for table in self.tables
+            for reference in table.references
+            if reference.table == name
+        ]
 
     def table(self, name: str) -> Table:
         """Its table of the name `name`.
