@@ -37,7 +37,7 @@ from typing import Final
 from phonenumbers import NumberParseException, is_valid_number, parse
 from stdnum import iban, luhn
 
-from data_profiler.currencies import CODES, NAMES, NUMBERS
+from data_profiler import currencies
 
 
 class Sensitivity(Enum):
@@ -282,17 +282,17 @@ ZERO_ONE: Final = SemanticType(
 CURRENCY_CODE: Final = SemanticType(
     "currency-code",
     Sensitivity.NONE,
-    Detector(re.compile(_any_of(CODES)), threshold=_NEARLY_EVERY),
+    Detector(re.compile(_any_of(currencies.CODES)), threshold=_NEARLY_EVERY),
 )
 """The alphabetic code of a currency of ISO 4217, in capitals, as it writes them: `EUR`."""
 CURRENCY_NUMBER: Final = SemanticType(
     "currency-number",
     Sensitivity.NONE,
-    Detector(re.compile(_any_of(NUMBERS)), threshold=_NEARLY_EVERY),
+    Detector(re.compile(_any_of(currencies.NUMBERS)), threshold=_NEARLY_EVERY),
 )
 """The number of a currency of ISO 4217, of three digits: `978`, and `008`, not `8`."""
 CURRENCY_NAME: Final = SemanticType(
-    "currency-name", Sensitivity.NONE, Detector(re.compile(_cases(*NAMES)))
+    "currency-name", Sensitivity.NONE, Detector(re.compile(_cases(*currencies.NAMES)))
 )
 """The English name of a currency, of ISO 4217 or more common: `Euro`, `British Pound`."""
 

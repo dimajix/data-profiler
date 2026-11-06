@@ -46,7 +46,7 @@ from typing import Final
 from stdnum.iban import calc_check_digits
 from stdnum.luhn import calc_check_digit
 
-from data_profiler.currencies import CODES, NAMES, NUMBERS
+from data_profiler import currencies
 from data_profiler.detect import (
     CARD_NUMBER,
     CURRENCY_CODE,
@@ -872,9 +872,9 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     TRUE_FALSE: _one_of(*cases("true", "false")),
     YES_NO: _one_of(*cases("yes", "no")),
     ZERO_ONE: _one_of("0", "1"),
-    CURRENCY_CODE: _one_of(*CODES),
-    CURRENCY_NUMBER: _one_of(*NUMBERS),
-    CURRENCY_NAME: _one_of(*cases(*NAMES)),
+    CURRENCY_CODE: _one_of(*currencies.CODES),
+    CURRENCY_NUMBER: _one_of(*currencies.NUMBERS),
+    CURRENCY_NAME: _one_of(*cases(*currencies.NAMES)),
 }
 
 

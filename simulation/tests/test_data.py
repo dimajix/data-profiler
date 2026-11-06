@@ -6,7 +6,7 @@ from datetime import date, datetime
 
 import pytest
 
-from data_profiler.currencies import CODES, NUMBERS
+from data_profiler import currencies
 from data_profiler.detect import (
     BUILT_IN,
     CARD_NUMBER,
@@ -609,8 +609,8 @@ _TEXTS = {
     TRUE_FALSE: (4, 5, 2),
     YES_NO: (2, 3, 2),
     ZERO_ONE: (1, 1, 2),
-    CURRENCY_CODE: (3, 3, len(CODES)),
-    CURRENCY_NUMBER: (3, 3, len(NUMBERS)),
+    CURRENCY_CODE: (3, 3, len(currencies.CODES)),
+    CURRENCY_NUMBER: (3, 3, len(currencies.NUMBERS)),
     CURRENCY_NAME: (4, 20, 500),
 }
 
