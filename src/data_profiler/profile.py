@@ -13,14 +13,14 @@ name.
 
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
-profile, the rows, runs, groups and discriminators of its tables, and the types, statistics,
-matches, values, marks and sentinels of their columns; the stage describe fills the terms of the
-names of the tables and columns by its step that splits them, the glossary by its step that proposes
-concepts, the readings by its step that reads the names, and the descriptions of the columns by its
-step that describes them. The overrides fill none: what they give, the stages lay over the profile
-they read - the names given and the descriptions of the database, of the tables and of the entities
-among it, which a profile written holds none of -, and scan takes the marks, the sentinels and the
-discriminators they give.
+profile, the rows, runs, keys, primary keys, groups and discriminators of its tables, and the types,
+statistics, matches, values, marks and sentinels of their columns; the stage describe fills the
+terms of the names of the tables and columns by its step that splits them, the glossary by its step
+that proposes concepts, the readings by its step that reads the names, and the descriptions of the
+columns by its step that describes them. The overrides fill none: what they give, the stages lay
+over the profile they read - the names given and the descriptions of the database, of the tables and
+of the entities among it, which a profile written holds none of -, and scan takes the marks, the
+sentinels, the primary keys and the discriminators they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
@@ -52,7 +52,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(13, 1)
+FORMAT: Final = Version(13, 2)
 """The version of the format a profile is written in, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -369,6 +369,20 @@ class Discriminator:
 
 
 @dataclass(frozen=True)
+class PrimaryKey:
+    """The key that identifies the rows of a table in a data model: chosen, or given by hand.
+
+    Attributes:
+        columns: The names of its columns, in the order of the table.
+        given: Whether the overrides gave it, rather than it was chosen among the keys; one given
+            may be none of them: its values not unique, or holding a key of fewer columns.
+    """
+
+    columns: tuple[str, ...]
+    given: bool = False
+
+
+@dataclass(frozen=True)
 class Table:
     """A table of the schema, under its original name, and what was found about it.
 
@@ -377,6 +391,11 @@ class Table:
         run: When the run of scan that counted the table started, or None where no scan did.
         rows: The number of its rows, counted exactly.
         columns: Its columns, in the order of the table.
+        keys: Its keys: the columns, one or two, whose values together identify each of its rows,
+            verified on the whole table, none of them a key of fewer columns; the fewer columns
+            first, each in the order of the table.
+        primary_key: What identifies its rows in a data model, a key chosen among its keys or the
+            columns given; None where it has none.
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
         discriminator: The column whose values tell the entities of its rows apart, with those
@@ -395,6 +414,8 @@ class Table:
     run: datetime | None = field(default=None, kw_only=True)
     rows: int
     columns: tuple[Column, ...]
+    keys: tuple[tuple[str, ...], ...] = ()
+    primary_key: PrimaryKey | None = None
     groups: tuple[Group, ...] = ()
     discriminator: Discriminator | None = None
     terms: tuple[Term, ...] | None = None
@@ -726,27 +747,37 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
 
     Raises:
         DocumentError: The file cannot be read as a document of a table.
-        ProfileError: The file holds a table of another name than its own, a group names a
-            column the table does not have, or the groups name one twice, or the discriminator is
-            not one of the table, as `_refuse_discriminator` says.
+        ProfileError: The file holds a table of another name than its own, a key, the primary
+            key or a group names a column the table does not have, or the groups name one twice,
+            or the discriminator is not one of the table, as `_refuse_discriminator` says.
     """
     table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
         raise ProfileError(f"{path} holds the table {table.name!r}, not the one it is named after")
     names = {column.name for column in table.columns}
-    grouped: set[str] = set()
-    for group in table.groups:
-        for name in group.columns:
-            if name not in names:
-                raise ProfileError(
-                    f"{path}: a group names the column {name!r}, which the table does not have"
-                )
-            if name in grouped:
-                raise ProfileError(f"{path}: the groups name the column {name!r} twice")
-            grouped.add(name)
+    primary = () if table.primary_key is None else table.primary_key.columns
+    _refuse_unknown(path, "a key", [name for key in (*table.keys, primary) for name in key], names)
+    grouped = [name for group in table.groups for name in group.columns]
+    _refuse_unknown(path, "a group", grouped, names)
+    twice = next((name for name in grouped if grouped.count(name) > 1), None)
+    if twice is not None:
+        raise ProfileError(f"{path}: the groups name the column {twice!r} twice")
     if table.discriminator is not None:
         _refuse_discriminator(path, table.discriminator, names)
     return table
+
+
+def _refuse_unknown(path: Path, naming: str, named: Iterable[str], names: Collection[str]) -> None:
+    """Refuses `named`, the columns `naming` names, where one is not of the columns `names`.
+
+    Raises:
+        ProfileError: A column of `named` is not of `names`, the first such named.
+    """
+    unknown = next((name for name in named if name not in names), None)
+    if unknown is not None:
+        raise ProfileError(
+            f"{path}: {naming} names the column {unknown!r}, which the table does not have"
+        )
 
 
 def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Collection[str]) -> None:
@@ -756,11 +787,7 @@ def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Colle
         ProfileError: The discriminator names a column not of `names`, an entity gives the filled
             rows of other columns than those of `names`, or two entities name the same value.
     """
-    if discriminator.column not in names:
-        raise ProfileError(
-            f"{path}: the discriminator is the column {discriminator.column!r}, which the table"
-            " does not have"
-        )
+    _refuse_unknown(path, "the discriminator", [discriminator.column], names)
     if any(set(entity.filled) != set(names) for entity in discriminator.entities):
         raise ProfileError(f"{path}: an entity does not give the filled rows of each column")
     # The values are not named: they are values of the database, which no message holds.

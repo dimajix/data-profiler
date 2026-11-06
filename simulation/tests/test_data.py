@@ -186,6 +186,39 @@ def test_the_nulls_of_a_discriminator_are_to_be_the_rows_of_no_entity() -> None:
         rows(table, Random(0))
 
 
+def _keyed(order: int = 300, position: int = 5, nulls: int = 0, of_order: int = 0) -> Table:
+    """A table of 1000 rows of a key of two columns, of `order` orders and `position` positions.
+
+    The positions have `nulls`, the orders `of_order`.
+    """
+    keyed = _table(
+        _column("ord", "bigint", of_order, order), _column("pos", "smallint", nulls, position)
+    )
+    return replace(keyed, keys=(("ord", "pos"),))
+
+
+def test_a_key_of_two_columns_is_unique_each_column_of_its_distinct_values() -> None:
+    made = rows(_keyed(), Random(0))
+    assert len(set(made)) == 1000, "no pair twice"
+    assert (len({order for order, _ in made}), len({pos for _, pos in made})) == (300, 5)
+
+
+@pytest.mark.parametrize(
+    ("table", "problem"),
+    [
+        (_keyed(order=150), "150 values of 5 rows at most do not fill 1000 rows"),
+        (_keyed(nulls=10), "a column of a key has nulls or sentinels"),
+        (_keyed(of_order=10), "a column of a key has nulls or sentinels"),
+    ],
+    ids=["too few", "nulls", "nulls of the other"],
+)
+def test_a_key_of_two_columns_that_cannot_be_generated_is_refused(
+    table: Table, problem: str
+) -> None:
+    with pytest.raises(SimulationError, match=f"t\\.(ord|pos): {problem}"):
+        rows(table, Random(0))
+
+
 # A sentinel of five rows, which is no day.
 _NONE = (Value("N/A", 5),)
 

@@ -98,6 +98,10 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         ranged = [source.dialect.smallest(values), source.dialect.largest(values)]
         without = source.dialect.without('c"y', "varchar(3)", {"it's"})
         moments = source.dialect.sentinels('c"y', "timestamp(3)", {"9999-12-31", ""})
+        distinct = [
+            source.dialect.exactly_distinct(['c"y']),
+            source.dialect.exactly_distinct(['c"y', "z"]),
+        ]
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
@@ -112,6 +116,14 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert "IN ('it''s')" in without
     assert 'CAST("c""y" AS date)' in moments, "a moment compared as its day"
     assert "IN ('', '9999-12-31')" in moments
+    assert distinct == ['count(DISTINCT "c""y")', 'count(DISTINCT ROW("c""y", "z"))']
+
+
+def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Source) -> None:
+    dialect = source.dialect
+    sets = [("ord_itm_id",), ("pos_no",), ("ord_id", "pos_no")]
+    statement = dialect.select([dialect.rows(), *map(dialect.exactly_distinct, sets)], "ord_itm")
+    assert source.query(statement, "counting the distinct values") == [(61000, 61000, 9, 61000)]
 
 
 def test_a_column_without_sentinels_is_counted_as_it_is() -> None:
@@ -144,6 +156,33 @@ def test_only_the_types_the_database_casts_to_a_text_have_text(kind: str, writte
 def test_only_the_types_whose_values_have_an_order_are_ordered(kind: str, ordered: bool) -> None:
     with connect("trino://h/c/s", "u", "") as source:
         assert source.dialect.is_ordered(kind) == ordered
+
+
+@pytest.mark.parametrize(
+    ("kind", "identifies", "surrogate"),
+    [
+        ("bigint", True, True),
+        ("uuid", True, True),
+        ("decimal(12,0)", True, True),
+        ("decimal(12,2)", True, False),
+        ("varchar(12)", True, False),
+        ("char(3)", True, False),
+        ("date", True, False),
+        ("double", False, False),
+        ("real", False, False),
+        ("timestamp(3)", False, False),
+        ("time(3)", False, False),
+        ("boolean", False, False),
+        ("varbinary", False, False),
+        ("array(integer)", False, False),
+    ],
+)
+def test_only_the_types_of_exact_values_identify_rows(
+    kind: str, identifies: bool, surrogate: bool
+) -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.identifies(kind) == identifies
+        assert source.dialect.is_surrogate(kind) == surrogate, "a key a database generates"
 
 
 @pytest.mark.parametrize(

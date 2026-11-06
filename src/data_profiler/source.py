@@ -11,6 +11,7 @@ process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a C
 """
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Sequence
 from re import Pattern
@@ -32,18 +33,16 @@ _PORT: Final = 443
 # The form of a URL of Trino, for the messages of a URL that has another.
 _FORM: Final = "trino://host:port/catalog/schema"
 
-# The types of Trino whose values are texts, by how their names begin.
+# The types of Trino whose values are texts, and those of whole numbers, by how their names begin.
 _TEXTS: Final = ("varchar", "char")
+_WHOLE: Final = ("tinyint", "smallint", "integer", "bigint")
 
 # The types of Trino whose values have an order, by how their names begin - `time` also those of
 # `timestamp` -: those of others, such as `json` or `map`, would make `min` and `max` fail the
 # query they are in; a range of binaries would say nothing.
 _ORDERED: Final = (
     *_TEXTS,
-    "tinyint",
-    "smallint",
-    "integer",
-    "bigint",
+    *_WHOLE,
     "real",
     "double",
     "decimal",
@@ -57,6 +56,15 @@ _ORDERED: Final = (
 # The types of Trino whose values it casts to a text, by how their names begin: those of others,
 # such as an array, a map, a row or a binary, would make the cast fail the query it is in.
 _HAVE_TEXT: Final = (*_ORDERED, "json")
+
+# The types of Trino of the keys a database generates, by how their names begin: whole numbers and
+# UUIDs - and decimals of no fraction, as which Trino reads the keys of some databases.
+_SURROGATE: Final = (*_WHOLE, "uuid")
+_WHOLE_DECIMAL: Final = re.compile(r"decimal\(\d+,\s*0\)")
+
+# The types of Trino whose values identify a row, by how their names begin: exact values, not those
+# of floating point or of time, which are unique by chance, nor booleans, binaries or structures.
+_IDENTIFYING: Final = (*_TEXTS, *_SURROGATE, "decimal", "date")
 
 # The types of Trino whose values are moments, by how their names begin, compared as their days.
 _MOMENTS: Final = ("timestamp",)
@@ -154,6 +162,18 @@ class Dialect(ABC):
         """The expression counting the distinct values of `values`, approximately."""
 
     @abstractmethod
+    def exactly_distinct(self, columns: Sequence[str]) -> str:
+        """The expression counting the distinct values of `columns` together, exactly.
+
+        Each count holds the distinct values of the rows it is counted of in memory, as many as
+        the rows where they are unique: dearer than `distinct`, of few columns at once.
+        """
+
+    @abstractmethod
+    def distinct_error(self) -> float:
+        """The standard error of the distinct values `distinct` counts, as a share of them."""
+
+    @abstractmethod
     def smallest(self, values: str) -> str:
         """The expression of the smallest of `values`."""
 
@@ -189,6 +209,14 @@ class Dialect(ABC):
     @abstractmethod
     def has_text(self, kind: str) -> bool:
         """Whether the database writes the values of a column of the type `kind` as text."""
+
+    @abstractmethod
+    def identifies(self, kind: str) -> bool:
+        """Whether the values of a column of the type `kind` may identify its rows, being exact."""
+
+    @abstractmethod
+    def is_surrogate(self, kind: str) -> bool:
+        """Whether the type `kind` is one of the keys a database generates: whole numbers, UUIDs."""
 
 
 class Source(ABC):
@@ -451,6 +479,16 @@ class _TrinoDialect(Dialect):
         """The expression counting the distinct values of `values`, approximately."""
         return f"approx_distinct({values}, {_DISTINCT_ERROR})"
 
+    def exactly_distinct(self, columns: Sequence[str]) -> str:
+        """The expression counting the distinct values of `columns` together, exactly."""
+        if len(columns) == 1:
+            return f"count(DISTINCT {_identifier(columns[0])})"
+        return f"count(DISTINCT ROW({', '.join(map(_identifier, columns))}))"
+
+    def distinct_error(self) -> float:
+        """The standard error of the distinct values `distinct` counts: half a percent."""
+        return _DISTINCT_ERROR
+
     def smallest(self, values: str) -> str:
         """The expression of the smallest of `values`."""
         return f"min({values})"
@@ -484,6 +522,14 @@ class _TrinoDialect(Dialect):
     def has_text(self, kind: str) -> bool:
         """Whether Trino casts the values of the type `kind` to a text: all but a few."""
         return kind.startswith(_HAVE_TEXT)
+
+    def identifies(self, kind: str) -> bool:
+        """Whether the values of the type `kind` may identify rows: texts, exact numbers, days."""
+        return kind.startswith(_IDENTIFYING)
+
+    def is_surrogate(self, kind: str) -> bool:
+        """Whether the type `kind` is one of the keys a database generates: whole numbers, UUIDs."""
+        return kind.startswith(_SURROGATE) or _WHOLE_DECIMAL.fullmatch(kind) is not None
 
 
 def _among(column: str, kind: str, texts: Collection[str]) -> str:

@@ -4,19 +4,20 @@ Each table is counted by the module `statistics`, by one query, its columns with
 overrides of the project give of them, or else those of the tool; the values of its enumerations are
 counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
 into the workspace. The semantic types of its columns, those of the tool and those of the project,
-are recognised in the sample, and verified on the whole table, by the module `matching`; the
-columns filled together are found in the sample as well, by the module `grouping`. The overrides
-of the project mark its columns as they give, and which values of the database go into the
-profile - the ranges and enumerations of the columns of no sensitivity -, the module `disclosure`
-decides, by the same types and those marks. Of the enumerations the profile holds, the module
-`entities` finds the discriminator whose values tell the entities of the rows apart, by a query of
-its own, or takes the one the overrides give.
+are recognised in the sample, and verified on the whole table, by the module `matching`; its keys
+are indicated by the statistics and the sample, and verified on the whole table, by the module
+`keys`; the columns filled together are found in the sample, by the module `grouping`. The overrides
+of the project mark its columns as they give, and which values of the database go into the profile -
+the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
+the same types and those marks. Of the enumerations the profile holds, the module `entities` finds
+the discriminator whose values tell the entities of the rows apart, by a query of its own, or takes
+the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
-which skips the tables the run counted, unless the overrides now give their columns or their
-discriminators otherwise; a run that finished is followed by a new one, which counts every table
-anew. Overrides that name a table not selected are refused before anything is counted.
+which skips the tables the run counted, unless the overrides now give their columns, their primary
+keys or their discriminators otherwise; a run that finished is followed by a new one, which counts
+every table anew. Overrides that name a table not selected are refused before anything is counted.
 
 A scan updates the profile there is rather than replacing it: it drops the tables no longer
 selected, deleted or no longer matched by the pattern, keeps the others until it counts them anew,
@@ -39,6 +40,7 @@ from data_profiler.disclosure import disclose
 from data_profiler.entities import discriminate
 from data_profiler.enumerations import values
 from data_profiler.grouping import group
+from data_profiler.keys import identify
 from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile, Table, Value
@@ -62,9 +64,9 @@ def scan(
     """Scans the tables of `source` that `pattern` matches whole into the profile in `directory`.
 
     The profile is written after every table: each table with its columns, types, statistics and
-    matches, marked as the overrides give, the groups of its columns filled together, the
-    discriminator of its entities, and the ranges and values of enumerations of the columns of no
-    sensitivity; and the types of the project.
+    matches, marked as the overrides give, its keys and primary key, the groups of its columns
+    filled together, the discriminator of its entities, and the ranges and values of enumerations of
+    the columns of no sensitivity; and the types of the project.
 
     Args:
         source: The schema whose tables are scanned.
@@ -72,17 +74,17 @@ def scan(
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
         overrides: The overrides of the project, which mark the columns of the tables and give
-            their sentinels and discriminators.
+            their sentinels, primary keys and discriminators.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
-            values of its enumerations, to take its sample, to verify its matches, or to count the
-            rows of its entities.
+            values of its enumerations, to take its sample, to verify its matches or its keys, or to
+            count the rows of its entities.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
-            does not have, or give sentinels of a column whose values are no text, or a
-            discriminator that cannot be one, as `TableOverride.laid_over` says.
+            does not have, or give sentinels of a column whose values are no text, or a primary
+            key or a discriminator that cannot be one, as `TableOverride.laid_over` says.
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
     """
@@ -99,7 +101,8 @@ def scan(
             continue
         if kept is not None:
             _logger.info(
-                "Counting %s anew, as the overrides give its columns or discriminator otherwise",
+                "Counting %s anew, as the overrides give its columns, primary key or"
+                " discriminator otherwise",
                 name,
             )
         _logger.info("Scanning %s", name)
@@ -110,7 +113,9 @@ def scan(
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        found = group(verify(source, recognise(table, sample, types)), sample)
+        verified = verify(source, recognise(table, sample, types))
+        keyed = identify(source, verified, sample, given[name].primary_key)
+        found = group(keyed, sample)
         marked = given[name].laid_over(_valued(found, enumerations))
         disclosed = disclose(marked, types)
         profile = profile.updated(discriminate(source, disclosed, given[name].discriminator))

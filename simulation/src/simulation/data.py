@@ -8,7 +8,10 @@ their nulls and sentinels allow: the column of more of them is filled within the
 of fewer. A table of a discriminator holds the values of its column in as many rows as the profile
 counts each, the rows of each entity those of its values, and each column is filled in as many rows
 of each entity as the entity counts, its nulls and sentinels in the others; the discriminator is a
-column of text.
+column of text. Of a key of two columns, the column of fewer distinct values is numbered within the
+other: its values, in their order, by the place of each row among the rows of the same value of the
+other, which holds each of its values in as many rows at most as the first has values, and one of
+them in as many, so that the pair is unique and each column has its distinct values.
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
@@ -82,7 +85,8 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
     """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
 
     The columns of each of its groups are filled in the same rows, as far as their nulls and
-    sentinels allow, and in as many rows of each entity of its discriminator as the entity counts.
+    sentinels allow, and in as many rows of each entity of its discriminator as the entity counts;
+    of each of its keys of two columns, the column of fewer values is numbered within the other.
 
     Args:
         table: The table, with the statistics of its columns.
@@ -94,25 +98,66 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
     Raises:
         SimulationError: A column has a type that is not generated, or statistics that no values
             can have, or the entities of its discriminator rows that its column or the statistics
-            of a column do not have.
+            of a column do not have, or a column of a key of two columns nulls or sentinels, or
+            values too few for the rows.
     """
+    # Of each key of two columns, the column numbered within the other, and the rows each value of
+    # the other is in at most.
+    numbered = _numbered(table)
+    most = {other: table.column(name).statistics.distinct for name, other in numbered.items()}
     shared = {}
     for found in table.groups:
         order = random.sample(range(table.rows), table.rows)
         shared.update(dict.fromkeys(found.columns, order))
     discriminator = table.discriminator
     kinds = [] if discriminator is None else _kinds(table, discriminator, random)
-    columns = []
-    for column in table.columns:
+    columns: dict[str, list[object]] = {}
+    for column in (column for column in table.columns if column.name not in numbered):
         order = shared.get(column.name) or random.sample(range(table.rows), table.rows)
         if discriminator is None:
-            columns.append(_values(table, column, order, random))
+            columns[column.name] = _values(table, column, order, random, most.get(column.name))
         elif column.name == discriminator.column:
-            columns.append(_discriminated(table, column, kinds, random))
+            columns[column.name] = _discriminated(table, column, kinds, random)
         else:
             within = _within(table, column, discriminator, order, kinds)
-            columns.append(_values(table, column, within, random))
-    return list(zip(*columns, strict=True))
+            columns[column.name] = _values(table, column, within, random, most.get(column.name))
+    for name, other in numbered.items():
+        columns[name] = _within_other(table, table.column(name), columns[other], random)
+    return list(zip(*(columns[column.name] for column in table.columns), strict=True))
+
+
+def _numbered(table: Table) -> dict[str, str]:
+    """Of each key of two columns of `table`, the column of fewer distinct values, and the other.
+
+    Raises:
+        SimulationError: A column of a key of two columns has nulls or sentinels.
+    """
+    numbered = {}
+    for key in table.keys:
+        if len(key) == 2:
+            pair = [table.column(name) for name in key]
+            for column in pair:
+                if column.statistics.nulls or column.statistics.sentinels:
+                    raise SimulationError(
+                        f"{table.name}.{column.name}: a column of a key has nulls or sentinels"
+                    )
+            fewer, other = sorted(pair, key=lambda column: column.statistics.distinct)
+            numbered[fewer.name] = other.name
+    return numbered
+
+
+def _within_other(
+    table: Table, column: Column, other: list[object], random: Random
+) -> list[object]:
+    """The values of `column`, of each row the one at the place of the row in those of `other`."""
+    pool = _pool(table, column, random)
+    seen: dict[object, int] = {}
+    values = []
+    for value in other:
+        place = seen.get(value, 0)
+        seen[value] = place + 1
+        values.append(pool[place])
+    return values
 
 
 def _kinds(
@@ -193,8 +238,13 @@ def _within(
     return empty + filled
 
 
-def _values(table: Table, column: Column, order: list[int], random: Random) -> list[object]:
-    """The values of `column`, one per row of `table`, its nulls and sentinels first in `order`."""
+def _values(
+    table: Table, column: Column, order: list[int], random: Random, most: int | None
+) -> list[object]:
+    """The values of `column`, one per row of `table`, its nulls and sentinels first in `order`.
+
+    Where `most` is given, each value is in as many rows at most, and the first in as many.
+    """
     statistics = column.statistics
     sentinels = statistics.sentinel_rows
     present = table.rows - statistics.nulls - sentinels
@@ -204,7 +254,11 @@ def _values(table: Table, column: Column, order: list[int], random: Random) -> l
             f"{statistics.nulls} nulls and {sentinels} sentinels do not fit {table.rows} rows"
         )
     pool = _pool(table, column, random)
-    values: list[object] = [*pool, *random.choices(pool, k=present - len(pool))]
+    values = (
+        [*pool, *random.choices(pool, k=present - len(pool))]
+        if most is None
+        else _spread(table, column, pool, present, most, random)
+    )
     # The condition of a column is met by the values as they repeat, not by the pool alone.
     if column.matches:
         kind = column.matches[0].type
@@ -223,6 +277,27 @@ def _values(table: Table, column: Column, order: list[int], random: Random) -> l
     for row, value in zip(order, [*empty, *values], strict=True):
         placed[row] = value
     return placed
+
+
+def _spread(
+    table: Table, column: Column, pool: list[object], present: int, most: int, random: Random
+) -> list[object]:
+    """`present` values of `pool`, each once at least and `most` times at most, the first `most`."""
+    if not pool or len(pool) * most < present or len(pool) + most - 1 > present:
+        raise SimulationError(
+            f"{table.name}.{column.name}: {len(pool)} values of {most} rows at most do not fill"
+            f" {present} rows"
+        )
+    counts = {value: 1 for value in pool}
+    counts[pool[0]] = most
+    growing = pool[1:]
+    for _ in range(present - len(pool) - most + 1):
+        place = random.randrange(len(growing))
+        counts[growing[place]] += 1
+        if counts[growing[place]] == most:
+            growing[place] = growing[-1]
+            growing.pop()
+    return [value for value, rows in counts.items() for _ in range(rows)]
 
 
 def _sentinel(table: Table, column: Column, text: str) -> object:
