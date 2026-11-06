@@ -1,4 +1,4 @@
-format: '14.0'
+format: '14.1'
 name: ord
 rows: 20000
 columns:
@@ -12,6 +12,9 @@ columns:
   type: varchar(14)
   statistics: {nulls: 0, distinct: 20000, lengths: {shortest: 14, longest: 14}}
 - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4300}}
+- name: cust_nm
+  type: varchar(80)
+  statistics: {nulls: 0, distinct: 3800, lengths: {shortest: 5, longest: 40}}
 - name: cntct_uuid
   type: uuid
   statistics: {nulls: 8000, distinct: 3000}
@@ -68,3 +71,5 @@ references:
 - {column: dlvr_addr_guid, table: cust_addr, key: addr_guid, coverage: null}
 column_groups:
 - {columns: [dlvr_strt_nm, dlvr_pst_cd, dlvr_cty_nm], coherence: 0.994}
+column_dependencies:
+- {determinants: [cust_id], dependents: [cust_nm], strictness: 1.0}

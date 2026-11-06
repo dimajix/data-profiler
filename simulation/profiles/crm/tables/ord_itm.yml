@@ -1,4 +1,4 @@
-format: '14.0'
+format: '14.1'
 name: ord_itm
 rows: 61000
 columns:
@@ -19,6 +19,9 @@ columns:
 - name: prodgrp_cd
   type: varchar(4)
   statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
+- name: prodgrp_nm
+  type: varchar(40)
+  statistics: {nulls: 0, distinct: 14, lengths: {shortest: 6, longest: 24}}
 - name: qty
   type: integer
   statistics:
@@ -32,3 +35,8 @@ primary_key: {columns: [ord_itm_id]}
 references:
 - {column: ord_id, table: ord, key: ord_id, coverage: 1.0}
 - {column: prod_id, table: prod, key: prod_id, coverage: 1.0}
+column_dependencies:
+- determinants: [prod_id]
+  dependents: [prodgrp_cd, prodgrp_nm, unt_prc_amt]
+  strictness: 1.0
+- {determinants: [prodgrp_cd, prodgrp_nm], dependents: [], strictness: 1.0}

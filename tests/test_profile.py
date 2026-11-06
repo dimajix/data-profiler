@@ -13,6 +13,7 @@ from data_profiler.profile import (
     FORMAT,
     Cardinality,
     Column,
+    ColumnDependency,
     ColumnGroup,
     Concept,
     Discriminator,
@@ -62,6 +63,7 @@ _PROFILE = Profile(
             keys=(("CUST_ID",), ("CUST_NM", "CUST_EML")),
             primary_key=PrimaryKey(("CUST_ID",)),
             column_groups=(ColumnGroup(("CUST_NM", "CUST_EML"), 0.912),),
+            column_dependencies=(ColumnDependency(("CUST_EML",), ("CUST_TYP_CD",), 0.97),),
             discriminator=Discriminator(
                 "CUST_TYP_CD",
                 (
@@ -212,6 +214,41 @@ def test_a_key_of_a_column_the_table_does_not_have_is_refused(
     keyed = replace(table, keys=keys, primary_key=primary)
     replace(_PROFILE, tables=(keyed,)).write(tmp_path)
     with pytest.raises(ProfileError, match="a key names the column 'CUST_NO', which the table"):
+        Profile.read(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("dependencies", "refused"),
+    [
+        (
+            (ColumnDependency(("CUST_NO",), ("CUST_NM",), 1.0),),
+            "a column dependency names the column 'CUST_NO', which the table does not have",
+        ),
+        (
+            (ColumnDependency(("CUST_ID", "CUST_NM"), ("CUST_NM",), 1.0),),
+            "the columns of a column dependency name the column 'CUST_NM' twice",
+        ),
+        (
+            (ColumnDependency(("CUST_ID",), (), 1.0),),
+            "a column dependency names fewer than two columns",
+        ),
+        (
+            (
+                ColumnDependency(("CUST_ID",), ("CUST_NM",), 1.0),
+                ColumnDependency(("CUST_ID",), ("CUST_EML",), 1.0),
+            ),
+            "the determinants of the column dependencies name the column 'CUST_ID' twice",
+        ),
+    ],
+    ids=["of no column", "twice", "of one column", "a determinant twice"],
+)
+def test_a_column_dependency_that_is_none_of_the_table_is_refused(
+    tmp_path: Path, dependencies: tuple[ColumnDependency, ...], refused: str
+) -> None:
+    (table,) = _PROFILE.tables
+    dependent = replace(table, column_dependencies=dependencies)
+    replace(_PROFILE, tables=(dependent,)).write(tmp_path)
+    with pytest.raises(ProfileError, match=refused):
         Profile.read(tmp_path)
 
 

@@ -58,7 +58,7 @@ def _failing_at(tmp_path: Path, table: str) -> None:
     (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
 
 
-def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_it_was_made_with(
+def test_a_scanned_profile_has_the_statistics_matches_keys_groups_dependencies_and_entities(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = _scanned(source, ".*", tmp_path)
@@ -96,6 +96,7 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_i
             assert abs(group.coherence - given.coherence) <= _COHERENCE, (
                 f"{table.name}: {group.columns} of {group.coherence}, made with {given.coherence}"
             )
+        assert table.column_dependencies == expected.column_dependencies, table.name
 
 
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(

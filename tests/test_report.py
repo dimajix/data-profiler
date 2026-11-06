@@ -16,6 +16,7 @@ from data_profiler.overrides import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnDependency,
     ColumnGroup,
     Concept,
     Discriminator,
@@ -214,6 +215,26 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
 
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
     assert 'Filled together: <span class="original">eml_adr, tel_no</span> (95%)' in _page()
+
+
+def test_a_report_shows_the_column_dependencies_the_determinant_of_a_reference_marked() -> None:
+    (table, empty) = _PROFILE.tables
+    dependent = replace(
+        table,
+        references=(Reference("eml_adr", "empty", "x", 1.0),),
+        column_dependencies=(
+            ColumnDependency(("eml_adr",), ("tel_no",), 0.968),
+            ColumnDependency(("cust_typ_cd", "cust_nm"), (), 1.0),
+        ),
+    )
+    page = _page(profile=replace(_PROFILE, tables=(dependent, empty)))
+    assert (
+        'Determines: <span class="original">eml_adr</span> (refers to <span class="original">'
+        'empty.x</span>) → <span class="original">tel_no</span> (97%)'
+    ) in page
+    assert ('Determines: <span class="original">cust_typ_cd ⇔ cust_nm</span> (100%)') in page, (
+        "equivalent determinants, of no dependent"
+    )
 
 
 def _discriminated(given: tuple[tuple[str, ...], ...] | None = None) -> Profile:

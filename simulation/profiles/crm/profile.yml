@@ -7,6 +7,6 @@
 # numbers are numbered from one, sharing their values, but those of the products; contacts and
 # addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '14.0'
+format: '14.1'
 catalog: crm
 schema: sales

@@ -674,16 +674,17 @@ def _referred_as_given(given: GivenReference, table: Table, column: str) -> bool
     It has the reference given, where one is; none and no reference candidates, where False is; and
     none given, where nothing is.
     """
-    references = [found for found in table.references if found.column == column]
+    reference = table.reference(column)
     if given is None:
-        return not any(found.given for found in references)
+        return reference is None or not reference.given
     if given is False:
-        return not references and all(
+        return reference is None and all(
             found.column != column for found in table.reference_candidates
         )
-    return any(
-        found.given and (found.table, found.key) == (given.table, given.column)
-        for found in references
+    return (
+        reference is not None
+        and reference.given
+        and (reference.table, reference.key) == (given.table, given.column)
     )
 
 

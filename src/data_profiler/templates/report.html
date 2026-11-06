@@ -162,6 +162,15 @@
     ({{ "{:.0%}".format(group.coherence) }})
   </p>
   {% endfor %}
+  {% for dependency in table.column_dependencies %}
+  {% set reference = table.reference(dependency.determinants[0]) %}
+  <p class="dependency">
+    Determines: <span class="original">{{ dependency.determinants | join(" ⇔ ") }}</span>
+    {%- if reference %} (refers to <span class="original">{{ reference.table }}.{{ reference.key }}</span>){% endif %}
+    {%- if dependency.dependents %} → <span class="original">{{ dependency.dependents | join(", ") }}</span>{% endif %}
+    ({{ "{:.0%}".format(dependency.strictness) }})
+  </p>
+  {% endfor %}
   {% set discriminator = table.discriminator %}
   {% if discriminator and discriminator.entities %}
   {% set of_none = table.rows - discriminator.rows %}

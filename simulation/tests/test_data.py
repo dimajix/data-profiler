@@ -22,6 +22,7 @@ from data_profiler.detect import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnDependency,
     ColumnGroup,
     Discriminator,
     Entity,
@@ -136,6 +137,115 @@ def test_the_columns_of_a_group_are_filled_in_the_same_rows_as_far_as_they_can_b
     assert strt == pst, "the empty texts of a column are not filled either"
     assert cty < strt, "filled in fewer rows, within those of the others"
     assert other != strt, "a column of no group is filled in rows of its own"
+
+
+def test_a_column_that_follows_from_another_is_made_of_its_values() -> None:
+    table = Table(
+        name="t",
+        rows=1000,
+        columns=(
+            Column(
+                "of", "varchar(5)", Statistics(0, 40, Lengths(5, 5), sentinels=(Value("", 100),))
+            ),
+            _column("code", "varchar(3)", 100, 40, Lengths(3, 3)),
+            _column("half", "integer", 100, 20),
+            _column("other", "integer", 0, 20),
+        ),
+        column_dependencies=(ColumnDependency(("of", "code"), ("half",), 1.0),),
+    )
+    made = rows(table, _profile(), 0)
+    of, code, half, other = (
+        {value[0]: {row[index] for row in made if row[0] == value[0]} for value in made}
+        for index in range(4)
+    )
+    assert of[""] == {""} and code[""] == half[""] == {None}, "null where it is not filled"
+    assert all(len(found) == 1 for found in [*code.values(), *half.values()]), "of one value each"
+    assert len({next(iter(found)) for found in code.values()}) == 41, "code by code, and null"
+    assert any(len(found) > 1 for found in other.values()), "a column of no dependency"
+
+
+@pytest.mark.parametrize(
+    ("dependent", "message"),
+    [
+        (_column("half", "integer", 0, 20), "does not follow from of"),
+        (_column("half", "integer", 100, 50), "does not follow from of"),
+    ],
+    ids=["of other nulls", "of more values"],
+)
+def test_a_column_that_cannot_follow_from_another_is_refused(
+    dependent: Column, message: str
+) -> None:
+    table = Table(
+        name="t",
+        rows=1000,
+        columns=(_column("of", "integer", 100, 40), dependent),
+        column_dependencies=(ColumnDependency(("of",), ("half",), 1.0),),
+    )
+    with pytest.raises(SimulationError, match=message):
+        rows(table, _profile(), 0)
+
+
+def test_a_column_follows_from_one_that_follows_from_another_made_before_it() -> None:
+    table = Table(
+        name="t",
+        rows=1000,
+        columns=(
+            _column("half", "integer", 0, 20),
+            _column("third", "integer", 0, 10),
+            _column("of", "integer", 0, 40),
+        ),
+        column_dependencies=(
+            ColumnDependency(("half",), ("third",), 1.0),
+            ColumnDependency(("of",), ("half", "third"), 1.0),
+        ),
+    )
+    made = rows(table, _profile(), 0)
+    thirds = {half: {row[1] for row in made if row[0] == half} for half, *_ in made}
+    assert all(len(found) == 1 for found in thirds.values()), "of the halves as they are made"
+
+
+@pytest.mark.parametrize(
+    ("changed", "message"),
+    [
+        ({"keys": (("half",),)}, "t.half: a key, reference or grouped column follows"),
+        (
+            {"references": (Reference("half", "t", "of", 1.0),)},
+            "t.half: a key, reference or grouped column follows",
+        ),
+        (
+            {"column_groups": (ColumnGroup(("of", "half"), 1.0),)},
+            "t.half: a key, reference or grouped column follows",
+        ),
+        (
+            {
+                "column_dependencies": (
+                    ColumnDependency(("of",), ("half",), 1.0),
+                    ColumnDependency(("half",), ("of",), 1.0),
+                )
+            },
+            "follows from itself",
+        ),
+    ],
+    ids=["a key", "a reference", "a grouped column", "of itself"],
+)
+def test_a_column_that_follows_from_another_as_it_is_not_made_is_refused(
+    changed: dict[str, object], message: str
+) -> None:
+    table = Table(
+        name="t",
+        rows=1000,
+        columns=(_column("of", "integer", 0, 40), _column("half", "integer", 0, 20)),
+        column_dependencies=(ColumnDependency(("of",), ("half",), 1.0),),
+    )
+    with pytest.raises(SimulationError, match=message):
+        rows(replace(table, **changed), _profile(table), 0)  # type: ignore[arg-type]  # fields
+
+
+def test_a_column_that_follows_from_another_in_a_table_of_entities_is_refused() -> None:
+    table = _entities(Entity(("A",), 500, {"kind": 500, "own": 400}))
+    dependent = replace(table, column_dependencies=(ColumnDependency(("own",), ("kind",), 1.0),))
+    with pytest.raises(SimulationError, match="follows from another in a table of entities"):
+        rows(dependent, _profile(), 0)
 
 
 def _entities(*entities: Entity, nulls: int = 100) -> Table:

@@ -95,3 +95,13 @@ dependencies found, then those the overrides reject:
   entities, and of lower priority.
 - **2026-11-06** — Decided with the maintainer (see How). Step 1 built: the column groups and the
   reference candidates of a table renamed, the format of the profile raised to 14.0.
+- **2026-11-06** — `Dialect.exactly_distinct` takes expressions, counted in the rows the first is
+  not null in, as a step of its own before the dependencies.
+- **2026-11-06** — Step 2 built: `ColumnDependency` and `Table.column_dependencies`, the format of
+  the profile raised to 14.1; the new module `dependencies`, called by `scan` after the column
+  groups; the report; the simulation makes a column that follows from another of its values, and
+  `ord` copies the name of the customer, `ord_itm` the group of the product, its code and its name.
+  A dependent that departs from a constant, in the rows of the values of its determinant that
+  repeat, no more than it may depart from the determinant follows from it by no dependency: the
+  simulation showed it, a column of another entity null in all of them. A key of one column needs
+  no rule of its own: its values do not repeat, and depart from every determinant.
