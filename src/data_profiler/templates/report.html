@@ -127,7 +127,8 @@
     {% for reference in table.references %}
     <span class="original">{{ reference.column }}</span> → <span class="original">{{ reference.table }}.{{ reference.key }}</span>
     ({{ table.cardinality(reference).value }}
-    {%- if reference.coverage is not none %}, {{ "{:.0%}".format(reference.coverage) }}{% endif %})
+    {%- if reference.coverage is not none %}, {{ "{:.0%}".format(reference.coverage) }}{% endif %}
+    {%- if reference.given %}, given{% endif %})
     {%- if not loop.last %} · {% endif %}
     {% endfor %}
   </p>

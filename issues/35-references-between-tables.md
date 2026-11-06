@@ -1,6 +1,6 @@
 # 35 — References between tables
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Relate
@@ -155,3 +155,15 @@ found, then those given:
   references of UUIDs, of the products, of the addresses to their customers and of the items to
   their orders are found; the customers of contacts and orders are candidates of every key numbered
   from one, the customers first, and no code refers to a key.
+- **2026-11-06** — Step 3 built: the overrides give the reference of a column, `reference: {table:
+  cust, column: cust_id}`, or `reference: false` for none, `ColumnOverride.reference`, their format
+  raised to 7.3. `relate` takes them by `Overrides.references`, which refuses a table or a column
+  the profile does not have, a reference to one and one of a column to itself, before anything is
+  queried, as the stages that read the profile refuse them: a column given is not searched, but
+  measured, its coverage counted or its values probed, and warned of where that falls below what a
+  reference is found at or where the column referred to is no key of one column, and the profile
+  holds it as given; a column given none has no reference and no candidates. A stage that reads the
+  profile warns of a reference given otherwise than the profile was related with, and the report
+  marks the references given. The example gives the contact person of a customer and the customer of
+  an order, which keys numbered from one hold as candidates, and none of the number a business
+  partner has as a customer elsewhere.

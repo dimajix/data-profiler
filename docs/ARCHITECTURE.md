@@ -28,9 +28,10 @@ environment.
 *   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
     each table a scan counts and over a profile a stage reads, refused where they name what is not
     profiled, give sentinels of a column of no text, a reading of a name that is no reading of its
-    terms, or a discriminator that cannot be one, and warned of where they give an abbreviation no
-    name has, or a discriminator a table was not counted with; `scan` warns of the values of
-    entities given that a table does not hold.
+    terms, a discriminator that cannot be one, or a reference to what is not profiled, and warned of
+    where they give an abbreviation no name has, a discriminator a table was not counted with, or a
+    reference a column was not related with; `scan` warns of the values of entities given that a
+    table does not hold.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -109,10 +110,10 @@ environment.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `matching`, `keys`, `grouping`, `entities`, `overrides`, `disclosure`, `values` and
-`workspace`, `relate` uses `source` and `references`, which takes the terms of names from
-`glossary`, `describe` uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and `workspace`,
-`report` the profile and `overrides`, which it lays over it, and `glossary` for its names; `cli`
-runs the stages, gives the overrides to each but `relate`, and the language model, made by `llm` as
+`workspace`, `relate` uses `source`, `overrides` and `references`, which takes the terms of names
+from `glossary`, `describe` uses `glossary`, `overrides`, `llm`, `disclosure`, `values` and
+`workspace`, `report` the profile and `overrides`, which it lays over it, and `glossary` for its
+names; `cli` runs the stages, gives the overrides to each, and the language model, made by `llm` as
 the project names it, to `describe`, unless it is to ask none. The semantic types of a project reach
 `scan` from `project`, and every stage after it from the profile.
 
@@ -223,20 +224,22 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
     laid over a generated profile: what the database holds, concepts of the glossary, the reading of
     a name, the harmonized name of a table or column, the description of a table or column, the
-    sensitivity and the sentinels of a column, the primary key of a table, and the discriminator of
-    a table, with the values, the name and the description of its entities, or none. What the
-    database and a table hold, the language model is shown with every question of them. What it
-    gives is taken as given by every stage: by `scan`, which counts the columns with their
-    sentinels, marks them, takes the primary key given and tells the entities apart by the
-    discriminator given, by `describe`, which splits and reads the names by the concepts given and
-    asks the language model for nothing given, as by `report`, which lays the concepts, readings,
-    names, descriptions and marks over the profile; sentinels, primary keys and discriminators
-    changed count once `scan` counts the table again, and a reading given once `describe` has split
-    its name. A name given comes before the one composed from the reading, so that it resolves a
-    collision of harmonized names. A concept given takes the place of the one proposed of its word,
-    keeping of it the abbreviations proposed beside those given, and the terms it is written as are
-    taken from the abbreviations of the others; the word of another stays a term of it, so that a
-    term given may stand for either, as the reading of its name says.
+    sensitivity and the sentinels of a column, the primary key of a table, the reference of a
+    column, or none, and the discriminator of a table, with the values, the name and the description
+    of its entities, or none. What the database and a table hold, the language model is shown with
+    every question of them. What it gives is taken as given by every stage: by `scan`, which counts
+    the columns with their sentinels, marks them, takes the primary key given and tells the entities
+    apart by the discriminator given, by `relate`, which takes the references given and measures
+    them, by `describe`, which splits and reads the names by the concepts given and asks the
+    language model for nothing given, as by `report`, which lays the concepts, readings, names,
+    descriptions and marks over the profile; sentinels, primary keys and discriminators changed
+    count once `scan` counts the table again, references once `relate` relates the tables again, and
+    a reading given once `describe` has split its name. A name given comes before the one composed
+    from the reading, so that it resolves a collision of harmonized names. A concept given takes the
+    place of the one proposed of its word, keeping of it the abbreviations proposed beside those
+    given, and the terms it is written as are taken from the abbreviations of the others; the word
+    of another stays a term of it, so that a term given may stand for either, as the reading of its
+    name says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -276,8 +279,10 @@ the project names it, to `describe`, unless it is to ask none. The semantic type
     UUIDs, unmistakable values, refer to a key where more than half of them are found, of several to
     the one of the most, and the coverage of others is counted on the whole table, a reference where
     nine of ten of its values are found. A column found in several keys has each as a candidate,
-    ranked. The result is the profile, with the references and candidates of every table in place of
-    those it had, written once at the end, so that a relate that fails leaves it as it was.
+    ranked. The overrides give the reference of a column, or none: it is not searched, but measured,
+    and warned of where its coverage, or the share probed of UUIDs, falls below what a reference is
+    found at. The result is the profile, with the references and candidates of every table in place
+    of those it had, written once at the end, so that a relate that fails leaves it as it was.
 3.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,

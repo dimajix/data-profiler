@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
-## Relate
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [35](35-references-between-tables.md) | in progress | high | feature | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |

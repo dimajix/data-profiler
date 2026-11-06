@@ -188,7 +188,7 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
         keys=(("eml_adr",),),
         references=(
             Reference("eml_adr", "empty", "x", 1.0),
-            Reference("tel_no", "cust", "eml_adr", None),
+            Reference("tel_no", "cust", "eml_adr", None, given=True),
         ),
         candidates=(
             Reference("cust_nm", "empty", "x", 0.96),
@@ -199,8 +199,8 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
     assert (
         'References: <span class="original">eml_adr</span> → <span class="original">empty.x'
         '</span> (one to one, 100%) · <span class="original">tel_no</span> →'
-        ' <span class="original">cust.eml_adr</span> (many to one) </p>'
-    ) in page, "a key refers one to one; unmistakable values of no coverage"
+        ' <span class="original">cust.eml_adr</span> (many to one, given) </p>'
+    ) in page, "a key refers one to one; unmistakable values of no coverage, given"
     assert (
         'Candidates of <span class="original">cust_nm</span>: <span class="original">empty.x'
         '</span> (96%) · <span class="original">cust.eml_adr</span> (100%) </p>'

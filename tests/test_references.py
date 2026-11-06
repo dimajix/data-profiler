@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import EMAIL, PHONE, UUID
-from data_profiler.overrides import Overrides
+from data_profiler.overrides import Overrides, ReferenceOverride
 from data_profiler.profile import (
     Column,
     Lengths,
@@ -111,7 +111,7 @@ def _ordered(found: Profile) -> Table:
 def test_a_column_found_in_one_key_alone_refers_to_it_with_its_coverage() -> None:
     profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 104999))
     source = _Answering(coverage=0.98)
-    assert _ordered(find(source, profile)).references == (
+    assert _ordered(find(source, profile, {})).references == (
         Reference("cust_id", "cust", "cust_id", 0.98),
     )
     assert len(source.sent) == 2, "probed, then counted"
@@ -120,11 +120,11 @@ def test_a_column_found_in_one_key_alone_refers_to_it_with_its_coverage() -> Non
 def test_unmistakable_values_refer_to_their_key_by_the_probe_alone() -> None:
     profile = _ordering(_guid("cust_guid", 3000))
     source = _Answering(found=0.51)
-    assert _ordered(find(source, profile)).references == (
+    assert _ordered(find(source, profile, {})).references == (
         Reference("cust_guid", "cust", "cust_guid", None),
     )
     assert len(source.sent) == 1, "no coverage counted"
-    assert _ordered(find(_Answering(found=0.5), profile)).references == (), "not more than half"
+    assert _ordered(find(_Answering(found=0.5), profile, {})).references == (), "not more than half"
 
 
 @pytest.mark.parametrize(
@@ -137,7 +137,7 @@ def test_a_column_too_few_of_whose_values_are_found_refers_to_none(
 ) -> None:
     profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 104999))
     source = _Answering(found, coverage)
-    assert _ordered(find(source, profile)).references == ()
+    assert _ordered(find(source, profile, {})).references == ()
     assert len(source.sent) == queries
 
 
@@ -160,21 +160,21 @@ def test_a_column_the_profile_does_not_indicate_as_a_reference_is_not_probed(
     column: Column,
 ) -> None:
     source = _Answering()
-    assert _ordered(find(source, _ordering(column))).references == ()
+    assert _ordered(find(source, _ordering(column), {})).references == ()
     assert source.sent == []
 
 
 def test_a_run_of_whole_numbers_whose_name_agrees_with_the_key_is_probed() -> None:
     source = _Answering()
     profile = _ordering(_ranged("cust_id", "bigint", 25, 100001, 100025))
-    assert _ordered(find(source, profile)).references == (
+    assert _ordered(find(source, profile, {})).references == (
         Reference("cust_id", "cust", "cust_id", 1.0),
     )
 
 
 def test_a_column_of_nearly_every_value_of_its_key_refers_to_it_whatever_its_name() -> None:
     profile = _ordering(_ranged("owner", "bigint", 4990, 100001, 105000))
-    assert _ordered(find(_Answering(), profile)).references == (
+    assert _ordered(find(_Answering(), profile, {})).references == (
         Reference("owner", "cust", "cust_id", 1.0),
     ), "not a run short of the end of the key"
 
@@ -185,21 +185,23 @@ def test_a_key_numbered_from_one_refers_to_another_only_where_its_name_agrees(
 ) -> None:
     keyed = _keyed("ord", 5000, _ranged(name, "bigint", 5000, 100001, 105000))
     source = _Answering()
-    find(source, Profile(catalog="crm", schema="sales", tables=(_CUST, keyed)))
+    find(source, Profile(catalog="crm", schema="sales", tables=(_CUST, keyed)), {})
     assert bool(source.sent) == probed, "any key numbered from one holds one of as many values"
 
 
 def test_a_profile_of_no_keys_is_not_queried() -> None:
     source = _Answering()
     unkeyed = Table("cust", 5000, _CUST.columns)
-    found = find(source, _ordering(_ranged("cust_id", "bigint", 4000, 1, 4000), keyed=(unkeyed,)))
+    found = find(
+        source, _ordering(_ranged("cust_id", "bigint", 4000, 1, 4000), keyed=(unkeyed,)), {}
+    )
     assert (_ordered(found).references, source.sent) == ((), [])
 
 
 def test_a_column_found_in_several_keys_has_each_as_a_candidate_ranked() -> None:
     prtnr = _keyed("prtnr", 6000, _ranged("prtnr_id", "bigint", 6000, 100001, 106000))
     profile = _ordering(_ranged("ref_id", "bigint", 3000, 100001, 104990), keyed=(prtnr, _CUST))
-    ordered = _ordered(find(_Answering(), profile))
+    ordered = _ordered(find(_Answering(), profile, {}))
     assert ordered.references == ()
     assert ordered.candidates == (
         Reference("ref_id", "cust", "cust_id", 1.0),
@@ -210,7 +212,7 @@ def test_a_column_found_in_several_keys_has_each_as_a_candidate_ranked() -> None
 def test_unmistakable_values_of_several_keys_refer_to_the_one_of_the_fewest_rows() -> None:
     prtnr = _keyed("prtnr", 6000, _guid("prtnr_guid", 6000))
     profile = _ordering(_guid("ref_guid", 3000), keyed=(prtnr, _CUST))
-    assert _ordered(find(_Answering(), profile)).references == (
+    assert _ordered(find(_Answering(), profile, {})).references == (
         Reference("ref_guid", "cust", "cust_guid", None),
     ), "as found in both"
 
@@ -218,7 +220,9 @@ def test_unmistakable_values_of_several_keys_refer_to_the_one_of_the_fewest_rows
 def test_a_column_whose_range_reaches_beyond_its_key_is_probed() -> None:
     source = _Answering()
     profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 105400))
-    assert len(_ordered(find(source, profile)).references) == 1, "of rows whose reference is lost"
+    assert len(_ordered(find(source, profile, {})).references) == 1, (
+        "of rows whose reference is lost"
+    )
 
 
 def test_the_range_of_texts_is_compared_as_texts_whatever_they_read_as() -> None:
@@ -229,7 +233,7 @@ def test_the_range_of_texts_is_compared_as_texts_whatever_they_read_as() -> None
     code = _keyed("code", 2000, digits("code_no", "1", "999"))
     for column in (digits("code_no", "1000", "1099"), digits("code_no", "1000", "NaN")):
         source = _Answering()
-        assert _ordered(find(source, _ordering(column, keyed=(code,)))).references == (
+        assert _ordered(find(source, _ordering(column, keyed=(code,)), {})).references == (
             Reference("code_no", "code", "code_no", 1.0),
         ), "'1000' lies within '1' and '999' as text"
 
@@ -246,7 +250,7 @@ def test_a_run_whose_name_shares_less_than_the_terms_of_the_key_and_its_table_is
     table: Table, column: str
 ) -> None:
     source = _Answering()
-    found = find(source, _ordering(_ranged(column, "bigint", 5, 1, 5), keyed=(table,)))
+    found = find(source, _ordering(_ranged(column, "bigint", 5, 1, 5), keyed=(table,)), {})
     assert (_ordered(found).references, source.sent) == ((), [])
 
 
@@ -256,7 +260,7 @@ def test_the_references_of_more_keys_than_ten_are_probed_and_counted_in_several_
         for place in range(11)
     )
     source = _Answering()
-    found = find(source, _ordering(_ranged("ref", "bigint", 3000, 100001, 104990), keyed=keyed))
+    found = find(source, _ordering(_ranged("ref", "bigint", 3000, 100001, 104990), keyed=keyed), {})
     assert len(_ordered(found).candidates) == 11
     probed, counted = source.sent[:2], source.sent[2:]
     assert [statement.count(' AS "key"') for statement in probed] == [10, 1]
@@ -266,7 +270,7 @@ def test_the_references_of_more_keys_than_ten_are_probed_and_counted_in_several_
 def test_the_sentinels_of_a_column_are_left_aside_as_nulls_where_it_is_probed() -> None:
     statistics = Statistics(0, 4000, range=Range("100001", "104999"), sentinels=(Value("0", 9),))
     source = _Answering()
-    find(source, _ordering(Column("cust_id", "bigint", statistics)))
+    find(source, _ordering(Column("cust_id", "bigint", statistics)), {})
     assert "CASE WHEN trim(try_cast(\"cust_id\" AS varchar)) IN ('0') THEN NULL" in source.sent[0]
 
 
@@ -278,7 +282,7 @@ def test_the_references_and_candidates_a_profile_had_are_replaced() -> None:
         candidates=(Reference("cust_id", "cust", "cust_guid", 1.0),) * 2,
     )
     stale = replace(profile, tables=(_CUST, ordered))
-    assert _ordered(find(_Answering(), stale)) == replace(ordered, references=(), candidates=())
+    assert _ordered(find(_Answering(), stale, {})) == replace(ordered, references=(), candidates=())
 
 
 def test_candidates_of_no_span_known_are_ranked_by_their_names_then_their_rows() -> None:
@@ -289,7 +293,7 @@ def test_candidates_of_no_span_known_are_ranked_by_their_names_then_their_rows()
 
     keyed = (number("prtnr", 6000), number("lead", 4000), number("cust", 5000))
     column = Column("cust_no", "varchar(12)", Statistics(0, 3000, Lengths(12, 12)))
-    candidates = _ordered(find(_Answering(), _ordering(column, keyed=keyed))).candidates
+    candidates = _ordered(find(_Answering(), _ordering(column, keyed=keyed), {})).candidates
     assert [reference.table for reference in candidates] == ["cust", "lead", "prtnr"]
 
 
@@ -297,9 +301,78 @@ def test_unmistakable_values_of_several_keys_refer_to_the_one_of_the_most_found(
     prtnr = _keyed("prtnr", 6000, _guid("prtnr_guid", 6000))
     profile = _ordering(_guid("ref_guid", 3000), keyed=(prtnr, _CUST))
     source = _Answering(by_table={"prtnr": 0.9, "cust": 0.6})
-    assert _ordered(find(source, profile)).references == (
+    assert _ordered(find(source, profile, {})).references == (
         Reference("ref_guid", "prtnr", "prtnr_guid", None),
     )
+
+
+_GIVEN = ReferenceOverride("cust", "cust_id")
+
+
+def test_a_reference_given_is_measured_rather_than_searched() -> None:
+    source = _Answering(coverage=0.95)
+    profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 104999))
+    found = find(source, profile, {"ord": {"cust_id": _GIVEN}})
+    assert _ordered(found).references == (
+        Reference("cust_id", "cust", "cust_id", 0.95, given=True),
+    )
+    assert len(source.sent) == 1, "its coverage counted, not probed"
+
+
+@pytest.mark.parametrize(
+    ("column", "given", "answering", "warned"),
+    [
+        (
+            _ranged("cust_id", "bigint", 4000, 100001, 104999),
+            _GIVEN,
+            _Answering(coverage=0.5),
+            "which holds 50% of its values",
+        ),
+        (
+            _guid("cust_guid", 3000),
+            ReferenceOverride("cust", "cust_guid"),
+            _Answering(found=0.4),
+            "most of whose values probed are not found in it",
+        ),
+        (
+            _ranged("cust_id", "bigint", 4000, 100001, 104999),
+            ReferenceOverride("cust", "cust_note"),
+            _Answering(),
+            "which is no key of one column",
+        ),
+        (
+            replace(_guid("cust_guid", 0), statistics=Statistics(20000, 0)),
+            ReferenceOverride("cust", "cust_guid"),
+            _Answering(found=0.0),
+            "most of whose values probed are not found in it",
+        ),
+    ],
+    ids=["covered too little", "probed too few", "no key", "no values"],
+)
+def test_a_reference_given_that_would_not_be_found_is_warned_of_and_kept(
+    caplog: pytest.LogCaptureFixture,
+    column: Column,
+    given: ReferenceOverride,
+    answering: _Answering,
+    warned: str,
+) -> None:
+    noted = replace(
+        _CUST, columns=(*_CUST.columns, Column("cust_note", "bigint", Statistics(0, 9)))
+    )
+    found = find(answering, _ordering(column, keyed=(noted,)), {"ord": {column.name: given}})
+    (reference,) = _ordered(found).references
+    assert (reference.table, reference.key, reference.given) == (given.table, given.column, True)
+    assert caplog.messages == [
+        f"The overrides give ord.{column.name} as a reference to {given.table}.{given.column},"
+        f" {warned}"
+    ]
+
+
+def test_a_column_given_no_reference_has_none_and_no_candidates_and_is_not_probed() -> None:
+    source = _Answering()
+    profile = _ordering(_ranged("cust_id", "bigint", 4000, 100001, 104999))
+    ordered = _ordered(find(source, profile, {"ord": {"cust_id": False}}))
+    assert (ordered.references, ordered.candidates, source.sent) == ((), (), [])
 
 
 def test_the_references_of_the_simulation_are_found(
@@ -307,7 +380,7 @@ def test_the_references_of_the_simulation_are_found(
 ) -> None:
     workspace = Workspace.open(tmp_path / "workspace", example.catalog, example.schema)
     scan(source, re.compile(".*"), workspace, (), Overrides(), tmp_path / "profile")
-    found = find(source, Profile.read(tmp_path / "profile"))
+    found = find(source, Profile.read(tmp_path / "profile"), {})
     for table in example.tables:
         related = found.table(table.name)
         for made in table.references:

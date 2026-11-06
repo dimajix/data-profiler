@@ -3,13 +3,13 @@
 It runs a stage on one environment of a project, the project in the current directory if none is
 given: `scan` the tables of its database into its profile and workspace, the overrides of the
 project taken as given, `relate` the tables of its profile to the keys of each other, by its
-database, `describe` the names of its profile, by the concepts of the profile and of the overrides
-and by the language model of the project, into its profile - with `--anew`, dropping first what the
-language model filled, with `--without-llm`, asking none -, and `report` its profile, the overrides
-laid over it, into its report, the last two without the database. The project completes the
-variables of the process by its `.env`, so that certificates and proxies set there reach the
-connection to the database. `data_profiler.commands.run` configures the log and ends the program
-when the stage fails.
+database, the overrides taken as given, `describe` the names of its profile, by the concepts of the
+profile and of the overrides and by the language model of the project, into its profile - with
+`--anew`, dropping first what the language model filled, with `--without-llm`, asking none -, and
+`report` its profile, the overrides laid over it, into its report, the last two without the
+database. The project completes the variables of the process by its `.env`, so that certificates and
+proxies set there reach the connection to the database. `data_profiler.commands.run` configures the
+log and ends the program when the stage fails.
 """
 
 import logging
@@ -108,8 +108,9 @@ def _scan(project: Project, environment: Environment) -> None:
 
 def _relate(project: Project, environment: Environment) -> None:
     """Relates the tables of the profile of `environment` of `project` to each other."""
+    overrides = Overrides.read(project.overrides)
     with connect(environment.url, environment.user, environment.password) as source:
-        relate(source, environment.profile)
+        relate(source, overrides, environment.profile)
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 

@@ -23,16 +23,19 @@ where they come from; another is dropped where fewer than `_PROBED` are found, a
 counted on the whole table, the references of a query `_PER_QUERY` at most: it refers to the key
 where `_COVERAGE` of its values, nulls and sentinels aside, are found in it.
 
-A column of unmistakable values refers to the key of the most values found, then of the table of
-the fewest rows, the most specific. Another that refers to one key alone has that reference; one
-that refers to several has each as a candidate, none of them preferred, ranked by how the span of
-its values fits the one expected of as many values chosen at random of the key, then by whether
-its name agrees with the key, then by the rows of the table of the key. The references name
-columns and tables alone, and no values of the database.
+A column of unmistakable values refers to the key of the most values found, then of the table of the
+fewest rows, the most specific. Another that refers to one key alone has that reference; one that
+refers to several has each as a candidate, none of them preferred, ranked by how the span of its
+values fits the one expected of as many values chosen at random of the key, then by whether its name
+agrees with the key, then by the rows of the table of the key. A column the overrides give a
+reference of is not searched, but measured - its coverage counted, or its values probed where they
+are unmistakable - and warned of where that falls below what a reference is found at, or where the
+column referred to is no key of one column; a column given none has no reference and no candidates,
+and is not probed. The references name columns and tables alone, and no values of the database.
 """
 
 import logging
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from itertools import groupby
@@ -40,6 +43,7 @@ from typing import Final
 
 from data_profiler.detect import UUID
 from data_profiler.glossary import terms
+from data_profiler.overrides import GivenReferences
 from data_profiler.profile import DIGITS, Column, Profile, Range, Reference, Table
 from data_profiler.source import Dialect, Lookup, Probe, Source
 from data_profiler.values import counted
@@ -103,17 +107,20 @@ class _Pair:
         return dialect.without(self.column.name, self.column.type, self.column.left_aside)
 
 
-def find(source: Source, profile: Profile) -> Profile:
-    """`profile`, each table with the references and candidates of its columns, found on `source`.
+def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences]) -> Profile:
+    """`profile`, each table with the references and candidates of its columns, found or given.
 
     Args:
         source: The schema of the profile.
         profile: The profile, its tables with their keys, and their columns with their statistics
             and matches.
+        given: The references the overrides give, the key or False, by the names of the tables
+            and of the columns they are given of, which the profile has, as their keys do.
 
     Returns:
         The profile, each table with the references and the candidates of its columns, those it had
-        replaced; none where none is found, with no query where none is indicated.
+        replaced: each given as given, measured, and none of a column given none; none where none
+        is found, with no query where none is indicated and none given.
 
     Raises:
         SourceError: The database fails to probe the references or to count their coverage.
@@ -130,7 +137,9 @@ def find(source: Source, profile: Profile) -> Profile:
         _Pair(table, column, target, key)
         for table in profile.tables
         for column in table.columns
-        if _present(table, column) > 0 and dialect.identifies(column.type)
+        if column.name not in given.get(table.name, {})
+        and _present(table, column) > 0
+        and dialect.identifies(column.type)
         for target, key in keys
         if (target.name, key.name) != (table.name, column.name)
         and _indicated(dialect, _Pair(table, column, target, key))
@@ -149,13 +158,15 @@ def find(source: Source, profile: Profile) -> Profile:
         if coverage >= _COVERAGE
     ]
     references: dict[str, list[Reference]] = {}
+    for reference, table in _measured(source, profile, given):
+        references.setdefault(table, []).append(reference)
     candidates: dict[str, list[Reference]] = {}
     for pair, _ in _chosen(found):
         references.setdefault(pair.table.name, []).append(pair.reference(None))
     # The pairs are of the columns in their order, those of a column after each other.
     for (table, _), passing in groupby(covered, key=lambda found: found[0].referring):
         ranked = sorted(passing, key=lambda found: _rank(dialect, found[0]))
-        named = [pair.reference(round(coverage, DIGITS)) for pair, coverage in ranked]
+        named = [pair.reference(_rounded(coverage)) for pair, coverage in ranked]
         (references if len(named) == 1 else candidates).setdefault(table, []).extend(named)
     tables = tuple(_related(table, references, candidates) for table in profile.tables)
     _logger.info(
@@ -165,6 +176,58 @@ def find(source: Source, profile: Profile) -> Profile:
         sum(len(table.candidates) for table in tables),
     )
     return replace(profile, tables=tables)
+
+
+def _measured(
+    source: Source, profile: Profile, given: Mapping[str, GivenReferences]
+) -> list[tuple[Reference, str]]:
+    """The references `given`, with the tables that refer, measured as those found are.
+
+    The coverage of each is counted, or unmistakable values probed, and warned of where it falls
+    below what a reference is found at, or the column referred to is no key of one column; it is
+    the reference all the same, as the overrides are of all environments.
+    """
+    dialect = source.dialect
+    pairs = [
+        _Pair(table, table.column(name), target, target.column(key.column))
+        for table in profile.tables
+        for name, key in given.get(table.name, {}).items()
+        if key is not False
+        for target in (profile.table(key.table),)
+    ]
+    probing = [pair for pair in pairs if _unmistakable(dialect, pair.column)]
+    counting = [pair for pair in pairs if not _unmistakable(dialect, pair.column)]
+    for pair, share in zip(probing, _probed(source, probing), strict=True):
+        if share <= _UNMISTAKABLE:
+            _warn(pair, "most of whose values probed are not found in it")
+    coverages = dict(zip(counting, _covered(source, counting), strict=True))
+    for pair, coverage in coverages.items():
+        if coverage < _COVERAGE:
+            _warn(pair, f"which holds {coverage:.0%} of its values")
+    for pair in pairs:
+        if (pair.key.name,) not in pair.target.keys:
+            _warn(pair, "which is no key of one column")
+    return [
+        (replace(pair.reference(_rounded(coverages.get(pair))), given=True), pair.table.name)
+        for pair in pairs
+    ]
+
+
+def _rounded(coverage: float | None) -> float | None:
+    """`coverage`, written with as many digits as a share found."""
+    return None if coverage is None else round(coverage, DIGITS)
+
+
+def _warn(pair: _Pair, what: str) -> None:
+    """Warns that the overrides give the reference of `pair`, `what` is wrong of it."""
+    _logger.warning(
+        "The overrides give %s.%s as a reference to %s.%s, %s",
+        pair.table.name,
+        pair.column.name,
+        pair.target.name,
+        pair.key.name,
+        what,
+    )
 
 
 def _present(table: Table, column: Column) -> int:
@@ -366,7 +429,8 @@ def _place[Placed](value: object, places: Sequence[Placed]) -> Placed:
 
 def _probe(dialect: Dialect, pair: _Pair) -> Probe:
     """The probe of the column of `pair`, of a share of the rows of its table to take its values."""
-    share = min(100.0, 100.0 * _SPARE * _PROBES / _present(pair.table, pair.column))
+    # A column of no values, given, is read whole.
+    share = min(100.0, 100.0 * _SPARE * _PROBES / max(1, _present(pair.table, pair.column)))
     return Probe(pair.table.name, pair.values(dialect), share)
 
 

@@ -6,14 +6,14 @@ is given; each table, with what it holds, where it is given, and with its column
 names and harmonized names, composed from their readings or given, descriptions, types, statistics,
 the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of their
 enumerations and each of their sentinels -, with its keys, the primary marked, and whether it is
-given, the references of its columns, one to one or many to one and their coverage, the candidates
-of each column ranked, and the references of others to it, the groups of its columns filled
-together, the harmonized names two of its columns share, and its entities, by the share of their
-rows each column is filled in, with their names and descriptions, where they are given; and the
-glossary, each concept with its abbreviations and description, those proposed told apart from those
-given, and each term of no concept, as describe split the names, with where it appears. It renders
-what the profile holds, and nothing of the workspace: the values in it are those the profile may
-hold, which the template escapes.
+given, the references of its columns, one to one or many to one, their coverage and whether they are
+given, the candidates of each column ranked, and the references of others to it, the groups of its
+columns filled together, the harmonized names two of its columns share, and its entities, by the
+share of their rows each column is filled in, with their names and descriptions, where they are
+given; and the glossary, each concept with its abbreviations and description, those proposed told
+apart from those given, and each term of no concept, as describe split the names, with where it
+appears. It renders what the profile holds, and nothing of the workspace: the values in it are those
+the profile may hold, which the template escapes.
 """
 
 from pathlib import Path
