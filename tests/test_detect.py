@@ -23,6 +23,7 @@ from data_profiler.detect import (
     SemanticType,
     SemanticTypeError,
     Sensitivity,
+    cases,
     detect,
     is_filled,
     is_sensitive,
@@ -293,6 +294,19 @@ def test_a_column_of_zeros_and_ones_is_one_of_a_pair() -> None:
 
 def test_a_column_of_counts_mostly_zeros_and_ones_is_no_pair() -> None:
     assert detect([0, 1, 1, 0, 2], (), SENTINELS) == {}, "every value is of a pair, not most"
+
+
+@pytest.mark.parametrize(
+    ("word", "written"),
+    [
+        ("true", ("true", "True", "TRUE")),
+        ("US Dollar", ("US Dollar", "us dollar", "US DOLLAR")),
+        ("0", ("0",)),
+    ],
+    ids=["in lower case", "of capitals", "of no letters"],
+)
+def test_a_word_is_written_in_each_of_its_cases_once(word: str, written: tuple[str, ...]) -> None:
+    assert cases(word) == written
 
 
 @pytest.mark.parametrize(

@@ -152,9 +152,21 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
 _EVERY: Final = 1.0
 
 
+def cases(word: str) -> tuple[str, ...]:
+    """`word` as written, in lower case, with a capital and in capitals, each once, in this order.
+
+    Args:
+        word: A word or words, as written: `true`, `US Dollar`.
+
+    Returns:
+        The ways it is written, a capital its first letter alone, the others as written.
+    """
+    return tuple(dict.fromkeys((word, word.lower(), word[:1].upper() + word[1:], word.upper())))
+
+
 def _cases(*words: str) -> str:
-    """A pattern of `words`, each in lower case, with a capital and in capitals."""
-    return "|".join(f"{word}|{word.capitalize()}|{word.upper()}" for word in words)
+    """A pattern of `words`, each in each of its `cases`, its characters taken as written."""
+    return "|".join(re.escape(case) for word in words for case in cases(word))
 
 
 @dataclass(frozen=True)
@@ -236,7 +248,7 @@ YES_NO: Final = SemanticType(
 )
 """A flag of `yes` and `no`."""
 ZERO_ONE: Final = SemanticType(
-    "zero-one", Sensitivity.NONE, Detector(re.compile("[01]"), threshold=_EVERY)
+    "zero-one", Sensitivity.NONE, Detector(re.compile(_cases("0", "1")), threshold=_EVERY)
 )
 """A flag of `0` and `1`."""
 

@@ -1,6 +1,6 @@
 # 41 — Detectors of currencies
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -35,6 +35,30 @@ As the maintainer decided:
   whole check, and the whole table is checked in SQL by it alone; a detector of a currency needs no
   check of a value.
 
+As the maintainer decided on the questions below, and on the plan of the work:
+
+- **Numbers** are a match where 95 percent of the values are numbers of currencies - a few values
+  amiss allowed, which a threshold of every value, as of the flags, would not -, and only of three
+  digits: `8` is no `008`, as small whole numbers are too common.
+- **Names** are those of ISO 4217 and a list of more common names of the tool's own -
+  `British Pound`, `Albanian Lek` -, each as written, in lower case, with a capital and in
+  capitals. Codes are in capitals alone, as ISO 4217 writes them.
+- **The historic currencies** are those withdrawn from ISO 4217 since the euro, 1999, of its list of
+  withdrawn currencies: `DEM`, `FRF`, `HRK`, `VEF` and the others, not those before.
+- **Codes that are words** have the threshold of half the values, as hardly a column holds such
+  codes alone.
+- **A module of its own, `currencies`**, holds the codes, numbers and names, as three tuples, not a
+  class of a currency, which nothing would use but to make them; the simulation takes its values
+  from them. `XTS`, the code of testing, and `XXX`, of no currency, are left out, as `XXX` stands
+  for an unknown value in many a column.
+- **The version of the profile** is raised from 14.1 to 14.2, so that a tool older than a profile
+  of a currency names itself older, rather than refusing an unknown semantic type.
+- **The example profile** marks `ord.curr_cd` a column of codes, and has `prod.prc_curr_no` of
+  numbers and `cust.curr_nm` of names beside it.
+- **Two steps**: first `_cases` of `detect` and `_pair` of the simulation generalised to words of
+  any case - `cases` writes a word as written, in lower case, with a capital and in capitals -,
+  without a change of behaviour; then the detectors.
+
 ## What is to be decided
 
 - **Numbers.** About a fifth of the numbers from 000 to 999 are numbers of currencies, so that a
@@ -68,3 +92,11 @@ As the maintainer decided:
 
 - **2026-11-06** — Opened, as the maintainer asked: three detectors of currencies, of the codes,
   numbers and English names of `pycountry`, with the historic currencies beside them.
+
+- **2026-11-06** — Step 1 done: `cases` in `detect` writes a word in each of its cases, of which
+  `_cases` makes a pattern, its characters escaped; the flags `true`/`false` and `yes`/`no` match
+  as they did, and `zero-one` is made by `_cases` too, `0|1` in place of `[01]`, which match alike.
+  `_one_of` of the simulation, in place of `_pair`, chooses one of the spellings it is given - the
+  `cases` of a word, or codes as written -, so that one generator serves the flags and the
+  currencies; the values of the columns of `yes`/`no` and `0`/`1` it makes are spread otherwise
+  than before, with the same statistics.

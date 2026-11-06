@@ -58,6 +58,7 @@ from data_profiler.detect import (
     YES_NO,
     ZERO_ONE,
     SemanticType,
+    cases,
     is_filled,
 )
 from data_profiler.profile import Column, Discriminator, Lengths, Profile, Reference, Table
@@ -670,12 +671,14 @@ def _free_text(length: int, random: Random) -> str:
     return " ".join(words)[:length]
 
 
-def _pair(*words: str) -> Callable[[int, Random], str]:
-    """How a word of a pair is made: one of `words` of the length asked for, in a case at random."""
+def _one_of(*spellings: str) -> Callable[[int, Random], str]:
+    """How a text is made of fixed spellings: one of `spellings` of the length asked for, at random.
+
+    A word of a type written in several cases is given in each of them, its `cases`.
+    """
 
     def made(length: int, random: Random) -> str:
-        word = random.choice([word for word in words if len(word) == length] or [""])
-        return random.choice((word, word.capitalize(), word.upper()))
+        return random.choice([text for text in spellings if len(text) == length] or [""])
 
     return made
 
@@ -691,9 +694,9 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     DATE: _date,
     UUID: _uuid,
     FREE_TEXT: _free_text,
-    TRUE_FALSE: _pair("true", "false"),
-    YES_NO: _pair("yes", "no"),
-    ZERO_ONE: _pair("0", "1"),
+    TRUE_FALSE: _one_of(*cases("true"), *cases("false")),
+    YES_NO: _one_of(*cases("yes"), *cases("no")),
+    ZERO_ONE: _one_of("0", "1"),
 }
 
 
