@@ -601,6 +601,20 @@ def test_a_column_of_lists_holds_lists_of_values_of_the_type_of_its_items() -> N
     assert len(set(split)) == 6
 
 
+def test_a_discriminator_of_a_column_of_lists_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(5)",
+        statistics=Statistics(0, 2, Lengths(1, 3)),
+        list_separator=";",
+        items=Findings(Statistics(0, 2, Lengths(1, 1))),
+    )
+    entities = (Entity(("A",), 5, {"v": 5}), Entity(("B",), 5, {"v": 5}))
+    table = replace(_table(column, count=10), discriminator=Discriminator("v", entities))
+    with pytest.raises(SimulationError, match=r"t\.v: no discriminator of lists is made"):
+        rows(table, _profile(), 0)
+
+
 def test_a_column_of_lists_without_its_items_is_refused() -> None:
     column = Column(
         name="v", type="varchar(15)", statistics=Statistics(0, 3, Lengths(1, 5)), list_separator=";"

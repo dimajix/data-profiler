@@ -168,3 +168,16 @@ As the maintainer decided on the questions below, and on the plan of the work:
   `_withheld` - and `Profile.updating` cannot change the one and miss the other. The document of
   the profile is as it was; a field of findings in place of the flat fields of a column would
   change its format, a major version, and is not done.
+
+- **2026-11-06** — Step 2c done: of a column of lists, the values of its lists are a candidate of a
+  discriminator, by `Column.as_items`, the column as one of the values of its lists; `entities`
+  counts each such candidate on a source of a row of each value of its lists, the other candidates
+  in one query as before, so that a row is counted with each value of its list: the rows of an
+  entity may be more than its own, and those of its entities more than those of the table, as
+  `Entity.rows` says; the report takes the rows of no entity from `Table.rows_of_no_entity`, which
+  tells none of them. A discriminator given of a column of lists is of the values of its lists
+  alike; `disclosure` keeps it where the column keeps them. The report says that the entities are of
+  the values of the lists, and tells no rows of none of them. The simulation generates no
+  discriminator of lists, and refuses one, so that it is tested by tables made by hand and the query
+  on the database by the scan of the example profile, whose columns of lists are candidates, of
+  entities of none.

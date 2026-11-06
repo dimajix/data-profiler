@@ -355,6 +355,24 @@ class Column:
         """What was found of its values: its statistics, matches and values."""
         return Findings(self.statistics, self.matches, self.values)
 
+    @property
+    def as_items(self) -> Self:
+        """It as a column of the values of its lists, where it is one of lists, else itself.
+
+        What was found of the values of its lists is what was found of it, so that what tells the
+        values of a column apart tells those of its lists alike - its entities, by a discriminator.
+        """
+        if self.items is None:
+            return self
+        found = self.items
+        return replace(
+            self,
+            statistics=found.statistics,
+            matches=found.matches,
+            values=found.values,
+            items=None,
+        )
+
     def applied(self, change: Callable[[Findings], Findings]) -> Self:
         """It with `change` made to what was found of its values, and of the values of its lists.
 
@@ -441,10 +459,11 @@ class Entity:
 
     Attributes:
         values: The values of the discriminator its rows hold, as text, the most frequent first.
-        rows: The number of its rows.
+        rows: The number of its rows; of a discriminator of lists, the rows of each of its values,
+            a row of a list of two of its values twice.
         filled: The number of its rows each column of the table is filled in - holds a value,
             neither null nor a sentinel -, by the name of the column, of every column of the table
-            in its order.
+            in its order, counted as its rows are.
         name_given: Its harmonized name given by hand, by an override; None where none is given,
             and in a profile written.
         description: What it holds, in English, given by hand, by an override; None where none is
@@ -462,10 +481,13 @@ class Entity:
 class Discriminator:
     """The column whose values tell the entities of a table apart, and those entities.
 
-    The rows of the table whose discriminator is null or a sentinel are of no entity.
+    The rows of the table whose discriminator is null or a sentinel are of no entity. A
+    discriminator of a column of lists is of the values of its lists, a row counted with each value
+    of its list.
 
     Attributes:
-        column: The name of the column, an enumeration of no sensitivity.
+        column: The name of the column, an enumeration of no sensitivity, or a column of lists of
+            values that are one.
         entities: Its entities, the one of the most rows first, at least two where it is found
             rather than given, and none where it is given of a column that holds no value the
             profile holds; a value is of one entity at most.
@@ -479,7 +501,7 @@ class Discriminator:
 
     @property
     def rows(self) -> int:
-        """The number of the rows of its entities."""
+        """The number of the rows of its entities, as each counts them."""
         return sum(entity.rows for entity in self.entities)
 
 
@@ -598,6 +620,17 @@ class Table:
             if column.name == name:
                 return column
         raise KeyError(name)
+
+    @property
+    def rows_of_no_entity(self) -> int | None:
+        """The rows of no entity of its discriminator, or None where they are not told.
+
+        They are not told of a discriminator of lists, whose entities count a row with each value
+        of its list, nor where it has no discriminator.
+        """
+        if self.discriminator is None or self.column(self.discriminator.column).items is not None:
+            return None
+        return self.rows - self.discriminator.rows
 
     def reference(self, name: str) -> Reference | None:
         """The reference of its column of the name `name`.

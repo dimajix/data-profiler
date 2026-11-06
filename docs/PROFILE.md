@@ -340,11 +340,13 @@ one that follows from another, by a dependent of it, is held as well.
 
 The column whose values tell the entities of a table apart, and those entities.
 
-The rows of the table whose discriminator is null or a sentinel are of no entity.
+The rows of the table whose discriminator is null or a sentinel are of no entity. A
+discriminator of a column of lists is of the values of its lists, a row counted with each value
+of its list.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `column` | text | required | The name of the column, an enumeration of no sensitivity. |
+| `column` | text | required | The name of the column, an enumeration of no sensitivity, or a column of lists of values that are one. |
 | `entities` | list of [Entity](#entity) | required | Its entities, the one of the most rows first, at least two where it is found rather than given, and none where it is given of a column that holds no value the profile holds; a value is of one entity at most. |
 | `given` | list of list of text | absent | The values of each entity the overrides gave, in their order, that it was counted with; None where it was found, none given. |
 
@@ -405,8 +407,8 @@ The rows of a table of one entity of the business: those of some values of its d
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `values` | list of text | required | The values of the discriminator its rows hold, as text, the most frequent first. |
-| `rows` | integer | required | The number of its rows. |
-| `filled` | map of integer | required | The number of its rows each column of the table is filled in - holds a value, neither null nor a sentinel -, by the name of the column, of every column of the table in its order. |
+| `rows` | integer | required | The number of its rows; of a discriminator of lists, the rows of each of its values, a row of a list of two of its values twice. |
+| `filled` | map of integer | required | The number of its rows each column of the table is filled in - holds a value, neither null nor a sentinel -, by the name of the column, of every column of the table in its order, counted as its rows are. |
 | `name_given` | text | absent | Its harmonized name given by hand, by an override; None where none is given, and in a profile written. |
 | `description` | text | absent | What it holds, in English, given by hand, by an override; None where none is given, and in a profile written. |
 

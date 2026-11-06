@@ -77,7 +77,8 @@ environment.
     follow from another, found in its sample, and verified on the whole table by exact distinct
     counts in queries built the same way.
 *   **`data_profiler.entities`** - the entities of a table: its rows told apart by the values of
-    its discriminator, counted by one query built the same way.
+    its discriminator, counted by one query built the same way, and one more of each candidate of
+    the values of lists, on a source `unnested`.
 *   **`data_profiler.disclosure`** - what of the values of a table goes into the profile: the
     ranges and the values of enumerations of its columns of no sensitivity, and the values of their
     samples shown to the language model, whose answers go into it.
@@ -166,12 +167,12 @@ from the profile.
     overrides. The tool brings its sentinels, of the columns whose values the database writes as
     text; an override gives those of a column in their place.
 *   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
-    separator of lists the project gives, the same in all tables of the database, or an override
-    of a table in its place; the tool guesses none. Nearly every text is a list, of one value or
-    more, and one of more at least. Its texts are no values of a discriminator. The values of its
-    lists are its **items**, counted as the values of a column are - their statistics, matches and
-    enumeration -, on the whole table; a match of them of a sensitive type makes the column as
-    sensitive, and they keep what the column keeps of a range and values.
+    separator of lists the project gives, the same in all tables of the database, or an override of
+    a table in its place; the tool guesses none. Nearly every text is a list, of one value or more,
+    and one of more at least. Its texts are no values of a discriminator, the values of its lists
+    are. The values of its lists are its **items**, counted as the values of a column are - their
+    statistics, matches and enumeration -, on the whole table; a match of them of a sensitive type
+    makes the column as sensitive, and they keep what the column keeps of a range and values.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
@@ -222,7 +223,8 @@ from the profile.
     An override gives entities by their values, and a harmonized name and a description of each,
     which the values found of none join.
 *   **Discriminator** - the column whose values tell the entities of a table apart: an enumeration
-    of no sensitivity, as in the single-table inheritance of a mapping of objects to tables. A
+    of no sensitivity, as in the single-table inheritance of a mapping of objects to tables, or a
+    column of lists whose values are one, by them, a row counted with each value of its list. A
     table has one at most, and none where it holds the rows of one entity alone, unless an override
     gives it.
 *   **Term** - a part of the original names, mostly an abbreviation: `CUST` in `CUST_CRT_DT`. The
@@ -278,12 +280,13 @@ from the profile.
     sample, and verified on the whole table, and the primary key chosen among them, unless the
     overrides give it. The columns filled together in the sample are named as column groups, and the
     columns whose values follow from another in the sample, verified on the whole table, as column
-    dependencies. Of the enumerations of no sensitivity, the one whose values tell entities of the
-    rows apart is the discriminator, its entities counted by one more query. The overrides of the
-    project give the sentinels of a column in place of those of the tool, mark the columns the
-    detectors miss, and give the primary key of a table, the columns that determine no other, its
-    separator of lists, and its discriminator and entities of it, or none. The result is the
-    profile, with the ranges and the values of enumerations of the columns of no sensitivity,
+    dependencies. Of the enumerations of no sensitivity - of the values of columns, and of those of
+    the lists of a column of lists -, the one whose values tell entities of the rows apart is the
+    discriminator, its entities counted by one more query, and one of each candidate of lists. The
+    overrides of the project give the sentinels of a column in place of those of the tool, mark the
+    columns the detectors miss, and give the primary key of a table, the columns that determine no
+    other, its separator of lists, and its discriminator and entities of it, or none. The result is
+    the profile, with the ranges and the values of enumerations of the columns of no sensitivity,
     written after every table: a scan that fails keeps the tables before it, and the next scan
     resumes its run, skipping the tables it counted, unless the overrides now give their columns,
     their primary keys or their discriminators otherwise, or their lists are of another separator.

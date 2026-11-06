@@ -1,11 +1,15 @@
 """The entities of a table: its rows told apart by the values of its discriminator.
 
 A candidate is a column whose values the profile holds - an enumeration of no sensitivity - of two
-values at least, and no column of lists, whose texts are no values of one. The query, built from the
-building blocks of the dialect, groups the table by each candidate on its own, in one pass, and
-counts the rows of each value and those of them each column is filled in: where it holds a value,
-neither null nor one of the sentinels its statistics found. Counted on the whole table, not in a
-sample, an entity of few rows is found as well, and each count is exact.
+values at least; of a column of lists, whose texts are no values of one, the values of its lists
+are, `Column.as_items`. The query, built from the building blocks of the dialect, groups the table
+by each candidate on its own, in one pass, and counts the rows of each value and those of them each
+column is filled in: where it holds a value, neither null nor one of the sentinels its statistics
+found. A candidate of lists is counted by a query of its own, of a source that reads the table as a
+row of each value of its lists, `Source.unnested`, so that a row is counted with each value of its
+list: the rows of an entity may be more than its own, of a list of two of its values, and those of
+its entities more than those of the table. Counted on the whole table, not in a sample, an entity of
+few rows is found as well, and each count is exact.
 
 A column tells two values apart where it is filled in at least `_MOST` of the rows of the one and in
 at most `_LEAST` of the rows of the other, both of at least `_FEWEST` rows; two values are of two
@@ -71,7 +75,8 @@ def discriminate(source: Source, table: Table, given: GivenDiscriminator) -> Tab
         No query is sent where False is given, or none is given and no column is a candidate.
 
     Raises:
-        SourceError: The database fails to count the rows of the values.
+        SourceError: The database fails to list the columns of the table, to read the values of a
+            list, or to count the rows of the values.
     """
     if given is False:
         discriminator = None
@@ -90,11 +95,7 @@ def discriminate(source: Source, table: Table, given: GivenDiscriminator) -> Tab
 
 def _found(source: Source, table: Table) -> Discriminator | None:
     """The discriminator of `table` found among its candidates, or None where none is one."""
-    candidates = [
-        column
-        for column in table.columns
-        if len(column.values) > 1 and column.list_separator is None
-    ]
+    candidates = [column.as_items for column in table.columns if len(column.as_items.values) > 1]
     if not candidates:
         return None
     counts = _count(source, table, candidates)
@@ -116,7 +117,7 @@ def _given(source: Source, table: Table, given: DiscriminatorOverride) -> Discri
     of, the values left out, as the overrides are of all environments, whose tables differ; the
     discriminator records the values given all the same, as the table was counted with them.
     """
-    column = table.column(given.column)
+    column = table.column(given.column).as_items
     held = {value.value for value in column.values}
     if not held:
         _logger.warning(
@@ -146,7 +147,28 @@ def _given(source: Source, table: Table, given: DiscriminatorOverride) -> Discri
 def _count(
     source: Source, table: Table, candidates: Sequence[Column]
 ) -> dict[str, dict[str, _Counts]]:
-    """Of each of `candidates`, the counts of each of its values the profile holds, by its text."""
+    """Of each of `candidates`, the counts of each of its values the profile holds, by its text.
+
+    A candidate of the values of the lists of a column of `table` - of its items - is counted on a
+    source of a row of each of them, each on its own; the others in one query.
+    """
+    counts: dict[str, dict[str, _Counts]] = {}
+    plain = []
+    for column in candidates:
+        of = table.column(column.name)
+        separator = of.list_separator
+        if of.items is None or separator is None:
+            plain.append(column)
+        else:
+            unnested = source.unnested(table.name, column.name, separator)
+            counts |= _count_on(unnested, table, [column])
+    return (_count_on(source, table, plain) if plain else {}) | counts
+
+
+def _count_on(
+    source: Source, table: Table, candidates: Sequence[Column]
+) -> dict[str, dict[str, _Counts]]:
+    """Of each of `candidates`, the counts of its values the profile holds, by one query."""
     dialect = source.dialect
     names = [column.name for column in candidates]
     expressions = [

@@ -281,6 +281,22 @@ def test_a_report_shows_the_entities_by_the_share_of_their_rows_each_column_is_f
     ) in page, "the share of the rows of each entity a column is filled in"
 
 
+def test_a_report_shows_the_entities_by_the_values_of_lists_without_rows_of_none() -> None:
+    profile = _discriminated()
+    (table, empty) = profile.tables
+    columns = tuple(
+        replace(column, list_separator=";", items=Findings(Statistics(0, 2), values=column.values))
+        if column.name == "cust_typ_cd"
+        else column
+        for column in table.columns
+    )
+    page = _page(profile=replace(profile, tables=(replace(table, columns=columns), empty)))
+    assert (
+        'Entities by <span class="original">cust_typ_cd</span>, by the values of its lists' in page
+    )
+    assert "rows of none" not in page, "a row of a list is of each entity of a value of it"
+
+
 def test_a_report_shows_the_names_and_descriptions_given_of_entities() -> None:
     business = EntityOverride(("B",), "A <i>company</i>.")
     given = DiscriminatorOverride("cust_typ_cd", {"business": business})

@@ -1,37 +1,36 @@
 """Rows of test data whose columns have the statistics of a profile.
 
 The values of a column are drawn from a pool of as many distinct values as its statistics count,
-each of them used at least once, and its nulls and sentinels are spread over the rows at random:
-the rows of a column are taken in an order of their own, its nulls and sentinels in the first of
-them. The columns of a group share their order, so that they are filled in the same rows as far as
-their nulls and sentinels allow: the column of more of them is filled within the rows of the column
-of fewer. A column that follows from another, by a column dependency, is made of the values of the
+each of them used at least once, and its nulls and sentinels are spread over the rows at random: the
+rows of a column are taken in an order of their own, its nulls and sentinels in the first of them.
+The columns of a group share their order, so that they are filled in the same rows as far as their
+nulls and sentinels allow: the column of more of them is filled within the rows of the column of
+fewer. A column that follows from another, by a column dependency, is made of the values of the
 other: its distinct values, as they first come, take the values of its pool in their order, again
 from the first where they are more, so that the columns that follow from one follow from each other
 where their pools are as large; it is null where the other is not filled. A table of a discriminator
 holds the values of its column in as many rows as the profile counts each, the rows of each entity
 those of its values, and each column is filled in as many rows of each entity as the entity counts,
-its nulls and sentinels in the others; the discriminator is a column of text. Of a key of two
-columns, the column of fewer distinct values is numbered within the other: its values, in their
-order, by the place of each row among the rows of the same value of the other, which holds each of
-its values in as many rows at most as the first has values, and one of them in as many, so that the
-pair is unique and each column has its distinct values.
-Each column draws its values from a random of its own, made of the seed and its name and that of its
-table, its pool first, so that the values of a key are drawn again the same for a column of a
-reference to it, of whatever table: the column holds as many of them as its distinct values count,
-less those outside of the key, in as many rows as its coverage says; those outside, of a column of
-whole numbers alone, are above the largest of the key, each in one row, whatever range the column
-has itself. A reference of unmistakable values, of no coverage, holds values of the key alone.
-What the values are follows from the type of the column: texts are letters of the counted lengths,
-and where the column has a match, values of its first semantic type, of those lengths, which its
-detector recognises - all of them, whatever the shares of the match -, and which meet the condition
-of its column together, where the detector has one; a column of lists holds lists of the values of
-its items, separated by its separator, drawn as the texts of a column of their statistics and
-matches are, digits where they have no match; whole numbers of a range lie within it, its ends among
-them, in their order, all of it where they are as many, as a key numbered from one is. Values are
-made of the semantic types of the tool alone, not of those of a project. The sentinels of a column
-are made as many times as the profile counts each: a text as it is written, a day or a moment of the
-day it names in the form of ISO 8601.
+its nulls and sentinels in the others; the discriminator is a column of text, of no lists. Of a key
+of two columns, the column of fewer distinct values is numbered within the other: its values, in
+their order, by the place of each row among the rows of the same value of the other, which holds
+each of its values in as many rows at most as the first has values, and one of them in as many, so
+that the pair is unique and each column has its distinct values. Each column draws its values from a
+random of its own, made of the seed and its name and that of its table, its pool first, so that the
+values of a key are drawn again the same for a column of a reference to it, of whatever table: the
+column holds as many of them as its distinct values count, less those outside of the key, in as many
+rows as its coverage says; those outside, of a column of whole numbers alone, are above the largest
+of the key, each in one row, whatever range the column has itself. A reference of unmistakable
+values, of no coverage, holds values of the key alone. What the values are follows from the type of
+the column: texts are letters of the counted lengths, and where the column has a match, values of
+its first semantic type, of those lengths, which its detector recognises - all of them, whatever the
+shares of the match -, and which meet the condition of its column together, where the detector has
+one; a column of lists holds lists of the values of its items, separated by its separator, drawn as
+the texts of a column of their statistics and matches are, digits where they have no match; whole
+numbers of a range lie within it, its ends among them, in their order, all of it where they are as
+many, as a key numbered from one is. Values are made of the semantic types of the tool alone, not of
+those of a project. The sentinels of a column are made as many times as the profile counts each: a
+text as it is written, a day or a moment of the day it names in the form of ISO 8601.
 """
 
 import re
@@ -362,6 +361,8 @@ def _kinds(
 ) -> list[tuple[int, str] | None]:
     """Of each row of `table`, its entity, by its place, and its value; None of a row of none."""
     (column,) = (column for column in table.columns if column.name == discriminator.column)
+    if column.list_separator is not None:
+        raise SimulationError(f"{table.name}.{column.name}: no discriminator of lists is made")
     counted = {value.value: value.rows for value in column.values}
     kinds: list[tuple[int, str] | None] = []
     for index, entity in enumerate(discriminator.entities):

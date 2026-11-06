@@ -130,7 +130,7 @@ class DiscriminatorOverride:
 
     Attributes:
         column: The name of the column whose values tell the entities apart, an enumeration of no
-            sensitivity.
+            sensitivity, or a column of lists whose values are one, which tell them apart.
         entities: What is given of its entities, by their harmonized names, in snake_case; the
             values given of none join them, or are of entities found as `scan` finds them.
     """

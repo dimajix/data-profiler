@@ -187,10 +187,12 @@
   {% endfor %}
   {% set discriminator = table.discriminator %}
   {% if discriminator and discriminator.entities %}
-  {% set of_none = table.rows - discriminator.rows %}
+  {% set listed = table.column(discriminator.column).items %}
+  {% set of_none = table.rows_of_no_entity %}
   <table class="entities">
     <caption>
-      Entities by <span class="original">{{ discriminator.column }}</span>, the rows each column
+      Entities by <span class="original">{{ discriminator.column }}</span>
+      {%- if listed %}, by the values of its lists{% endif %}, the rows each column
       is filled in{% if of_none %} – {{ "{:,}".format(of_none) }} rows of none{% endif %}
     </caption>
     <thead>

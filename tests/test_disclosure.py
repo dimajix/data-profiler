@@ -161,6 +161,26 @@ def _discriminated(column: Column) -> Table:
     )
 
 
+def test_a_discriminator_of_the_values_of_lists_is_kept_where_they_are() -> None:
+    column = _lists(Match(POSTAL_CODE, 1.0, 1.0))
+    assert column.items is not None
+    entities = tuple(Entity((value.value,), value.rows, {}) for value in column.items.values)
+    table = Table(
+        name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
+    )
+    assert disclose(table, ()).discriminator == table.discriminator, "its values, of its lists"
+
+
+def test_a_discriminator_of_the_values_of_lists_of_a_sensitive_type_is_lost() -> None:
+    column = _lists(Match(IBAN, 1.0, 1.0))
+    assert column.items is not None
+    entities = tuple(Entity((value.value,), value.rows, {}) for value in column.items.values)
+    table = Table(
+        name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
+    )
+    assert disclose(table, ()).discriminator is None, "the values of its lists withheld"
+
+
 def test_a_discriminator_of_no_sensitivity_is_kept() -> None:
     table = _discriminated(_code())
     assert disclose(table, ()).discriminator == table.discriminator

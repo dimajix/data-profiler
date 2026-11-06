@@ -5,8 +5,8 @@ all its tables, and an override of a table one in its place. A column of text is
 the module `detect` takes the values of the sample, its nulls and sentinels aside, for lists of
 values separated by it; a column of texts of one value each is none, though each is a list of one,
 and a column of no text is none, though a decimal written as text, `12.50`, would be a list of a
-dot. No query is needed. A column of lists is no candidate of a discriminator, as its texts are no
-values of one.
+dot. No query is needed. The texts of a column of lists are no values of a discriminator; the values
+of its lists are, as the module `entities` says.
 
 The values of the lists of a column are counted as the values of a column are, by the modules that
 count those, of a source that reads the table as a row of each value, `Source.unnested`: their

@@ -13,9 +13,9 @@ lists are found in the sample, by the module `lists`, of the separator the overr
 table, else that of the project, which counts the values of their lists as well. The overrides of
 the project mark its columns as they give, and which values of the database go into the profile -
 the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
-the same types and those marks. Of the enumerations the profile holds, the module `entities` finds
-the discriminator whose values tell the entities of the rows apart, by a query of its own, or takes
-the one the overrides give.
+the same types and those marks. Of the enumerations the profile holds, of the values of columns and
+of the lists of a column, the module `entities` finds the discriminator whose values tell the
+entities of the rows apart, by queries of its own, or takes the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,

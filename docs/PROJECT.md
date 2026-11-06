@@ -34,14 +34,14 @@ directory: `uv run data-profiler scan simulation --project examples/crm`.
 *   **`types`** gives semantic types of the project, beside those of the tool, each by a pattern its
     values match whole and its sensitivity. The profile holds them, so that it is read without its
     project.
-*   **`list_separator`** gives the character that separates the values of a list in a text, the
-    same in all tables of the database - one character, no letter, digit, `-`, `+` or `_`. `scan`
-    takes a column for one of lists where nearly every text of its sample is a list of values of
-    letters, digits, `-`, `+` and `_`, of one value or more, and one of more at least, and counts
-    the values of its lists on the whole table as it counts a column: their statistics, semantic
-    types and enumeration. A column of lists is no candidate of a discriminator, and is sensitive
-    where the values of its lists are of a sensitive type. The tool guesses no separator: a project
-    without one has no columns of lists.
+*   **`list_separator`** gives the character that separates the values of a list in a text, the same
+    in all tables of the database - one character, no letter, digit, `-`, `+` or `_`. `scan` takes a
+    column for one of lists where nearly every text of its sample is a list of values of letters,
+    digits, `-`, `+` and `_`, of one value or more, and one of more at least, and counts the values
+    of its lists on the whole table as it counts a column: their statistics, semantic types and
+    enumeration. The values of its lists, not its texts, are a candidate of a discriminator, a row
+    counted with each value of its list; and it is sensitive where the values of its lists are of a
+    sensitive type. The tool guesses no separator: a project without one has no columns of lists.
 
 **Variables.** A value `${NAME}` is taken from the variable `NAME`, as the whole value, never a part
 of it. The password is given only so, never written out, so that `project.yml` can be committed and
@@ -645,7 +645,7 @@ The discriminator of a table given by hand, and its entities by their harmonized
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `column` | text | required | The name of the column whose values tell the entities apart, an enumeration of no sensitivity. |
+| `column` | text | required | The name of the column whose values tell the entities apart, an enumeration of no sensitivity, or a column of lists whose values are one, which tell them apart. |
 | `entities` | map of [EntityOverride](#entityoverride) | empty | What is given of its entities, by their harmonized names, in snake_case; the values given of none join them, or are of entities found as `scan` finds them. |
 
 #### ReferenceOverride

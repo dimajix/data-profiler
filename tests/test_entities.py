@@ -11,7 +11,16 @@ import pytest
 
 from data_profiler.entities import discriminate
 from data_profiler.overrides import DiscriminatorOverride, EntityOverride, GivenDiscriminator
-from data_profiler.profile import Column, Discriminator, Entity, Profile, Statistics, Table, Value
+from data_profiler.profile import (
+    Column,
+    Discriminator,
+    Entity,
+    Findings,
+    Profile,
+    Statistics,
+    Table,
+    Value,
+)
 from data_profiler.source import Source, connect
 
 # The columns of each table made by hand, besides the candidates: `a` to `f`.
@@ -22,12 +31,21 @@ type _Given = Mapping[str, tuple[int, tuple[int, ...]]]
 
 
 class _Counted(Source):
-    """A schema of one table, which counts the values of its candidates as `given`."""
+    """A schema of one table, which counts the values of its candidates as `given`.
 
-    def __init__(self, given: Mapping[str, _Given]) -> None:
+    The values of the lists of a column it counts as `lists` gives them, by the column.
+    """
+
+    def __init__(
+        self, given: Mapping[str, _Given], lists: Mapping[str, _Given] | None = None
+    ) -> None:
         with connect("trino://h/c/s", "u", "") as trino:
             super().__init__("c", "s", trino.dialect)
         self._given = given
+        self._lists = lists or {}
+
+    def unnested(self, table: str, column: str, separator: str) -> Source:
+        return _Counted({**self._given, column: self._lists[column]})
 
     def grouped(
         self, table: str, columns: Sequence[str], expressions: Sequence[str], step: str
@@ -87,18 +105,59 @@ def test_values_told_apart_by_three_columns_are_two_entities() -> None:
     ), "each with the rows each column is filled in, the one of more rows first"
 
 
-def test_a_column_of_lists_is_no_candidate_of_a_discriminator() -> None:
-    kinds = {"A": (100, (100, 100, 100, 0, 0, 0)), "B": (50, (0, 0, 0, 50, 50, 0))}
+def _of_lists(lists: _Given, texts: _Given) -> Table:
+    """A table of a column of lists `kinds`, whose texts are `texts` and their values `lists`."""
     column = Column(
-        "kind",
-        "varchar(2)",
-        Statistics(0, 2),
+        "kinds",
+        "varchar(5)",
+        Statistics(0, len(texts)),
         list_separator=";",
-        values=(Value("A", 100), Value("B", 50)),
+        items=Findings(
+            Statistics(0, len(lists)),
+            values=tuple(Value(value, count) for value, (count, _) in lists.items()),
+        ),
+        values=tuple(Value(text, count) for text, (count, _) in texts.items()),
     )
     others = tuple(Column(name, "varchar(5)", Statistics(0, 1)) for name in _OTHERS)
-    table = Table(name="t", rows=150, columns=(column, *others))
-    assert discriminate(_Counted({"kind": kinds}), table, None).discriminator is None
+    return Table(name="t", rows=150, columns=(column, *others))
+
+
+def test_the_values_of_the_lists_of_a_column_are_a_candidate_of_a_discriminator() -> None:
+    lists = {"A": (100, (100, 100, 100, 0, 0, 0)), "B": (60, (0, 0, 0, 60, 60, 0))}
+    texts = {"A": (90, (90, 90, 90, 0, 0, 0)), "A;B": (10, (10, 10, 10, 10, 10, 0))}
+    table = _of_lists(lists, texts)
+    found = discriminate(_Counted({"kinds": texts}, {"kinds": lists}), table, None).discriminator
+    assert found is not None
+    assert found.column == "kinds"
+    assert [entity.values for entity in found.entities] == [("A",), ("B",)], "not its texts"
+    assert found.rows == 160, "a row of each entity a value of its list is of, more than the table"
+
+
+def test_of_a_candidate_of_lists_and_another_the_one_of_more_columns_telling_apart_wins() -> None:
+    lists = {"A": (100, (100, 100, 100, 0, 0, 0)), "B": (60, (0, 0, 0, 60, 60, 60))}
+    texts = {"A": (90, (90, 90, 90, 0, 0, 0)), "A;B": (10, (10, 10, 10, 10, 10, 10))}
+    table = _of_lists(lists, texts)
+    status = Column(
+        "status", "varchar(2)", Statistics(0, 2), values=(Value("X", 90), Value("Y", 60))
+    )
+    statuses = {"X": (90, (90, 90, 0, 0, 0, 0)), "Y": (60, (0, 0, 60, 60, 0, 0))}
+    kinds, *others = table.columns
+    table = replace(table, columns=(kinds, status, *others))
+    counted = _Counted({"kinds": texts, "status": statuses}, {"kinds": lists})
+    found = discriminate(counted, table, None).discriminator
+    assert found is not None
+    assert found.column == "kinds", "of six columns telling apart, not of four"
+
+
+def test_a_discriminator_given_of_a_column_of_lists_is_of_the_values_of_its_lists() -> None:
+    lists = {"A": (100, (100, 100, 100, 0, 0, 0)), "B": (60, (0, 0, 0, 60, 60, 0))}
+    texts = {"A": (90, (90, 90, 90, 0, 0, 0)), "A;B": (10, (10, 10, 10, 10, 10, 0))}
+    given = DiscriminatorOverride("kinds", {"b": EntityOverride(("B",))})
+    counted = _Counted({"kinds": texts}, {"kinds": lists})
+    found = discriminate(counted, _of_lists(lists, texts), given).discriminator
+    assert found is not None
+    assert _values(found) == [("A",), ("B",)], "of the values of its lists, the most rows first"
+    assert found.given == (("B",),), "counted with the values given"
 
 
 def test_values_told_apart_by_fewer_than_three_columns_are_one_entity() -> None:
