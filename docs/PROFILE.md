@@ -87,7 +87,7 @@ data are generated - written by hand, so that it holds no glossary, terms or des
 # numbers are numbered from one, sharing their values, but those of the products; contacts and
 # addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '14.1'
+format: '14.2'
 catalog: crm
 schema: sales
 ```
@@ -98,7 +98,7 @@ dependency:
 
 <!-- begin file: simulation/profiles/crm/tables/ord.yml -->
 ```yaml
-format: '14.1'
+format: '14.2'
 name: ord
 rows: 20000
 columns:
@@ -127,6 +127,7 @@ columns:
 - name: curr_cd
   type: varchar(3)
   statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 3}}
+  matches: [{type: currency-code, sample: 1.0, table: 1.0}]
 - name: dlvr_dt
   type: date
   statistics: {nulls: 1900, distinct: 2800, sentinels: [{value: '9999-12-31', rows: 300}]}
@@ -187,7 +188,7 @@ description names, each with its value; a list of classes as a list of maps.
 <!-- begin reference: profile.yml -->
 ### `profile.yml`
 
-The document begins with `format: "14.1"`, its version.
+The document begins with `format: "14.2"`, its version.
 
 What `profile.yml` holds: the profile but its tables, whose matches name its types.
 
@@ -240,7 +241,7 @@ type of the tool.
 <!-- begin reference: tables/<table>.yml -->
 ### `tables/<table>.yml`
 
-The document begins with `format: "14.1"`, its version.
+The document begins with `format: "14.2"`, its version.
 
 A table of the schema, under its original name, and what was found about it.
 

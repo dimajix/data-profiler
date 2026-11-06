@@ -22,7 +22,7 @@ hand. A value is compared with them as text, a moment as the text of its day.
 """
 
 import re
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
@@ -31,6 +31,8 @@ from typing import Final
 
 from phonenumbers import NumberParseException, is_valid_number, parse
 from stdnum import iban, luhn
+
+from data_profiler.currencies import CODES, NAMES, NUMBERS
 
 
 class Sensitivity(Enum):
@@ -151,22 +153,40 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
 # a sentinel is of the pair, as a column of counts, mostly zeros and ones, is none.
 _EVERY: Final = 1.0
 
+# The threshold of a code or a number of a currency: nearly every value of its column, as a fifth of
+# all numbers of three digits are numbers of currencies, and many a word of three capitals is a code
+# of one - `ALL`, `TOP` -, so that a column of quantities or of codes of status is none; a few
+# values amiss are allowed, which every value would not.
+_NEARLY_EVERY: Final = 0.95
 
-def cases(word: str) -> tuple[str, ...]:
-    """`word` as written, in lower case, with a capital and in capitals, each once, in this order.
+
+def cases(*words: str) -> tuple[str, ...]:
+    """`words`, each as written, in lower case, with a capital and in capitals, each spelling once.
 
     Args:
-        word: A word or words, as written: `true`, `US Dollar`.
+        words: Words, each of one word or several, as written: `true`, `US Dollar`.
 
     Returns:
-        The ways it is written, a capital its first letter alone, the others as written.
+        The ways each is written, a capital its first letter alone, the others as written, in the
+        order of `words` and of the ways above.
     """
-    return tuple(dict.fromkeys((word, word.lower(), word[:1].upper() + word[1:], word.upper())))
+    return tuple(
+        dict.fromkeys(
+            spelling
+            for word in words
+            for spelling in (word, word.lower(), word[:1].upper() + word[1:], word.upper())
+        )
+    )
+
+
+def _any_of(texts: Iterable[str]) -> str:
+    """A pattern of any of `texts`, their characters taken as written."""
+    return "|".join(re.escape(text) for text in texts)
 
 
 def _cases(*words: str) -> str:
-    """A pattern of `words`, each in each of its `cases`, its characters taken as written."""
-    return "|".join(re.escape(case) for word in words for case in cases(word))
+    """A pattern of `words`, each in each of its `cases`."""
+    return _any_of(cases(*words))
 
 
 @dataclass(frozen=True)
@@ -251,6 +271,22 @@ ZERO_ONE: Final = SemanticType(
     "zero-one", Sensitivity.NONE, Detector(re.compile(_cases("0", "1")), threshold=_EVERY)
 )
 """A flag of `0` and `1`."""
+CURRENCY_CODE: Final = SemanticType(
+    "currency-code",
+    Sensitivity.NONE,
+    Detector(re.compile(_any_of(CODES)), threshold=_NEARLY_EVERY),
+)
+"""The alphabetic code of a currency of ISO 4217, in capitals, as it writes them: `EUR`."""
+CURRENCY_NUMBER: Final = SemanticType(
+    "currency-number",
+    Sensitivity.NONE,
+    Detector(re.compile(_any_of(NUMBERS)), threshold=_NEARLY_EVERY),
+)
+"""The number of a currency of ISO 4217, of three digits: `978`, and `008`, not `8`."""
+CURRENCY_NAME: Final = SemanticType(
+    "currency-name", Sensitivity.NONE, Detector(re.compile(_cases(*NAMES)))
+)
+"""The English name of a currency, of ISO 4217 or more common: `Euro`, `British Pound`."""
 
 BUILT_IN: Final = (
     EMAIL,
@@ -264,6 +300,9 @@ BUILT_IN: Final = (
     TRUE_FALSE,
     YES_NO,
     ZERO_ONE,
+    CURRENCY_CODE,
+    CURRENCY_NUMBER,
+    CURRENCY_NAME,
 )
 """The semantic types of the tool."""
 

@@ -45,8 +45,12 @@ from typing import Final
 from stdnum.iban import calc_check_digits
 from stdnum.luhn import calc_check_digit
 
+from data_profiler.currencies import CODES, NAMES, NUMBERS
 from data_profiler.detect import (
     CARD_NUMBER,
+    CURRENCY_CODE,
+    CURRENCY_NAME,
+    CURRENCY_NUMBER,
     DATE,
     EMAIL,
     FREE_TEXT,
@@ -694,9 +698,12 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     DATE: _date,
     UUID: _uuid,
     FREE_TEXT: _free_text,
-    TRUE_FALSE: _one_of(*cases("true"), *cases("false")),
-    YES_NO: _one_of(*cases("yes"), *cases("no")),
+    TRUE_FALSE: _one_of(*cases("true", "false")),
+    YES_NO: _one_of(*cases("yes", "no")),
     ZERO_ONE: _one_of("0", "1"),
+    CURRENCY_CODE: _one_of(*CODES),
+    CURRENCY_NUMBER: _one_of(*NUMBERS),
+    CURRENCY_NAME: _one_of(*cases(*NAMES)),
 }
 
 

@@ -1,6 +1,6 @@
 # 41 — Detectors of currencies
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -46,7 +46,7 @@ As the maintainer decided on the questions below, and on the plan of the work:
 - **The historic currencies** are those withdrawn from ISO 4217 since the euro, 1999, of its list of
   withdrawn currencies: `DEM`, `FRF`, `HRK`, `VEF` and the others, not those before.
 - **Codes that are words** have the threshold of half the values, as hardly a column holds such
-  codes alone.
+  codes alone - raised to nearly every value, as of the numbers, after the review of step 2, below.
 - **A module of its own, `currencies`**, holds the codes, numbers and names, as three tuples, not a
   class of a currency, which nothing would use but to make them; the simulation takes its values
   from them. `XTS`, the code of testing, and `XXX`, of no currency, are left out, as `XXX` stands
@@ -100,3 +100,19 @@ As the maintainer decided on the questions below, and on the plan of the work:
   `cases` of a word, or codes as written -, so that one generator serves the flags and the
   currencies; the values of the columns of `yes`/`no` and `0`/`1` it makes are spread otherwise
   than before, with the same statistics.
+
+- **2026-11-06** — Step 2 done as decided: the module `currencies` holds `CODES`, `NUMBERS` and
+  `NAMES`, of `pycountry` and of the 65 currencies of the list of ISO 4217 withdrawn since 1999
+  whose codes are no longer current, `BGN` and `ANG` among them, and of 85 more common names;
+  `detect` has `CURRENCY_CODE`, `CURRENCY_NUMBER` and `CURRENCY_NAME`, the profile the version
+  14.2 - the rule of `documents` now naming a value added to those a field takes a reason of a minor
+  version -, and the example profile the three columns, which a scan of the simulation environment
+  matches. As the maintainer decided after the review: codes, too, are a match where 95 percent of
+  the values are codes, as many a word of three capitals is one, `ALL`, `TOP`; the names of
+  ISO 4217 that are words of other columns as well are left out, their codes kept - those of the
+  precious metals, `Gold`, a tier of customers, `Won`, a stage of a sale, `Sol`, `Rand`, `Yen`,
+  `Sucre` -, and so are `Pound`, a unit of weight, and `Sterling` of the names more common; and
+  `cases` takes several words, so that a pattern, the flags and the names of the simulation write
+  them alike. A column of numbers of countries is a match of the numbers of currencies, as most of
+  them are those of their countries - `276`, Germany and the mark -; that is left to
+  [42](42-detectors-of-countries.md), whose type of countries will match it as well.

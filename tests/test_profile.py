@@ -319,7 +319,7 @@ def test_a_match_of_a_type_neither_of_the_tool_nor_of_the_project_is_refused(
     content["types"] = {"customer-number": content["types"]["account-number"]}
     path.write_text(safe_dump(content), encoding="utf-8")
     with pytest.raises(
-        ProfileError, match=r"type: Input should be .*'zero-one' or 'customer-number'"
+        ProfileError, match=r"type: Input should be 'email', .* or 'customer-number'"
     ):
         Profile.read(tmp_path)
 

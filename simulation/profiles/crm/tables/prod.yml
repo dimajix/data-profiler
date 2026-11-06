@@ -1,4 +1,4 @@
-format: '14.1'
+format: '14.2'
 name: prod
 rows: 350
 columns:
@@ -25,6 +25,10 @@ columns:
   type: varchar(4)
   statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
 - {name: lst_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
+- name: prc_curr_no
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 4, lengths: {shortest: 3, longest: 3}}
+  matches: [{type: currency-number, sample: 1.0, table: 1.0}]
 - {name: vat_rt, type: "decimal(4,2)", statistics: {nulls: 0, distinct: 3}}
 - name: dscntd_flg
   type: boolean

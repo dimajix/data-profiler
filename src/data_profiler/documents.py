@@ -20,7 +20,9 @@ the fields of the classes of the format that is incompatible, and the minor vers
 field added that is required, a field renamed or removed, a default changed - a default is not
 written, so that a document of the version before would be read with another value, unseen -, or
 the type or the meaning of a field changed. The minor version is raised with a change that is
-compatible: a field added that is optional, or a required field made optional. A document of the
+compatible: a field added that is optional, a required field made optional, or a value added to
+those a field takes - a semantic type of the tool, which a match names -, which a tool older than
+the document would refuse. A document of the
 major version read and of its minor version or an older one is read, what it lacks taken by its
 defaults; one of a newer minor version is refused, as its fields are unknown to the tool, and one
 of another major version as well.

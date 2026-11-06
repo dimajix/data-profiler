@@ -46,7 +46,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 1)
+VERSION: Final = Version(14, 2)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
