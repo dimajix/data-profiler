@@ -225,11 +225,13 @@ class Dialect(ABC):
         """The expression counting the distinct values of `values`, approximately."""
 
     @abstractmethod
-    def exactly_distinct(self, columns: Sequence[str]) -> str:
-        """The expression counting the distinct values of `columns` together, exactly.
+    def exactly_distinct(self, values: Sequence[str]) -> str:
+        """The expression counting the distinct values of `values` together, exactly.
 
-        Each count holds the distinct values of the rows it is counted of in memory, as many as
-        the rows where they are unique: dearer than `distinct`, of few columns at once.
+        The values are counted in the rows the first of them is not null in, a null of the others
+        a value as any other, so that the values of a column with the values that come with them
+        are counted. Each count holds the distinct values of the rows it is counted of in memory,
+        as many as the rows where they are unique: dearer than `distinct`, of few values at once.
         """
 
     @abstractmethod
@@ -587,11 +589,12 @@ class _TrinoDialect(Dialect):
         """The expression counting the distinct values of `values`, approximately."""
         return f"approx_distinct({values}, {_DISTINCT_ERROR})"
 
-    def exactly_distinct(self, columns: Sequence[str]) -> str:
-        """The expression counting the distinct values of `columns` together, exactly."""
-        if len(columns) == 1:
-            return f"count(DISTINCT {_identifier(columns[0])})"
-        return f"count(DISTINCT ROW({', '.join(map(_identifier, columns))}))"
+    def exactly_distinct(self, values: Sequence[str]) -> str:
+        """The expression counting the distinct values of `values` together, exactly."""
+        first, *others = values
+        if not others:
+            return f"count(DISTINCT {first})"
+        return f"count(DISTINCT CASE WHEN {first} IS NOT NULL THEN ROW({', '.join(values)}) END)"
 
     def distinct_error(self) -> float:
         """The standard error of the distinct values `distinct` counts: half a percent."""

@@ -33,15 +33,19 @@ class _Counted(Source):
 
     def query(self, statement: str, step: str) -> list[tuple[object, ...]]:
         # The keys indicated whose counts the statement holds, in their order in it.
+        counted = {found: self._counted(found) for found in self._indicated}
         held = sorted(
-            (statement.index(self.dialect.exactly_distinct(found)), found)
-            for found in self._indicated
-            if self.dialect.exactly_distinct(found) in statement
+            (statement.index(expression), found)
+            for found, expression in counted.items()
+            if expression in statement
         )
         asked = [found for _, found in held]
         self.asked.append(asked)
         counts = (self._rows - 1 if found in self._duplicated else self._rows for found in asked)
         return [(self._rows, *counts)]
+
+    def _counted(self, key: tuple[str, ...]) -> str:
+        return self.dialect.exactly_distinct([self.dialect.column(name) for name in key])
 
     def close(self) -> None:
         pass

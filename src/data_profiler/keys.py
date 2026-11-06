@@ -158,7 +158,10 @@ def _verified(
     verified = []
     for start in range(0, len(indicated), _PER_QUERY):
         batch = indicated[start : start + _PER_QUERY]
-        expressions = [dialect.rows(), *map(dialect.exactly_distinct, batch)]
+        expressions = [
+            dialect.rows(),
+            *(dialect.exactly_distinct([dialect.column(name) for name in key]) for key in batch),
+        ]
         (row,) = source.query(dialect.select(expressions, table.name), step)
         rows, *distinct = (counted(found, table.name) for found in row)
         verified += [key for key, found in zip(batch, distinct, strict=True) if found == rows]
