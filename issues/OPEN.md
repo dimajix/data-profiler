@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [39](39-documents-of-the-formats.md) | open | medium | feature | The formats of `project.yml`, `overrides.yml` and the profile are described only in the prose of the README and in doc comments, without a reference of their fields and without examples of what a person writes, so that a developer writing overrides reads the code to learn what a field takes, and a description written by hand would drift from the classes it describes. |
+| [39](39-documents-of-the-formats.md) | in progress | medium | feature | The formats of `project.yml`, `overrides.yml` and the profile are described only in the prose of the README and in doc comments, without a reference of their fields and without examples of what a person writes, so that a developer writing overrides reads the code to learn what a field takes, and a description written by hand would drift from the classes it describes. |
 
 ## Describe
 

@@ -5,11 +5,11 @@ the overrides of the project, laid over it: it holds no values of the columns fo
 match names its semantic type by its name, of a type of the tool or of the project, whose types the
 profile holds in the form `project.yml` gives them, so that it is read without its project.
 
-A profile is a directory of documents, written as YAML in the format below and read back by the
-same classes: `profile.yml` holds the profile but its tables, and `tables/` a file of each table,
-named after it, so that a person finds a table in a file of its own, and its changes in a diff of
-their own. A file of a table is read with the semantic types of `profile.yml`, which its matches
-name.
+A profile is a directory of documents, written as YAML in the formats below, of one version, and
+read back by the same classes: `profile.yml` holds the profile but its tables, and `tables/` a file
+of each table, named after it, so that a person finds a table in a file of its own, and its changes
+in a diff of their own. A file of a table is read with the semantic types of `profile.yml`, which
+its matches name.
 
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
@@ -50,13 +50,13 @@ from data_profiler.detect import (
     project_type,
     semantic_type,
 )
-from data_profiler.documents import DocumentError, Version, read_document, write_document
+from data_profiler.documents import DocumentError, Format, Version
 from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(14, 1)
-"""The version of the format a profile is written in, raised as `documents` says.
+VERSION: Final = Version(14, 1)
+"""The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
 another major version is removed and scanned again, not converted.
@@ -656,7 +656,7 @@ class Profile:
                 table the profile does not have, or to a column of it the table does not have.
         """
         try:
-            head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
+            head = _HEAD_FORMAT.read(directory / _HEAD)
             tables = [_read_table(path, head.types) for path in _files(directory)]
         except DocumentError as error:
             raise ProfileError(str(error)) from error
@@ -779,9 +779,9 @@ class Profile:
             description=self.description,
         )
         try:
-            write_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT, head)
+            _HEAD_FORMAT.write(directory / _HEAD, head)
             for table in self.tables:
-                write_document(_file(directory, table.name), _TABLE_ADAPTER, FORMAT, table)
+                _TABLE_FORMAT.write(_file(directory, table.name), table)
         except DocumentError as error:
             raise ProfileError(str(error)) from error
 
@@ -926,7 +926,7 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
             twice or fewer than two, the determinants of the column dependencies name one twice,
             or the discriminator is not one of the table, as `_refuse_discriminator` says.
     """
-    table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
+    table = _TABLE_FORMAT.read(path, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
         raise ProfileError(f"{path} holds the table {table.name!r}, not the one it is named after")
     names = {column.name for column in table.columns}
@@ -1022,5 +1022,6 @@ def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Colle
             values.add(value)
 
 
-_HEAD_ADAPTER: Final = TypeAdapter(_Head)
-_TABLE_ADAPTER: Final = TypeAdapter(Table)
+# The formats of the two files of a profile, of one version.
+_HEAD_FORMAT: Final = Format(_Head, VERSION)
+_TABLE_FORMAT: Final = Format(Table, VERSION)

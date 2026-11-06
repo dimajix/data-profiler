@@ -21,7 +21,7 @@ its own, `simulation`, in `simulation/`: it uses the tool's profile and its dete
 does not depend on it, nor on what it needs. Both are one uv workspace, with one lock file and one
 environment.
 
-*   **`data_profiler.profile`** - the profile: its classes and the version of their format, read
+*   **`data_profiler.profile`** - the profile: its classes and the version of their formats, read
     and written as a directory of documents, one of the schema and one of each table; the profile
     a scan starts from, in its run, resumed or new; and the form the semantic types of a project
     take in a document, which `project` reads them in as well.

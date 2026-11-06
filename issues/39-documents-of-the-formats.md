@@ -1,6 +1,6 @@
 # 39 — Documents of the formats, generated from the code
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -74,3 +74,11 @@ editor completion and checks of `project.yml` and `overrides.yml`; an issue of i
 
 - **2026-11-06** — Opened, as the maintainer decided: the formats documented from their classes,
   with recipes and example files, all checked against the code.
+
+- **2026-11-06** — Step 1, the refactoring: `documents.Format` reads and writes every document, in
+  place of `read_document` and `write_document`; the version of the profile, of both its formats, is
+  `profile.VERSION`. The formats stay private in this step - `project._FORMAT`, `overrides._FORMAT`,
+  `profile._HEAD_FORMAT` and `profile._TABLE_FORMAT` -, as is what a format holds, as nothing
+  outside their modules uses them yet; step 2 makes them public with the generator, their first
+  user, the formats of the profile as `HEAD_FORMAT` and `TABLE_FORMAT` rather than `HEAD` and
+  `TABLE`, as `_HEAD` names the file `profile.yml` already.

@@ -77,11 +77,9 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Final, Literal
 
-from pydantic import TypeAdapter
-
 from data_profiler.detect import Sensitivity
 from data_profiler.disclosure import disclose
-from data_profiler.documents import DocumentError, Version, read_document
+from data_profiler.documents import DocumentError, Format, Version
 from data_profiler.glossary import (
     Glossary,
     Vocabulary,
@@ -93,9 +91,6 @@ from data_profiler.glossary import (
 from data_profiler.profile import Concept, Discriminator, PrimaryKey, Profile, Table
 
 _logger = logging.getLogger(__name__)
-
-# The version of the format of the overrides, raised as `documents` says.
-_FORMAT: Final = Version(7, 4)
 
 
 class OverridesError(Exception):
@@ -537,7 +532,7 @@ class Overrides:
         if not path.exists():
             return cls()
         try:
-            return read_document(path, _ADAPTER, _FORMAT)
+            return _FORMAT.read(path)
         except DocumentError as error:
             raise OverridesError(str(error)) from error
 
@@ -740,4 +735,5 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     return concepts
 
 
-_ADAPTER: Final = TypeAdapter(Overrides)
+# The format of the overrides, its version raised as `documents` says.
+_FORMAT: Final = Format(Overrides, Version(7, 4))
