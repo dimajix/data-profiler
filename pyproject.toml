@@ -10,6 +10,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "phonenumbers>=9.0.42",
     "pyarrow>=26.0.0",
+    "pycountry>=26.2.16",
     "pydantic>=2.14.2",
     "pydantic-core>=2.50.2",
     "python-dotenv>=1.2.4",

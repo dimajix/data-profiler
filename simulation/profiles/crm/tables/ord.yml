@@ -1,4 +1,4 @@
-format: '14.1'
+format: '14.2'
 name: ord
 rows: 20000
 columns:
@@ -27,6 +27,7 @@ columns:
 - name: curr_cd
   type: varchar(3)
   statistics: {nulls: 0, distinct: 3, lengths: {shortest: 3, longest: 3}}
+  matches: [{type: currency-code, sample: 1.0, table: 1.0}]
 - name: dlvr_dt
   type: date
   statistics: {nulls: 1900, distinct: 2800, sentinels: [{value: '9999-12-31', rows: 300}]}

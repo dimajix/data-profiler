@@ -87,6 +87,9 @@ environment.
     the tables of a profile, written to it.
 *   **`data_profiler.detect`** - what the values of a column are - of which semantic type and
     sensitivity, or sentinels of no value -, and the detectors that recognise them.
+*   **`data_profiler.currencies`** - the alphabetic codes, numbers and English names of the
+    currencies of ISO 4217, current and withdrawn since the euro, of which `detect` makes the
+    patterns of its types of currencies and the simulation their values.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
     those written together by the vocabulary of the profile, each with its candidates among the
     concepts of the glossary, which the profile holds, and composing harmonized names from the
@@ -157,10 +160,10 @@ types of a project reach `scan` from `project`, and every stage after it from th
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
-*   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date. Each has
-    a **sensitivity**: personal data (GDPR), payment card data (PCI), or none. The tool brings its
-    types; a project gives types of its own, each by a pattern alone, which the profile holds, so
-    that it is read without its project.
+*   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date, a
+    currency. Each has a **sensitivity**: personal data (GDPR), payment card data (PCI), or none.
+    The tool brings its types; a project gives types of its own, each by a pattern alone, which the
+    profile holds, so that it is read without its project.
 *   **Detector** - recognises one semantic type: by a pattern every value of the type matches - in
     the values of a sample, and on the whole table in SQL -, by a check of a value where the
     pattern does not say enough, such as a checksum, and by a condition of the column where no

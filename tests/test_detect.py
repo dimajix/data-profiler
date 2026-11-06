@@ -8,6 +8,9 @@ import pytest
 
 from data_profiler.detect import (
     CARD_NUMBER,
+    CURRENCY_CODE,
+    CURRENCY_NAME,
+    CURRENCY_NUMBER,
     DATE,
     EMAIL,
     FREE_TEXT,
@@ -23,6 +26,7 @@ from data_profiler.detect import (
     SemanticType,
     SemanticTypeError,
     Sensitivity,
+    cases,
     detect,
     is_filled,
     is_sensitive,
@@ -65,6 +69,18 @@ _RECOGNISED = {
     TRUE_FALSE: ["true", "False", "TRUE", "false"],
     YES_NO: ["yes", "No", "YES", "no"],
     ZERO_ONE: ["0", "1"],
+    CURRENCY_CODE: ["EUR", "USD", "DEM", "XAU"],
+    CURRENCY_NUMBER: ["978", "840", "008", "276"],
+    CURRENCY_NAME: [
+        "Euro",
+        "euro",
+        "US DOLLAR",
+        "Pound Sterling",
+        "British Pound",
+        "Deutsche Mark",
+        "Mexican Unidad de Inversion (UDI)",
+        "Bolívar Soberano",
+    ],
 }
 
 _NOT_RECOGNISED = {
@@ -92,6 +108,9 @@ _NOT_RECOGNISED = {
     TRUE_FALSE: ["t", "f", "tRUE", "truth", "yes"],
     YES_NO: ["y", "n", "ja", "nein", "yES", "nope"],
     ZERO_ONE: ["2", "01", "10", "0.0", "-1"],
+    CURRENCY_CODE: ["eur", "Eur", "EURO", "XXX", "XTS", "SUR"],
+    CURRENCY_NUMBER: ["8", "08", "9780", "000", "97 8"],
+    CURRENCY_NAME: ["Eur0", "Gold", "won", "Pound", "Mexican Unidad de Inversion UDI", "Mark"],
 }
 
 
@@ -135,6 +154,9 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
             (TRUE_FALSE, Sensitivity.NONE),
             (YES_NO, Sensitivity.NONE),
             (ZERO_ONE, Sensitivity.NONE),
+            (CURRENCY_CODE, Sensitivity.NONE),
+            (CURRENCY_NUMBER, Sensitivity.NONE),
+            (CURRENCY_NAME, Sensitivity.NONE),
         ]
     ],
 )
@@ -293,6 +315,39 @@ def test_a_column_of_zeros_and_ones_is_one_of_a_pair() -> None:
 
 def test_a_column_of_counts_mostly_zeros_and_ones_is_no_pair() -> None:
     assert detect([0, 1, 1, 0, 2], (), SENTINELS) == {}, "every value is of a pair, not most"
+
+
+def test_a_column_of_codes_of_capitals_most_of_them_codes_of_currencies_is_none() -> None:
+    codes = ["ALL", "TOP", "ALL", "TOP", "MID", "ALL", "TOP", "LOW"]
+    assert detect(codes, (), SENTINELS) == {}, "three quarters of the values, not nearly every"
+
+
+@pytest.mark.parametrize(
+    ("kind", "of_it", "other"),
+    [(CURRENCY_CODE, "EUR", "ABC"), (CURRENCY_NUMBER, "978", "123")],
+    ids=["codes", "numbers"],
+)
+def test_a_column_of_codes_or_numbers_of_currencies_is_one_of_nearly_every_value(
+    kind: SemanticType, of_it: str, other: str
+) -> None:
+    assert detect([of_it] * 19 + [other], (), SENTINELS) == {kind: 0.95}
+    assert detect([of_it] * 18 + [other] * 2, (), SENTINELS) == {}, "nine values of ten are not"
+
+
+@pytest.mark.parametrize(
+    ("words", "written"),
+    [
+        (("true",), ("true", "True", "TRUE")),
+        (("US Dollar",), ("US Dollar", "us dollar", "US DOLLAR")),
+        (("0",), ("0",)),
+        (("yes", "no", "Yes"), ("yes", "Yes", "YES", "no", "No", "NO")),
+    ],
+    ids=["in lower case", "of capitals", "of no letters", "several"],
+)
+def test_words_are_written_in_each_of_their_cases_once(
+    words: tuple[str, ...], written: tuple[str, ...]
+) -> None:
+    assert cases(*words) == written
 
 
 @pytest.mark.parametrize(
