@@ -10,6 +10,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
+## Detection
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [41](41-detectors-of-currencies.md) | open | medium | feature | Nothing recognises a column of currencies - written as the alphabetic code of ISO 4217, `EUR`, as its number, `978`, or by its English name, `Euro` -, so that a currency is told to the language model as nothing but a text or a number. |
+
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
