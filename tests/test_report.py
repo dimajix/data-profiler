@@ -16,10 +16,11 @@ from data_profiler.overrides import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnDependency,
+    ColumnGroup,
     Concept,
     Discriminator,
     Entity,
-    Group,
     Lengths,
     Match,
     PrimaryKey,
@@ -97,7 +98,7 @@ _PROFILE = Profile(
                         "number",
                     ),
                 ),
-                groups=(Group(("eml_adr", "tel_no"), 0.947),),
+                column_groups=(ColumnGroup(("eml_adr", "tel_no"), 0.947),),
             ),
             "customer",
         ),
@@ -190,7 +191,7 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
             Reference("eml_adr", "empty", "x", 1.0),
             Reference("tel_no", "cust", "eml_adr", None, given=True),
         ),
-        candidates=(
+        reference_candidates=(
             Reference("cust_nm", "empty", "x", 0.96),
             Reference("cust_nm", "cust", "eml_adr", 1.0),
         ),
@@ -202,8 +203,9 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
         ' <span class="original">cust.eml_adr</span> (many to one, given) </p>'
     ) in page, "a key refers one to one; unmistakable values of no coverage, given"
     assert (
-        'Candidates of <span class="original">cust_nm</span>: <span class="original">empty.x'
-        '</span> (96%) · <span class="original">cust.eml_adr</span> (100%) </p>'
+        'Reference candidates of <span class="original">cust_nm</span>:'
+        ' <span class="original">empty.x</span> (96%) ·'
+        ' <span class="original">cust.eml_adr</span> (100%) </p>'
     ) in page, "as they are ranked"
     assert ('Referred to by: <span class="original">cust.eml_adr</span> </p>') in page, (
         "of the references alone, not the candidates"
@@ -213,6 +215,26 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
 
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
     assert 'Filled together: <span class="original">eml_adr, tel_no</span> (95%)' in _page()
+
+
+def test_a_report_shows_the_column_dependencies_the_determinant_of_a_reference_marked() -> None:
+    (table, empty) = _PROFILE.tables
+    dependent = replace(
+        table,
+        references=(Reference("eml_adr", "empty", "x", 1.0),),
+        column_dependencies=(
+            ColumnDependency(("eml_adr",), ("tel_no",), 0.968),
+            ColumnDependency(("cust_typ_cd", "cust_nm"), (), 1.0),
+        ),
+    )
+    page = _page(profile=replace(_PROFILE, tables=(dependent, empty)))
+    assert (
+        'Determines: <span class="original">eml_adr</span> (refers to <span class="original">'
+        'empty.x</span>) → <span class="original">tel_no</span> (97%)'
+    ) in page
+    assert ('Determines: <span class="original">cust_typ_cd ⇔ cust_nm</span> (100%)') in page, (
+        "equivalent determinants, of no dependent"
+    )
 
 
 def _discriminated(given: tuple[tuple[str, ...], ...] | None = None) -> Profile:

@@ -5,13 +5,17 @@ each of them used at least once, and its nulls and sentinels are spread over the
 the rows of a column are taken in an order of their own, its nulls and sentinels in the first of
 them. The columns of a group share their order, so that they are filled in the same rows as far as
 their nulls and sentinels allow: the column of more of them is filled within the rows of the column
-of fewer. A table of a discriminator holds the values of its column in as many rows as the profile
-counts each, the rows of each entity those of its values, and each column is filled in as many rows
-of each entity as the entity counts, its nulls and sentinels in the others; the discriminator is a
-column of text. Of a key of two columns, the column of fewer distinct values is numbered within the
-other: its values, in their order, by the place of each row among the rows of the same value of the
-other, which holds each of its values in as many rows at most as the first has values, and one of
-them in as many, so that the pair is unique and each column has its distinct values.
+of fewer. A column that follows from another, by a column dependency, is made of the values of the
+other: its distinct values, as they first come, take the values of its pool in their order, again
+from the first where they are more, so that the columns that follow from one follow from each other
+where their pools are as large; it is null where the other is not filled. A table of a discriminator
+holds the values of its column in as many rows as the profile counts each, the rows of each entity
+those of its values, and each column is filled in as many rows of each entity as the entity counts,
+its nulls and sentinels in the others; the discriminator is a column of text. Of a key of two
+columns, the column of fewer distinct values is numbered within the other: its values, in their
+order, by the place of each row among the rows of the same value of the other, which holds each of
+its values in as many rows at most as the first has values, and one of them in as many, so that the
+pair is unique and each column has its distinct values.
 Each column draws its values from a random of its own, made of the seed and its name and that of its
 table, its pool first, so that the values of a key are drawn again the same for a column of a
 reference to it, of whatever table: the column holds as many of them as its distinct values count,
@@ -54,6 +58,7 @@ from data_profiler.detect import (
     YES_NO,
     ZERO_ONE,
     SemanticType,
+    is_filled,
 )
 from data_profiler.profile import Column, Discriminator, Lengths, Profile, Reference, Table
 from simulation import SimulationError
@@ -92,11 +97,12 @@ _DATES: Final = {
 def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
     """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
 
-    The columns of each of its groups are filled in the same rows, as far as their nulls and
+    The columns of each of its column groups are filled in the same rows, as far as their nulls and
     sentinels allow, and in as many rows of each entity of its discriminator as the entity counts;
     of each of its keys of two columns, the column of fewer values is numbered within the other;
     each column of a reference holds values of the key it refers to, and as many rows of values
-    outside of it as its coverage leaves.
+    outside of it as its coverage leaves; each column that follows from another, by a column
+    dependency, is made of the values of the other.
 
     Args:
         table: The table, with the statistics of its columns.
@@ -115,7 +121,9 @@ def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
             values too few for the rows, or a reference refers to a table `profile` does not
             have, to a column it does not have, or to one that refers itself, is of a coverage
             that no values of the column and the key can have, or of a column numbered within
-            another or of the discriminator.
+            another or of the discriminator, or a column that follows from another is a key, a
+            reference, of a column group or of a table of entities, follows from itself, or cannot
+            follow from the other, as `_following` says.
     """
     random = Random(f"{seed}/{table.name}")
     # Of each key of two columns, the column numbered within the other, and the rows each value of
@@ -130,13 +138,15 @@ def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
         raise SimulationError(
             f"{table.name}.{unreferring}: a column numbered or of a discriminator refers"
         )
+    determined = _determined(table)
     shared = {}
-    for found in table.groups:
+    for found in table.column_groups:
         order = random.sample(range(table.rows), table.rows)
         shared.update(dict.fromkeys(found.columns, order))
     kinds = [] if discriminator is None else _kinds(table, discriminator, random)
     columns: dict[str, list[object]] = {}
-    for column in (column for column in table.columns if column.name not in numbered):
+    made = (c for c in table.columns if c.name not in numbered and c.name not in determined)
+    for column in made:
         order = shared.get(column.name) or random.sample(range(table.rows), table.rows)
         own = _own(table, column, seed)
         if discriminator is not None and column.name == discriminator.column:
@@ -155,6 +165,16 @@ def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
         column = table.column(name)
         own = _own(table, column, seed)
         columns[name] = _within_other(_pool(table, column, own), columns[other])
+    # Each column after the one it follows from, which may follow from another itself.
+    waiting = dict(determined)
+    while waiting:
+        ready = [name for name, determinant in waiting.items() if determinant in columns]
+        if not ready:
+            raise SimulationError(f"{table.name}.{next(iter(waiting))}: follows from itself")
+        for name in ready:
+            determinant = table.column(waiting.pop(name))
+            values = columns[determinant.name]
+            columns[name] = _following(table, table.column(name), determinant, values, seed)
     return list(zip(*(columns[column.name] for column in table.columns), strict=True))
 
 
@@ -244,6 +264,67 @@ def _numbered(table: Table) -> dict[str, str]:
             fewer, other = sorted(pair, key=lambda column: column.statistics.distinct)
             numbered[fewer.name] = other.name
     return numbered
+
+
+def _determined(table: Table) -> dict[str, str]:
+    """Of each column of `table` that follows from another, by a column dependency, the other.
+
+    A column that follows from several follows from the first of them.
+
+    Raises:
+        SimulationError: A column that follows from another is a key, a reference or the
+            discriminator, of a column group, or of a table of entities, which are not made.
+    """
+    determined: dict[str, str] = {}
+    for dependency in table.column_dependencies:
+        first, *others = (*dependency.determinants, *dependency.dependents)
+        for name in others:
+            determined.setdefault(name, first)
+    if determined and table.discriminator is not None:
+        raise SimulationError(f"{table.name}: a column follows from another in a table of entities")
+    keys = {name for key in table.keys for name in key}
+    references = {reference.column for reference in table.references}
+    grouped = {name for group in table.column_groups for name in group.columns}
+    made = next((name for name in determined if name in keys | references | grouped), None)
+    if made is not None:
+        raise SimulationError(f"{table.name}.{made}: a key, reference or grouped column follows")
+    return determined
+
+
+def _following(
+    table: Table, column: Column, determinant: Column, values: list[object], seed: int
+) -> list[object]:
+    """The values of `column`, which follow from `values` of `determinant`, one per row.
+
+    The distinct values of the determinant, as they first come, take the values of the pool of the
+    column in their order, again from its first where they are more, so that the columns that
+    follow from one determinant follow from each other where their pools are as large; the column
+    is null where the determinant is not filled.
+
+    Raises:
+        SimulationError: The column has sentinels, other nulls than the rows the determinant is not
+            filled in, or more distinct values than it.
+    """
+    filled = [is_filled(value, determinant.left_aside) for value in values]
+    statistics = column.statistics
+    places: dict[object, int] = {}
+    for value, taken in zip(values, filled, strict=True):
+        if taken:
+            places.setdefault(value, len(places))
+    if (
+        statistics.sentinels
+        or statistics.nulls != filled.count(False)
+        or not 0 < statistics.distinct <= len(places)
+    ):
+        raise SimulationError(
+            f"{table.name}.{column.name}: does not follow from {determinant.name}, of its nulls,"
+            f" sentinels and distinct values"
+        )
+    pool = _pool(table, column, _own(table, column, seed))
+    return [
+        pool[places[value] % len(pool)] if taken else None
+        for value, taken in zip(values, filled, strict=True)
+    ]
 
 
 def _within_other(pool: list[object], other: list[object]) -> list[object]:

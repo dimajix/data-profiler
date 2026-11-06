@@ -15,7 +15,15 @@ from data_profiler.overrides import (
     OverridesError,
     TableOverride,
 )
-from data_profiler.profile import Concept, Match, PrimaryKey, Profile, ProfileError, Table
+from data_profiler.profile import (
+    ColumnDependency,
+    Concept,
+    Match,
+    PrimaryKey,
+    Profile,
+    ProfileError,
+    Table,
+)
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace, WorkspaceError
@@ -58,7 +66,7 @@ def _failing_at(tmp_path: Path, table: str) -> None:
     (tmp_path / "workspace" / "samples" / f"{table}.parquet").mkdir(parents=True)
 
 
-def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_it_was_made_with(
+def test_a_scanned_profile_has_the_statistics_matches_keys_groups_dependencies_and_entities(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     scanned = _scanned(source, ".*", tmp_path)
@@ -89,11 +97,25 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_and_entities_i
         # Random values make keys of two columns by chance as well, which the table holds.
         assert set(expected.keys) <= set(table.keys), f"{table.name}: its keys"
         assert table.primary_key == expected.primary_key, f"{table.name}: its primary key"
-        assert [g.columns for g in table.groups] == [g.columns for g in expected.groups], table.name
-        for group, given in zip(table.groups, expected.groups, strict=True):
+        assert [g.columns for g in table.column_groups] == [
+            g.columns for g in expected.column_groups
+        ], table.name
+        for group, given in zip(table.column_groups, expected.column_groups, strict=True):
             assert abs(group.coherence - given.coherence) <= _COHERENCE, (
                 f"{table.name}: {group.columns} of {group.coherence}, made with {given.coherence}"
             )
+        assert table.column_dependencies == expected.column_dependencies, table.name
+
+
+def test_no_dependency_is_found_of_a_column_the_overrides_give_as_determining_none(
+    source: Source, tmp_path: Path
+) -> None:
+    given = TableOverride(columns={"prod_id": ColumnOverride(determines=False)})
+    scanned = _scanned(source, "ord_itm", tmp_path, overrides=Overrides(tables={"ord_itm": given}))
+    (table,) = scanned.tables
+    assert table.column_dependencies == (
+        ColumnDependency(("prodgrp_cd", "prodgrp_nm"), (), 1.0),
+    ), "those of others as found"
 
 
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(

@@ -28,9 +28,3 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
-
-## Low priority
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [37](37-values-determined-by-another-column.md) | open | low | feature | Nothing tells which columns of a table are determined by another column than its key - the name of a customer repeated in each of its orders -, so that values copied from another entity, which a normalized model holds once, are not seen. Part of epic [38](38-a-data-model-derived-from-the-profile-epic.md). |

@@ -6,10 +6,11 @@ reading of the name of a table or column, the harmonized name of a table or colu
 of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
 which gives back no values `scan` took out -, the sentinels of a column, in place of those of the
 tool, the primary key of a table, by its columns, the reference of a column, by the table and the
-column of the key it refers to, or `false` for none, whatever is found, and the discriminator of a
-table, with the names, values and descriptions of its entities, or `false` for none, whatever is
-found. Concepts are named by their words, entities by their harmonized names, tables and columns by
-their original names, as keys, so that a person writes no more than what is given.
+column of the key it refers to, or `false` for none, whatever is found, a column that determines no
+other, whatever is found, and the discriminator of a table, with the names, values and descriptions
+of its entities, or `false` for none, whatever is found. Concepts are named by their words, entities
+by their harmonized names, tables and columns by their original names, as keys, so that a person
+writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
@@ -45,7 +46,11 @@ values probed, and warned of where its coverage, or the share probed of unmistak
 below what a reference is found at, or where the column referred to is no key of one column; the
 profile holds that it was given, so that a stage that reads the profile warns of a reference given
 otherwise, until `relate` relates the tables again. A column given none has no reference and no
-candidates.
+reference candidates. A column given as determining none, by `determines: false`, is taken by
+`scan`, which looks for no dependency of it as a determinant; the stages that read the profile lay
+it over, dropping the column dependencies of which it is a determinant, so that a dependency found
+that is none is not shown without a scan again, and a run of `scan` resumed counts the table of one
+again.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -90,7 +95,7 @@ from data_profiler.profile import Concept, Discriminator, PrimaryKey, Profile, T
 _logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `documents` says.
-_FORMAT: Final = Version(7, 3)
+_FORMAT: Final = Version(7, 4)
 
 
 class OverridesError(Exception):
@@ -134,6 +139,8 @@ class ColumnOverride:
             not given.
         reference: The key it refers to, or False where it refers to none, whatever is found;
             None where it is not given.
+        determines: False where it determines no other column, whatever is found; None where it
+            is not given.
     """
 
     sensitivity: Sensitivity | None = None
@@ -142,6 +149,7 @@ class ColumnOverride:
     name: str | None = None
     description: str | None = None
     reference: GivenReference = None
+    determines: Literal[False] | None = None
 
 
 @dataclass(frozen=True)
@@ -217,19 +225,27 @@ class TableOverride:
         }
 
     @property
+    def determining_none(self) -> frozenset[str]:
+        """The columns given as determining no other column, by their names."""
+        return frozenset(
+            name for name, column in self.columns.items() if column.determines is False
+        )
+
+    @property
     def _discriminator(self) -> DiscriminatorOverride | None:
         """The discriminator given, or None where none is, or False."""
         return self.discriminator if isinstance(self.discriminator, DiscriminatorOverride) else None
 
     def laid_over(self, table: Table) -> Table:
-        """`table`, each of its columns marked with the sensitivity given of it, and only so.
+        """`table`, its columns marked as given, without the dependencies of those given as none.
 
         Args:
             table: The table.
 
         Returns:
-            The table, its columns marked as given, and only so; their values as they are, for
-            the module `disclosure` to decide on.
+            The table, its columns marked with the sensitivity given of each, and only so, their
+            values as they are, for the module `disclosure` to decide on; without the column
+            dependencies of which a determinant is given as determining no other column.
 
         Raises:
             OverridesError: A column is named that the table does not have, or a primary key is
@@ -239,7 +255,11 @@ class TableOverride:
         self._refuse_missing(table)
         self._refuse_primary_key(table)
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
-        marked = replace(table, columns=tuple(columns))
+        none = self.determining_none
+        dependencies = (
+            found for found in table.column_dependencies if none.isdisjoint(found.determinants)
+        )
+        marked = replace(table, columns=tuple(columns), column_dependencies=tuple(dependencies))
         self._refuse_discriminator(marked)
         return marked
 
@@ -312,18 +332,18 @@ class TableOverride:
         )
 
     def agrees_with(self, table: Table) -> bool:
-        """Whether `table` agrees with what is given: marked, counted and discriminated as given.
+        """Whether `table` agrees with what is given: marked, counted, determined and discriminated.
 
         Args:
             table: The table.
 
-        Returns:
-            True where `laid_over` would leave the table as it is, each column was counted with the
-            sentinels given of it, the table has the primary key given, or one chosen where none
+        Returns: True where `laid_over` would leave the table as it is, each column was counted with
+            the sentinels given of it, the table has the primary key given, or one chosen where none
             is given, and was discriminated as given: its discriminator counted with the values
-            given of its entities, none where False is given, and one found or none where nothing
-            is given; False where it would mark its columns otherwise, a column was counted with
-            others, the table has another primary key, was discriminated otherwise, or lacks a
+            given of its entities, none where False is given, and one found or none where nothing is
+            given; False where it would mark its columns otherwise, or the table holds a column
+            dependency of a column given as determining none, a column was counted with others, the
+            table has another primary key, was discriminated otherwise, or lacks a
             column that is named.
 
         Raises:
@@ -622,7 +642,8 @@ class Overrides:
             place of those proposed, and of it and its tables in place of what they hold, the
             names and descriptions they give of the entities of a discriminator as given, its
             columns marked with the sensitivity they give, and only so, and without the values of
-            those marked sensitive.
+            those marked sensitive, and its tables without the column dependencies of a column
+            they give as determining none.
 
         Raises:
             OverridesError: The overrides name a table or column the profile does not have, or
@@ -671,17 +692,20 @@ def _keyed_as_given(given: tuple[str, ...] | None, primary: PrimaryKey | None) -
 def _referred_as_given(given: GivenReference, table: Table, column: str) -> bool:
     """Whether the column `column` of `table` was related as `given`, as `warn_unused` says.
 
-    It has the reference given, where one is; none and no candidates, where False is; and none
-    given, where nothing is.
+    It has the reference given, where one is; none and no reference candidates, where False is; and
+    none given, where nothing is.
     """
-    references = [found for found in table.references if found.column == column]
+    reference = table.reference(column)
     if given is None:
-        return not any(found.given for found in references)
+        return reference is None or not reference.given
     if given is False:
-        return not references and all(found.column != column for found in table.candidates)
-    return any(
-        found.given and (found.table, found.key) == (given.table, given.column)
-        for found in references
+        return reference is None and all(
+            found.column != column for found in table.reference_candidates
+        )
+    return (
+        reference is not None
+        and reference.given
+        and (reference.table, reference.key) == (given.table, given.column)
     )
 
 

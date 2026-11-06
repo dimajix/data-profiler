@@ -154,7 +154,7 @@ def test_the_terms_of_the_example_are_found_with_their_tables_and_columns(
     vocabulary = Vocabulary.of(example_profile)
     names = [c.name for t in example_profile.tables for c in t.columns]
     split = {name for name in names if vocabulary.split(name) != terms(name)}
-    assert split == {"prodgrp_cd"}, "and no abbreviation of a term covered in part"
+    assert split == {"prodgrp_cd", "prodgrp_nm"}, "and no abbreviation of a term covered in part"
 
 
 def _glossary(**concepts: tuple[str, ...]) -> Glossary:

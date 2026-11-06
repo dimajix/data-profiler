@@ -13,7 +13,8 @@ It works in four stages, each of which can be run again on its own:
   postal codes, card numbers, dates and more - by deterministic detectors, checked on a sample and,
   where they can, verified on the whole table; which columns identify the rows of a table, its keys
   of one column and of two, and which of them is its primary key; which columns of a table are
-  filled together, such as the street, the postal code and the city of a delivery address; and,
+  filled together, such as the street, the postal code and the city of a delivery address; which
+  columns follow from another, such as the name of a customer copied into each of its orders; and,
   where a table holds the rows of several entities - customers, suppliers and employees -, the
   column whose values tell them apart, and which columns each of them fills.
 - **relate** finds the references between the tables: which column holds the values of a key of
@@ -164,14 +165,16 @@ environments:
   "00000"]`, or `sentinels: []` for none; the primary key of a table, by its columns, in place of
   the one chosen among its keys, `primary_key: [ord_id, pos_no]`; the reference of a column, by the
   table and the column of the key it refers to, `reference: {table: cust, column: cust_id}`, or
-  `reference: false` for none; and the discriminator of a table, the column whose values tell its
+  `reference: false` for none; a column that determines no other, whatever dependency is found of
+  it, `determines: false`; and the discriminator of a table, the column whose values tell its
   entities apart, with entities under their harmonized names, each with its values - the others it
   is found of join it - and its description, `discriminator: {column: prtnr_typ_cd, entities:
   {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
   `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, takes the
-  primary keys, and tells the entities apart, as they give, `relate` takes the references, measuring
-  them, `describe` splits and reads the names by the concepts they give and asks the language model
-  for nothing given, and `report` lays them over the profile.
+  primary keys, looks for no dependency of a column that determines none, and tells the entities
+  apart, as they give, `relate` takes the references, measuring them, `describe` splits and reads
+  the names by the concepts they give and asks the language model for nothing given, and `report`
+  lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -198,9 +201,9 @@ The tables of the profile are related to each other by
 uv run data-profiler relate simulation --project examples/crm
 ```
 
-which queries the database and writes the references and candidates of every table into the
-profile, in place of those it had, once, at the end: a relate that fails leaves the profile as it
-was. A table scanned anew has no references until the tables are related again.
+which queries the database and writes the references and reference candidates of every table
+into the profile, in place of those it had, once, at the end: a relate that fails leaves the profile
+as it was. A table scanned anew has no references until the tables are related again.
 
 The names of the profile are split into their terms and read by
 

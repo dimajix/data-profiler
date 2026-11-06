@@ -20,6 +20,7 @@ from data_profiler.overrides import (
 )
 from data_profiler.profile import (
     Column,
+    ColumnDependency,
     Concept,
     Discriminator,
     Entity,
@@ -424,6 +425,25 @@ def test_a_table_agrees_with_the_overrides_where_it_has_the_primary_key_given() 
     assert not TableOverride().agrees_with(given), "given, and no longer"
 
 
+def test_the_dependencies_of_a_column_given_as_determining_none_are_dropped_laid_over() -> None:
+    (table,) = _PROFILE.tables
+    dependent = replace(
+        table,
+        column_dependencies=(
+            ColumnDependency(("frst_nm", "cntct_typ_cd"), (), 1.0),
+            ColumnDependency(("cntct_typ_cd",), ("frst_nm",), 0.97),
+        ),
+    )
+    given = TableOverride(columns={"cntct_typ_cd": ColumnOverride(determines=False)})
+    assert given.determining_none == {"cntct_typ_cd"}
+    laid = given.laid_over(dependent)
+    assert laid.column_dependencies == (), "of the column as one of the determinants as well"
+    assert not given.agrees_with(dependent), "counted anew where a scan resumes"
+    assert given.agrees_with(laid)
+    kept = TableOverride(columns={"frst_nm": ColumnOverride(determines=False)}).laid_over(dependent)
+    assert kept.column_dependencies == dependent.column_dependencies[1:], "of the column alone"
+
+
 @pytest.mark.parametrize(
     ("given", "problem"),
     [
@@ -535,7 +555,8 @@ def test_a_reference_given_otherwise_than_related_is_warned_of(
 ) -> None:
     (cntct, cust) = _RELATED.tables
     related = replace(
-        _RELATED, tables=(replace(cntct, references=references, candidates=candidates), cust)
+        _RELATED,
+        tables=(replace(cntct, references=references, reference_candidates=candidates), cust),
     )
     _referring(cust_id=given).warn_unused(related)
     expected = (
@@ -557,6 +578,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     marked = overrides.tables["cntct"].columns["frst_nm"]
     assert marked == ColumnOverride(sensitivity=Sensitivity.PERSONAL)
     assert overrides.tables["ord"].sentinels == {"dlvr_pst_cd": ("", "00000")}
+    assert overrides.tables["ord_itm"].determining_none == {"prodgrp_nm"}
     assert overrides.tables["cust"].columns["cust_ap_id"].name == "contact_person_id"
     assert overrides.description is not None, "what the database holds"
     assert overrides.tables["ord_itm"].description is not None, "what a table holds"
@@ -622,6 +644,6 @@ def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
     with pytest.raises(
-        OverridesError, match=r"format 1\.0, of another major version than the format 7\.3"
+        OverridesError, match=r"format 1\.0, of another major version than the format 7\.4"
     ):
         Overrides.read(path)

@@ -15,37 +15,39 @@ name of the key and of its table. A range is compared as numbers where the colum
 else as texts.
 
 Each reference indicated is probed: `_PROBES` values of its column, taken at random, looked up in
-the whole key by the database, so that no value leaves it, the keys of a query `_PER_QUERY` at most,
-each column taken by a sampled read of its own, which ends once it has taken them. A pair of random
-samples of two tables would say nothing, as they hold few of the same rows. A column of unmistakable
-values refers to a key where more than `_UNMISTAKABLE` of its values are found, as one found tells
-where they come from; another is dropped where fewer than `_PROBED` are found, and its coverage
-counted on the whole table, the references of a query `_PER_QUERY` at most: it refers to the key
-where `_COVERAGE` of its values, nulls and sentinels aside, are found in it.
+the whole key by the database, so that no value leaves it, the keys of a query `PER_QUERY` of the
+module `source` at most, each column taken by a sampled read of its own, which ends once it has
+taken them. A pair of random samples of two tables would say nothing, as they hold few of the same
+rows. A column of unmistakable values refers to a key where more than `_UNMISTAKABLE` of its values
+are found, as one found tells where they come from; another is dropped where fewer than `_PROBED`
+are found, and its coverage counted on the whole table, the references of a query `PER_QUERY` at
+most: it refers to the key where `_COVERAGE` of its values, nulls and sentinels aside, are found in
+it.
 
 A column of unmistakable values refers to the key of the most values found, then of the table of the
 fewest rows, the most specific. Another that refers to one key alone has that reference; one that
-refers to several has each as a candidate, none of them preferred, ranked by how the span of its
-values fits the one expected of as many values chosen at random of the key, then by whether its name
-agrees with the key, then by the rows of the table of the key. A column the overrides give a
-reference of is not searched, but measured - its coverage counted, or its values probed where they
+refers to several has each as a reference candidate, none of them preferred, ranked by how the span
+of its values fits the one expected of as many values chosen at random of the key, then by whether
+its name agrees with the key, then by the rows of the table of the key. A column the overrides give
+a reference of is not searched, but measured - its coverage counted, or its values probed where they
 are unmistakable - and warned of where that falls below what a reference is found at, or where the
-column referred to is no key of one column; a column given none has no reference and no candidates,
-and is not probed. The references name columns and tables alone, and no values of the database.
+column referred to is no key of one column; a column given none has no reference and no reference
+candidates, and is not probed. The references name columns and tables alone, and no values of the
+database.
 """
 
 import logging
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
-from itertools import groupby
+from itertools import batched, groupby
 from typing import Final
 
 from data_profiler.detect import UUID
 from data_profiler.glossary import terms
 from data_profiler.overrides import GivenReferences
 from data_profiler.profile import DIGITS, Column, Profile, Range, Reference, Table
-from data_profiler.source import Dialect, Lookup, Probe, Source
+from data_profiler.source import PER_QUERY, Dialect, Lookup, Probe, Source
 from data_profiler.values import counted
 
 _logger = logging.getLogger(__name__)
@@ -66,8 +68,6 @@ _COVERAGE: Final = 0.9
 # The share of the values from the smallest of the key up to its own largest a run of whole numbers
 # holds at least, and the share of the span of the key a short run spans at most.
 _RUN: Final = 0.9
-# The keys probed in one query, and the references counted in one, at most.
-_PER_QUERY: Final = 10
 
 
 # Not compared by its fields, but told apart as itself, so that tables and columns are not hashed
@@ -108,7 +108,7 @@ class _Pair:
 
 
 def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences]) -> Profile:
-    """`profile`, each table with the references and candidates of its columns, found or given.
+    """`profile`, each table with the references and reference candidates of its columns.
 
     Args:
         source: The schema of the profile.
@@ -118,9 +118,9 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
             and of the columns they are given of, which the profile has, as their keys do.
 
     Returns:
-        The profile, each table with the references and the candidates of its columns, those it had
-        replaced: each given as given, measured, and none of a column given none; none where none
-        is found, with no query where none is indicated and none given.
+        The profile, each table with the references and the reference candidates of its columns,
+        found or given, those it had replaced: each given as given, measured, and none of a column
+        given none; none where none is found, with no query where none is indicated and none given.
 
     Raises:
         SourceError: The database fails to probe the references or to count their coverage.
@@ -170,10 +170,10 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         (references if len(named) == 1 else candidates).setdefault(table, []).extend(named)
     tables = tuple(_related(table, references, candidates) for table in profile.tables)
     _logger.info(
-        "Found the references of %d tables: %d, and %d candidates",
+        "Found the references of %d tables: %d, and %d reference candidates",
         len(tables),
         sum(len(table.references) for table in tables),
-        sum(len(table.candidates) for table in tables),
+        sum(len(table.reference_candidates) for table in tables),
     )
     return replace(profile, tables=tables)
 
@@ -360,7 +360,7 @@ def _misfit(dialect: Dialect, pair: _Pair) -> float:
 
 
 def _rank(dialect: Dialect, pair: _Pair) -> tuple[float, bool, int]:
-    """How `pair` is ranked among the candidates of its column: the best fitting first."""
+    """How `pair` is ranked among the reference candidates of its column: the best fitting first."""
     return _misfit(dialect, pair), not _named(pair), pair.target.rows
 
 
@@ -381,13 +381,13 @@ def _related(
     places = {column.name: place for place, column in enumerate(table.columns)}
 
     def ordered(found: Sequence[Reference]) -> tuple[Reference, ...]:
-        # Stable, so that the candidates of a column keep their ranks.
+        # Stable, so that the reference candidates of a column keep their ranks.
         return tuple(sorted(found, key=lambda reference: places[reference.column]))
 
     return replace(
         table,
         references=ordered(references.get(table.name, [])),
-        candidates=ordered(candidates.get(table.name, [])),
+        reference_candidates=ordered(candidates.get(table.name, [])),
     )
 
 
@@ -399,8 +399,7 @@ def _probed(source: Source, pairs: Sequence[_Pair]) -> list[float]:
     dialect = source.dialect
     keys = list(dict.fromkeys(pair.referred for pair in pairs))
     shares: dict[_Pair, float] = {}
-    for start in range(0, len(keys), _PER_QUERY):
-        batch = keys[start : start + _PER_QUERY]
+    for batch in batched(keys, PER_QUERY, strict=False):
         within = [pair for pair in pairs if pair.referred in batch]
         # One probe of each column, of whichever of its pairs.
         probing = list({pair.referring: pair for pair in within}.values())
@@ -441,8 +440,7 @@ def _covered(source: Source, pairs: Sequence[_Pair]) -> list[float]:
     tables = list(dict.fromkeys(pair.table.name for pair in pairs))
     for name in tables:
         places = [place for place, pair in enumerate(pairs) if pair.table.name == name]
-        for start in range(0, len(places), _PER_QUERY):
-            batch = places[start : start + _PER_QUERY]
+        for batch in batched(places, PER_QUERY, strict=False):
             lookups = [
                 Lookup(pairs[place].values(dialect), *pairs[place].referred) for place in batch
             ]

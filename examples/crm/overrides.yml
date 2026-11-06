@@ -10,9 +10,11 @@
 # order and the position in place of the identifier chosen, the references of two columns of whole
 # numbers, which keys numbered from one hold as candidates - the contact person of a customer and
 # the customer of an order -, and none of the number a business partner has as a customer elsewhere,
-# and the discriminator of the business partners, its entities named by one value each, which the
-# others it is found of join, and described.
-format: "7.3"
+# a column found to determine others that determines none - the name of the group of the product of
+# the item of an order, which follows from its code, as a name identifies nothing -, and the
+# discriminator of the business partners, its entities named by one value each, which the others it
+# is found of join, and described.
+format: "7.4"
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
@@ -63,6 +65,8 @@ tables:
   ord_itm:
     description: The positions of an order, one product each, with its quantity and price.
     primary_key: [ord_id, pos_no]
+    columns:
+      prodgrp_nm: {determines: false}
   prtnr:
     columns:
       cust_no: {reference: false}

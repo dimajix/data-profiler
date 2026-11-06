@@ -133,9 +133,9 @@
     {% endfor %}
   </p>
   {% endif %}
-  {% for column, listed in candidates(table).items() %}
+  {% for column, listed in reference_candidates(table).items() %}
   <p class="candidates">
-    Candidates of <span class="original">{{ column }}</span>:
+    Reference candidates of <span class="original">{{ column }}</span>:
     {% for reference in listed %}
     <span class="original">{{ reference.table }}.{{ reference.key }}</span> ({{ "{:.0%}".format(reference.coverage) if reference.coverage is not none else "–" }})
     {%- if not loop.last %} · {% endif %}
@@ -156,10 +156,19 @@
     Same harmonized name: {{ name }} – <span class="original">{{ shared | join(", ") }}</span>
   </p>
   {% endfor %}
-  {% for group in table.groups %}
+  {% for group in table.column_groups %}
   <p class="group">
     Filled together: <span class="original">{{ group.columns | join(", ") }}</span>
     ({{ "{:.0%}".format(group.coherence) }})
+  </p>
+  {% endfor %}
+  {% for dependency in table.column_dependencies %}
+  {% set reference = table.reference(dependency.determinants[0]) %}
+  <p class="dependency">
+    Determines: <span class="original">{{ dependency.determinants | join(" ⇔ ") }}</span>
+    {%- if reference %} (refers to <span class="original">{{ reference.table }}.{{ reference.key }}</span>){% endif %}
+    {%- if dependency.dependents %} → <span class="original">{{ dependency.dependents | join(", ") }}</span>{% endif %}
+    ({{ "{:.0%}".format(dependency.strictness) }})
   </p>
   {% endfor %}
   {% set discriminator = table.discriminator %}

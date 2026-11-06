@@ -13,16 +13,16 @@ name.
 
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
-profile, the rows, runs, keys, primary keys, groups and discriminators of its tables, and the types,
-statistics, matches, values, marks and sentinels of their columns; the stage relate fills the
-references and candidates of the tables, which a table counted anew has none of until relate runs
-again; the stage describe fills the terms of the names of the tables and columns by its step that
-splits them, the glossary by its step that proposes concepts, the readings by its step that reads
-the names, and the descriptions of the columns by its step that describes them. The overrides fill
-none: what they give, the stages lay over the profile they read - the names given and the
-descriptions of the database, of the tables and of the entities among it, which a profile written
-holds none of -, and scan takes the marks, the sentinels, the primary keys and the discriminators
-they give.
+profile, the rows, runs, keys, primary keys, column groups, column dependencies and discriminators
+of its tables, and the types, statistics, matches, values, marks and sentinels of their columns; the
+stage relate fills the references and reference candidates of the tables, which a table counted anew
+has none of until relate runs again; the stage describe fills the terms of the names of the tables
+and columns by its step that splits them, the glossary by its step that proposes concepts, the
+readings by its step that reads the names, and the descriptions of the columns by its step that
+describes them. The overrides fill none: what they give, the stages lay over the profile they read -
+the names given and the descriptions of the database, of the tables and of the entities among it,
+which a profile written holds none of -, and scan takes the marks, the sentinels, the primary keys
+and the discriminators they give.
 
 A profile is begun by the stage scan, and written by the stages after it as well. Which profile a
 scan starts from is decided here, by `Profile.updating`: the one there is, its run resumed where it
@@ -55,7 +55,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(13, 3)
+FORMAT: Final = Version(14, 1)
 """The version of the format a profile is written in, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -64,7 +64,7 @@ another major version is removed and scanned again, not converted.
 
 
 DIGITS: Final = 3
-"""The digits a share found in a sample is written with: of a match, and the coherence of a group.
+"""The digits a share found in a sample is written with: of a match, the coherence of a group.
 
 A sample of about 10,000 rows says no more.
 """
@@ -307,7 +307,7 @@ class Column:
 
 
 @dataclass(frozen=True)
-class Group:
+class ColumnGroup:
     """Columns of a table filled together: in mostly the same rows of its sample.
 
     A column is filled in a row where it holds a value, neither null nor a sentinel. A group holds
@@ -321,6 +321,31 @@ class Group:
 
     columns: tuple[str, ...]
     coherence: float
+
+
+@dataclass(frozen=True)
+class ColumnDependency:
+    """Columns of a table whose values follow from the value of another, its determinant.
+
+    Each value of the determinant comes with one value of each dependent, in the rows it is filled
+    in, neither null nor a sentinel; a null of a dependent there is a value as any other. Columns
+    that follow from each other are equivalent determinants, such as a code and its name, held
+    together. A dependency is found over the whole table, not within its entities, and as found:
+    one that follows from another, by a dependent of it, is held as well.
+
+    Attributes:
+        determinants: Its determinant, then the columns equivalent to it, in the order of the
+            table.
+        dependents: The columns that follow from it, in the order of the table; none where its
+            determinants alone follow from each other.
+        strictness: How strictly it holds, from 0 to 1, with three digits: of the values of the
+            determinant, the share of those that come with one value of the others, as their
+            distinct values together count it, the least of each determinant.
+    """
+
+    determinants: tuple[str, ...]
+    dependents: tuple[str, ...]
+    strictness: float
 
 
 @dataclass(frozen=True)
@@ -434,11 +459,13 @@ class Table:
             columns given; None where it has none.
         references: The references of its columns, one of each column at most, in the order of
             the columns.
-        candidates: The references of its columns of which several keys may be the one referred
-            to, none of them preferred: those of a column after each other, in the order they are
-            ranked, the columns in their order.
-        groups: The groups of its columns filled together, in the order of their first columns;
-            a column is in one group at most.
+        reference_candidates: The references of its columns of which several keys may be the one
+            referred to, none of them preferred: those of a column after each other, in the order
+            they are ranked, the columns in their order.
+        column_groups: The column groups of its columns filled together, in the order of their
+            first columns; a column is in one group at most.
+        column_dependencies: The column dependencies of its columns, in the order of their
+            determinants; a column is a determinant of one dependency at most.
         discriminator: The column whose values tell the entities of its rows apart, with those
             entities; None where no column does, or the overrides give it none.
         terms: The terms of its name, in their order, or None where it is not split yet.
@@ -458,8 +485,9 @@ class Table:
     keys: tuple[tuple[str, ...], ...] = ()
     primary_key: PrimaryKey | None = None
     references: tuple[Reference, ...] = ()
-    candidates: tuple[Reference, ...] = ()
-    groups: tuple[Group, ...] = ()
+    reference_candidates: tuple[Reference, ...] = ()
+    column_groups: tuple[ColumnGroup, ...] = ()
+    column_dependencies: tuple[ColumnDependency, ...] = ()
     discriminator: Discriminator | None = None
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
@@ -483,6 +511,17 @@ class Table:
             if column.name == name:
                 return column
         raise KeyError(name)
+
+    def reference(self, name: str) -> Reference | None:
+        """The reference of its column of the name `name`.
+
+        Args:
+            name: The name of one of its columns.
+
+        Returns:
+            The reference of the column, or None where it has none.
+        """
+        return next((found for found in self.references if found.column == name), None)
 
     def cardinality(self, reference: Reference) -> Cardinality:
         """How many of its rows refer by `reference`, of one of its columns, to one of the key.
@@ -607,13 +646,14 @@ class Profile:
                 of a format, is of another major version or of a newer minor version, a field is
                 missing, unknown or of the wrong type, a semantic type of the project cannot be
                 made, as `detect.project_type` says, a match names a type neither of the tool
-                nor of the project, the file of a table holds a table of another name, the groups
-                of a table name a column it does not have, or one twice, or its discriminator
-                names a column it does not have, an entity of it not the filled rows of each
-                column, or two entities the same value, or a reference or a candidate names a
-                column its table does not have, the references name one twice or of candidates
-                as well, or a reference or a candidate refers to a table the profile does not
-                have, or to a column of it the table does not have.
+                nor of the project, the file of a table holds a table of another name, the column
+                groups or the column dependencies of a table name a column it does not have, or one
+                twice, or a dependency fewer than two, or their determinants one twice, or its
+                discriminator names a column it does not have, an entity of it not the filled rows
+                of each column, or two entities the same value, or a reference or a reference
+                candidate names a column its table does not have, the references name one twice or
+                of reference candidates as well, or a reference or a reference candidate refers to a
+                table the profile does not have, or to a column of it the table does not have.
         """
         try:
             head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
@@ -807,7 +847,7 @@ class Profile:
 
         Returns:
             The profile, without the tables `names` does not name, and without the references and
-            candidates of those it keeps to them.
+            reference candidates of those it keeps to them.
         """
         tables = (
             _referring(table, lambda found: found.table in names)
@@ -839,11 +879,11 @@ def _unmatched(table: Table) -> Table:
 
 
 def _referring(table: Table, kept: Callable[[Reference], bool]) -> Table:
-    """`table`, with those of its references and candidates alone that `kept` keeps."""
+    """`table`, with those of its references and reference candidates alone that `kept` keeps."""
     return replace(
         table,
         references=tuple(found for found in table.references if kept(found)),
-        candidates=tuple(found for found in table.candidates if kept(found)),
+        reference_candidates=tuple(found for found in table.reference_candidates if kept(found)),
     )
 
 
@@ -880,9 +920,11 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
     Raises:
         DocumentError: The file cannot be read as a document of a table.
         ProfileError: The file holds a table of another name than its own, a key, the primary
-            key, a reference, a candidate or a group names a column the table does not have, the
-            references name one twice or of candidates as well, the groups name one twice, or the
-            discriminator is not one of the table, as `_refuse_discriminator` says.
+            key, a reference, a reference candidate, a column group or a column dependency names a
+            column the table does not have, the references name one twice or of reference
+            candidates as well, the column groups name one twice, a column dependency names one
+            twice or fewer than two, the determinants of the column dependencies name one twice,
+            or the discriminator is not one of the table, as `_refuse_discriminator` says.
     """
     table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
@@ -890,17 +932,25 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
     names = {column.name for column in table.columns}
     primary = () if table.primary_key is None else table.primary_key.columns
     _refuse_unknown(path, "a key", [name for key in (*table.keys, primary) for name in key], names)
-    candidates = {reference.column for reference in table.candidates}
+    candidates = {reference.column for reference in table.reference_candidates}
     referring = [reference.column for reference in table.references]
     _refuse_unknown(path, "a reference", [*referring, *candidates], names)
     _refuse_twice(path, "the references", referring)
-    # A column has one reference, or candidates, or neither.
+    # A column has one reference, or reference candidates, or neither.
     both = next((name for name in referring if name in candidates), None)
     if both is not None:
-        raise ProfileError(f"{path}: the column {both!r} has a reference and candidates")
-    grouped = [name for group in table.groups for name in group.columns]
-    _refuse_unknown(path, "a group", grouped, names)
-    _refuse_twice(path, "the groups", grouped)
+        raise ProfileError(f"{path}: the column {both!r} has a reference and reference candidates")
+    grouped = [name for group in table.column_groups for name in group.columns]
+    _refuse_unknown(path, "a column group", grouped, names)
+    _refuse_twice(path, "the column groups", grouped)
+    for dependency in table.column_dependencies:
+        held = [*dependency.determinants, *dependency.dependents]
+        _refuse_unknown(path, "a column dependency", held, names)
+        _refuse_twice(path, "the columns of a column dependency", held)
+        if len(held) < 2:
+            raise ProfileError(f"{path}: a column dependency names fewer than two columns")
+    determining = [name for found in table.column_dependencies for name in found.determinants]
+    _refuse_twice(path, "the determinants of the column dependencies", determining)
     if table.discriminator is not None:
         _refuse_discriminator(path, table.discriminator, names)
     return table
@@ -915,7 +965,7 @@ def _refuse_dangling(directory: Path, tables: Collection[Table]) -> None:
     """
     names = {table.name: {column.name for column in table.columns} for table in tables}
     for table in tables:
-        for reference in (*table.references, *table.candidates):
+        for reference in (*table.references, *table.reference_candidates):
             path = _file(directory, table.name)
             if reference.table not in names:
                 raise ProfileError(

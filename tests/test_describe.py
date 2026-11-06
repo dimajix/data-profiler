@@ -16,8 +16,8 @@ from data_profiler.llm import LanguageModel, LanguageModelError
 from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
 from data_profiler.profile import (
     Column,
+    ColumnGroup,
     Concept,
-    Group,
     Lengths,
     Profile,
     Range,
@@ -463,7 +463,7 @@ def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) ->
             replace(table.columns[0], statistics=Statistics(2, 8, Lengths(3, 9))),
             replace(table.columns[1], values=(Value("A", 6), Value("B", 4))),
         ),
-        groups=(Group(("cust_nm", "cust_st_cd"), 0.9),),
+        column_groups=(ColumnGroup(("cust_nm", "cust_st_cd"), 0.9),),
     )
     profile = replace(_profile(glossary=glossary), tables=(counted,))
     llm = _Answers(json.dumps({"2_st": "status"}), descriptions=(" The name. ", "The status."))

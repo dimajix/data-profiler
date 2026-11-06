@@ -12,8 +12,8 @@ are unique in the sample, and their distinct counts multiplied reach the rows; o
 `_PAIRS` whose product lies closest to the rows, where natural keys lie, such as an order and its
 positions, the first in the table of several. Each key indicated is verified by queries built from
 the building blocks of the dialect, which count the rows and the distinct values of each exactly,
-`_PER_QUERY` at most in one, as each count holds the values of the table in memory: it is a key
-where they are as many as the rows.
+`PER_QUERY` of the module `source` at most in one, the rows among them, so that each query compares
+a state of the table of its own: it is a key where they are as many as the rows.
 
 The primary key is the one the overrides give, verified with the keys indicated: a key where it is
 unique, of columns that take part, two at most, and holds no key verified of fewer columns; warned
@@ -26,12 +26,11 @@ the database.
 import logging
 from collections.abc import Iterable, Sequence
 from dataclasses import replace
-from itertools import combinations
+from itertools import batched, combinations
 from typing import Final
 
 from data_profiler.profile import Column, PrimaryKey, Table
-from data_profiler.source import Source
-from data_profiler.values import counted
+from data_profiler.source import PER_QUERY, Source
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
@@ -39,9 +38,8 @@ _logger = logging.getLogger(__name__)
 # How many times the standard error the dialect counts distinct values with the approximate
 # distinct count of a key may lie below the rows.
 _ERRORS: Final = 4
-# The pairs verified at most, and the keys indicated verified in one query at most.
+# The pairs verified at most.
 _PAIRS: Final = 10
-_PER_QUERY: Final = 10
 
 
 def identify(source: Source, table: Table, sample: Sample, given: tuple[str, ...] | None) -> Table:
@@ -156,11 +154,10 @@ def _verified(
     dialect = source.dialect
     step = f"verifying the keys of {source.name(table.name)}"
     verified = []
-    for start in range(0, len(indicated), _PER_QUERY):
-        batch = indicated[start : start + _PER_QUERY]
-        expressions = [dialect.rows(), *map(dialect.exactly_distinct, batch)]
-        (row,) = source.query(dialect.select(expressions, table.name), step)
-        rows, *distinct = (counted(found, table.name) for found in row)
+    # The rows counted in each query, beside its keys, so that each compares a state of the table.
+    for batch in batched(indicated, PER_QUERY - 1, strict=False):
+        counts = (dialect.exactly_distinct([dialect.column(name) for name in key]) for key in batch)
+        rows, *distinct = source.counts(table.name, [dialect.rows(), *counts], step)
         verified += [key for key, found in zip(batch, distinct, strict=True) if found == rows]
     return verified
 

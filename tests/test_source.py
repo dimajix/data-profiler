@@ -99,8 +99,8 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         without = source.dialect.without('c"y', "varchar(3)", {"it's"})
         moments = source.dialect.sentinels('c"y', "timestamp(3)", {"9999-12-31", ""})
         distinct = [
-            source.dialect.exactly_distinct(['c"y']),
-            source.dialect.exactly_distinct(['c"y', "z"]),
+            source.dialect.exactly_distinct([values]),
+            source.dialect.exactly_distinct([values, source.dialect.column("z")]),
         ]
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
@@ -116,14 +116,53 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert "IN ('it''s')" in without
     assert 'CAST("c""y" AS date)' in moments, "a moment compared as its day"
     assert "IN ('', '9999-12-31')" in moments
-    assert distinct == ['count(DISTINCT "c""y")', 'count(DISTINCT ROW("c""y", "z"))']
+    assert distinct == [
+        'count(DISTINCT "c""y")',
+        'count(DISTINCT CASE WHEN "c""y" IS NOT NULL THEN ROW("c""y", "z") END)',
+    ]
 
 
 def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Source) -> None:
     dialect = source.dialect
     sets = [("ord_itm_id",), ("pos_no",), ("ord_id", "pos_no")]
-    statement = dialect.select([dialect.rows(), *map(dialect.exactly_distinct, sets)], "ord_itm")
+    counts = (dialect.exactly_distinct([dialect.column(name) for name in found]) for found in sets)
+    statement = dialect.select([dialect.rows(), *counts], "ord_itm")
     assert source.query(statement, "counting the distinct values") == [(61000, 61000, 9, 61000)]
+
+
+def test_the_counts_of_a_table_are_counted_in_queries_of_ten_at_most_in_their_order(
+    source: Source, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent: list[str] = []
+    query = source.query
+
+    def sending(statement: str, step: str) -> list[tuple[object, ...]]:
+        sent.append(statement)
+        return query(statement, step)
+
+    monkeypatch.setattr(source, "query", sending)
+    dialect = source.dialect
+    counts = [dialect.rows(), dialect.exactly_distinct([dialect.column("pos_no")])] * 6
+    assert source.counts("ord_itm", counts, "counting") == [61000, 9] * 6
+    assert len(sent) == 2
+
+
+def test_distinct_values_are_counted_where_the_first_is_not_null_the_nulls_of_others_values(
+    source: Source,
+) -> None:
+    dialect = source.dialect
+    city, customer = dialect.column("dlvr_cty_nm"), dialect.column("cust_id")
+    counts = [
+        dialect.exactly_distinct([city, customer]),
+        dialect.exactly_distinct([customer, city]),
+    ]
+    (found,) = source.query(dialect.select(counts, "ord"), "counting the distinct values")
+    pairs = 'SELECT count(*) FROM (SELECT DISTINCT "dlvr_cty_nm", "cust_id" FROM "ord"'
+    of_cities = f'{pairs} WHERE "dlvr_cty_nm" IS NOT NULL)'
+    ((cities,),) = source.query(of_cities, "counting the pairs of a city")
+    ((all_pairs,),) = source.query(f"{pairs})", "counting all pairs")
+    assert found == (cities, all_pairs), "the nulls of the cities a value of the customers"
+    assert cities != all_pairs, "the delivery addresses of the simulation hold nulls"
 
 
 def test_names_are_quoted_in_the_statements_of_the_references() -> None:
