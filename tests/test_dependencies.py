@@ -69,6 +69,7 @@ def _determined(
     rows: Mapping[str, Sequence[object]],
     whole: Mapping[str, Sequence[object]] | None = None,
     columns: Sequence[Column] = (),
+    determining_none: frozenset[str] = frozenset(),
 ) -> tuple[tuple[ColumnDependency, ...], _Whole]:
     """The dependencies of a table of `rows` in its sample, and of `whole` on the table."""
     given = {column.name: column for column in columns}
@@ -76,7 +77,7 @@ def _determined(
     table = Table(name="t", rows=len(next(iter(rows.values()))), columns=made)
     source = _Whole(table, whole or rows)
     sample = Sample(columns={name: list(values) for name, values in rows.items()})
-    return determine(source, table, sample).column_dependencies, source
+    return determine(source, table, sample, determining_none).column_dependencies, source
 
 
 # A determinant of ten values, each in ten rows, and a column that follows from it.
@@ -93,6 +94,15 @@ def test_columns_that_follow_from_each_other_are_equivalent_determinants() -> No
     named = [f"n{value}" for value in _OF]
     found, _ = _determined({"code": _OF, "half": _HALF, "name": named})
     assert found == (ColumnDependency(("code", "name"), ("half",), 1.0),)
+
+
+def test_a_column_the_overrides_give_as_determining_none_is_a_dependent_alone() -> None:
+    named = [f"n{value}" for value in _OF]
+    rows: dict[str, Sequence[object]] = {"code": _OF, "half": _HALF, "name": named}
+    found, _ = _determined(rows, determining_none=frozenset({"code"}))
+    assert found == (ColumnDependency(("name",), ("code", "half"), 1.0),), (
+        "its equivalent a determinant of its own"
+    )
 
 
 def test_columns_that_follow_from_each_other_alone_are_a_dependency_of_no_dependent() -> None:

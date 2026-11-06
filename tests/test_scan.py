@@ -15,7 +15,15 @@ from data_profiler.overrides import (
     OverridesError,
     TableOverride,
 )
-from data_profiler.profile import Concept, Match, PrimaryKey, Profile, ProfileError, Table
+from data_profiler.profile import (
+    ColumnDependency,
+    Concept,
+    Match,
+    PrimaryKey,
+    Profile,
+    ProfileError,
+    Table,
+)
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace, WorkspaceError
@@ -97,6 +105,17 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_dependencies_a
                 f"{table.name}: {group.columns} of {group.coherence}, made with {given.coherence}"
             )
         assert table.column_dependencies == expected.column_dependencies, table.name
+
+
+def test_no_dependency_is_found_of_a_column_the_overrides_give_as_determining_none(
+    source: Source, tmp_path: Path
+) -> None:
+    given = TableOverride(columns={"prod_id": ColumnOverride(determines=False)})
+    scanned = _scanned(source, "ord_itm", tmp_path, overrides=Overrides(tables={"ord_itm": given}))
+    (table,) = scanned.tables
+    assert table.column_dependencies == (
+        ColumnDependency(("prodgrp_cd", "prodgrp_nm"), (), 1.0),
+    ), "those of others as found"
 
 
 def test_the_semantic_types_of_the_columns_are_recognised_and_verified(

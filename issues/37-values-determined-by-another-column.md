@@ -46,8 +46,9 @@ The interface first, put before the maintainer.
 
 ## How
 
-As decided with the maintainer, in three steps - the attributes of a table renamed, the
-dependencies found, then those the overrides reject:
+As decided with the maintainer, in four steps - the attributes of a table renamed, the
+dependencies found, those the overrides reject, then the distinct counts of a table in queries of
+ten expressions at most counted in one place:
 
 - **Names.** The attributes of a table about its columns are named after them: `column_groups`, of
   the type `ColumnGroup`, and `column_dependencies`, of the type `ColumnDependency`; the references
@@ -76,7 +77,14 @@ dependencies found, then those the overrides reject:
 - **What the profile holds:** `ColumnDependency` of its determinants, its dependents and its
   strictness, over the whole table, not within its entities. Transitive dependencies are held as
   they are found; a minimal cover is left to the data model.
-- **The overrides** reject all the dependencies of a column as determinant, in the first version.
+- **The overrides** reject all the dependencies of a column as determinant, in the first version:
+  `determines: false`. `scan` looks for no dependency of it as a determinant, so that a column
+  equivalent to it determines on its own, and the stages that read the profile drop the dependencies
+  of which it is a determinant.
+- **A step of its own, after the others,** as the maintainer asked for: the distinct counts of a
+  table in queries of ten expressions at most are counted in four places, `keys`, `references` twice
+  and `dependencies`, each with its own constant; one shared function takes their place, its
+  interface put before the maintainer first.
 - **The report** shows the dependencies of each table below its column groups, and marks a
   determinant that is a reference.
 - **The simulation** copies the name of the customer into `ord`, and joins a small reference table
@@ -105,3 +113,7 @@ dependencies found, then those the overrides reject:
   repeat, no more than it may depart from the determinant follows from it by no dependency: the
   simulation showed it, a column of another entity null in all of them. A key of one column needs
   no rule of its own: its values do not repeat, and depart from every determinant.
+- **2026-11-06** — Step 3 built: `ColumnOverride.determines`, the format of the overrides raised to
+  7.4; the example rejects the name of the group of the product of the items of an order as a
+  determinant, which its code determines alone then. The step of the shared distinct counts is
+  added to the plan, as the maintainer asked for.

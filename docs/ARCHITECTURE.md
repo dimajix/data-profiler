@@ -237,21 +237,23 @@ types of a project reach `scan` from `project`, and every stage after it from th
     laid over a generated profile: what the database holds, concepts of the glossary, the reading of
     a name, the harmonized name of a table or column, the description of a table or column, the
     sensitivity and the sentinels of a column, the primary key of a table, the reference of a
-    column, or none, and the discriminator of a table, with the values, the name and the description
-    of its entities, or none. What the database and a table hold, the language model is shown with
-    every question of them. What it gives is taken as given by every stage: by `scan`, which counts
-    the columns with their sentinels, marks them, takes the primary key given and tells the entities
-    apart by the discriminator given, by `relate`, which takes the references given and measures
-    them, by `describe`, which splits and reads the names by the concepts given and asks the
-    language model for nothing given, as by `report`, which lays the concepts, readings, names,
-    descriptions and marks over the profile; sentinels, primary keys and discriminators changed
-    count once `scan` counts the table again, references once `relate` relates the tables again, and
-    a reading given once `describe` has split its name. A name given comes before the one composed
-    from the reading, so that it resolves a collision of harmonized names. A concept given takes the
-    place of the one proposed of its word, keeping of it the abbreviations proposed beside those
-    given, and the terms it is written as are taken from the abbreviations of the others; the word
-    of another stays a term of it, so that a term given may stand for either, as the reading of its
-    name says.
+    column, or none, a column that determines no other, whatever is found, and the discriminator of
+    a table, with the values, the name and the description of its entities, or none. What the
+    database and a table hold, the language model is shown with every question of them. What it
+    gives is taken as given by every stage: by `scan`, which counts the columns with their
+    sentinels, marks them, takes the primary key given, looks for no dependency of a column given as
+    determining none and tells the entities apart by the discriminator given, by `relate`, which
+    takes the references given and measures them, by `describe`, which splits and reads the names by
+    the concepts given and asks the language model for nothing given, as by `report`, which lays the
+    concepts, readings, names, descriptions and marks over the profile and drops the dependencies of
+    a column determining none; sentinels, primary keys and discriminators changed, and the
+    dependencies of a column equivalent to one determining none of its own, count once `scan` counts
+    the table again, references once `relate` relates the tables again, and a reading given once
+    `describe` has split its name. A name given comes before the one composed from the reading, so
+    that it resolves a collision of harmonized names. A concept given takes the place of the one
+    proposed of its word, keeping of it the abbreviations proposed beside those given, and the terms
+    it is written as are taken from the abbreviations of the others; the word of another stays a
+    term of it, so that a term given may stand for either, as the reading of its name says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -271,7 +273,8 @@ types of a project reach `scan` from `project`, and every stage after it from th
     sensitivity, the one whose values tell entities of the rows apart is the discriminator, its
     entities counted by one more query. The overrides of the project give the sentinels of a column
     in place of those of the tool, mark the columns the detectors miss, and give the primary key of
-    a table, and its discriminator and entities of it, or none. The result is the profile, with the
+    a table, the columns that determine no other, and its discriminator and entities of it, or
+    none. The result is the profile, with the
     ranges and the values of enumerations of the columns of no sensitivity, written after every
     table: a scan that fails keeps the tables before it, and the next scan resumes its run, skipping
     the tables it counted, unless the overrides now give their columns, their primary keys or their

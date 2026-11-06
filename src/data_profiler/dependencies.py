@@ -16,7 +16,8 @@ depart from it - the rows of a value less those of the value of the dependent it
 often -, as real data hold rows corrected and rows not; of a determinant, those of each dependent
 are one dependency. Determinants that follow from each other, such as a code and its name, are
 equivalent, and held together, the first in the table determining the others; the others are no
-dependencies of their own.
+dependencies of their own. A column the overrides give as determining none takes no part as a
+determinant, but as a dependent, so that a column equivalent to it determines on its own.
 
 Of the dependencies found, the `_MOST` of the most columns that follow, then of the most rows of
 values that repeat, are verified on the whole table, the others logged. Each is verified by queries
@@ -32,7 +33,7 @@ least strictness of its counts. The dependencies name columns alone, and no valu
 
 import logging
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Final
 
@@ -114,7 +115,9 @@ class _Found:
         return len(self.determinants) - 1 + len(self.dependents)
 
 
-def determine(source: Source, table: Table, sample: Sample) -> Table:
+def determine(
+    source: Source, table: Table, sample: Sample, determining_none: Collection[str]
+) -> Table:
     """`table` with the dependencies of its columns, found in `sample` and verified on the table.
 
     Args:
@@ -122,6 +125,8 @@ def determine(source: Source, table: Table, sample: Sample) -> Table:
         table: The table, its keys identified and its columns with their statistics, which name
             their sentinels.
         sample: The sample of the table, with the values of each of its columns.
+        determining_none: The columns the overrides give as determining no other, which take no
+            part as determinants, but as dependents.
 
     Returns:
         The table with its column dependencies, in the order of their determinants; none where none
@@ -130,7 +135,7 @@ def determine(source: Source, table: Table, sample: Sample) -> Table:
     Raises:
         SourceError: The database fails to count the values of the dependencies found.
     """
-    found = _found(source, table, sample)
+    found = _found(source, table, sample, determining_none)
     found.sort(key=lambda dependency: (-dependency.following, -dependency.repeated))
     if len(found) > _MOST:
         _logger.info(
@@ -147,15 +152,17 @@ def determine(source: Source, table: Table, sample: Sample) -> Table:
     return replace(table, column_dependencies=tuple(verified))
 
 
-def _found(source: Source, table: Table, sample: Sample) -> list[_Found]:
-    """The dependencies of `table` that hold in `sample`, equivalent determinants together."""
+def _found(
+    source: Source, table: Table, sample: Sample, determining_none: Collection[str]
+) -> list[_Found]:
+    """The dependencies of `table` that hold in `sample`, of no determinant determining none."""
     dialect = source.dialect
     # A key of one column, unique in the sample, takes part as neither: its values do not repeat,
     # and depart from every determinant whose values do.
     determinants = {
         column.name: determinant
         for column in table.columns
-        if dialect.identifies(column.type)
+        if column.name not in determining_none and dialect.identifies(column.type)
         for determinant in [_determinant(column, sample)]
         if determinant is not None
     }

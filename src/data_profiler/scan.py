@@ -8,11 +8,12 @@ are recognised in the sample, and verified on the whole table, by the module `ma
 are indicated by the statistics and the sample, and verified on the whole table, by the module
 `keys`; the columns filled together are found in the sample, by the module `grouping`, and the
 columns whose values follow from another are found in the sample and verified on the whole table, by
-the module `dependencies`. The overrides of the project mark its columns as they give, and which
-values of the database go into the profile - the ranges and enumerations of the columns of no
-sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
-enumerations the profile holds, the module `entities` finds the discriminator whose values tell the
-entities of the rows apart, by a query of its own, or takes the one the overrides give.
+the module `dependencies`, of no determinant the overrides give as determining none. The overrides
+of the project mark its columns as they give, and which values of the database go into the profile -
+the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
+the same types and those marks. Of the enumerations the profile holds, the module `entities` finds
+the discriminator whose values tell the entities of the rows apart, by a query of its own, or takes
+the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
@@ -78,7 +79,7 @@ def scan(
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
         overrides: The overrides of the project, which mark the columns of the tables and give
-            their sentinels, primary keys and discriminators.
+            their sentinels, primary keys, columns determining none and discriminators.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
@@ -119,7 +120,7 @@ def scan(
         workspace.write_sample(name, sample)
         verified = verify(source, recognise(table, sample, types))
         keyed = identify(source, verified, sample, given[name].primary_key)
-        found = determine(source, group(keyed, sample), sample)
+        found = determine(source, group(keyed, sample), sample, given[name].determining_none)
         marked = given[name].laid_over(_valued(found, enumerations))
         disclosed = disclose(marked, types)
         profile = profile.updated(discriminate(source, disclosed, given[name].discriminator))

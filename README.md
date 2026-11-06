@@ -165,14 +165,16 @@ environments:
   "00000"]`, or `sentinels: []` for none; the primary key of a table, by its columns, in place of
   the one chosen among its keys, `primary_key: [ord_id, pos_no]`; the reference of a column, by the
   table and the column of the key it refers to, `reference: {table: cust, column: cust_id}`, or
-  `reference: false` for none; and the discriminator of a table, the column whose values tell its
+  `reference: false` for none; a column that determines no other, whatever dependency is found of
+  it, `determines: false`; and the discriminator of a table, the column whose values tell its
   entities apart, with entities under their harmonized names, each with its values - the others it
   is found of join it - and its description, `discriminator: {column: prtnr_typ_cd, entities:
   {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
   `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, takes the
-  primary keys, and tells the entities apart, as they give, `relate` takes the references, measuring
-  them, `describe` splits and reads the names by the concepts they give and asks the language model
-  for nothing given, and `report` lays them over the profile.
+  primary keys, looks for no dependency of a column that determines none, and tells the entities
+  apart, as they give, `relate` takes the references, measuring them, `describe` splits and reads
+  the names by the concepts they give and asks the language model for nothing given, and `report`
+  lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 
