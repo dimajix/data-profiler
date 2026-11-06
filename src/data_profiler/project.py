@@ -52,7 +52,15 @@ class ProjectError(Exception):
 
 @dataclass(frozen=True)
 class _Settings:
-    """How an environment is reached, as the configuration gives it: values or `${NAME}`."""
+    """How an environment is reached, as the configuration gives it: values or `${NAME}`.
+
+    Attributes:
+        url: The schema the environment profiles, `trino://host:port/catalog/schema`, or
+            `${NAME}`, the variable that holds it.
+        user: The user the environment is reached as, or `${NAME}`, the variable that holds it.
+        password: `${NAME}`, the variable that holds the password of the user; never the password
+            itself.
+    """
 
     url: str
     user: str
@@ -139,7 +147,18 @@ class Environment:
 
 @dataclass(frozen=True)
 class _Configuration:
-    """The configuration of a project, as its file holds it."""
+    """The configuration of a project, as its file holds it.
+
+    Attributes:
+        tables: The tables to profile, of the whole project: a regular expression their names match
+            whole, or a list of their names.
+        environments: The environments the database is profiled in, by their names - lower case
+            letters, digits, `-` and `_`, beginning with a letter or a digit -, which name the
+            directories of their results.
+        llm: The language model of Ollama that `describe` asks, as Ollama names it, or None where
+            the project names none, so that `describe` runs only with `--without-llm`.
+        types: The semantic types of the project, beside those of the tool, by their names.
+    """
 
     tables: str | tuple[str, ...]
     environments: Mapping[str, _Settings]
@@ -149,8 +168,8 @@ class _Configuration:
     types: SemanticTypes = ()
 
 
-# The format of the configuration of a project, its version raised as `documents` says.
-_FORMAT: Final = Format(_Configuration, Version(4, 0))
+FORMAT: Final = Format(_Configuration, Version(4, 0))
+"""The format of the configuration of a project, its version raised as `documents` says."""
 
 
 class Project:
@@ -201,7 +220,7 @@ class Project:
         """
         file = directory / "project.yml"
         try:
-            configuration = _FORMAT.read(file)
+            configuration = FORMAT.read(file)
         except DocumentError as error:
             raise ProjectError(str(error)) from error
         for name, settings in configuration.environments.items():

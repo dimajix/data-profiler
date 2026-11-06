@@ -43,6 +43,9 @@ The project is at its beginning: the stages above are what it is being built for
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**: The overall picture - the parts of the project,
   how they work together, and the principles of the design -, with the detailed documents in
   [docs/](docs/).
+- **[docs/PROJECT.md](docs/PROJECT.md)**: What the developer of a project writes - `project.yml`
+  and `overrides.yml` -, with a recipe of each task and the reference of every field;
+  **[docs/PROFILE.md](docs/PROFILE.md)** what the profile holds, with the reference of its fields.
 - **[AGENTS.md](AGENTS.md)**: How we work together - for coding agents and contributors alike.
 - **[issues/INDEX.md](issues/INDEX.md)**: Every issue, one line each, by area;
   [issues/OPEN.md](issues/OPEN.md) those still open. The reasoning is in
@@ -121,60 +124,19 @@ environments:
     password: ${SIMULATION_PASSWORD}
 ```
 
-- **`tables`** selects the tables of the whole project: a regular expression matched whole, or a
-  list of their names.
-- **`types`**, where there are any, gives the semantic types of the project, beside those of the
-  tool, each under its name - lower case letters, digits and `-` -, by a pattern its values match
-  whole, and its sensitivity, `none`, `personal` or `payment-card`:
-
-  ```yaml
-  types:
-    account-number:
-      pattern: "A[0-9]{10}"
-      sensitivity: personal
-  ```
-
-  The pattern is read by Python and by the database alike, so it uses what both share: classes,
-  repetitions, groups and alternatives, and no other escapes than of a character.
-- **`llm`** names the language model of Ollama that `describe` asks, as Ollama names it; it is
-  pulled into Ollama once. Where Ollama answers is a matter of the machine: the variable
-  `OLLAMA_HOST`, as `http://host:port`, else `http://localhost:11434`. The tool reaches it past
-  every proxy, as its prompts hold values of the database.
-- **`environments`** names each environment by the URL of its schema,
-  `trino://host:port/catalog/schema`, and the user and the password it is reached as. A value
-  `${NAME}` is taken from the variable `NAME`; the password is given only so, never written out, so
-  that `project.yml` can be committed and shared.
-- **`.env`** holds the variables, and is never committed: the passwords, the users where they
-  differ from one person to the next, and what reaches the database - `REQUESTS_CA_BUNDLE`, the
-  certificate of a CA of one's own, and `NO_PROXY`, for a database no proxy reaches. A variable the
-  process sets is not overridden by it - a `no_proxy` the shell sets, for one, has to name the
-  database itself. For the example, copy
+- **`tables`** selects the tables of the whole project, **`llm`** names the language model of
+  Ollama that `describe` asks, and **`environments`** names each environment by the URL of its
+  schema and the user and the password it is reached as. A value `${NAME}` is taken from the
+  variable `NAME`; the password is given only so, so that `project.yml` can be committed and shared.
+- **`.env`** holds the variables, and is never committed. For the example, copy
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
-- **`overrides.yml`**, where there is one, gives by hand what a profile is to take as given: what
-  the database holds, `description:`, which the language model is shown with every question;
-  concepts of the glossary, each under its word, which is a term of it where it is one, with its
-  abbreviations and its description, where they are given - `iban: {}` gives a word alone -, and,
-  where it is to be left out of the names, `omitted: true`; the reading of the name of a table or
-  column, a concept for each of its terms, `reading: [airplus, contact_person, name]`; the
-  harmonized name of a table or column, in snake_case, in place of the one composed from its
-  reading, as where two columns would share one, `name: contact_person_id`; the description of a
-  column, in place of the one proposed, and of a table, which the language model is shown as well;
-  the sensitivity of a column the detectors miss, such as the names of persons; and the values that
-  stand for no value in a column, its sentinels, in place of those of the tool: `sentinels: ["",
-  "00000"]`, or `sentinels: []` for none; the primary key of a table, by its columns, in place of
-  the one chosen among its keys, `primary_key: [ord_id, pos_no]`; the reference of a column, by the
-  table and the column of the key it refers to, `reference: {table: cust, column: cust_id}`, or
-  `reference: false` for none; a column that determines no other, whatever dependency is found of
-  it, `determines: false`; and the discriminator of a table, the column whose values tell its
-  entities apart, with entities under their harmonized names, each with its values - the others it
-  is found of join it - and its description, `discriminator: {column: prtnr_typ_cd, entities:
-  {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
-  `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, takes the
-  primary keys, looks for no dependency of a column that determines none, and tells the entities
-  apart, as they give, `relate` takes the references, measuring them, `describe` splits and reads
-  the names by the concepts they give and asks the language model for nothing given, and `report`
-  lays them over the profile.
+- **`overrides.yml`**, where there is one, gives by hand what the profiles are to take as given -
+  concepts of the glossary, readings, names and descriptions, the sensitivity and the sentinels of
+  columns, primary keys, references and discriminators -, which each stage takes as given.
+
+Every field of both files, a recipe of each task, and how each override is taken are described in
+[docs/PROJECT.md](docs/PROJECT.md); what the profile holds in [docs/PROFILE.md](docs/PROFILE.md).
 
 With the simulation environment loaded, as above, the example is scanned by
 

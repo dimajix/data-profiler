@@ -127,7 +127,7 @@ types of a project reach `scan` from `project`, and every stage after it from th
 *   **Project** - one database, profiled in environments: a directory of its configuration, which
     selects the tables, of its variables, which hold the passwords - and the users, where they
     differ from one person to the next - and are not shared, of its overrides, and of the results
-    of each environment.
+    of each environment; described in [PROJECT.md](PROJECT.md).
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL, a user and a password of its own; its
     results, a profile, a workspace and a report, are kept in a directory of its own, named after
@@ -145,7 +145,7 @@ types of a project reach `scan` from `project`, and every stage after it from th
     directory of a document of the schema and a document of each table, so that a person reads a
     table in a file of its own. It is the only thing the stages hand to each other besides the
     workspace, and it holds no values of the columns found sensitive (see
-    [Principles](#principles)).
+    [Principles](#principles)); described in [PROFILE.md](PROFILE.md).
 *   **Table** and **Column** - as found in the database, under their original names.
 *   **Statistics** - what is counted of a column on the whole table: its nulls, each of its
     sentinels, the approximate number of its distinct values, the range of its values, the range
@@ -235,26 +235,15 @@ types of a project reach `scan` from `project`, and every stage after it from th
     descriptions as well, given by hand alone, and shown to the language model with every question
     of them.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: what the database holds, concepts of the glossary, the reading of
-    a name, the harmonized name of a table or column, the description of a table or column, the
-    sensitivity and the sentinels of a column, the primary key of a table, the reference of a
-    column, or none, a column that determines no other, whatever is found, and the discriminator of
-    a table, with the values, the name and the description of its entities, or none. What the
-    database and a table hold, the language model is shown with every question of them. What it
-    gives is taken as given by every stage: by `scan`, which counts the columns with their
-    sentinels, marks them, takes the primary key given, looks for no dependency of a column given as
-    determining none and tells the entities apart by the discriminator given, by `relate`, which
-    takes the references given and measures them, by `describe`, which splits and reads the names by
-    the concepts given and asks the language model for nothing given, as by `report`, which lays the
-    concepts, readings, names, descriptions and marks over the profile and drops the dependencies of
-    a column determining none; sentinels, primary keys and discriminators changed, and the
-    dependencies of a column equivalent to one determining none of its own, count once `scan` counts
-    the table again, references once `relate` relates the tables again, and a reading given once
-    `describe` has split its name. A name given comes before the one composed from the reading, so
-    that it resolves a collision of harmonized names. A concept given takes the place of the one
-    proposed of its word, keeping of it the abbreviations proposed beside those given, and the terms
-    it is written as are taken from the abbreviations of the others; the word of another stays a
-    term of it, so that a term given may stand for either, as the reading of its name says.
+    laid over a generated profile: what the database and a table hold, concepts of the glossary,
+    the reading, the harmonized name and the description of a table or column, the sensitivity and
+    the sentinels of a column, the primary key of a table, the reference of a column, or none, a
+    column that determines no other, whatever is found, and the discriminator of a table, with the
+    values, the name and the description of its entities, or none. What it gives is taken as given
+    by the stage whose work it is, and counts once that stage runs again. A name given comes before
+    the one composed from the reading, so that it resolves a collision of harmonized names, and a
+    concept given before the one proposed of its word. Which stage takes what, when it counts, and
+    what is refused, [PROJECT.md](PROJECT.md#the-overrides-overridesyml) says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -351,7 +340,7 @@ The design repeats a few decisions; new code follows them.
     the names and the descriptions of the columns, and splitting the names again keeps a reading
     while its terms stay. The references are the exception: they are of the values of two tables, so
     that a table a scan counts anew has none, until `relate` runs again. Which step fills which
-    attribute is said once, in the module docs of `data_profiler.profile`.
+    attribute is said once, in [PROFILE.md](PROFILE.md#which-stage-fills-what).
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes the concepts of terms and the
     descriptions of columns from what they found, and nothing else. It is shown the values of a
@@ -393,7 +382,7 @@ The design repeats a few decisions; new code follows them.
 *   **`issues/`** - the issues, one file each, and the overviews generated from them, under areas
     that follow the parts above (see [issues/README.md](../issues/README.md)).
 *   **`scripts/`** - the tools that check the rules of the documents, such as
-    `scripts/wrapping.sh`.
+    `scripts/wrapping.sh`, and that write their generated parts, `scripts/generate.py`.
 *   **`.githooks/`** - the pre-commit hook, which runs the checks of the coding guidelines and keeps
     the issue overviews up to date; enabled per clone with `git config core.hooksPath .githooks`.
 *   **`.claude/agents/`** - the agents Claude Code is given for the workflow of
@@ -405,3 +394,7 @@ The design repeats a few decisions; new code follows them.
 
 *   [CODING-GUIDELINES.md](CODING-GUIDELINES.md) - coding style, error handling, logging, tests,
     and the checks that run before every commit.
+*   [PROJECT.md](PROJECT.md) - the configuration of a project and its overrides: what holds for
+    them, recipes, and the reference of their fields.
+*   [PROFILE.md](PROFILE.md) - the profile: its files, which stage fills what, what it never holds,
+    and the reference of its fields.

@@ -44,7 +44,7 @@ build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 100
-src = ["src", "simulation/src"]
+src = ["src", "simulation/src", "scripts"]
 
 [tool.ruff.lint]
 select = [
@@ -90,11 +90,13 @@ convention = "google"
 [tool.mypy]
 strict = true
 enable_error_code = ["ignore-without-code"]
-files = ["conftest.py", "src", "tests", "simulation/src", "simulation/tests", "work"]
+files = ["conftest.py", "src", "tests", "simulation/src", "simulation/tests", "work", "scripts"]
 # Modules are named by their path from these directories or the root, so that the conftest.py of
 # the root and that of tests/ are told apart.
 explicit_package_bases = true
-mypy_path = ["src", "simulation/src"]
+mypy_path = ["src", "simulation/src", "scripts"]
 
 [tool.pytest]
 testpaths = ["tests", "simulation/tests"]
+# The tools of the repository in `scripts/`, which their tests import by their names.
+pythonpath = ["scripts"]

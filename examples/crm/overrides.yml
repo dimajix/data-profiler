@@ -1,36 +1,27 @@
-# What is given by hand of the profiles of the example project, the same for all its environments:
-# what the database and one of its tables hold, concepts of the glossary - a customer; an address,
-# written in two ways; a prefix that marks a custom column, left out of the names; a contact person,
-# written as that prefix is; the terms of three names that stand for the one or the other; and an
-# IBAN, written as its word alone -, the readings of those three names, a name given in place of the
-# one composed from a reading and a description in place of the one proposed, the sensitivity of a
-# column the detectors miss - here the names of persons, which no detector recognises -, the
-# sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
-# are empty where none is given, or would be zeros -, the primary key of the items of an order, the
-# order and the position in place of the identifier chosen, the references of two columns of whole
-# numbers, which keys numbered from one hold as candidates - the contact person of a customer and
-# the customer of an order -, and none of the number a business partner has as a customer elsewhere,
-# a column found to determine others that determines none - the name of the group of the product of
-# the item of an order, which follows from its code, as a name identifies nothing -, and the
-# discriminator of the business partners, its entities named by one value each, which the others it
-# is found of join, and described.
+# What is given by hand of the profiles of the example project, the same for all its environments;
+# docs/PROJECT.md describes each kind of override, and when it counts.
 format: "7.4"
+# What the database holds: the language model is shown it with every question.
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
+# The concepts of the glossary, each under its word, from which the harmonized names are composed.
 glossary:
   customer:
     abbreviations: [cust]
     description: A person or company that buys from the company, with its orders and addresses.
+  # Written in two ways in the names.
   address:
     abbreviations: [addr, adr]
     description: Where a person or company is reached, by post or by e-mail.
+  # A prefix that marks a custom column, left out of the names.
   airplus:
     abbreviations: [ap]
     description: >-
       Marks a column added to the CRM for AirPlus, a custom column; it says nothing of what the
       column holds.
     omitted: true
+  # Written as the prefix above is: the reading of a name tells which of the two `ap` stands for.
   contact_person:
     abbreviations: [ap]
     description: The person a customer is reached through, one of its contacts.
@@ -42,16 +33,21 @@ glossary:
     abbreviations: [seg]
   code:
     abbreviations: [cd]
+  # A word alone, which is a term of it.
   iban: {}
 tables:
   cust:
     columns:
+      # The names of persons, which no detector recognises.
       cust_nm: {sensitivity: personal}
+      # Read, named and described by hand; its reference is one of several candidates, as keys
+      # numbered from one share their values.
       cust_ap_id:
         reading: [customer, contact_person, identifier]
         name: contact_person_id
         description: The identifier of the contact person a customer is reached through.
         reference: {table: cntct, column: cntct_id}
+      # Terms that stand for one concept or another, read by hand.
       ap_ap_nm: {sensitivity: personal, reading: [airplus, contact_person, name]}
       ap_seg_cd: {reading: [airplus, segment, code]}
   cntct:
@@ -60,16 +56,24 @@ tables:
       lst_nm: {sensitivity: personal}
   ord:
     columns:
+      # The customer of an order, one of several candidates, as for cust_ap_id.
       cust_id: {reference: {table: cust, column: cust_id}}
+      # Postal codes of a delivery: empty where none is given; zeros, where a system writes them.
       dlvr_pst_cd: {sentinels: ["", "00000"]}
   ord_itm:
     description: The positions of an order, one product each, with its quantity and price.
+    # The order and the position, in place of the identifier chosen.
     primary_key: [ord_id, pos_no]
     columns:
+      # Found to determine others, as it follows from the code of the group, but a name
+      # identifies nothing.
       prodgrp_nm: {determines: false}
   prtnr:
     columns:
+      # The number a business partner has as a customer elsewhere: no reference, whatever is found.
       cust_no: {reference: false}
+    # The business partners of four kinds, each entity named by one value; the others it is found
+    # of join it.
     discriminator:
       column: prtnr_typ_cd
       entities:

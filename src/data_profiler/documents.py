@@ -52,12 +52,18 @@ class DocumentError(Exception):
 
 
 class Format[T]:
-    """The format of one kind of document: the class it holds, and the version of its fields."""
+    """The format of one kind of document: the class it holds, and the version of its fields.
+
+    Attributes:
+        root: The class a document of the format holds.
+        version: The version of the format, raised as the module docs say.
+    """
 
     def __init__(self, root: type[T], version: Version) -> None:
         """Takes the class a document of the format holds, and the version of the format."""
+        self.root = root
+        self.version = version
         self._adapter = TypeAdapter(root)
-        self._version = version
 
     def read(self, path: Path, context: Mapping[str, object] | None = None) -> T:
         """The YAML document in `path`, of this format or of an older minor version of it.
@@ -91,14 +97,14 @@ class Format[T]:
         if found is None:
             raise DocumentError(f"{path} names no format")
         given = _version(path, found)
-        if given.major != self._version.major:
+        if given.major != self.version.major:
             raise DocumentError(
                 f"{path} is of format {given}, of another major version than the format"
-                f" {self._version} that is read"
+                f" {self.version} that is read"
             )
-        if given.minor > self._version.minor:
+        if given.minor > self.version.minor:
             raise DocumentError(
-                f"{path} is of format {given}, newer than the format {self._version} that is read:"
+                f"{path} is of format {given}, newer than the format {self.version} that is read:"
                 " the tool is older than the document"
             )
         try:
@@ -120,7 +126,7 @@ class Format[T]:
             DocumentError: The file cannot be written.
         """
         content = {
-            "format": str(self._version),
+            "format": str(self.version),
             **self._adapter.dump_python(value, mode="json", exclude_defaults=True),
         }
         try:

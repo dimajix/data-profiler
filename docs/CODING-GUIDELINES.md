@@ -34,8 +34,8 @@ against this list, rule by rule, before it is reported (the self-review of
     ([Comments and documentation](#comments-and-documentation)).
 *   A change comes with its tests, which use what the code offers its callers
     ([Testing](#testing)).
-*   Every [check](#checks) passes: the tests, the formatter, the linter, the type checker and the
-    wrapping.
+*   Every [check](#checks) passes: the tests, the formatter, the linter, the type checker, the
+    wrapping and the generated parts of the documents.
 
 ## Checks
 
@@ -52,6 +52,7 @@ hook in `.githooks` runs them on every commit, once a clone has it enabled
 | The types | `uv run mypy` | yes, when code or its configuration is part of the commit |
 | The wrapping of prose | `scripts/wrapping.sh` | yes, on the files the commit adds or changes |
 | The issue overviews | `issues/generate.sh --check` | regenerated, when an issue is part of the commit |
+| The generated parts of the documents | `uv run scripts/generate.py --check` | yes, when code, a document or a file a document holds is part of the commit |
 
 The tools and their settings are in `pyproject.toml`, their versions in `uv.lock`. The hook runs
 them by `uv run --locked`, which also refuses a `uv.lock` that no longer fits the `pyproject.toml`
@@ -126,7 +127,12 @@ What is known about the code has three places, each kept by whoever changes what
     it costs every reader.
 *   **Doc comments and module docs** hold what one type, function or module does in detail: its
     variants and fields, its steps and their order, its errors, its constants. They are changed and
-    reviewed with the code they describe.
+    reviewed with the code they describe. The doc comments of the classes a document holds are the
+    reference of its format as well, which `scripts/generate.py` writes into
+    [PROJECT.md](PROJECT.md#reference-of-the-fields) and
+    [PROFILE.md](PROFILE.md#reference-of-the-fields): each field is described in `Attributes:` for
+    the person who reads or writes the document, too, and a field without a description fails the
+    check.
 *   **Issues** hold how something came to be: the options weighed and why one was chosen. A
     document links an issue only where a rule would otherwise look wrong or arbitrary and the issue
     says why - not to record which issue added what.
@@ -287,6 +293,9 @@ underscore, or one made public for it - says that a cut is wrong: it is a
     `simulation/` for the package of the same name, and hides it. A directory of tests is added to
     `testpaths` of pytest and to `files` of mypy with its first test: neither tool finds it on its
     own, and a test that does not run checks nothing.
+*   **The tools of the repository** in `scripts/` that are Python are tested in `tests/`, as the
+    tool is: `scripts/` is in the `pythonpath` of pytest and the `mypy_path` and `files` of mypy, so
+    that a test imports a tool by its name, `from generate import check`.
 *   **Shared fixtures:** what the tests of several modules use lives in one place, as a fixture in
     the `conftest.py` of the directory whose tests share it, built through the interface of the
     module whose things it builds. A test builds what it needs as the code does, from defaults, and

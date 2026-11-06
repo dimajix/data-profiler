@@ -4,8 +4,11 @@ format: "4.0"
 tables: .*
 # The language model of Ollama the names are described by.
 llm: qwen3.5:2b
+# The environments, each by the URL of its schema, its user and its password; its results are kept
+# in a directory named after it, here `simulation/`.
 environments:
   simulation:
     url: trino://localhost:8443/crm/sales
     user: profiler
+    # The password is given only by a variable, of the process or of the `.env` of the project.
     password: ${SIMULATION_PASSWORD}

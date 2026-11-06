@@ -532,7 +532,7 @@ class Overrides:
         if not path.exists():
             return cls()
         try:
-            return _FORMAT.read(path)
+            return FORMAT.read(path)
         except DocumentError as error:
             raise OverridesError(str(error)) from error
 
@@ -735,5 +735,5 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     return concepts
 
 
-# The format of the overrides, its version raised as `documents` says.
-_FORMAT: Final = Format(Overrides, Version(7, 4))
+FORMAT: Final = Format(Overrides, Version(7, 4))
+"""The format of the overrides, its version raised as `documents` says."""

@@ -82,3 +82,20 @@ editor completion and checks of `project.yml` and `overrides.yml`; an issue of i
   outside their modules uses them yet; step 2 makes them public with the generator, their first
   user, the formats of the profile as `HEAD_FORMAT` and `TABLE_FORMAT` rather than `HEAD` and
   `TABLE`, as `_HEAD` names the file `profile.yml` already.
+
+- **2026-11-06** — Step 2, the documents: `scripts/generate.py` writes the references of the four
+  formats - `project.FORMAT`, `overrides.FORMAT`, `profile.HEAD_FORMAT` and `profile.TABLE_FORMAT`,
+  public now, as is what a format holds - and the example files into `docs/PROJECT.md` and
+  `docs/PROFILE.md`, between markers; `tests/test_generate.py` tests it and fails where a document
+  is not up to date, `tests/test_recipes.py` reads every recipe and lays those of the overrides over
+  the example profile. The classes of the documents that had no `Attributes:` have them, and the
+  types of a validator of their own name what they read, by `json_schema_input_type`. Unlike
+  decided, the generator is named `generate`, not `formats`, as it writes every generated part of a
+  document - files as well as references -, as `issues/generate.sh` writes the overviews; and the
+  pre-commit hook checks the generated parts rather than writing them, as writing would add to the
+  commit what is not staged of a document, the generator reading the working tree. Which step fills
+  which attribute of the profile moved from the module docs of `profile` into `docs/PROFILE.md`; the
+  descriptions of both files moved from the README, the details of overrides from
+  `docs/ARCHITECTURE.md`, into `docs/PROJECT.md`. The rules in the module docs of `overrides` are
+  not moved yet, and stated in `docs/PROJECT.md` as well; where they live is left to the
+  maintainer.

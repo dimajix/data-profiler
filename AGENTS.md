@@ -22,6 +22,8 @@ change something, read the document on its subject:
 |---|---|
 | any code | [CODING-GUIDELINES.md](docs/CODING-GUIDELINES.md) |
 | the parts of the project, which part owns what | [ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| the configuration of a project, its overrides, their formats | [PROJECT.md](docs/PROJECT.md) |
+| the profile, its format | [PROFILE.md](docs/PROFILE.md) |
 | issues: their fields, keeping them, opening one | [issues/README.md](issues/README.md) |
 
 A document on a subject of its own is written once the subject outgrows its section in
