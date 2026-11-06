@@ -37,7 +37,7 @@ from typing import Final
 from phonenumbers import NumberParseException, is_valid_number, parse
 from stdnum import iban, luhn
 
-from data_profiler import currencies
+from data_profiler import countries, currencies
 
 
 class Sensitivity(Enum):
@@ -160,11 +160,12 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
 # a sentinel is of the pair, as a column of counts, mostly zeros and ones, is none.
 _EVERY: Final = 1.0
 
-# The threshold of a code or a number of a currency, and of a list: nearly every value of its
-# column, as a fifth of all numbers of three digits are numbers of currencies, many a word of three
-# capitals is a code of one - `ALL`, `TOP` -, and every number a list of one value, so that a column
-# of quantities or of codes of status is none; a few values amiss are allowed, which every value
-# would not.
+# The threshold of a code or a number of a currency or a country, and of a list: nearly every value
+# of its column, as a fifth of all numbers of three digits are numbers of currencies and a quarter
+# numbers of countries, many a word of three capitals is a code of a currency or a country - `ALL`,
+# `TOP`, `AND`, `CAN` -, two of five pairs of capitals are codes of countries - `NO`, `IT` -, and
+# every number a list of one value, so that a column of quantities, of codes of status or of flags
+# `YES`/`NO` is none; a few values amiss are allowed, which every value would not.
 _NEARLY_EVERY: Final = 0.95
 
 
@@ -295,6 +296,28 @@ CURRENCY_NAME: Final = SemanticType(
     "currency-name", Sensitivity.NONE, Detector(re.compile(_cases(*currencies.NAMES)))
 )
 """The English name of a currency, of ISO 4217 or more common: `Euro`, `British Pound`."""
+COUNTRY_ALPHA_2: Final = SemanticType(
+    "country-alpha-2",
+    Sensitivity.NONE,
+    Detector(re.compile(_any_of(countries.ALPHA_2)), threshold=_NEARLY_EVERY),
+)
+"""The code of two letters of a country of ISO 3166, in capitals, as it writes them: `DE`."""
+COUNTRY_ALPHA_3: Final = SemanticType(
+    "country-alpha-3",
+    Sensitivity.NONE,
+    Detector(re.compile(_any_of(countries.ALPHA_3)), threshold=_NEARLY_EVERY),
+)
+"""The code of three letters of a country of ISO 3166, in capitals, as it writes them: `DEU`."""
+COUNTRY_NUMBER: Final = SemanticType(
+    "country-number",
+    Sensitivity.NONE,
+    Detector(re.compile(_any_of(countries.NUMBERS)), threshold=_NEARLY_EVERY),
+)
+"""The number of a country of ISO 3166, of three digits: `276`, and `040`, not `40`."""
+COUNTRY_NAME: Final = SemanticType(
+    "country-name", Sensitivity.NONE, Detector(re.compile(_cases(*countries.NAMES)))
+)
+"""The English name of a country, of ISO 3166 or more common: `Germany`, `USA`."""
 
 BUILT_IN: Final = (
     EMAIL,
@@ -311,6 +334,10 @@ BUILT_IN: Final = (
     CURRENCY_CODE,
     CURRENCY_NUMBER,
     CURRENCY_NAME,
+    COUNTRY_ALPHA_2,
+    COUNTRY_ALPHA_3,
+    COUNTRY_NUMBER,
+    COUNTRY_NAME,
 )
 """The semantic types of the tool."""
 

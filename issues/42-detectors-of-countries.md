@@ -1,6 +1,6 @@
 # 42 — Detectors of countries
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -111,3 +111,13 @@ As the maintainer decided on the questions below, and on the plan of the work:
 
 - **2026-11-06** — Step 1 done: `detect`, the generator of the simulation and its test import the
   module `currencies` and name its tuples by it, `currencies.CODES`, without a change of behaviour.
+
+- **2026-11-06** — Step 2 done as decided: the module `countries` holds `ALPHA_2`, `ALPHA_3`,
+  `NUMBERS` and `NAMES`, of the 249 countries of ISO 3166-1 and the 31 withdrawn of ISO 3166-3 of
+  `pycountry`, their names, official names and common names, and of 54 more common names, among
+  them the names of ISO 3166 written without their accents, `Cote d'Ivoire`; `detect` has
+  `COUNTRY_ALPHA_2`, `COUNTRY_ALPHA_3`, `COUNTRY_NUMBER` and `COUNTRY_NAME`, the profile the version
+  14.5, and the example profile a column of each type, `cust_addr.cntry_cd` and `cntry_nm`,
+  `cust.ntnlty_cd` and `prod.orgn_ctry_no`, which a scan of the simulation environment matches.
+  That a column may be a match of several types, each reported for a person to decide, is stated
+  under *Match* in the architecture.

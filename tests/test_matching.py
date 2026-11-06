@@ -3,8 +3,11 @@
 import re
 from dataclasses import replace
 
+import pytest
+
 from data_profiler.detect import (
     BUILT_IN,
+    COUNTRY_NAME,
     CURRENCY_NAME,
     DATE,
     FREE_TEXT,
@@ -110,20 +113,31 @@ def test_the_pattern_of_every_type_is_read_by_the_database(source: Source) -> No
     assert shares == {kind: 1.0 if kind is DATE else 0.0 for kind in kinds}
 
 
-def test_the_pattern_of_names_of_currencies_takes_their_characters_as_written(
-    source: Source,
+@pytest.mark.parametrize(
+    ("kind", "names", "unescaped"),
+    [
+        (
+            CURRENCY_NAME,
+            ["Mexican Unidad de Inversion (UDI)", "Pa\u2019anga", "Pa'anga", "Bolívar Soberano"],
+            "Mexican Unidad de Inversion UDI",
+        ),
+        (
+            COUNTRY_NAME,
+            ["Cocos (Keeling) Islands", "Côte d'Ivoire", "Korea, Republic of", "U.S.A."],
+            "UxSxAx",
+        ),
+    ],
+    ids=["currencies", "countries"],
+)
+def test_the_pattern_of_names_takes_their_characters_as_written(
+    source: Source, kind: SemanticType, names: list[str], unescaped: str
 ) -> None:
-    names = [
-        "Mexican Unidad de Inversion (UDI)",
-        "Pa\u2019anga",
-        "Pa'anga",
-        "Bolívar Soberano",
-        "Mexican UDI",
-    ]
-    values = ", ".join(f"""('{name.replace("'", "''")}')""" for name in names)
-    matching = source.dialect.matching("name", CURRENCY_NAME.detector.pattern.pattern)
+    values = ", ".join(f"""('{name.replace("'", "''")}')""" for name in [*names, unescaped])
+    matching = source.dialect.matching("name", kind.detector.pattern.pattern)
     statement = f"SELECT {matching} FROM (VALUES {values}) AS names (name)"
-    assert source.query(statement, "matching names") == [(4,)], "all but the last"
+    assert source.query(statement, "matching names") == [(len(names),)], (
+        f"each name, but not {unescaped}, which the characters of a name read as a pattern match"
+    )
 
 
 def test_a_share_of_a_column_of_numbers_is_written_with_three_digits(source: Source) -> None:

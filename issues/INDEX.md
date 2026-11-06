@@ -49,7 +49,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [21](21-a-detector-of-free-text.md) | done | Nothing recognises a column of free text - comments, notes, descriptions -, so that it is told to the language model as a text like any other, and its values are disclosed like those of a code. |
 | [22](22-a-condition-of-a-column.md) | done | A detector judges each value on its own, against one threshold of all types, so that a type that shows only in the values of a column together - a pair of flags, free text - cannot be recognised. |
 | [41](41-detectors-of-currencies.md) | done | Nothing recognises a column of currencies - written as the alphabetic code of ISO 4217, `EUR`, as its number, `978`, or by its English name, `Euro` -, so that a currency is told to the language model as nothing but a text or a number. |
-| [42](42-detectors-of-countries.md) | in progress | Nothing recognises a column of countries - written as a code of ISO 3166-1 of two letters, `DE`, or of three, `DEU`, as its number, `276`, or by its name, `Germany` -, so that a country is told to the language model as nothing but a text or a number. |
+| [42](42-detectors-of-countries.md) | done | Nothing recognises a column of countries - written as a code of ISO 3166-1 of two letters, `DE`, or of three, `DEU`, as its number, `276`, or by its name, `Germany` -, so that a country is told to the language model as nothing but a text or a number. |
 
 ## Describe
 
