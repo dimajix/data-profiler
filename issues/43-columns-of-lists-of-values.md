@@ -70,6 +70,16 @@ As the maintainer decided on the questions below, and on the plan of the work:
   whose columns of lists are of another separator than now given, as a table of no lists cannot
   tell which it was counted with.
 
+- **Step 2**, as the maintainer decided on its plan: a source in which a table is read as one row
+  of each value of the lists of one of its columns, `Source.unnested`, so that `statistics`,
+  `enumerations`, `matching` and `entities` count the values of the lists as they count a column,
+  rather than queries of their own, which would repeat them; the values in the profile as `Items`
+  of a column, `Column.items` - their statistics, matches and values -, not a column of its own,
+  whose name, terms and descriptions they lack; a list of a sensitive type sensitive as its column
+  is; keys and column dependencies of the texts alone. In three parts: 2a, every statement of the
+  dialect reading a table by one method, without a change of behaviour; 2b, the values of the
+  lists counted, matched and shown; 2c, a discriminator of the values of a list.
+
 ## What is to be decided
 
 - **What a column of lists is.** A semantic type, `list`, says what the texts are, but not what
@@ -127,3 +137,6 @@ As the maintainer decided on the questions below, and on the plan of the work:
   generator of the references of the documents writes a type checked once it is read as the type
   it is read as. Found in the review: only a column of text is one of lists, as a decimal written as
   text, `12.50`, would be a list of a dot.
+
+- **2026-11-06** — Step 2a done: the dialect of Trino reads every table after a `FROM` by
+  `_relation`, the table itself so far; the statements are what they were.

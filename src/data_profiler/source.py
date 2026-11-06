@@ -536,12 +536,12 @@ class _TrinoDialect(Dialect):
 
     def select(self, expressions: Sequence[str], table: str) -> str:
         """The statement selecting `expressions` from `table` of the schema of the source."""
-        return f"SELECT {', '.join(expressions)} FROM {_identifier(table)}"
+        return f"SELECT {', '.join(expressions)} FROM {self._relation(table)}"
 
     def sampled(self, expressions: Sequence[str], table: str, percent: float, limit: int) -> str:
         """The statement selecting `expressions` of a share of the rows of `table`, at random."""
         return (
-            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"SELECT {', '.join(expressions)} FROM {self._relation(table)} "
             f"TABLESAMPLE BERNOULLI ({percent:.10f}) LIMIT {limit}"
         )
 
@@ -549,7 +549,7 @@ class _TrinoDialect(Dialect):
         """The statement selecting `expressions` from `table`, grouped by each of `columns`."""
         sets = ", ".join(f"({_identifier(column)})" for column in columns)
         return (
-            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"SELECT {', '.join(expressions)} FROM {self._relation(table)} "
             f"GROUP BY GROUPING SETS ({sets})"
         )
 
@@ -557,14 +557,14 @@ class _TrinoDialect(Dialect):
         """The statement counting, of `limit` values taken of each probe, those in each key."""
         taken = " UNION ALL ".join(
             f'SELECT {place} AS "probe", "v", count(*) OVER () AS "taken" FROM (SELECT'
-            f' CAST({probe.values} AS varchar) AS "v" FROM {_identifier(probe.table)}'
+            f' CAST({probe.values} AS varchar) AS "v" FROM {self._relation(probe.table)}'
             f" TABLESAMPLE BERNOULLI ({probe.percent:.10f}) WHERE {probe.values} IS NOT NULL"
             f" LIMIT {limit})"
             for place, probe in enumerate(probes)
         )
         read = " UNION ALL ".join(
             f'SELECT {place} AS "key", CAST({_identifier(column)} AS varchar) AS "id"'
-            f" FROM {_identifier(table)}"
+            f" FROM {self._relation(table)}"
             for place, (table, column) in enumerate(keys)
         )
         # An inner join, of the values taken on the right, so that they are what is held in memory,
@@ -582,13 +582,13 @@ class _TrinoDialect(Dialect):
         )
         joined = "".join(
             f' LEFT JOIN (SELECT CAST({_identifier(lookup.key)} AS varchar) AS "id"'
-            f' FROM {_identifier(lookup.table)}) "k{place}" ON "t"."v{place}" = "k{place}"."id"'
+            f' FROM {self._relation(lookup.table)}) "k{place}" ON "t"."v{place}" = "k{place}"."id"'
             for place, lookup in enumerate(lookups)
         )
         counts = ", ".join(
             f'count("t"."v{place}"), count("k{place}"."id")' for place in range(len(lookups))
         )
-        return f'SELECT {counts} FROM (SELECT {values} FROM {_identifier(table)}) "t"{joined}'
+        return f'SELECT {counts} FROM (SELECT {values} FROM {self._relation(table)}) "t"{joined}'
 
     def column(self, column: str) -> str:
         """The expression of the values of `column`."""
@@ -681,6 +681,14 @@ class _TrinoDialect(Dialect):
     def is_same_family(self, kind: str, other: str) -> bool:
         """Whether values of `kind` and `other` are the same values where their texts are."""
         return _family(kind) == _family(other)
+
+    def _relation(self, table: str) -> str:
+        """What a statement reads `table` of the schema as, after its `FROM`: the table itself.
+
+        Every statement reading a table of the schema reads it by this, so that a table can be read
+        otherwise in one place.
+        """
+        return _identifier(table)
 
 
 def _is_whole(kind: str) -> bool:
