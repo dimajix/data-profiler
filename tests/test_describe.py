@@ -453,6 +453,15 @@ def test_a_profile_forgotten_has_no_glossary_readings_and_descriptions(tmp_path:
     ], "its terms as they were split"
 
 
+def test_the_model_is_told_of_a_column_of_lists_and_its_separator(tmp_path: Path) -> None:
+    (table,) = _profile("grp_ids", glossary=_GLOSSARY).tables
+    listed = replace(table, columns=(replace(table.columns[0], list_separator=";"),))
+    llm = _Answers(descriptions=("The groups.",))
+    _described(replace(_profile(glossary=_GLOSSARY), tables=(listed,)), tmp_path, llm=llm)
+    (prompt,) = llm.descriptions
+    assert '; lists of values separated by ";"' in prompt
+
+
 def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) -> None:
     glossary = {**_GLOSSARY, "customer": Concept(("cust",), "Who buys.")}
     (table,) = _profile("cust_nm", "cust_st_cd", glossary=glossary).tables
@@ -569,13 +578,13 @@ def test_a_scan_keeps_the_terms_and_readings_describe_filled(
     workspace = Workspace.open(tmp_path / "workspace", "crm", "sales")
     directory = tmp_path / "profile"
     pattern = re.compile("cust")
-    scan(source, pattern, workspace, (), Overrides(), directory)
+    scan(source, pattern, workspace, (), None, Overrides(), directory)
     concepts = {"customer": Concept(("cust",)), "identifier": Concept(("id",))}
     describe(
         Profile.read(directory), Overrides(glossary=concepts), _Answers(), workspace, directory
     )
     described = Profile.read(directory)
-    scan(source, pattern, workspace, (), Overrides(), directory)
+    scan(source, pattern, workspace, (), None, Overrides(), directory)
     (table,) = Profile.read(directory).tables
     (before,) = described.tables
     assert table.run != before.run, "counted anew"

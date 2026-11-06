@@ -3,9 +3,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final, Literal
+from typing import Annotated, Final, Literal
 
 import pytest
+from pydantic import AfterValidator, BeforeValidator, PlainValidator
 
 from data_profiler.detect import Sensitivity
 from data_profiler.documents import Format, Version
@@ -60,6 +61,41 @@ class _Measured:
 
 
 @dataclass(frozen=True)
+class _Checked:
+    """A class of fields of validators of their own.
+
+    Attributes:
+        code: Its code, checked once it is read.
+        size: Its size, read by a validator.
+    """
+
+    code: Annotated[str, AfterValidator(str.upper)]
+    size: Annotated[int, PlainValidator(int, json_schema_input_type=str)]
+
+
+@dataclass(frozen=True)
+class _Unread:
+    """A class of a field read by a validator that names not what it reads.
+
+    Attributes:
+        size: Its size.
+    """
+
+    size: Annotated[int, PlainValidator(int)]
+
+
+@dataclass(frozen=True)
+class _ReadBefore:
+    """A class of a field read first by a validator that names not what it reads.
+
+    Attributes:
+        size: Its size.
+    """
+
+    size: Annotated[int, BeforeValidator(int)]
+
+
+@dataclass(frozen=True)
 class _Undescribed:
     """A class whose field has no description.
 
@@ -104,6 +140,12 @@ def test_a_field_required_that_may_be_none_is_written_null() -> None:
     assert "| `share` | number or `null` | required |" in text
 
 
+def test_a_field_of_a_validator_is_written_as_the_type_it_is_read_as() -> None:
+    text = reference("checked.yml", Format(_Checked, Version(1, 0)))
+    assert "| `code` | text | required |" in text, "checked once it is read as text"
+    assert "| `size` | text | required |" in text, "read from text by its validator"
+
+
 def test_a_reference_holds_each_class_within_once_under_its_name() -> None:
     text = reference("whole.yml", _FORMAT)
     assert text.count("#### Part\n\nA class within the class of a document.") == 1
@@ -114,8 +156,15 @@ def test_a_reference_holds_each_class_within_once_under_its_name() -> None:
     [
         (_Undescribed, r"_Undescribed\.size: it has no description"),
         (_Unknown, r"_Unknown\.size: its type .* not known"),
+        (_Unread, r"_Unread\.size: its type .* names no json_schema_input_type"),
+        (_ReadBefore, r"_ReadBefore\.size: its type .* names no json_schema_input_type"),
     ],
-    ids=["a field without a description", "a type not known"],
+    ids=[
+        "a field without a description",
+        "a type not known",
+        "a validator reading anything",
+        "a validator reading anything first",
+    ],
 )
 def test_a_reference_of_what_it_cannot_write_fails(root: type, problem: str) -> None:
     with pytest.raises(GenerateError, match=problem):

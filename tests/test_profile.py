@@ -150,6 +150,20 @@ def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     assert Profile.read(tmp_path) == described, "with what the database and a table hold"
 
 
+def test_a_column_of_lists_is_written_and_read_with_its_separator(tmp_path: Path) -> None:
+    (table,) = _PROFILE.tables
+    first, *others = table.columns
+    listed = replace(first, list_separator=";")
+    profile = replace(_PROFILE, tables=(replace(table, columns=(listed, *others)),))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+
+
+def test_a_column_of_lists_of_a_separator_that_cannot_be_one_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(ProfileError, match=r"list_separator: 'x' is no separator of lists"):
+        Profile.read(_written(tmp_path, {"list_separator": "x"}))
+
+
 def test_a_profile_is_written_as_its_head_and_a_file_of_each_table(tmp_path: Path) -> None:
     _written(tmp_path)
     head, table = _content(tmp_path / "profile.yml"), _content(tmp_path / "tables" / "CUST.yml")

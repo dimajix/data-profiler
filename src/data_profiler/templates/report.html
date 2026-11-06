@@ -50,7 +50,10 @@
         <td class="original">{{ column.name }}</td>
         <td>{{ harmonized(column) or "–" }}</td>
         <td class="description">{{ column.description or "–" }}</td>
-        <td class="type">{{ column.type }}</td>
+        <td class="type">
+          {{ column.type }}
+          {%- if column.list_separator %}, list of values by {{ column.list_separator }}{% endif %}
+        </td>
         <td class="number">{{ share(statistics.nulls, table.rows) }}</td>
         <td class="number">{{ share(statistics.sentinel_rows, table.rows) }}</td>
         <td class="number">{{ "{:,}".format(statistics.distinct) }}</td>

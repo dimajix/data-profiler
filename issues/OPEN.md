@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [43](43-columns-of-lists-of-values.md) | open | medium | feature | A column whose texts are lists of values, separated by semicolons - `12;47;3` -, is taken for a column of texts like any other, so that what its values are, whether they are values of a key of another table, and whether they tell kinds of rows apart is not found: each text is counted whole, as a value of its own. |
+| [43](43-columns-of-lists-of-values.md) | in progress | medium | feature | A column whose texts are lists of values, separated by semicolons - `12;47;3` -, is taken for a column of texts like any other, so that what its values are, whether they are values of a key of another table, and whether they tell kinds of rows apart is not found: each text is counted whole, as a value of its own. |
 
 ## Detection
 

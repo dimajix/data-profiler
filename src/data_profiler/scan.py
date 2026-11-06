@@ -8,18 +8,20 @@ are recognised in the sample, and verified on the whole table, by the module `ma
 are indicated by the statistics and the sample, and verified on the whole table, by the module
 `keys`; the columns filled together are found in the sample, by the module `grouping`, and the
 columns whose values follow from another are found in the sample and verified on the whole table, by
-the module `dependencies`, of no determinant the overrides give as determining none. The overrides
-of the project mark its columns as they give, and which values of the database go into the profile -
-the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
-the same types and those marks. Of the enumerations the profile holds, the module `entities` finds
-the discriminator whose values tell the entities of the rows apart, by a query of its own, or takes
-the one the overrides give.
+the module `dependencies`, of no determinant the overrides give as determining none. Its columns of
+lists are found in the sample, by the module `lists`, of the separator the overrides give of the
+table, else that of the project. The overrides of the project mark its columns as they give, and
+which values of the database go into the profile - the ranges and enumerations of the columns of no
+sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
+enumerations the profile holds, the module `entities` finds the discriminator whose values tell the
+entities of the rows apart, by a query of its own, or takes the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
 which skips the tables the run counted, unless the overrides now give their columns, their primary
-keys or their discriminators otherwise; a run that finished is followed by a new one, which counts
-every table anew. Overrides that name a table not selected are refused before anything is counted.
+keys or their discriminators otherwise, or their columns of lists are of another separator; a run
+that finished is followed by a new one, which counts every table anew. Overrides that name a table
+not selected are refused before anything is counted.
 
 A scan updates the profile there is rather than replacing it: it drops the tables no longer
 selected, deleted or no longer matched by the pattern, keeps the others until it counts them anew,
@@ -45,6 +47,7 @@ from data_profiler.entities import discriminate
 from data_profiler.enumerations import values
 from data_profiler.grouping import group
 from data_profiler.keys import identify
+from data_profiler.lists import is_listed_with, listed
 from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile, Table, Value
@@ -62,24 +65,28 @@ def scan(
     pattern: Pattern[str],
     workspace: Workspace,
     types: tuple[SemanticType, ...],
+    list_separator: str | None,
     overrides: Overrides,
     directory: Path,
 ) -> None:
     """Scans the tables of `source` that `pattern` matches whole into the profile in `directory`.
 
     The profile is written after every table: each table with its columns, types, statistics and
-    matches, marked as the overrides give, its keys and primary key, the column groups of its
-    columns filled together, the column dependencies of its columns, the discriminator of its
-    entities, and the ranges and values of enumerations of the columns of no sensitivity; and the
-    types of the project.
+    matches, its columns of lists, marked as the overrides give, its keys and primary key, the
+    column groups of its columns filled together, the column dependencies of its columns, the
+    discriminator of its entities, and the ranges and values of enumerations of the columns of no
+    sensitivity; and the types of the project.
 
     Args:
         source: The schema whose tables are scanned.
         pattern: The names of the tables to scan, matched whole.
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
+        list_separator: The separator of the values of a list in a text, of the project, or None
+            where it gives none.
         overrides: The overrides of the project, which mark the columns of the tables and give
-            their sentinels, primary keys, columns determining none and discriminators.
+            their sentinels, primary keys, columns determining none, discriminators and
+            separators of lists.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
@@ -100,14 +107,15 @@ def scan(
     profile = profile.restricted(names)
     profile.write(directory)
     for name in names:
+        separator = given[name].list_separator or list_separator
         kept = profile.counted(name)
-        if kept is not None and given[name].agrees_with(kept):
+        if kept is not None and given[name].agrees_with(kept) and is_listed_with(kept, separator):
             _logger.info("Skipping %s, counted by the run resumed", name)
             continue
         if kept is not None:
             _logger.info(
                 "Counting %s anew, as the overrides give its columns, primary key or"
-                " discriminator otherwise",
+                " discriminator otherwise, or its lists are of another separator",
                 name,
             )
         _logger.info("Scanning %s", name)
@@ -118,7 +126,7 @@ def scan(
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        verified = verify(source, recognise(table, sample, types))
+        verified = verify(source, recognise(listed(table, sample, separator), sample, types))
         keyed = identify(source, verified, sample, given[name].primary_key)
         found = determine(source, group(keyed, sample), sample, given[name].determining_none)
         marked = given[name].laid_over(_valued(found, enumerations))

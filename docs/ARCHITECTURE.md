@@ -22,9 +22,10 @@ does not depend on it, nor on what it needs. Both are one uv workspace, with one
 environment.
 
 *   **`data_profiler.profile`** - the profile: its classes and the version of their formats, read
-    and written as a directory of documents, one of the schema and one of each table; the profile
-    a scan starts from, in its run, resumed or new; and the form the semantic types of a project
-    take in a document, which `project` reads them in as well.
+    and written as a directory of documents, one of the schema and one of each table; the profile a
+    scan starts from, in its run, resumed or new; and the form the semantic types of a project and
+    the separator of lists take in a document, which `project` reads them in as well, and the
+    overrides the separator.
 *   **`data_profiler.overrides`** - the overrides of a project: read from its documents, merged, and
     laid over each table a scan counts and over a profile a stage reads, refused where they name
     what is not profiled or give what cannot be, and warned of where they give what a profile does
@@ -58,6 +59,8 @@ environment.
     from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
     query built the same way.
+*   **`data_profiler.lists`** - the columns of lists of a table: those whose texts are lists of
+    values, by the separator of the project or of the table, found in its sample by `detect`.
 *   **`data_profiler.matching`** - the matches of a table: the semantic types of its columns,
     recognised in its sample by `detect`, and verified on the whole table by one query built the
     same way.
@@ -115,13 +118,14 @@ environment.
     the PostgreSQL behind the catalog, where Trino has named them in lower case.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
-`sampling`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`, `disclosure`,
-`values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which takes the
-terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`, `disclosure`,
-`values` and `workspace`, `report` the profile and `overrides`, which it lays over it, and
-`glossary` for its names; `cli` runs the stages, gives the overrides to each, and the language
+`sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
+`disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
+takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
+`disclosure`, `values` and `workspace`, `report` the profile and `overrides`, which it lays over it,
+and `glossary` for its names; `cli` runs the stages, gives the overrides to each, and the language
 model, made by `llm` as the project names it, to `describe`, unless it is to ask none. The semantic
-types of a project reach `scan` from `project`, and every stage after it from the profile.
+types of a project and its separator of lists reach `scan` from `project`, and every stage after it
+from the profile.
 
 ## The domain
 
@@ -157,6 +161,10 @@ types of a project reach `scan` from `project`, and every stage after it from th
     a person can check them: the sentinels of the tool are fixed texts, and those given are of the
     overrides. The tool brings its sentinels, of the columns whose values the database writes as
     text; an override gives those of a column in their place.
+*   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
+    separator of lists the project gives, the same in all tables of the database, or an override
+    of a table in its place; the tool guesses none. Nearly every text is a list, of one value or
+    more, and one of more at least. Its texts are no values of a discriminator.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
@@ -256,28 +264,28 @@ types of a project reach `scan` from `project`, and every stage after it from th
     For each table it counts the statistics of all columns in one query, the approximate distinct
     counts included, the sentinels of each column counted apart and left aside; it counts the values
     of every column whose distinct count is at most the threshold of an enumeration; and it takes a
-    sample into the workspace. The detectors check the values of the sample, its sentinels aside;
-    the semantic types they find are verified on the whole table by the patterns of the detectors in
-    SQL. Its keys are indicated by the statistics and the sample, and verified on the whole table,
-    and the primary key chosen among them, unless the overrides give it. The columns filled together
-    in the sample are named as column groups, and the columns whose values follow from another in
-    the sample, verified on the whole table, as column dependencies. Of the enumerations of no
-    sensitivity, the one whose values tell entities of the rows apart is the discriminator, its
-    entities counted by one more query. The overrides of the project give the sentinels of a column
-    in place of those of the tool, mark the columns the detectors miss, and give the primary key of
-    a table, the columns that determine no other, and its discriminator and entities of it, or
-    none. The result is the profile, with the
-    ranges and the values of enumerations of the columns of no sensitivity, written after every
-    table: a scan that fails keeps the tables before it, and the next scan resumes its run, skipping
-    the tables it counted, unless the overrides now give their columns, their primary keys or their
-    discriminators otherwise. It updates the profile there is: the tables no longer selected are
-    dropped, the others kept until they are counted anew, and what the other stages filled is kept -
-    the glossary, the terms and readings of the names that stay, and the descriptions of the
-    columns, but the references of a table counted anew and those to the tables dropped, until
-    `relate` runs again; a profile scanned with other semantic types keeps its tables without their
-    matches, values, ranges and discriminators, until they are counted anew. A profile that cannot
-    be read, or one of another schema, is refused and never overwritten: it may be the work of
-    hours.
+    sample into the workspace. The columns of lists are found in the sample. The detectors check the
+    values of the sample, its sentinels aside; the semantic types they find are verified on the
+    whole table by the patterns of the detectors in SQL. Its keys are indicated by the statistics
+    and the sample, and verified on the whole table, and the primary key chosen among them, unless
+    the overrides give it. The columns filled together in the sample are named as column groups, and
+    the columns whose values follow from another in the sample, verified on the whole table, as
+    column dependencies. Of the enumerations of no sensitivity, the one whose values tell entities
+    of the rows apart is the discriminator, its entities counted by one more query. The overrides of
+    the project give the sentinels of a column in place of those of the tool, mark the columns the
+    detectors miss, and give the primary key of a table, the columns that determine no other, its
+    separator of lists, and its discriminator and entities of it, or none. The result is the
+    profile, with the ranges and the values of enumerations of the columns of no sensitivity,
+    written after every table: a scan that fails keeps the tables before it, and the next scan
+    resumes its run, skipping the tables it counted, unless the overrides now give their columns,
+    their primary keys or their discriminators otherwise, or their lists are of another separator.
+    It updates the profile there is: the tables no longer selected are dropped, the others kept
+    until they are counted anew, and what the other stages filled is kept - the glossary, the terms
+    and readings of the names that stay, and the descriptions of the columns, but the references of
+    a table counted anew and those to the tables dropped, until `relate` runs again; a profile
+    scanned with other semantic types keeps its tables without their matches, values, ranges and
+    discriminators, until they are counted anew. A profile that cannot be read, or one of another
+    schema, is refused and never overwritten: it may be the work of hours.
 2.  `relate` relates the tables of the profile to the keys of one column of each other, of another
     table or of the same, querying the database of the environment. It indicates the references by
     the profile alone: of columns whose type, distinct values, lengths, matches and range agree with

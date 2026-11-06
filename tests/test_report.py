@@ -155,6 +155,14 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
     assert '<td class="number">\u2013</td>' in page, "no share of nulls of a table without rows"
 
 
+def test_a_report_shows_a_column_of_lists_with_its_separator() -> None:
+    (table, *others) = _PROFILE.tables
+    first, *columns = table.columns
+    listed = replace(table, columns=(replace(first, list_separator=";"), *columns))
+    page = _page(profile=replace(_PROFILE, tables=(listed, *others)))
+    assert "list of values by ;" in page
+
+
 def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:
     (table, empty) = _PROFILE.tables
     keyed = replace(

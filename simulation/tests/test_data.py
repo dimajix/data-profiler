@@ -1,5 +1,6 @@
 """Tests of the rows of test data: their columns have the statistics of the profile."""
 
+import re
 from dataclasses import replace
 from datetime import date, datetime
 
@@ -18,11 +19,13 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
+    SENTINELS,
     TRUE_FALSE,
     UUID,
     YES_NO,
     ZERO_ONE,
     SemanticType,
+    is_list,
 )
 from data_profiler.profile import (
     Column,
@@ -565,6 +568,19 @@ def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
     assert kind.detector.share(values) == 1.0, "every text is of the type, and so is the column"
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
+
+
+def test_a_column_of_lists_holds_lists_of_numbers_of_its_lengths() -> None:
+    column = Column(
+        name="v",
+        type="varchar(40)",
+        statistics=Statistics(0, 200, Lengths(1, 23)),
+        list_separator=";",
+    )
+    values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
+    assert is_list(values, ";", SENTINELS), "lists, some of several numbers"
+    assert all(re.fullmatch(r"[0-9]{1,3}(;[0-9]{1,3})*", value) for value in values)
+    assert (min(map(len, values)), max(map(len, values))) == (1, 23)
 
 
 def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: SemanticType) -> None:

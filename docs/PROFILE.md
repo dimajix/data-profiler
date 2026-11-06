@@ -43,7 +43,7 @@ Every attribute of a profile is filled by one step, as the
 
 | Step | Fills |
 |---|---|
-| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, values, mark and sentinels of each column, the last two as the overrides give them |
+| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, separator of lists, values, mark and sentinels of each column, the last two as the overrides give them |
 | `relate` | the references and reference candidates of each table |
 | `describe`, splitting the names | the terms of the names of the tables and columns |
 | `describe`, proposing concepts | the glossary |
@@ -87,7 +87,7 @@ data are generated - written by hand, so that it holds no glossary, terms or des
 # numbers are numbered from one, sharing their values, but those of the products; contacts and
 # addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '14.2'
+format: '14.3'
 catalog: crm
 schema: sales
 ```
@@ -98,7 +98,7 @@ dependency:
 
 <!-- begin file: simulation/profiles/crm/tables/ord.yml -->
 ```yaml
-format: '14.2'
+format: '14.3'
 name: ord
 rows: 20000
 columns:
@@ -188,7 +188,7 @@ description names, each with its value; a list of classes as a list of maps.
 <!-- begin reference: profile.yml -->
 ### `profile.yml`
 
-The document begins with `format: "14.2"`, its version.
+The document begins with `format: "14.3"`, its version.
 
 What `profile.yml` holds: the profile but its tables, whose matches name its types.
 
@@ -241,7 +241,7 @@ type of the tool.
 <!-- begin reference: tables/<table>.yml -->
 ### `tables/<table>.yml`
 
-The document begins with `format: "14.2"`, its version.
+The document begins with `format: "14.3"`, its version.
 
 A table of the schema, under its original name, and what was found about it.
 
@@ -273,6 +273,7 @@ A column of a table, under its original name and type, and what was found about 
 | `type` | text | required | The type of the column as the database names it, such as `varchar(40)`. |
 | `statistics` | [Statistics](#statistics) | required | What is counted of the column. |
 | `matches` | list of [Match](#match) | empty | The semantic types found in the column, the most frequent first. |
+| `list_separator` | text | absent | The separator of the values of the lists its texts are, or None where they are none. |
 | `values` | list of [Value](#value) | empty | The values of the column, if it is an enumeration of no sensitivity, the most frequent first; none else. |
 | `marked` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column given by hand, by an override, or None where none is given. |
 | `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with; None where none are given, and where the column has no text, which is counted without sentinels, whatever is given. |

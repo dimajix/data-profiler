@@ -25,7 +25,8 @@ has itself. A reference of unmistakable values, of no coverage, holds values of 
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
-of its column together, where the detector has one; whole numbers of a range lie within it, its
+of its column together, where the detector has one; a column of lists holds lists of numbers of up
+to three digits, separated by its separator; whole numbers of a range lie within it, its
 ends among them, in their order, all of it where they are as many, as a key numbered from one is.
 Values are made of the semantic types of the tool alone, not of those of a project. The sentinels of
 a column are made as many times as the profile counts each: a text as it is written, a day or a
@@ -76,6 +77,9 @@ _DAYS: Final = 9800
 # How often a value is drawn for each one the pool still lacks, and a text of a semantic type for
 # each value drawn, before it is given up as impossible.
 _ATTEMPTS: Final = 50
+
+# The digits of a number of a list at most.
+_LISTED: Final = 3
 
 # The ranges of the integer types, as far as test data needs them: positive, as keys are.
 _INTEGERS: Final = {"smallint": 2**15 - 1, "integer": 2**31 - 1, "bigint": 10**12}
@@ -586,7 +590,8 @@ def _type(column: Column) -> tuple[str, tuple[int, ...]]:
 def _texts(table: Table, column: Column, random: Random) -> list[object]:
     """The distinct texts of `column`, of its lengths: its shortest and its longest among them.
 
-    They are of the first semantic type of the column where it has a match, else letters.
+    They are lists of numbers where the column is one of lists, else of the first semantic type of
+    the column where it has a match, else letters.
     """
     lengths = column.statistics.lengths
     if lengths is None:
@@ -601,6 +606,8 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
 
     def draw() -> str:
         given = next(wanted, None)
+        if column.list_separator is not None:
+            return _list(_length(given, lengths, random), column.list_separator, random)
         if kind is None or typed is None:
             return _letters(_length(given, lengths, random), random)
         # Each try of a length of its own, as not every length between the shortest and the
@@ -621,6 +628,19 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
 def _length(given: int | None, lengths: Lengths, random: Random) -> int:
     """`given`, or where it is None a length from the shortest to the longest, at random."""
     return given if given is not None else random.randint(lengths.shortest, lengths.longest)
+
+
+def _list(length: int, separator: str, random: Random) -> str:
+    """A list of numbers of up to three digits, separated by `separator`, of `length` characters."""
+    numbers = []
+    left = length
+    while left > _LISTED:
+        # A number short enough that another of one digit at least follows it.
+        digits_of = random.randint(1, min(_LISTED, left - 2))
+        numbers.append(_digits(digits_of, random))
+        left -= digits_of + 1
+    numbers.append(_digits(left, random))
+    return separator.join(numbers)
 
 
 def _email(length: int, random: Random) -> str:

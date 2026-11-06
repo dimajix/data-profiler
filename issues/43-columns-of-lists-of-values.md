@@ -1,6 +1,6 @@
 # 43 — Columns of lists of values
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -38,6 +38,37 @@ As the maintainer asked:
 - **Each value a candidate of a discriminator, or the like.** The values of the lists are taken as
   the values of a column of their own - an enumeration, a candidate of a discriminator, a reference
   to a key -, not the lists.
+
+## What is decided
+
+As the maintainer decided on the questions below, and on the plan of the work:
+
+- **A column of lists is a property of the column**, not a semantic type: its separator, and in
+  step 2 the values of its lists counted as a column of their own. It is no part of epic
+  [38](38-a-data-model-derived-from-the-profile-epic.md), as it is needed before.
+- **When a column is one**: nearly every text of the sample, 95 percent as of the codes of
+  currencies, is a list, of one value or more - a text of one value is no evidence against a list -,
+  and one text at least holds the separator. A separator at either end is none, as the database
+  holds none.
+- **The separator is configured, not guessed**: `list_separator` in `project.yml`, the same in all
+  tables of a system, and in the overrides of a table in its place; one character, no letter,
+  digit, `-`, `+` or `_`. A project without one has no columns of lists. The profile holds it at
+  the column, `list_separator` as well, one name of the concept everywhere, so that `relate` reads
+  it from the profile.
+- **A discriminator of lists**: the values of the lists are candidates as the values of a column
+  are; several values belong to one entity anyway, so that no contradiction is seen for now. The
+  texts of a column of lists are no candidate - which is how the problem was seen: a column of
+  lists was taken for a discriminator.
+- **References of lists**: `relate` finds the references of the values of lists to a key, a
+  relation of many to many.
+- **Three steps**, one issue: first the separator and the columns of lists found - as the
+  separator alone would be a setting nobody reads -, with the profile, the report and the prompts
+  showing them, and no column of lists a candidate of a discriminator; then the values of the lists
+  counted, matched, and candidates of a discriminator, in the sample and by `UNNEST` on the whole
+  table; then their references.
+- **A changed separator** counts the tables anew in the next run; a run resumed counts anew those
+  whose columns of lists are of another separator than now given, as a table of no lists cannot
+  tell which it was counted with.
 
 ## What is to be decided
 
@@ -84,3 +115,15 @@ As the maintainer asked:
 - **2026-11-06** — Opened, as the maintainer asked: columns of lists of values separated by
   semicolons, so far of numbers, found in the real database; their values to be matched and to be
   candidates of a discriminator or the like.
+
+- **2026-11-06** — Step 1 done: `list_separator` in `project.yml`, in a `TableOverride` and at a
+  `Column` of the profile, of one type, `profile.ListSeparator`, which refuses what cannot be one
+  as `detect.is_list_separator` says; `detect.is_list` takes the texts of a column for lists as a
+  detector does, of the threshold of the codes of currencies; the new module `lists` finds the
+  columns of lists of a table in its sample, and `scan` counts anew a table of a run resumed whose
+  lists are of another separator; `entities` takes no column of lists for a candidate; the report
+  and the prompts show the separator; the example profile has `cust.grp_ids`, the example project
+  `list_separator: ";"`. The versions: the profile 14.3, `project.yml` 4.1, the overrides 7.5. The
+  generator of the references of the documents writes a type checked once it is read as the type
+  it is read as. Found in the review: only a column of text is one of lists, as a decimal written as
+  text, `12.50`, would be a list of a dot.

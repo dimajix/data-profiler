@@ -3,7 +3,9 @@
 A profile is what the stages hand to each other, and what a person reads and shares - corrected by
 the overrides of the project, laid over it: it holds no values of the columns found sensitive. A
 match names its semantic type by its name, of a type of the tool or of the project, whose types the
-profile holds in the form `project.yml` gives them, so that it is read without its project.
+profile holds in the form `project.yml` gives them, so that it is read without its project. The
+separator of lists a column of lists holds is of the form `ListSeparator`, which `project.yml` and
+the overrides give it in as well.
 
 A profile is a directory of documents, written as YAML in the formats below, of one version, and
 read back by the same classes: `profile.yml` holds the profile but its tables, and `tables/` a file
@@ -30,7 +32,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Annotated, Final
 
-from pydantic import PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
+from pydantic import AfterValidator, PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
 from pydantic_core import PydanticCustomError
 
 from data_profiler.detect import (
@@ -38,6 +40,7 @@ from data_profiler.detect import (
     SemanticTypeError,
     Sensitivity,
     all_types,
+    is_list_separator,
     project_type,
     semantic_type,
 )
@@ -46,7 +49,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 2)
+VERSION: Final = Version(14, 3)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -124,6 +127,21 @@ type SemanticTypes = Annotated[
 
 What `detect.project_type` refuses is refused, naming the field.
 """
+
+
+def _list_separator(text: str) -> str:
+    """`text`, where it may separate the values of a list, as `detect.is_list_separator` says."""
+    if not is_list_separator(text):
+        raise PydanticCustomError(
+            "list_separator",
+            "{text} is no separator of lists: one character, no letter, digit, '-', '+' or '_'",
+            {"text": repr(text)},
+        )
+    return text
+
+
+type ListSeparator = Annotated[str, AfterValidator(_list_separator)]
+"""The separator of the values of a list in a document, refused where it cannot be one."""
 
 
 def _semantic_type(name: object, info: ValidationInfo) -> SemanticType:
@@ -262,6 +280,8 @@ class Column:
         type: The type of the column as the database names it, such as `varchar(40)`.
         statistics: What is counted of the column.
         matches: The semantic types found in the column, the most frequent first.
+        list_separator: The separator of the values of the lists its texts are, or None where they
+            are none.
         values: The values of the column, if it is an enumeration of no sensitivity, the most
             frequent first; none else.
         marked: The sensitivity of the column given by hand, by an override, or None where none
@@ -282,6 +302,7 @@ class Column:
     type: str
     statistics: Statistics
     matches: tuple[Match, ...] = ()
+    list_separator: ListSeparator | None = None
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None

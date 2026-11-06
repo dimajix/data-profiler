@@ -383,7 +383,7 @@ def test_the_references_of_the_simulation_are_found(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     workspace = Workspace.open(tmp_path / "workspace", example.catalog, example.schema)
-    scan(source, re.compile(".*"), workspace, (), Overrides(), tmp_path / "profile")
+    scan(source, re.compile(".*"), workspace, (), None, Overrides(), tmp_path / "profile")
     found = find(source, Profile.read(tmp_path / "profile"), {})
     for table in example.tables:
         related = found.table(table.name)

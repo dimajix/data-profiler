@@ -8,23 +8,23 @@ and when it counts, and what is refused or warned of, is said in `docs/PROJECT.m
 stages take it.
 
 `scan` takes what is given of each table it selects, a `TableOverride`, by `Overrides.selected`:
-`agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels`
-go to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
+`agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels` go
+to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
 have, a primary key that cannot be one, and sentinels the table was not counted with; its
-`primary_key` goes to the keys, `determining_none` to the column dependencies, and `discriminator`
-to the entities; and `TableOverride.laid_over` marks its columns and drops the dependencies of a
-column determining none, refusing a primary key or a discriminator that cannot be one, before the
-module `disclosure` decides what of its values the profile holds, so that the profile holds no
-values of a column marked sensitive. `relate` takes the references given, by
-`Overrides.references`, refused before it queries anything. The stages that read the profile -
-`describe` and `report` - lay the overrides over it whole, by `Overrides.laid_over`: the concepts
-given before those proposed, the references given refused as `relate` refuses them, then each table
-laid over as `scan` lays it, then read, named and described as given, by
-`TableOverride.described_laid_over`, then disclosed again, so that a mark given after a scan
-withholds the values without a scan again; `Overrides.warn_unused` warns of what is given that the
-profile does not take. `describe` shows the language model the description given of the database,
-`Overrides.description`, and `report` tells the concepts given apart from those proposed by
-`Overrides.glossary`.
+`list_separator`, in place of that of the project, to the columns of lists, `primary_key` to the
+keys, `determining_none` to the column dependencies, and `discriminator` to the entities; and
+`TableOverride.laid_over` marks its columns and drops the dependencies of a column determining none,
+refusing a primary key or a discriminator that cannot be one, before the module `disclosure` decides
+what of its values the profile holds, so that the profile holds no values of a column marked
+sensitive. `relate` takes the references given, by `Overrides.references`, refused before it queries
+anything. The stages that read the profile - `describe` and `report` - lay the overrides over it
+whole, by `Overrides.laid_over`: the concepts given before those proposed, the references given
+refused as `relate` refuses them, then each table laid over as `scan` lays it, then read, named and
+described as given, by `TableOverride.described_laid_over`, then disclosed again, so that a mark
+given after a scan withholds the values without a scan again; `Overrides.warn_unused` warns of what
+is given that the profile does not take. `describe` shows the language model the description given
+of the database, `Overrides.description`, and `report` tells the concepts given apart from those
+proposed by `Overrides.glossary`.
 """
 
 import logging
@@ -44,7 +44,14 @@ from data_profiler.glossary import (
     snake_case,
     written_as,
 )
-from data_profiler.profile import Concept, Discriminator, PrimaryKey, Profile, Table
+from data_profiler.profile import (
+    Concept,
+    Discriminator,
+    ListSeparator,
+    PrimaryKey,
+    Profile,
+    Table,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -157,6 +164,9 @@ class TableOverride:
             found; None where it is not given.
         primary_key: The columns of its primary key, in place of the one chosen among its keys,
             one at least and each once, or None where it is not given.
+        list_separator: The separator of the values of the lists in its texts, in place of that of
+            the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it is
+            not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
@@ -165,6 +175,7 @@ class TableOverride:
     description: str | None = None
     discriminator: GivenDiscriminator = None
     primary_key: tuple[str, ...] | None = None
+    list_separator: ListSeparator | None = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -284,6 +295,9 @@ class TableOverride:
 
     def agrees_with(self, table: Table) -> bool:
         """Whether `table` agrees with what is given: marked, counted, determined and discriminated.
+
+        The separator of lists is judged by `scan`, by `lists.is_listed_with`, as it is that of the
+        project where none is given, which an override of a table does not know.
 
         Args:
             table: The table.
@@ -689,5 +703,5 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     return concepts
 
 
-FORMAT: Final = Format(Overrides, Version(7, 4))
+FORMAT: Final = Format(Overrides, Version(7, 5))
 """The format of the overrides, its version raised as `documents` says."""

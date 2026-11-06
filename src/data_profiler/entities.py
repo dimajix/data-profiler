@@ -1,11 +1,11 @@
 """The entities of a table: its rows told apart by the values of its discriminator.
 
 A candidate is a column whose values the profile holds - an enumeration of no sensitivity - of two
-values at least. The query, built from the building blocks of the dialect, groups the table by each
-candidate on its own, in one pass, and counts the rows of each value and those of them each column
-is filled in: where it holds a value, neither null nor one of the sentinels its statistics found.
-Counted on the whole table, not in a sample, an entity of few rows is found as well, and each count
-is exact.
+values at least, and no column of lists, whose texts are no values of one. The query, built from the
+building blocks of the dialect, groups the table by each candidate on its own, in one pass, and
+counts the rows of each value and those of them each column is filled in: where it holds a value,
+neither null nor one of the sentinels its statistics found. Counted on the whole table, not in a
+sample, an entity of few rows is found as well, and each count is exact.
 
 A column tells two values apart where it is filled in at least `_MOST` of the rows of the one and in
 at most `_LEAST` of the rows of the other, both of at least `_FEWEST` rows; two values are of two
@@ -90,7 +90,11 @@ def discriminate(source: Source, table: Table, given: GivenDiscriminator) -> Tab
 
 def _found(source: Source, table: Table) -> Discriminator | None:
     """The discriminator of `table` found among its candidates, or None where none is one."""
-    candidates = [column for column in table.columns if len(column.values) > 1]
+    candidates = [
+        column
+        for column in table.columns
+        if len(column.values) > 1 and column.list_separator is None
+    ]
     if not candidates:
         return None
     counts = _count(source, table, candidates)

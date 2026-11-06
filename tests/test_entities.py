@@ -87,6 +87,20 @@ def test_values_told_apart_by_three_columns_are_two_entities() -> None:
     ), "each with the rows each column is filled in, the one of more rows first"
 
 
+def test_a_column_of_lists_is_no_candidate_of_a_discriminator() -> None:
+    kinds = {"A": (100, (100, 100, 100, 0, 0, 0)), "B": (50, (0, 0, 0, 50, 50, 0))}
+    column = Column(
+        "kind",
+        "varchar(2)",
+        Statistics(0, 2),
+        list_separator=";",
+        values=(Value("A", 100), Value("B", 50)),
+    )
+    others = tuple(Column(name, "varchar(5)", Statistics(0, 1)) for name in _OTHERS)
+    table = Table(name="t", rows=150, columns=(column, *others))
+    assert discriminate(_Counted({"kind": kinds}), table, None).discriminator is None
+
+
 def test_values_told_apart_by_fewer_than_three_columns_are_one_entity() -> None:
     given = {"status": {"open": (100, (100, 100, 0, 0, 0, 0)), "done": (50, (0, 0, 0, 0, 0, 0))}}
     assert _found(given) is None, "a status whose one value fills two columns of its own"
