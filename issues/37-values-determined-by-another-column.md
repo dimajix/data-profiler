@@ -117,3 +117,9 @@ ten expressions at most counted in one place:
   7.4; the example rejects the name of the group of the product of the items of an order as a
   determinant, which its code determines alone then. The step of the shared distinct counts is
   added to the plan, as the maintainer asked for.
+- **2026-11-06** — Step 4 built: `Source.counts` counts what a table holds in queries of
+  `source.PER_QUERY` counts at most, which `keys` and `dependencies` take; `references` batches its
+  probes and lookups by the same constant, its statements of their own. `keys` counts the rows in
+  each query beside nine keys at most, so that each compares a state of the table of its own, as
+  [34](34-primary-keys.md) decided; ten keys indicated take two queries, no longer one of eleven
+  counts, as the maintainer agreed.

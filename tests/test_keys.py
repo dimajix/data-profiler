@@ -131,7 +131,7 @@ def test_the_ten_pairs_closest_to_the_rows_are_verified() -> None:
     # Each column of values twice, those of the first in other rows than those of the others.
     sample = _sample(**{c.name: [0, 1, 0, 1] for c in columns[1:]}, c00=[0, 0, 1, 1])
     found = identify(source, table, sample, None)
-    (asked,) = source.asked
+    asked = [pair for pairs in source.asked for pair in pairs]
     assert len(asked) == 10
     assert asked[0] == ("c00", "c01"), "the smallest product of distinct values first"
     assert all("c00" in pair for pair in asked), "the only pairs unique in the sample"
@@ -150,7 +150,7 @@ def test_more_keys_indicated_than_ten_are_verified_in_several_queries() -> None:
     table = _table(100, *columns)
     source = _Counted(table)
     found = identify(source, table, _sample(**{column.name: [1, 2] for column in columns}), None)
-    assert [len(asked) for asked in source.asked] == [10, 2]
+    assert [len(asked) for asked in source.asked] == [9, 3], "beside the rows, in each query"
     assert len(found.keys) == 12
 
 

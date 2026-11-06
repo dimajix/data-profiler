@@ -22,13 +22,14 @@ determinant, but as a dependent, so that a column equivalent to it determines on
 Of the dependencies found, the `_MOST` of the most columns that follow, then of the most rows of
 values that repeat, are verified on the whole table, the others logged. Each is verified by queries
 built from the building blocks of the dialect, which count the distinct values of the determinant
-alone, and together with those of the others, exactly, `_PER_QUERY` at most in one: its strictness
-is 1 - (together - alone) / alone, the share of the values of the determinant that come with one
-value of the others, about. The determinant and all the others are counted together first; of a
-dependency that falls short of `_STRICTNESS`, each of the others alone, and those that pass together
-again, where they are several. Each equivalent determinant is counted the other way, with the first,
-and is a dependent where that falls short. A dependency is held from `_STRICTNESS` on, with the
-least strictness of its counts. The dependencies name columns alone, and no values of the database.
+alone, and together with those of the others, exactly, `PER_QUERY` of the module `source` at most in
+one: its strictness is 1 - (together - alone) / alone, the share of the values of the determinant
+that come with one value of the others, about. The determinant and all the others are counted
+together first; of a dependency that falls short of `_STRICTNESS`, each of the others alone, and
+those that pass together again, where they are several. Each equivalent determinant is counted the
+other way, with the first, and is a dependent where that falls short. A dependency is held from
+`_STRICTNESS` on, with the least strictness of its counts. The dependencies name columns alone, and
+no values of the database.
 """
 
 import logging
@@ -40,7 +41,6 @@ from typing import Final
 from data_profiler.detect import is_filled
 from data_profiler.profile import DIGITS, Column, ColumnDependency, Table
 from data_profiler.source import Source
-from data_profiler.values import counted
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
@@ -50,11 +50,9 @@ _logger = logging.getLogger(__name__)
 _FEWEST: Final = 10
 _REPEATED: Final = 0.5
 _DEPARTING: Final = 0.01
-# The strictness from which a dependency is held, the dependencies verified at most, and the
-# distinct counts in one query at most.
+# The strictness from which a dependency is held, and the dependencies verified at most.
 _STRICTNESS: Final = 0.95
 _MOST: Final = 50
-_PER_QUERY: Final = 10
 
 
 @dataclass(frozen=True)
@@ -244,18 +242,14 @@ class _Counts:
                 self._asked.append(expression)
 
     def count(self) -> None:
-        """Counts what was asked for since, `_PER_QUERY` at most in a query.
+        """Counts what was asked for since.
 
         Raises:
             SourceError: The database fails to count them.
         """
-        dialect = self._source.dialect
         step = f"verifying the column dependencies of {self._source.name(self._table.name)}"
-        for start in range(0, len(self._asked), _PER_QUERY):
-            batch = self._asked[start : start + _PER_QUERY]
-            (row,) = self._source.query(dialect.select(batch, self._table.name), step)
-            for expression, found in zip(batch, row, strict=True):
-                self._counted[expression] = counted(found, self._table.name)
+        found = self._source.counts(self._table.name, self._asked, step)
+        self._counted.update(zip(self._asked, found, strict=True))
         self._asked.clear()
 
     def _expression(self, determinant: Column, others: Iterable[Column]) -> str:

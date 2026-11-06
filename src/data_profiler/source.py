@@ -1,12 +1,13 @@
 """The database the tool reads: a schema of it, its tables and columns, and the queries sent to it.
 
-A `Source` sends queries and nothing else, lists the tables and columns of its schema, and reads a
-table grouped by each of some columns alone, in one pass. Every statement it sends is written by its
-`Dialect`: whole, where it lists them, and of the building blocks the dialect offers, where another
-part counts or samples what the tables hold. A failure is told by the database, its endpoint and
-what was done; what the database said, which may hold a value of it, stays in the cause of the
-error. Trino is reached by HTTPS, whose certificates and proxies come from the variables of the
-process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's own,
+A `Source` sends queries and nothing else, lists the tables and columns of its schema, reads a table
+grouped by each of some columns alone, in one pass, and counts what a table holds in queries of
+`PER_QUERY` counts at most, as each holds values of the table in memory. Every statement it sends is
+written by its `Dialect`: whole, where it lists them, and of the building blocks the dialect offers,
+where another part counts or samples what the tables hold. A failure is told by the database, its
+endpoint and what was done; what the database said, which may hold a value of it, stays in the cause
+of the error. Trino is reached by HTTPS, whose certificates and proxies come from the variables of
+the process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's own,
 `NO_PROXY` for a database a proxy does not reach.
 """
 
@@ -15,6 +16,7 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
+from itertools import batched
 from re import Pattern
 from types import TracebackType
 from typing import Final, Self
@@ -25,6 +27,8 @@ from trino.auth import BasicAuthentication
 from trino.dbapi import Connection
 from trino.exceptions import Error as TrinoError
 from trino.exceptions import HttpError
+
+from data_profiler.values import counted
 
 _logger = logging.getLogger(__name__)
 
@@ -75,6 +79,13 @@ _MOMENTS: Final = ("timestamp",)
 # The standard error of the distinct values Trino counts: half a percent, against its default of
 # 2.3, so that keys and enumerations can be told by them, for about 64 KB of memory per column.
 _DISTINCT_ERROR: Final = 0.005
+
+PER_QUERY: Final = 10
+"""The counts of a table, or the keys its values are looked up in, of one query at most.
+
+Each count holds values of the table in memory, as many as the rows where they are unique, and
+each key looked up its values: a query of more would hold more than the memory of the database.
+"""
 
 
 class SourceError(Exception):
@@ -352,6 +363,27 @@ class Source(ABC):
         if not found:
             raise SourceError(f"{self.catalog}.{self.schema} has no table {table}")
         return {str(column): str(kind) for column, kind in found}
+
+    def counts(self, table: str, expressions: Sequence[str], step: str) -> list[int]:
+        """The counts of `table` that `expressions` count, `PER_QUERY` at most in a query.
+
+        Args:
+            table: The table, of the schema of the source.
+            expressions: The expressions that count its values, as the dialect writes them.
+            step: What the statements do, for the message of a failure.
+
+        Returns:
+            The count of each expression, in their order.
+
+        Raises:
+            SourceError: The database fails at `step`.
+            TypeError: A count is no number, which the dialect would have to make sure of.
+        """
+        found: list[int] = []
+        for batch in batched(expressions, PER_QUERY, strict=False):
+            (row,) = self.query(self.dialect.select(batch, table), step)
+            found += (counted(value, table) for _, value in zip(batch, row, strict=True))
+        return found
 
     def grouped(
         self, table: str, columns: Sequence[str], expressions: Sequence[str], step: str

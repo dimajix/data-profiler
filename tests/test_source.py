@@ -130,6 +130,23 @@ def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Sou
     assert source.query(statement, "counting the distinct values") == [(61000, 61000, 9, 61000)]
 
 
+def test_the_counts_of_a_table_are_counted_in_queries_of_ten_at_most_in_their_order(
+    source: Source, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sent: list[str] = []
+    query = source.query
+
+    def sending(statement: str, step: str) -> list[tuple[object, ...]]:
+        sent.append(statement)
+        return query(statement, step)
+
+    monkeypatch.setattr(source, "query", sending)
+    dialect = source.dialect
+    counts = [dialect.rows(), dialect.exactly_distinct([dialect.column("pos_no")])] * 6
+    assert source.counts("ord_itm", counts, "counting") == [61000, 9] * 6
+    assert len(sent) == 2
+
+
 def test_distinct_values_are_counted_where_the_first_is_not_null_the_nulls_of_others_values(
     source: Source,
 ) -> None:

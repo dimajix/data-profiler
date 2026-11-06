@@ -49,10 +49,11 @@ environment.
     workspace, under names every system takes - the names of tables among them.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
     the `Dialect`, which writes every SQL statement the tool sends. A source lists the tables and
-    columns of its schema - their metadata - through its dialect, and runs queries in that schema,
-    so that another database brings only its connection and its SQL. Trino is reached by HTTPS as a
-    user with a password, both given apart from the URL; certificates and proxies come from the
-    variables of the process.
+    columns of its schema - their metadata - through its dialect, counts what a table holds in
+    queries of `PER_QUERY` counts at most, the limit every query of counts keeps, and runs queries
+    in that schema, so that another database brings only its connection and its SQL. Trino is
+    reached by HTTPS as a user with a password, both given apart from the URL; certificates and
+    proxies come from the variables of the process.
 *   **`data_profiler.values`** - values of the database, as the tool takes them: a count as a
     number, any value as text, as the profile holds it.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
