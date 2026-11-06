@@ -15,6 +15,11 @@ classes, repetitions, groups and alternatives, and no other escapes than of a ch
 The types of the tool are the constants below; a project gives types of its own, each by its name,
 its sensitivity and a pattern alone, which a value is checked for beside those of the tool.
 
+A column of lists is no semantic type, as a type says what a value is, not what the values in it
+are: its texts are values of letters, digits, `-`, `+` and `_`, separated by a separator given -
+one character none of them is -, recognised as a detector recognises a type,
+nearly every text a list, of one value or more, and one of more at least.
+
 A value is of a semantic type, which has a sensitivity, or a sentinel: a value that stands for no
 value, such as an empty text or `9999-12-31`, of no type, and left aside as a null is. The
 sentinels of a column are texts: those of the tool, `SENTINELS`, unless others are given of it by
@@ -49,9 +54,11 @@ class Sensitivity(Enum):
 class Detector:
     """Recognises one semantic type: by a pattern, a check of a value and a condition of its column.
 
+    `is_list` recognises the texts of a column of lists by one as well, of no type.
+
     Attributes:
         pattern: A regular expression every value of the type matches whole, as Python and SQL
-            read it; its text is what is sent to the database.
+            read it; its text is what is sent to the database, of a type.
         check: Whether a value the pattern matches is of the type, where the pattern does not
             say enough; None where it does.
         column: Whether the texts of a column, together, are of the type, where no value says it
@@ -153,10 +160,11 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
 # a sentinel is of the pair, as a column of counts, mostly zeros and ones, is none.
 _EVERY: Final = 1.0
 
-# The threshold of a code or a number of a currency: nearly every value of its column, as a fifth of
-# all numbers of three digits are numbers of currencies, and many a word of three capitals is a code
-# of one - `ALL`, `TOP` -, so that a column of quantities or of codes of status is none; a few
-# values amiss are allowed, which every value would not.
+# The threshold of a code or a number of a currency, and of a list: nearly every value of its
+# column, as a fifth of all numbers of three digits are numbers of currencies, many a word of three
+# capitals is a code of one - `ALL`, `TOP` -, and every number a list of one value, so that a column
+# of quantities or of codes of status is none; a few values amiss are allowed, which every value
+# would not.
 _NEARLY_EVERY: Final = 0.95
 
 
@@ -444,6 +452,42 @@ def detect(
         from 0 to 1, by type, of the types whose share reaches the threshold of their detector;
         every other type is left out, and so is every type where no value is left.
     """
-    texts = [str(value).strip() for value in values if is_filled(value, without)]
+    texts = _texts(values, without)
     shares = {kind: kind.detector.share(texts) for kind in all_types(types)}
     return {kind: share for kind, share in shares.items() if share >= kind.detector.threshold}
+
+
+# A value of a list: letters, digits, `-`, `+` and `_`, of which no separator of lists is one.
+_LIST_VALUE: Final = "[0-9A-Za-z_+-]"
+
+
+def is_list_separator(text: str) -> bool:
+    """Whether `text` may separate the values of a list: one character, none a value of it holds."""
+    return len(text) == 1 and not re.fullmatch(_LIST_VALUE, text)
+
+
+def is_list(values: Sequence[object], separator: str, without: Collection[str]) -> bool:
+    """Whether `values` of a column are lists of values separated by `separator`.
+
+    Args:
+        values: The values of a column, as a sample holds them; None is a null, and not counted.
+        separator: The separator of the values of a list, as `is_list_separator` takes it.
+        without: The sentinels of the column, which are not counted either.
+
+    Returns:
+        Whether nearly every value that is neither null nor sentinel is a list, of one value or
+        more, and one of them a list of more than one.
+    """
+    escaped = re.escape(separator)
+    detector = Detector(
+        re.compile(f"{_LIST_VALUE}+({escaped}{_LIST_VALUE}+)*"),
+        column=lambda _, lists: any(separator in text for text in lists),
+        threshold=_NEARLY_EVERY,
+    )
+    share = detector.share(_texts(values, without))
+    return share >= detector.threshold
+
+
+def _texts(values: Sequence[object], without: Collection[str]) -> list[str]:
+    """The texts of `values` that are neither null nor of `without`, as a detector sees them."""
+    return [str(value).strip() for value in values if is_filled(value, without)]

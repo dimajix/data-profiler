@@ -2,12 +2,13 @@
 
 from dataclasses import replace
 
-from data_profiler.detect import PHONE, POSTAL_CODE, SemanticType, Sensitivity
+from data_profiler.detect import IBAN, PHONE, POSTAL_CODE, SemanticType, Sensitivity
 from data_profiler.disclosure import disclose, disclose_texts
 from data_profiler.profile import (
     Column,
     Discriminator,
     Entity,
+    Findings,
     Match,
     Range,
     Statistics,
@@ -50,6 +51,47 @@ def test_a_column_of_a_sensitivity_keeps_neither_its_range_nor_its_values() -> N
     column = _disclosed(_code(Match(POSTAL_CODE, 0.6), Match(PHONE, 0.5)))
     assert column.statistics.range is None
     assert column.values == ()
+
+
+def _lists(*matches: Match) -> Column:
+    """A column of lists whose values, of `matches`, are an enumeration with a range."""
+    items = Findings(Statistics(0, 2, range=Range("10115", "99998")), matches, _VALUES)
+    return Column(
+        name="codes",
+        type="varchar(40)",
+        statistics=Statistics(0, 3, range=Range("10115", "99998;10115")),
+        list_separator=";",
+        items=items,
+    )
+
+
+def test_the_values_of_lists_of_no_sensitivity_keep_their_range_and_values() -> None:
+    column = _disclosed(_lists(Match(POSTAL_CODE, 1.0, 1.0)))
+    assert column.items == _lists(Match(POSTAL_CODE, 1.0, 1.0)).items
+    assert column.statistics.range == Range("10115", "99998;10115")
+
+
+def test_a_column_of_lists_of_a_sensitive_type_keeps_no_range_and_values_of_either() -> None:
+    column = _disclosed(_lists(Match(IBAN, 1.0, 1.0)))
+    assert column.sensitivity is Sensitivity.PERSONAL, "a list of IBANs, as an IBAN"
+    assert column.statistics.range is None
+    assert column.items is not None
+    assert (column.items.statistics.range, column.items.values) == (None, ())
+
+
+def test_a_list_of_a_value_of_a_sensitive_type_is_withheld_from_a_column_of_no_sensitivity() -> (
+    None
+):
+    column = replace(
+        _lists(Match(POSTAL_CODE, 1.0, 1.0)),
+        statistics=Statistics(0, 3, range=Range("10115", "10115;DE89370400440532013000")),
+        values=(Value("10115", 2), Value("10115;DE89370400440532013000", 1)),
+    )
+    disclosed = _disclosed(column)
+    assert disclosed.statistics.range == Range("10115", None), "an IBAN in a list, withheld"
+    assert disclosed.values == (Value("10115", 2),)
+    texts = ["10115;99998", "10115;DE89370400440532013000"]
+    assert list(disclose_texts(column, texts, ())) == ["10115;99998"]
 
 
 def test_a_column_marked_sensitive_keeps_neither_its_range_nor_its_values() -> None:
@@ -117,6 +159,26 @@ def _discriminated(column: Column) -> Table:
     return Table(
         name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
     )
+
+
+def test_a_discriminator_of_the_values_of_lists_is_kept_where_they_are() -> None:
+    column = _lists(Match(POSTAL_CODE, 1.0, 1.0))
+    assert column.items is not None
+    entities = tuple(Entity((value.value,), value.rows, {}) for value in column.items.values)
+    table = Table(
+        name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
+    )
+    assert disclose(table, ()).discriminator == table.discriminator, "its values, of its lists"
+
+
+def test_a_discriminator_of_the_values_of_lists_of_a_sensitive_type_is_lost() -> None:
+    column = _lists(Match(IBAN, 1.0, 1.0))
+    assert column.items is not None
+    entities = tuple(Entity((value.value,), value.rows, {}) for value in column.items.values)
+    table = Table(
+        name="t", rows=10, columns=(column,), discriminator=Discriminator(column.name, entities)
+    )
+    assert disclose(table, ()).discriminator is None, "the values of its lists withheld"
 
 
 def test_a_discriminator_of_no_sensitivity_is_kept() -> None:

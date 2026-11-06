@@ -289,3 +289,15 @@ def test_the_example_project_profiles_the_simulation_environment() -> None:
     assert environment.directory == _EXAMPLE / "simulation"
     assert project.tables.fullmatch("cust_addr")
     assert project.llm == "qwen3.5:2b"
+
+
+def test_the_separator_of_lists_of_a_project_is_read_and_none_where_it_names_none(
+    tmp_path: Path,
+) -> None:
+    assert _project(tmp_path).list_separator is None
+    assert _project(tmp_path, _CONFIGURATION + "list_separator: ';'\n").list_separator == ";"
+
+
+def test_a_separator_of_lists_that_cannot_be_one_is_refused_naming_it(tmp_path: Path) -> None:
+    with pytest.raises(ProjectError, match=r"list_separator: '-' is no separator of lists"):
+        _project(tmp_path, _CONFIGURATION + "list_separator: '-'\n")

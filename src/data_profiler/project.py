@@ -2,12 +2,12 @@
 
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
 profile, for the whole project, the semantic types of its own its columns are checked for beside
-those of the tool, the language model its names are described by, and the environments the
-database is profiled in - dev, test, prod -, each by the URL of its schema, and the user and the
-password it is reached as; beside it, the overrides - `overrides.yml`, the files of the directory
-`overrides/`, or both - give by hand what the profiles of all environments take as given. Each
-environment keeps its results in a directory of its own, named after it: its profile, its workspace
-and its report.
+those of the tool, the separator of the values of a list in a text, the same in all tables, the
+language model its names are described by, and the environments the database is profiled in - dev,
+test, prod -, each by the URL of its schema, and the user and the password it is reached as; beside
+it, the overrides - `overrides.yml`, the files of the directory `overrides/`, or both - give by hand
+what the profiles of all environments take as given. Each environment keeps its results in a
+directory of its own, named after it: its profile, its workspace and its report.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
@@ -31,7 +31,7 @@ from dotenv import dotenv_values
 
 from data_profiler.detect import SemanticType
 from data_profiler.documents import DocumentError, Format, Version
-from data_profiler.profile import SemanticTypes
+from data_profiler.profile import ListSeparator, SemanticTypes
 
 # The name of an environment, which is the name of its directory, the same on every system, and an
 # argument of the command line, never taken for an option there.
@@ -159,6 +159,9 @@ class _Configuration:
         llm: The language model of Ollama that `describe` asks, as Ollama names it, or None where
             the project names none, so that `describe` runs only with `--without-llm`.
         types: The semantic types of the project, beside those of the tool, by their names.
+        list_separator: The character that separates the values of a list in a text, the same in
+            all tables of the project - one character, no letter, digit, `-`, `+` or `_` -, or None
+            where it names none, so that no column is taken for one of lists.
     """
 
     tables: str | tuple[str, ...]
@@ -167,9 +170,10 @@ class _Configuration:
     # Checked by its validator, not after it as the others are, as the profile holds the types too
     # and checks them the same way.
     types: SemanticTypes = ()
+    list_separator: ListSeparator | None = None
 
 
-FORMAT: Final = Format(_Configuration, Version(4, 0))
+FORMAT: Final = Format(_Configuration, Version(4, 1))
 """The format of the configuration of a project, its version raised as `documents` says."""
 
 
@@ -179,6 +183,8 @@ class Project:
     Attributes:
         tables: The names of the tables to profile, matched whole.
         types: The semantic types of the project, beside those of the tool.
+        list_separator: The separator of the values of a list in a text, the same in all tables of
+            the project, or None where it names none.
     """
 
     def __init__(
@@ -186,6 +192,7 @@ class Project:
         file: Path,
         tables: Pattern[str],
         types: tuple[SemanticType, ...],
+        list_separator: str | None,
         llm: str | None,
         environments: Mapping[str, _Settings],
         variables: Mapping[str, str],
@@ -193,6 +200,7 @@ class Project:
         """Takes what `read` has read of `file`, and the variables to resolve its values by."""
         self.tables = tables
         self.types = types
+        self.list_separator = list_separator
         self._file = file
         self._llm = llm
         self._environments = environments
@@ -216,8 +224,8 @@ class Project:
                 no document of the format, names an environment other than in lower case letters,
                 digits, `-` and `_`, beginning with a letter or a digit, gives a password other
                 than by a variable, a URL or a user with a variable in it rather than as a whole,
-                its tables by no regular expression, or a semantic type of its own that cannot be
-                made, as `detect.project_type` says.
+                its tables by no regular expression, a semantic type of its own that cannot be
+                made, as `detect.project_type` says, or a separator of lists that cannot be one.
         """
         file = directory / "project.yml"
         try:
@@ -253,6 +261,7 @@ class Project:
             file,
             pattern,
             configuration.types,
+            configuration.list_separator,
             configuration.llm,
             configuration.environments,
             variables,

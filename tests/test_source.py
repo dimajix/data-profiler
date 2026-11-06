@@ -102,10 +102,15 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
             source.dialect.exactly_distinct([values]),
             source.dialect.exactly_distinct([values, source.dialect.column("z")]),
         ]
+        unnested = source.dialect.unnested('t"x', ['c"y', "z"], 'c"y', "'").select(["1"], 't"x')
     assert '"c""at".information_schema' in columns
     assert "'it''s'" in columns
     assert 'length("c""y")' in select
     assert select.endswith('FROM "t""x"')
+    assert unnested == (
+        'SELECT 1 FROM (SELECT "u"."v" AS "c""y", "t"."z" FROM "t""x" "t"'
+        ' CROSS JOIN UNNEST(split("t"."c""y", \'\'\'\')) AS "u" ("v"))'
+    ), "the values of the lists under the name of their column, the others as they are"
     assert sampled.startswith('SELECT "c""y" FROM "t""x" TABLESAMPLE')
     assert grouped.startswith('SELECT grouping("c""y") FROM "t""x" GROUP BY')
     assert grouped.endswith('(("c""y"))')

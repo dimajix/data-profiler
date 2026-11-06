@@ -34,7 +34,8 @@ from pathlib import Path
 from types import UnionType
 from typing import Annotated, Any, Final, Literal, TypeAliasType, Union
 
-from pydantic import PlainValidator
+from pydantic import BeforeValidator, PlainValidator, WrapValidator
+from pydantic_core import PydanticUndefined
 
 from data_profiler import overrides, project
 from data_profiler.commands import run
@@ -63,6 +64,9 @@ _PART: Final = re.compile(
 # its description; the lines after it are indented further.
 _ATTRIBUTES: Final = re.compile(r"^Attributes:\n(?P<fields>(?:(?: {4}.*)?\n?)*)", re.MULTILINE)
 _FIELD: Final = re.compile(r" {4}(?P<name>\w+): (?P<text>.*)")
+# The validators that read what a document gives before the type does, or in its place, of the type
+# they name; an `AfterValidator` checks the type once it is read.
+_READERS: Final = (PlainValidator, BeforeValidator, WrapValidator)
 # The words of the types of values, as YAML writes them.
 _SCALARS: Final[Mapping[object, str]] = {
     str: "text",
@@ -255,9 +259,12 @@ def _type(hint: object, pending: list[type]) -> str:
     if origin is None:
         return _plain(hint, pending)
     if origin is Annotated:
-        # A type of a validator of its own is written as the validator reads it.
-        validator = next((item for item in arguments[1:] if isinstance(item, PlainValidator)), None)
-        if validator is None or validator.json_schema_input_type is Any:
+        # A type of a validator that reads what it is given is written as the validator reads it;
+        # one checked once it is read, as the type it is read as.
+        validator = next((item for item in arguments[1:] if isinstance(item, _READERS)), None)
+        if validator is None:
+            return _type(arguments[0], pending)
+        if validator.json_schema_input_type in (Any, PydanticUndefined):
             raise GenerateError(f"its type {hint} names no json_schema_input_type")
         return _type(validator.json_schema_input_type, pending)
     if origin in (UnionType, Union):

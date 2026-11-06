@@ -102,7 +102,15 @@ def _scan(project: Project, environment: Environment) -> None:
     overrides = Overrides.read(project.overrides)
     with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
-        scan(source, project.tables, workspace, project.types, overrides, environment.profile)
+        scan(
+            source,
+            project.tables,
+            workspace,
+            project.types,
+            project.list_separator,
+            overrides,
+            environment.profile,
+        )
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 

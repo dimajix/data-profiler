@@ -25,9 +25,9 @@ project, which every stage lays over the profile it reads.
 ## What the profile never holds
 
 **No values of the columns found sensitive**, as the [principle](ARCHITECTURE.md#principles) says:
-of such a column, its range and the values of its enumeration are none in the profile, and the
-samples stay in the workspace; its sentinels are no values of it, and are there whatever its
-sensitivity.
+of such a column, its range and the values of its enumeration are none in the profile, nor the range
+and the values of the enumeration of the values of its lists, and the samples stay in the workspace;
+its sentinels are no values of it, and are there whatever its sensitivity.
 
 **Nothing given by hand.** The overrides fill no field. The names given, and the descriptions given
 of the database, its tables and its entities, are laid over the profile by the stages that read it,
@@ -43,7 +43,7 @@ Every attribute of a profile is filled by one step, as the
 
 | Step | Fills |
 |---|---|
-| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, values, mark and sentinels of each column, the last two as the overrides give them |
+| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, separator of lists and the values of its lists, values, mark and sentinels of each column, the last two as the overrides give them |
 | `relate` | the references and reference candidates of each table |
 | `describe`, splitting the names | the terms of the names of the tables and columns |
 | `describe`, proposing concepts | the glossary |
@@ -87,7 +87,7 @@ data are generated - written by hand, so that it holds no glossary, terms or des
 # numbers are numbered from one, sharing their values, but those of the products; contacts and
 # addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '14.2'
+format: '14.4'
 catalog: crm
 schema: sales
 ```
@@ -98,7 +98,7 @@ dependency:
 
 <!-- begin file: simulation/profiles/crm/tables/ord.yml -->
 ```yaml
-format: '14.2'
+format: '14.4'
 name: ord
 rows: 20000
 columns:
@@ -188,7 +188,7 @@ description names, each with its value; a list of classes as a list of maps.
 <!-- begin reference: profile.yml -->
 ### `profile.yml`
 
-The document begins with `format: "14.2"`, its version.
+The document begins with `format: "14.4"`, its version.
 
 What `profile.yml` holds: the profile but its tables, whose matches name its types.
 
@@ -241,7 +241,7 @@ type of the tool.
 <!-- begin reference: tables/<table>.yml -->
 ### `tables/<table>.yml`
 
-The document begins with `format: "14.2"`, its version.
+The document begins with `format: "14.4"`, its version.
 
 A table of the schema, under its original name, and what was found about it.
 
@@ -273,6 +273,8 @@ A column of a table, under its original name and type, and what was found about 
 | `type` | text | required | The type of the column as the database names it, such as `varchar(40)`. |
 | `statistics` | [Statistics](#statistics) | required | What is counted of the column. |
 | `matches` | list of [Match](#match) | empty | The semantic types found in the column, the most frequent first. |
+| `list_separator` | text | absent | The separator of the values of the lists its texts are, or None where they are none. |
+| `items` | [Findings](#findings) | absent | The values of its lists, counted as those of a column are, or None where its texts are no lists. |
 | `values` | list of [Value](#value) | empty | The values of the column, if it is an enumeration of no sensitivity, the most frequent first; none else. |
 | `marked` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column given by hand, by an override, or None where none is given. |
 | `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with; None where none are given, and where the column has no text, which is counted without sentinels, whatever is given. |
@@ -296,14 +298,15 @@ A column of a table whose values are among those of a key of one column of a tab
 
 The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
 row or many refer to one of the key, the keys of the table of the column tell: one, where the
-column is a key of it, else many.
+column is a key of it, else many; a column of lists refers by the values of its lists, a row to
+as many of the key as its list holds values, many to many.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `column` | text | required | The name of the column that refers. |
 | `table` | text | required | The name of the table referred to. |
 | `key` | text | required | The name of its column of the key referred to. |
-| `coverage` | number or `null` | required | The share of the values of the column, nulls and sentinels aside, found in the key, counted on the whole table; None of unmistakable values, such as UUIDs, which are equal to those of another column by no chance, so that a few found tell where they come from. |
+| `coverage` | number or `null` | required | The share of the values of the column, nulls and sentinels aside, found in the key, counted on the whole table - of a column of lists, of the values of its lists -; None of unmistakable values, such as UUIDs, which are equal to those of another column by no chance, so that a few found tell where they come from. |
 | `given` | boolean | `false` | Whether the overrides gave it, rather than it was found. |
 
 #### ColumnGroup
@@ -338,11 +341,13 @@ one that follows from another, by a dependent of it, is held as well.
 
 The column whose values tell the entities of a table apart, and those entities.
 
-The rows of the table whose discriminator is null or a sentinel are of no entity.
+The rows of the table whose discriminator is null or a sentinel are of no entity. A
+discriminator of a column of lists is of the values of its lists, a row counted with each value
+of its list.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `column` | text | required | The name of the column, an enumeration of no sensitivity. |
+| `column` | text | required | The name of the column, an enumeration of no sensitivity, or a column of lists of values that are one. |
 | `entities` | list of [Entity](#entity) | required | Its entities, the one of the most rows first, at least two where it is found rather than given, and none where it is given of a column that holds no value the profile holds; a value is of one entity at most. |
 | `given` | list of list of text | absent | The values of each entity the overrides gave, in their order, that it was counted with; None where it was found, none given. |
 
@@ -377,6 +382,16 @@ A semantic type found in a column, with the share of its values that are of it.
 | `sample` | number | required | The share of the values of the sample, nulls and sentinels aside, that are of the type, from 0 to 1. |
 | `table` | number | absent | The share of the values of the whole table, nulls and sentinels aside, that the pattern of the detector of the type matches, from 0 to 1, or None where it was not verified. Where the detector checks a value by more than its pattern, it is at least the share the check would give; a condition of the column is judged on the sample alone. |
 
+#### Findings
+
+What was found of the values of the lists of a column: statistics, types and enumeration.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `statistics` | [Statistics](#statistics) | required | What is counted of the values, of the whole table: no nulls, as a list holds none. |
+| `matches` | list of [Match](#match) | empty | The semantic types found in the values, the most frequent first. |
+| `values` | list of [Value](#value) | empty | The values, if they are an enumeration of no sensitivity, the most frequent first; none else. |
+
 #### Value
 
 A value of an enumeration, or a sentinel, as text, with the rows that hold it.
@@ -393,8 +408,8 @@ The rows of a table of one entity of the business: those of some values of its d
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `values` | list of text | required | The values of the discriminator its rows hold, as text, the most frequent first. |
-| `rows` | integer | required | The number of its rows. |
-| `filled` | map of integer | required | The number of its rows each column of the table is filled in - holds a value, neither null nor a sentinel -, by the name of the column, of every column of the table in its order. |
+| `rows` | integer | required | The number of its rows; of a discriminator of lists, the rows of each of its values, a row of a list of two of its values twice. |
+| `filled` | map of integer | required | The number of its rows each column of the table is filled in - holds a value, neither null nor a sentinel -, by the name of the column, of every column of the table in its order, counted as its rows are. |
 | `name_given` | text | absent | Its harmonized name given by hand, by an override; None where none is given, and in a profile written. |
 | `description` | text | absent | What it holds, in English, given by hand, by an override; None where none is given, and in a profile written. |
 

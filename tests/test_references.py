@@ -15,7 +15,9 @@ import pytest
 from data_profiler.detect import EMAIL, PHONE, UUID
 from data_profiler.overrides import Overrides, ReferenceOverride
 from data_profiler.profile import (
+    Cardinality,
     Column,
+    Findings,
     Lengths,
     Match,
     Profile,
@@ -38,14 +40,22 @@ class _Answering(Source):
     """
 
     def __init__(
-        self, found: float = 1.0, coverage: float = 1.0, by_table: dict[str, float] | None = None
+        self,
+        found: float = 1.0,
+        coverage: float = 1.0,
+        by_table: dict[str, float] | None = None,
+        columns: dict[str, dict[str, str]] | None = None,
     ) -> None:
         with connect("trino://h/c/s", "u", "") as trino:
             super().__init__("crm", "sales", trino.dialect)
         self._found = found
         self._coverage = coverage
         self._by_table = by_table or {}
+        self._columns = columns or {}
         self.sent: list[str] = []
+
+    def columns(self, table: str) -> dict[str, str]:
+        return self._columns[table]
 
     def query(self, statement: str, step: str) -> list[tuple[object, ...]]:
         self.sent.append(statement)
@@ -115,6 +125,91 @@ def test_a_column_found_in_one_key_alone_refers_to_it_with_its_coverage() -> Non
         Reference("cust_id", "cust", "cust_id", 0.98),
     )
     assert len(source.sent) == 2, "probed, then counted"
+
+
+def _lists(name: str, items: Statistics) -> Column:
+    """A column of lists `name`, of no nulls, whose values have `items`."""
+    statistics = Statistics(0, 3000, Lengths(1, 41))
+    return Column(name, "varchar(41)", statistics, list_separator=";", items=Findings(items))
+
+
+# The columns of `ord` of lists of customers, for its source of the values of their lists.
+_LISTED = {"ord": {"cust_ids": "varchar(41)", "cust_id": "bigint"}}
+
+
+def test_the_values_of_lists_of_numbers_refer_to_a_key_of_numbers_by_queries_of_their_own() -> None:
+    listed = _lists("cust_ids", Statistics(0, 400, Lengths(6, 6), Range("100001", "104999")))
+    profile = _ordering(listed, _ranged("cust_id", "bigint", 4000, 100001, 104999))
+    source = _Answering(columns=_LISTED)
+    ordered = _ordered(find(source, profile, {}))
+    reference = Reference("cust_ids", "cust", "cust_id", 1.0)
+    assert reference in ordered.references, "of the values of its lists, as numbers"
+    assert ordered.cardinality(reference) is Cardinality.MANY_TO_MANY
+    unnested = [statement for statement in source.sent if "UNNEST" in statement]
+    assert len(unnested) == 2, "probed, then counted, apart from the other column"
+    assert len(source.sent) == 4, "and the other column probed and counted on the table"
+
+
+def test_the_values_of_lists_of_digits_of_several_lengths_refer_whatever_their_range_of_texts() -> (
+    None
+):
+    # A key numbered from one, whose values of lists of 1 to 4 digits end as texts at 999.
+    keyed = (_keyed("cust", 5000, _ranged("cust_id", "bigint", 5000, 1, 5000)),)
+    listed = _lists("cust_ids", Statistics(0, 4000, Lengths(1, 4), Range("1", "999")))
+    profile = _ordering(listed, keyed=keyed)
+    found = _ordered(find(_Answering(columns=_LISTED), profile, {}))
+    assert found.references == (Reference("cust_ids", "cust", "cust_id", 1.0),), (
+        "no run, as its range of texts is no range of its numbers"
+    )
+
+
+@pytest.mark.parametrize(
+    "items",
+    [
+        Statistics(0, 400, Lengths(6, 6), Range("A00001", "A04999")),
+        Statistics(0, 400, Lengths(6, 6)),
+    ],
+    ids=["of letters", "of no range"],
+)
+def test_the_values_of_lists_of_no_numbers_do_not_refer_to_a_key_of_numbers(
+    items: Statistics,
+) -> None:
+    profile = _ordering(_lists("cust_ids", items))
+    source = _Answering(columns=_LISTED)
+    assert _ordered(find(source, profile, {})).references == ()
+    assert source.sent == [], "not indicated, as texts against numbers"
+
+
+def test_the_values_of_lists_of_texts_refer_to_a_key_of_texts() -> None:
+    listed = _lists("cust_nos", Statistics(0, 400, Lengths(12, 12)))
+    columns = {"ord": {"cust_nos": "varchar(41)"}}
+    found = _ordered(find(_Answering(columns=columns), _ordering(listed), {}))
+    assert found.references == (Reference("cust_nos", "cust", "cust_no", 1.0),)
+
+
+def test_a_column_of_lists_is_not_searched_for_a_reference_to_a_key_of_its_own_table() -> None:
+    listed = _lists("ord_ids", Statistics(0, 400, Lengths(1, 3), Range("1", "999")))
+    ordered = Table(
+        name="ord",
+        rows=20000,
+        columns=(_ranged("ord_id", "bigint", 20000, 1, 20000), listed),
+        keys=(("ord_id",),),
+    )
+    profile = Profile(catalog="crm", schema="sales", tables=(ordered,))
+    source = _Answering(columns={"ord": {"ord_id": "bigint", "ord_ids": "varchar(41)"}})
+    assert find(source, profile, {}).table("ord").references == ()
+    assert source.sent == [], "its values would be read with the key"
+
+
+def test_a_reference_given_of_a_column_of_lists_is_measured_by_the_values_of_its_lists() -> None:
+    listed = _lists("cust_ids", Statistics(0, 400, Lengths(6, 6), Range("100001", "104999")))
+    source = _Answering(coverage=0.95, columns=_LISTED)
+    found = find(source, _ordering(listed), {"ord": {"cust_ids": _GIVEN}})
+    assert _ordered(found).references == (
+        Reference("cust_ids", "cust", "cust_id", 0.95, given=True),
+    )
+    (counted,) = source.sent
+    assert "UNNEST" in counted, "counted on the values of its lists"
 
 
 def test_unmistakable_values_refer_to_their_key_by_the_probe_alone() -> None:
@@ -383,7 +478,7 @@ def test_the_references_of_the_simulation_are_found(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     workspace = Workspace.open(tmp_path / "workspace", example.catalog, example.schema)
-    scan(source, re.compile(".*"), workspace, (), Overrides(), tmp_path / "profile")
+    scan(source, re.compile(".*"), workspace, (), ";", Overrides(), tmp_path / "profile")
     found = find(source, Profile.read(tmp_path / "profile"), {})
     for table in example.tables:
         related = found.table(table.name)

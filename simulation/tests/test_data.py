@@ -1,5 +1,6 @@
 """Tests of the rows of test data: their columns have the statistics of the profile."""
 
+import re
 from dataclasses import replace
 from datetime import date, datetime
 
@@ -18,11 +19,13 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
+    SENTINELS,
     TRUE_FALSE,
     UUID,
     YES_NO,
     ZERO_ONE,
     SemanticType,
+    is_list,
 )
 from data_profiler.profile import (
     Column,
@@ -30,6 +33,7 @@ from data_profiler.profile import (
     ColumnGroup,
     Discriminator,
     Entity,
+    Findings,
     Lengths,
     Match,
     Profile,
@@ -405,6 +409,72 @@ def test_a_column_of_a_reference_holds_values_of_its_key_as_many_rows_as_it_cove
     )
 
 
+def test_a_column_of_lists_of_a_reference_holds_lists_of_values_of_its_key() -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(100, 300, Lengths(1, 11)),
+        list_separator=";",
+        items=Findings(Statistics(0, 40, Lengths(1, 3))),
+    )
+    reference = Reference("custs", "cust", "id", 1.0)
+    table = replace(_table(listed), name="ord", references=(reference,))
+    made = [str(value) for (value,) in rows(table, _profile(_CUST), 0) if value is not None]
+    keys = {str(value) for (value, _) in rows(_CUST, _profile(), 0)}
+    values = {value for text in made for value in text.split(";")}
+    assert len(values) == 40
+    assert values <= keys, "values of the key, as text"
+
+
+@pytest.mark.parametrize(
+    ("items", "lengths", "problem"),
+    [
+        (Statistics(0, 600, Lengths(1, 3)), Lengths(1, 11), "600 values of lists of 1 to 3"),
+        (Statistics(0, 40, Lengths(4, 6)), Lengths(4, 11), "40 values of lists of 4 to 6"),
+        (Statistics(0, 40), Lengths(1, 11), "a column of lists without the lengths of its items"),
+    ],
+    ids=["more values than the key", "of lengths the key has none of", "of no lengths"],
+)
+def test_a_column_of_lists_of_a_reference_that_cannot_be_made_is_refused(
+    items: Statistics, lengths: Lengths, problem: str
+) -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(0, 30, lengths),
+        list_separator=";",
+        items=Findings(items),
+    )
+    table = replace(_table(listed), name="ord", references=(Reference("custs", "cust", "id", 1.0),))
+    with pytest.raises(SimulationError, match=f"ord\\.custs: {problem}"):
+        rows(table, _profile(_CUST), 0)
+
+
+def test_a_column_of_lists_of_lengths_no_list_of_its_values_is_of_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(15)",
+        statistics=Statistics(0, 30, Lengths(3, 14)),
+        list_separator=";",
+        items=Findings(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),)),
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: no list of 3 or 14 characters can be made"):
+        rows(_table(column, count=100), _profile(), 0)
+
+
+def test_a_column_of_lists_of_a_reference_of_values_outside_of_its_key_is_refused() -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(0, 30, Lengths(1, 11)),
+        list_separator=";",
+        items=Findings(Statistics(0, 40, Lengths(1, 3))),
+    )
+    table = replace(_table(listed), name="ord", references=(Reference("custs", "cust", "id", 0.9),))
+    with pytest.raises(SimulationError, match=r"ord\.custs: no list of values outside of a key"):
+        rows(table, _profile(_CUST), 0)
+
+
 def test_a_column_of_unmistakable_values_refers_to_its_key_with_all_of_them() -> None:
     made = {value for (value,) in rows(_referring("key", None), _profile(_CUST), 0) if value}
     keys = {value for (_, value) in rows(_CUST, _profile(), 0)}
@@ -565,6 +635,58 @@ def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
     assert kind.detector.share(values) == 1.0, "every text is of the type, and so is the column"
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
+
+
+def test_a_column_of_lists_holds_lists_of_the_values_of_its_items_of_its_lengths() -> None:
+    column = Column(
+        name="v",
+        type="varchar(40)",
+        statistics=Statistics(0, 200, Lengths(1, 23)),
+        list_separator=";",
+        items=Findings(Statistics(0, 40, Lengths(1, 2))),
+    )
+    values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
+    assert is_list(values, ";", SENTINELS), "lists, some of several numbers"
+    assert all(re.fullmatch(r"[0-9]{1,2}(;[0-9]{1,2})*", value) for value in values)
+    assert (min(map(len, values)), max(map(len, values))) == (1, 23)
+    assert len({item for value in values for item in value.split(";")}) == 40, "its items"
+
+
+def test_a_column_of_lists_holds_lists_of_values_of_the_type_of_its_items() -> None:
+    items = Findings(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),))
+    column = Column(
+        name="v",
+        type="varchar(15)",
+        statistics=Statistics(0, 30, Lengths(3, 15)),
+        list_separator=";",
+        items=items,
+    )
+    values = [str(value) for (value,) in rows(_table(column, count=100), _profile(), 0)]
+    split = [item for value in values for item in value.split(";")]
+    assert CURRENCY_CODE.detector.share(split) == 1.0, "codes of currencies"
+    assert len(set(split)) == 6
+
+
+def test_a_discriminator_of_a_column_of_lists_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(5)",
+        statistics=Statistics(0, 2, Lengths(1, 3)),
+        list_separator=";",
+        items=Findings(Statistics(0, 2, Lengths(1, 1))),
+    )
+    entities = (Entity(("A",), 5, {"v": 5}), Entity(("B",), 5, {"v": 5}))
+    table = replace(_table(column, count=10), discriminator=Discriminator("v", entities))
+    with pytest.raises(SimulationError, match=r"t\.v: no discriminator of lists is made"):
+        rows(table, _profile(), 0)
+
+
+def test_a_column_of_lists_without_its_items_is_refused() -> None:
+    column = Column(
+        name="v", type="varchar(15)", statistics=Statistics(0, 3, Lengths(1, 5)), list_separator=";"
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: a column of lists without the lengths"):
+        rows(_table(column, count=10), _profile(), 0)
 
 
 def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: SemanticType) -> None:

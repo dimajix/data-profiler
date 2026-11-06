@@ -9,12 +9,17 @@ endpoint and what was done; what the database said, which may hold a value of it
 of the error. Trino is reached by HTTPS, whose certificates and proxies come from the variables of
 the process, as `requests` reads them: `REQUESTS_CA_BUNDLE` for a certificate of a CA of one's own,
 `NO_PROXY` for a database a proxy does not reach.
+
+A source `unnested` reads one of its tables as a row of each value of the lists of one of its
+columns, in place of each of its rows, its dialect writing that table as a statement of its own
+wherever a statement reads it, so that what counts the values of a column counts the values of the
+lists alike; it sends its queries by the source it is made of.
 """
 
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import batched
 from re import Pattern
@@ -302,6 +307,19 @@ class Dialect(ABC):
     def is_same_family(self, kind: str, other: str) -> bool:
         """Whether values of the types `kind` and `other` are the same where their texts are."""
 
+    @abstractmethod
+    def unnested(
+        self, table: str, columns: Sequence[str], column: str, separator: str
+    ) -> "Dialect":
+        """This dialect, reading `table` as a row of each value of the lists of its `column`.
+
+        Args:
+            table: The table, of the schema of the source.
+            columns: The columns of the table, in their order, which the rows of its values hold.
+            column: The column of lists, whose values the rows hold under its name.
+            separator: The separator of the values of a list.
+        """
+
 
 class Source(ABC):
     """A schema of a database the tool reads, by queries only; closed as a context manager.
@@ -341,6 +359,26 @@ class Source(ABC):
     def name(self, table: str) -> str:
         """The name of `table` with the catalog and schema of the source, as messages name it."""
         return f"{self.catalog}.{self.schema}.{table}"
+
+    def unnested(self, table: str, column: str, separator: str) -> "Source":
+        """This schema, `table` read as a row of each value of the lists of its `column`.
+
+        Each row of a value holds the other columns of the row of its list; a row whose column is
+        null has no value. The source sends its queries by this one, which closes the connection.
+
+        Args:
+            table: The table, of the schema of the source.
+            column: The column of lists, whose values the rows hold under its name.
+            separator: The separator of the values of a list.
+
+        Returns:
+            The source.
+
+        Raises:
+            SourceError: The schema has no such table, or the database fails to list its columns.
+        """
+        dialect = self.dialect.unnested(table, list(self.columns(table)), column, separator)
+        return _Unnested(self, dialect, table, column)
 
     def tables(self, pattern: Pattern[str]) -> list[str]:
         """The names of the tables of the schema that `pattern` matches whole, sorted.
@@ -516,8 +554,35 @@ class _TrinoSource(Source):
         self._connection.close()  # type: ignore[no-untyped-call]  # no annotations
 
 
+class _Unnested(Source):
+    """A schema of whose tables one is read as a row of each value of the lists of a column."""
+
+    def __init__(self, source: Source, dialect: Dialect, table: str, column: str) -> None:
+        """Takes the source the queries are sent by, the dialect unnesting `table` by `column`."""
+        super().__init__(source.catalog, source.schema, dialect)
+        self._source = source
+        self._table = table
+        self._column = column
+
+    def query(self, statement: str, step: str) -> list[tuple[object, ...]]:
+        """Sends `statement` by the source it is made of."""
+        return self._source.query(statement, step)
+
+    def close(self) -> None:
+        """Leaves the connection open, as the source it is made of closes it."""
+
+    def name(self, table: str) -> str:
+        """The name of `table`, as messages name it, of the values of its column where read so."""
+        name = super().name(table)
+        return f"{name}, the values of {self._column}" if table == self._table else name
+
+
 class _TrinoDialect(Dialect):
     """The SQL of Trino and Starburst."""
+
+    def __init__(self, relations: Mapping[str, str] | None = None) -> None:
+        """Takes what a statement reads tables as, by their names, where not as themselves."""
+        self._relations = dict(relations or {})
 
     def tables(self, catalog: str, schema: str) -> str:
         """The statement listing the names of the tables of `schema` in `catalog`."""
@@ -536,12 +601,12 @@ class _TrinoDialect(Dialect):
 
     def select(self, expressions: Sequence[str], table: str) -> str:
         """The statement selecting `expressions` from `table` of the schema of the source."""
-        return f"SELECT {', '.join(expressions)} FROM {_identifier(table)}"
+        return f"SELECT {', '.join(expressions)} FROM {self._relation(table)}"
 
     def sampled(self, expressions: Sequence[str], table: str, percent: float, limit: int) -> str:
         """The statement selecting `expressions` of a share of the rows of `table`, at random."""
         return (
-            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"SELECT {', '.join(expressions)} FROM {self._relation(table)} "
             f"TABLESAMPLE BERNOULLI ({percent:.10f}) LIMIT {limit}"
         )
 
@@ -549,7 +614,7 @@ class _TrinoDialect(Dialect):
         """The statement selecting `expressions` from `table`, grouped by each of `columns`."""
         sets = ", ".join(f"({_identifier(column)})" for column in columns)
         return (
-            f"SELECT {', '.join(expressions)} FROM {_identifier(table)} "
+            f"SELECT {', '.join(expressions)} FROM {self._relation(table)} "
             f"GROUP BY GROUPING SETS ({sets})"
         )
 
@@ -557,14 +622,14 @@ class _TrinoDialect(Dialect):
         """The statement counting, of `limit` values taken of each probe, those in each key."""
         taken = " UNION ALL ".join(
             f'SELECT {place} AS "probe", "v", count(*) OVER () AS "taken" FROM (SELECT'
-            f' CAST({probe.values} AS varchar) AS "v" FROM {_identifier(probe.table)}'
+            f' CAST({probe.values} AS varchar) AS "v" FROM {self._relation(probe.table)}'
             f" TABLESAMPLE BERNOULLI ({probe.percent:.10f}) WHERE {probe.values} IS NOT NULL"
             f" LIMIT {limit})"
             for place, probe in enumerate(probes)
         )
         read = " UNION ALL ".join(
             f'SELECT {place} AS "key", CAST({_identifier(column)} AS varchar) AS "id"'
-            f" FROM {_identifier(table)}"
+            f" FROM {self._relation(table)}"
             for place, (table, column) in enumerate(keys)
         )
         # An inner join, of the values taken on the right, so that they are what is held in memory,
@@ -582,13 +647,13 @@ class _TrinoDialect(Dialect):
         )
         joined = "".join(
             f' LEFT JOIN (SELECT CAST({_identifier(lookup.key)} AS varchar) AS "id"'
-            f' FROM {_identifier(lookup.table)}) "k{place}" ON "t"."v{place}" = "k{place}"."id"'
+            f' FROM {self._relation(lookup.table)}) "k{place}" ON "t"."v{place}" = "k{place}"."id"'
             for place, lookup in enumerate(lookups)
         )
         counts = ", ".join(
             f'count("t"."v{place}"), count("k{place}"."id")' for place in range(len(lookups))
         )
-        return f'SELECT {counts} FROM (SELECT {values} FROM {_identifier(table)}) "t"{joined}'
+        return f'SELECT {counts} FROM (SELECT {values} FROM {self._relation(table)}) "t"{joined}'
 
     def column(self, column: str) -> str:
         """The expression of the values of `column`."""
@@ -681,6 +746,28 @@ class _TrinoDialect(Dialect):
     def is_same_family(self, kind: str, other: str) -> bool:
         """Whether values of `kind` and `other` are the same values where their texts are."""
         return _family(kind) == _family(other)
+
+    def unnested(
+        self, table: str, columns: Sequence[str], column: str, separator: str
+    ) -> "_TrinoDialect":
+        """This dialect, reading `table` as a row of each value of the lists of its `column`."""
+        read = ", ".join(
+            f'"u"."v" AS {_identifier(name)}' if name == column else f'"t".{_identifier(name)}'
+            for name in columns
+        )
+        split = f'split("t".{_identifier(column)}, {_literal(separator)})'
+        unnest = f'CROSS JOIN UNNEST({split}) AS "u" ("v")'
+        relation = f'(SELECT {read} FROM {self._relation(table)} "t" {unnest})'
+        return _TrinoDialect({**self._relations, table: relation})
+
+    def _relation(self, table: str) -> str:
+        """What a statement reads `table` of the schema as, after its `FROM`: the table itself.
+
+        A table is read otherwise where it is read as the values of the lists of a column. Every
+        statement reading a table of the schema reads it by this, so that a table can be read
+        otherwise in one place.
+        """
+        return self._relations.get(table, _identifier(table))
 
 
 def _is_whole(kind: str) -> bool:

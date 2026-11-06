@@ -9,6 +9,7 @@ import pytest
 from data_profiler.detect import SemanticType, Sensitivity
 from data_profiler.glossary import Glossary
 from data_profiler.overrides import (
+    FORMAT,
     ColumnOverride,
     DiscriminatorOverride,
     EntityOverride,
@@ -668,6 +669,17 @@ def test_a_concept_is_given_without_abbreviations_and_description(tmp_path: Path
     assert laid.glossary["name"] == Concept(), "though no name has its word"
 
 
+def test_a_table_is_given_a_separator_of_lists_and_refused_one_that_cannot_be(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "overrides.yml"
+    path.write_text("format: '7.5'\ntables:\n  cntct: {list_separator: '|'}\n", encoding="utf-8")
+    assert Overrides.read([path]).tables["cntct"] == TableOverride(list_separator="|")
+    path.write_text("format: '7.5'\ntables:\n  cntct: {list_separator: ab}\n", encoding="utf-8")
+    with pytest.raises(OverridesError, match=r"cntct\.list_separator: 'ab' is no separator"):
+        Overrides.read([path])
+
+
 def test_a_table_is_given_no_discriminator_by_false(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text('format: "7.1"\ntables:\n  cntct: {discriminator: false}\n', encoding="utf-8")
@@ -677,7 +689,8 @@ def test_a_table_is_given_no_discriminator_by_false(tmp_path: Path) -> None:
 def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
+    version = re.escape(str(FORMAT.version))
     with pytest.raises(
-        OverridesError, match=r"format 1\.0, of another major version than the format 7\.4"
+        OverridesError, match=rf"format 1\.0, of another major version than the format {version}"
     ):
         Overrides.read([path])

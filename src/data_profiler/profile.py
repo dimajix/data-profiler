@@ -3,7 +3,9 @@
 A profile is what the stages hand to each other, and what a person reads and shares - corrected by
 the overrides of the project, laid over it: it holds no values of the columns found sensitive. A
 match names its semantic type by its name, of a type of the tool or of the project, whose types the
-profile holds in the form `project.yml` gives them, so that it is read without its project.
+profile holds in the form `project.yml` gives them, so that it is read without its project. The
+separator of lists a column of lists holds is of the form `ListSeparator`, which `project.yml` and
+the overrides give it in as well.
 
 A profile is a directory of documents, written as YAML in the formats below, of one version, and
 read back by the same classes: `profile.yml` holds the profile but its tables, and `tables/` a file
@@ -28,9 +30,9 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Final
+from typing import Annotated, Final, Self
 
-from pydantic import PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
+from pydantic import AfterValidator, PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
 from pydantic_core import PydanticCustomError
 
 from data_profiler.detect import (
@@ -38,6 +40,7 @@ from data_profiler.detect import (
     SemanticTypeError,
     Sensitivity,
     all_types,
+    is_list_separator,
     project_type,
     semantic_type,
 )
@@ -46,7 +49,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 2)
+VERSION: Final = Version(14, 4)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -124,6 +127,21 @@ type SemanticTypes = Annotated[
 
 What `detect.project_type` refuses is refused, naming the field.
 """
+
+
+def _list_separator(text: str) -> str:
+    """`text`, where it may separate the values of a list, as `detect.is_list_separator` says."""
+    if not is_list_separator(text):
+        raise PydanticCustomError(
+            "list_separator",
+            "{text} is no separator of lists: one character, no letter, digit, '-', '+' or '_'",
+            {"text": repr(text)},
+        )
+    return text
+
+
+type ListSeparator = Annotated[str, AfterValidator(_list_separator)]
+"""The separator of the values of a list in a document, refused where it cannot be one."""
 
 
 def _semantic_type(name: object, info: ValidationInfo) -> SemanticType:
@@ -233,6 +251,37 @@ class Match:
     table: float | None = None
 
 
+# What is found of the values of a column - of its own, and of those of its lists - is one type,
+# which a column shows of its own as `Column.findings`, so that a rule on it is written once.
+@dataclass(frozen=True)
+class Findings:
+    """What was found of the values of the lists of a column: statistics, types and enumeration.
+
+    Attributes:
+        statistics: What is counted of the values, of the whole table: no nulls, as a list holds
+            none.
+        matches: The semantic types found in the values, the most frequent first.
+        values: The values, if they are an enumeration of no sensitivity, the most frequent first;
+            none else.
+    """
+
+    statistics: Statistics
+    matches: tuple[Match, ...] = ()
+    values: tuple[Value, ...] = ()
+
+    @property
+    def sensitivity(self) -> Sensitivity:
+        """The sensitivity of its first match of a sensitive type, else none."""
+        for match in self.matches:
+            if match.type.sensitivity is not Sensitivity.NONE:
+                return match.type.sensitivity
+        return Sensitivity.NONE
+
+    def unmatched(self) -> Self:
+        """It without its matches, range and values, which other semantic types find otherwise."""
+        return replace(self, statistics=replace(self.statistics, range=None), matches=(), values=())
+
+
 @dataclass(frozen=True)
 class Term:
     """A term of a name, as the vocabulary splits it, with the concepts it may stand for.
@@ -262,6 +311,10 @@ class Column:
         type: The type of the column as the database names it, such as `varchar(40)`.
         statistics: What is counted of the column.
         matches: The semantic types found in the column, the most frequent first.
+        list_separator: The separator of the values of the lists its texts are, or None where they
+            are none.
+        items: The values of its lists, counted as those of a column are, or None where its texts
+            are no lists.
         values: The values of the column, if it is an enumeration of no sensitivity, the most
             frequent first; none else.
         marked: The sensitivity of the column given by hand, by an override, or None where none
@@ -282,6 +335,8 @@ class Column:
     type: str
     statistics: Statistics
     matches: tuple[Match, ...] = ()
+    list_separator: ListSeparator | None = None
+    items: Findings | None = None
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
@@ -296,14 +351,67 @@ class Column:
         return frozenset(sentinel.value for sentinel in self.statistics.sentinels)
 
     @property
+    def findings(self) -> Findings:
+        """What was found of its values: its statistics, matches and values."""
+        return Findings(self.statistics, self.matches, self.values)
+
+    @property
+    def items_separator(self) -> str | None:
+        """The separator its values are read by, of its lists, where it has items; None else.
+
+        A column of items is read by the values of its lists, wherever they are counted.
+        """
+        return self.list_separator if self.items is not None else None
+
+    @property
+    def as_items(self) -> Self:
+        """It as a column of the values of its lists, where it is one of lists, else itself.
+
+        What was found of the values of its lists is what was found of it, so that what tells the
+        values of a column apart tells those of its lists alike - its entities, by a discriminator.
+        """
+        if self.items is None:
+            return self
+        found = self.items
+        return replace(
+            self,
+            statistics=found.statistics,
+            matches=found.matches,
+            values=found.values,
+            items=None,
+        )
+
+    def applied(self, change: Callable[[Findings], Findings]) -> Self:
+        """It with `change` made to what was found of its values, and of the values of its lists.
+
+        Args:
+            change: What becomes of what was found of values.
+
+        Returns:
+            The column, its statistics, matches and values, and its items, changed alike.
+        """
+        found = change(self.findings)
+        return replace(
+            self,
+            statistics=found.statistics,
+            matches=found.matches,
+            values=found.values,
+            items=None if self.items is None else change(self.items),
+        )
+
+    @property
     def sensitivity(self) -> Sensitivity:
-        """The sensitivity given by hand, else of its first match of a sensitive type, else none."""
+        """The sensitivity given by hand, else of its first match of a sensitive type, else none.
+
+        The matches of the values of its lists are its matches as well: a list of IBANs is as
+        sensitive as an IBAN.
+        """
         if self.marked is not None:
             return self.marked
-        for match in self.matches:
-            if match.type.sensitivity is not Sensitivity.NONE:
-                return match.type.sensitivity
-        return Sensitivity.NONE
+        found = self.findings.sensitivity
+        if found is Sensitivity.NONE and self.items is not None:
+            return self.items.sensitivity
+        return found
 
     @property
     def sensitive(self) -> bool:
@@ -359,10 +467,11 @@ class Entity:
 
     Attributes:
         values: The values of the discriminator its rows hold, as text, the most frequent first.
-        rows: The number of its rows.
+        rows: The number of its rows; of a discriminator of lists, the rows of each of its values,
+            a row of a list of two of its values twice.
         filled: The number of its rows each column of the table is filled in - holds a value,
             neither null nor a sentinel -, by the name of the column, of every column of the table
-            in its order.
+            in its order, counted as its rows are.
         name_given: Its harmonized name given by hand, by an override; None where none is given,
             and in a profile written.
         description: What it holds, in English, given by hand, by an override; None where none is
@@ -380,10 +489,13 @@ class Entity:
 class Discriminator:
     """The column whose values tell the entities of a table apart, and those entities.
 
-    The rows of the table whose discriminator is null or a sentinel are of no entity.
+    The rows of the table whose discriminator is null or a sentinel are of no entity. A
+    discriminator of a column of lists is of the values of its lists, a row counted with each value
+    of its list.
 
     Attributes:
-        column: The name of the column, an enumeration of no sensitivity.
+        column: The name of the column, an enumeration of no sensitivity, or a column of lists of
+            values that are one.
         entities: Its entities, the one of the most rows first, at least two where it is found
             rather than given, and none where it is given of a column that holds no value the
             profile holds; a value is of one entity at most.
@@ -397,7 +509,7 @@ class Discriminator:
 
     @property
     def rows(self) -> int:
-        """The number of the rows of its entities."""
+        """The number of the rows of its entities, as each counts them."""
         return sum(entity.rows for entity in self.entities)
 
 
@@ -416,10 +528,11 @@ class PrimaryKey:
 
 
 class Cardinality(Enum):
-    """How many rows of a table refer by a reference to one row of the key: one, or many."""
+    """How many rows of a table refer by a reference to how many rows of the key."""
 
-    ONE = "one to one"
-    MANY = "many to one"
+    ONE_TO_ONE = "one to one"
+    MANY_TO_ONE = "many to one"
+    MANY_TO_MANY = "many to many"
 
 
 @dataclass(frozen=True)
@@ -428,16 +541,17 @@ class Reference:
 
     The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
     row or many refer to one of the key, the keys of the table of the column tell: one, where the
-    column is a key of it, else many.
+    column is a key of it, else many; a column of lists refers by the values of its lists, a row to
+    as many of the key as its list holds values, many to many.
 
     Attributes:
         column: The name of the column that refers.
         table: The name of the table referred to.
         key: The name of its column of the key referred to.
         coverage: The share of the values of the column, nulls and sentinels aside, found in the
-            key, counted on the whole table; None of unmistakable values, such as UUIDs, which are
-            equal to those of another column by no chance, so that a few found tell where they come
-            from.
+            key, counted on the whole table - of a column of lists, of the values of its lists -;
+            None of unmistakable values, such as UUIDs, which are equal to those of another column
+            by no chance, so that a few found tell where they come from.
         given: Whether the overrides gave it, rather than it was found.
     """
 
@@ -517,6 +631,20 @@ class Table:
                 return column
         raise KeyError(name)
 
+    @property
+    def rows_of_no_entity(self) -> int | None:
+        """The rows of no entity of its discriminator, or None where they are not told.
+
+        They are not told of a discriminator of lists, whose entities count a row with each value
+        of its list, nor where it has no discriminator.
+        """
+        if (
+            self.discriminator is None
+            or self.column(self.discriminator.column).items_separator is not None
+        ):
+            return None
+        return self.rows - self.discriminator.rows
+
     def reference(self, name: str) -> Reference | None:
         """The reference of its column of the name `name`.
 
@@ -535,9 +663,14 @@ class Table:
             reference: A reference of one of its columns.
 
         Returns:
-            One, where the column is a key of it, else many.
+            Many to many, where the column is one of lists, which refer by their values, a row to
+            several of the key; else one, where the column is a key of it, else many.
         """
-        return Cardinality.ONE if (reference.column,) in self.keys else Cardinality.MANY
+        if self.column(reference.column).items_separator is not None:
+            return Cardinality.MANY_TO_MANY
+        if (reference.column,) in self.keys:
+            return Cardinality.ONE_TO_ONE
+        return Cardinality.MANY_TO_ONE
 
 
 @dataclass(frozen=True)
@@ -888,11 +1021,11 @@ class _Head:
 
 
 def _unmatched(table: Table) -> Table:
-    """`table` without its discriminator, its columns without their matches, values and ranges."""
-    columns = (
-        replace(column, matches=(), values=(), statistics=replace(column.statistics, range=None))
-        for column in table.columns
-    )
+    """`table` without its discriminator, its columns without their matches, values and ranges.
+
+    The values of the lists of a column lose the same as the column.
+    """
+    columns = (column.applied(Findings.unmatched) for column in table.columns)
     return replace(table, columns=tuple(columns), discriminator=None)
 
 

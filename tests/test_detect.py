@@ -29,6 +29,8 @@ from data_profiler.detect import (
     cases,
     detect,
     is_filled,
+    is_list,
+    is_list_separator,
     is_sensitive,
     project_type,
     semantic_type,
@@ -404,3 +406,63 @@ def test_a_type_of_a_project_that_cannot_be_is_refused_naming_it(
 ) -> None:
     with pytest.raises(SemanticTypeError, match=re.escape(problem)):
         project_type(name, Sensitivity.PERSONAL, pattern)
+
+
+@pytest.mark.parametrize(
+    ("text", "separating"),
+    [
+        (";", True),
+        ("|", True),
+        (",", True),
+        ("a", False),
+        ("1", False),
+        ("-", False),
+        ("+", False),
+        ("_", False),
+        (";;", False),
+        ("", False),
+    ],
+    ids=lambda value: repr(value),
+)
+def test_a_separator_of_lists_is_one_character_that_no_value_of_a_list_holds(
+    text: str, separating: bool
+) -> None:
+    assert is_list_separator(text) is separating
+
+
+@pytest.mark.parametrize(
+    ("texts", "listed"),
+    [
+        (["12;47;3", "4", "7;12"], True),
+        (["a-1;B_2;+3", "x"], True),
+        (["4", "7", "12"], False),
+        (["12;;47", "4;7"], False),
+        (["12;47;", "4;7"], False),
+        ([";12", "4;7"], False),
+        (["12,47", "4;7"], False),
+        (["12; 47", "4;7"], False),
+    ],
+    ids=[
+        "lists",
+        "values of letters, digits and signs",
+        "single values alone",
+        "two separators in a row",
+        "a separator at the end",
+        "a separator at the start",
+        "another separator",
+        "a space",
+    ],
+)
+def test_texts_are_lists_where_each_is_one_and_one_holds_several_values(
+    texts: list[str], listed: bool
+) -> None:
+    assert is_list(texts, ";", SENTINELS) is listed
+
+
+def test_the_nulls_and_sentinels_of_a_column_of_lists_are_left_aside() -> None:
+    assert is_list(["1;2", None, "", "N/A", "3"], ";", SENTINELS)
+
+
+def test_a_column_of_lists_is_one_of_nearly_every_text_a_list() -> None:
+    assert is_list(["1;2"] * 19 + ["a b"], ";", SENTINELS)
+    assert not is_list(["1;2"] * 18 + ["a b"] * 2, ";", SENTINELS), "nine texts of ten are not"

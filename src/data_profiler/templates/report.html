@@ -1,3 +1,10 @@
+{#- A semantic type found, with its shares of the sample and of the table, where verified. #}
+{% macro matched(match) -%}
+<span class="match">
+  {{ match.type.name }} {{ "{:.0%}".format(match.sample) }}
+  {%- if match.table is not none %} / {{ "{:.0%}".format(match.table) }}{% endif %}
+</span>
+{%- endmacro %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -50,7 +57,14 @@
         <td class="original">{{ column.name }}</td>
         <td>{{ harmonized(column) or "–" }}</td>
         <td class="description">{{ column.description or "–" }}</td>
-        <td class="type">{{ column.type }}</td>
+        <td class="type">
+          {{ column.type }}
+          {%- if column.list_separator %}, list of values by {{ column.list_separator }}
+          {%- if column.items %}: {{ "{:,}".format(column.items.statistics.distinct) }} distinct
+          {% for match in column.items.matches %}{{ matched(match) }}{% endfor %}
+          {%- endif %}
+          {%- endif %}
+        </td>
         <td class="number">{{ share(statistics.nulls, table.rows) }}</td>
         <td class="number">{{ share(statistics.sentinel_rows, table.rows) }}</td>
         <td class="number">{{ "{:,}".format(statistics.distinct) }}</td>
@@ -74,10 +88,7 @@
         </td>
         <td>
           {% for match in column.matches %}
-          <span class="match">
-            {{ match.type.name }} {{ "{:.0%}".format(match.sample) }}
-            {% if match.table is not none %} / {{ "{:.0%}".format(match.table) }}{% endif %}
-          </span>
+          {{ matched(match) }}
           {% else %}
           –
           {% endfor %}
@@ -86,7 +97,10 @@
           {% endif %}
         </td>
       </tr>
-      {% for what, listed in (("values", column.values), ("sentinels", statistics.sentinels)) %}
+      {% set items = column.items.values if column.items else () %}
+      {% for what, listed in (
+        ("values", column.values), ("values of its lists", items), ("sentinels", statistics.sentinels)
+      ) %}
       {% if listed %}
       <tr class="values">
         <td></td>
@@ -173,10 +187,12 @@
   {% endfor %}
   {% set discriminator = table.discriminator %}
   {% if discriminator and discriminator.entities %}
-  {% set of_none = table.rows - discriminator.rows %}
+  {% set listed = table.column(discriminator.column).items %}
+  {% set of_none = table.rows_of_no_entity %}
   <table class="entities">
     <caption>
-      Entities by <span class="original">{{ discriminator.column }}</span>, the rows each column
+      Entities by <span class="original">{{ discriminator.column }}</span>
+      {%- if listed %}, by the values of its lists{% endif %}, the rows each column
       is filled in{% if of_none %} – {{ "{:,}".format(of_none) }} rows of none{% endif %}
     </caption>
     <thead>

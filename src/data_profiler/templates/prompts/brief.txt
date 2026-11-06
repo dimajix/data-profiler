@@ -1,8 +1,14 @@
-{#- What a prompt shows of a column: its type, what it was recognised as, and a few of its values,
-    as far as they are shown; `values` gives them, as the module disclosure lets them be shown. #}
+{#- What a prompt shows of a column: its type, whether its texts are lists, what it was recognised
+    as, and a few of its values, as far as they are shown; `values` gives them, as the module
+    disclosure lets them be shown. #}
 {% macro brief(table, column) -%}
 {% set shown = values(table, column) -%}
 {{ column.type }}
+{%- if column.list_separator %}; lists of values separated by "{{ column.list_separator }}"
+{%- if column.items %}, of {{ column.items.statistics.distinct }} distinct values
+{%- for match in column.items.matches %}, recognised as {{ match.type.name }}{% endfor %}
+{%- endif %}
+{%- endif %}
 {%- for match in column.matches %}; recognised as {{ match.type.name }}{% endfor %}
 {%- if column.sensitive %}; {{ column.sensitivity.value }} data, its values not shown
 {%- elif shown %}; values: {{ shown | join(", ") }}

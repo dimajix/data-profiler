@@ -1,35 +1,36 @@
 """Rows of test data whose columns have the statistics of a profile.
 
 The values of a column are drawn from a pool of as many distinct values as its statistics count,
-each of them used at least once, and its nulls and sentinels are spread over the rows at random:
-the rows of a column are taken in an order of their own, its nulls and sentinels in the first of
-them. The columns of a group share their order, so that they are filled in the same rows as far as
-their nulls and sentinels allow: the column of more of them is filled within the rows of the column
-of fewer. A column that follows from another, by a column dependency, is made of the values of the
+each of them used at least once, and its nulls and sentinels are spread over the rows at random: the
+rows of a column are taken in an order of their own, its nulls and sentinels in the first of them.
+The columns of a group share their order, so that they are filled in the same rows as far as their
+nulls and sentinels allow: the column of more of them is filled within the rows of the column of
+fewer. A column that follows from another, by a column dependency, is made of the values of the
 other: its distinct values, as they first come, take the values of its pool in their order, again
 from the first where they are more, so that the columns that follow from one follow from each other
 where their pools are as large; it is null where the other is not filled. A table of a discriminator
 holds the values of its column in as many rows as the profile counts each, the rows of each entity
 those of its values, and each column is filled in as many rows of each entity as the entity counts,
-its nulls and sentinels in the others; the discriminator is a column of text. Of a key of two
-columns, the column of fewer distinct values is numbered within the other: its values, in their
-order, by the place of each row among the rows of the same value of the other, which holds each of
-its values in as many rows at most as the first has values, and one of them in as many, so that the
-pair is unique and each column has its distinct values.
-Each column draws its values from a random of its own, made of the seed and its name and that of its
-table, its pool first, so that the values of a key are drawn again the same for a column of a
-reference to it, of whatever table: the column holds as many of them as its distinct values count,
-less those outside of the key, in as many rows as its coverage says; those outside, of a column of
-whole numbers alone, are above the largest of the key, each in one row, whatever range the column
-has itself. A reference of unmistakable values, of no coverage, holds values of the key alone.
-What the values are follows from the type of the column: texts are letters of the counted lengths,
-and where the column has a match, values of its first semantic type, of those lengths, which its
-detector recognises - all of them, whatever the shares of the match -, and which meet the condition
-of its column together, where the detector has one; whole numbers of a range lie within it, its
-ends among them, in their order, all of it where they are as many, as a key numbered from one is.
-Values are made of the semantic types of the tool alone, not of those of a project. The sentinels of
-a column are made as many times as the profile counts each: a text as it is written, a day or a
-moment of the day it names in the form of ISO 8601.
+its nulls and sentinels in the others; the discriminator is a column of text, of no lists. Of a key
+of two columns, the column of fewer distinct values is numbered within the other: its values, in
+their order, by the place of each row among the rows of the same value of the other, which holds
+each of its values in as many rows at most as the first has values, and one of them in as many, so
+that the pair is unique and each column has its distinct values. Each column draws its values from a
+random of its own, made of the seed and its name and that of its table, its pool first, so that the
+values of a key are drawn again the same for a column of a reference to it, of whatever table: the
+column holds as many of them as its distinct values count, less those outside of the key, in as many
+rows as its coverage says; those outside, of a column of whole numbers alone, are above the largest
+of the key, each in one row, whatever range the column has itself. A reference of unmistakable
+values, of no coverage, holds values of the key alone. What the values are follows from the type of
+the column: texts are letters of the counted lengths, and where the column has a match, values of
+its first semantic type, of those lengths, which its detector recognises - all of them, whatever the
+shares of the match -, and which meet the condition of its column together, where the detector has
+one; a column of lists holds lists of the values of its items, separated by its separator, drawn as
+the texts of a column of their statistics and matches are, digits where they have no match; whole
+numbers of a range lie within it, its ends among them, in their order, all of it where they are as
+many, as a key numbered from one is. Values are made of the semantic types of the tool alone, not of
+those of a project. The sentinels of a column are made as many times as the profile counts each: a
+text as it is written, a day or a moment of the day it names in the form of ISO 8601.
 """
 
 import re
@@ -64,8 +65,17 @@ from data_profiler.detect import (
     SemanticType,
     cases,
     is_filled,
+    is_list,
 )
-from data_profiler.profile import Column, Discriminator, Lengths, Profile, Reference, Table
+from data_profiler.profile import (
+    Column,
+    Discriminator,
+    Lengths,
+    Match,
+    Profile,
+    Reference,
+    Table,
+)
 from simulation import SimulationError
 
 # The first day of the dates and times generated, its first moment, and how many days they span.
@@ -76,6 +86,9 @@ _DAYS: Final = 9800
 # How often a value is drawn for each one the pool still lacks, and a text of a semantic type for
 # each value drawn, before it is given up as impossible.
 _ATTEMPTS: Final = 50
+
+# The chance that a list takes one more value where the rest could be its last.
+_LONGER: Final = 0.5
 
 # The ranges of the integer types, as far as test data needs them: positive, as keys are.
 _INTEGERS: Final = {"smallint": 2**15 - 1, "integer": 2**31 - 1, "bigint": 10**12}
@@ -205,21 +218,15 @@ def _own(table: Table, column: Column, seed: int) -> Random:
     return Random(f"{seed}/{table.name}/{column.name}")
 
 
-def _referred(
-    table: Table, reference: Reference, profile: Profile, seed: int, random: Random
-) -> _Pool:
-    """Of the column of `reference`, the distinct values of its key it holds, and those outside.
-
-    The values of the key are drawn again as it draws them; those outside, as many as the rows its
-    coverage leaves, are whole numbers above the largest of the key, each in one row.
+def _key(
+    where: str, reference: Reference, profile: Profile, seed: int
+) -> tuple[Column, list[object]]:
+    """The key `reference` of the column `where` refers to, and its values, drawn as it draws them.
 
     Raises:
         SimulationError: The reference refers to a table `profile` does not have, to a column it
-            does not have, or to one that refers itself, or of a coverage that no values of the
-            column and the key can have, or of values outside of the key that cannot be made.
+            does not have, or to one that refers itself.
     """
-    column = table.column(reference.column)
-    where = f"{table.name}.{column.name}"
     try:
         referred = profile.table(reference.table)
         key = referred.column(reference.key)
@@ -229,7 +236,63 @@ def _referred(
         ) from error
     if any(found.column == key.name for found in referred.references):
         raise SimulationError(f"{where}: refers to a key that refers itself")
-    values = _pool(referred, key, _own(referred, key, seed))
+    return key, _pool(referred, key, _own(referred, key, seed))
+
+
+def _referred_lists(
+    where: str, column: Column, reference: Reference, values: list[object], random: Random
+) -> list[object]:
+    """The distinct texts of `column` of lists that refer by `reference`, lists of `values`.
+
+    The values of its lists are as many of the values of the key as its items count, of their texts
+    of the lengths of its items, the shortest and the longest among them.
+
+    Raises:
+        SimulationError: The reference is of a coverage below all, as no value outside of a key is
+            made of a list, or of more values of lists of their lengths than the key has, or the
+            lists cannot be made of them.
+    """
+    items = column.items
+    if items is None or items.statistics.lengths is None:
+        raise SimulationError(f"{where}: a column of lists without the lengths of its items")
+    if reference.coverage not in (None, 1.0):
+        raise SimulationError(f"{where}: no list of values outside of a key is made")
+    shortest, longest = items.statistics.lengths.shortest, items.statistics.lengths.longest
+    texts = [text for text in map(str, values) if shortest <= len(text) <= longest]
+    ends = [
+        next((text for text in texts if len(text) == length), None)
+        for length in (shortest, longest)
+    ]
+    rest = [text for text in texts if text not in ends]
+    count = items.statistics.distinct - len(set(ends))
+    if None in ends or not 0 <= count <= len(rest):
+        raise SimulationError(
+            f"{where}: {items.statistics.distinct} values of lists of {shortest} to {longest}"
+            f" characters of a key of {len(values)}"
+        )
+    held: list[object] = [*dict.fromkeys(ends), *random.sample(rest, count)]
+    return _lists(where, column, held, random)
+
+
+def _referred(
+    table: Table, reference: Reference, profile: Profile, seed: int, random: Random
+) -> _Pool:
+    """Of the column of `reference`, the distinct values of its key it holds, and those outside.
+
+    The values of the key are drawn again as it draws them; those outside, as many as the rows its
+    coverage leaves, are whole numbers above the largest of the key, each in one row. A column of
+    lists holds lists of values of the key.
+
+    Raises:
+        SimulationError: The reference refers to a table `profile` does not have, to a column it
+            does not have, or to one that refers itself, or of a coverage that no values of the
+            column and the key can have, or of values outside of the key that cannot be made.
+    """
+    column = table.column(reference.column)
+    where = f"{table.name}.{column.name}"
+    key, values = _key(where, reference, profile, seed)
+    if column.list_separator is not None:
+        return _Pool(_referred_lists(where, column, reference, values, random))
     statistics = column.statistics
     present = table.rows - statistics.nulls - statistics.sentinel_rows
     outside = 0 if reference.coverage is None else round((1 - reference.coverage) * present)
@@ -348,6 +411,8 @@ def _kinds(
 ) -> list[tuple[int, str] | None]:
     """Of each row of `table`, its entity, by its place, and its value; None of a row of none."""
     (column,) = (column for column in table.columns if column.name == discriminator.column)
+    if column.list_separator is not None:
+        raise SimulationError(f"{table.name}.{column.name}: no discriminator of lists is made")
     counted = {value.value: value.rows for value in column.values}
     kinds: list[tuple[int, str] | None] = []
     for index, entity in enumerate(discriminator.entities):
@@ -540,9 +605,15 @@ def _drawn(table: Table, column: Column, kind: str, random: Random) -> list[obje
         SimulationError: The type is not generated, or its values cannot be drawn.
     """
     if kind == "double":
-        return _distinct(table, column, lambda: round(random.uniform(0, 10**6), 4))
+        return _distinct(
+            f"{table.name}.{column.name}",
+            column.statistics.distinct,
+            lambda: round(random.uniform(0, 10**6), 4),
+        )
     if kind == "uuid":
-        return _distinct(table, column, lambda: _uuid(0, random))
+        return _distinct(
+            f"{table.name}.{column.name}", column.statistics.distinct, lambda: _uuid(0, random)
+        )
     if kind == "varchar":
         return _texts(table, column, random)
     raise SimulationError(f"{table.name}.{column.name}: the type {column.type} is not generated")
@@ -586,23 +657,86 @@ def _type(column: Column) -> tuple[str, tuple[int, ...]]:
 def _texts(table: Table, column: Column, random: Random) -> list[object]:
     """The distinct texts of `column`, of its lengths: its shortest and its longest among them.
 
-    They are of the first semantic type of the column where it has a match, else letters.
+    They are lists of the values of its items where the column is one of lists, else of the first
+    semantic type of the column where it has a match, else letters.
     """
+    where = f"{table.name}.{column.name}"
     lengths = column.statistics.lengths
     if lengths is None:
-        raise SimulationError(f"{table.name}.{column.name}: a text column without its lengths")
+        raise SimulationError(f"{where}: a text column without its lengths")
+    if column.list_separator is None:
+        draw = _drawing(where, column.matches, lengths, _letters, random)
+        return _distinct(where, column.statistics.distinct, draw)
+    items = column.items
+    if items is None or items.statistics.lengths is None:
+        raise SimulationError(f"{where}: a column of lists without the lengths of its items")
+    item = _drawing(f"{where}, its items", items.matches, items.statistics.lengths, _digits, random)
+    values = _distinct(f"{where}, its items", items.statistics.distinct, item)
+    return _lists(where, column, values, random)
+
+
+def _lists(where: str, column: Column, values: list[object], random: Random) -> list[object]:
+    """The distinct texts of `column` of lists, of its lengths, of `values`, each of them in one.
+
+    Raises:
+        SimulationError: The column has no separator or lengths, or its lists cannot hold each of
+            the values, or are no lists.
+    """
+    separator = column.list_separator
+    lengths = column.statistics.lengths
+    if separator is None or lengths is None:
+        raise SimulationError(f"{where}: a column of lists without its separator or its lengths")
+    pool: dict[int, list[str]] = {}
+    for value in values:
+        pool.setdefault(len(str(value)), []).append(str(value))
+    unused = {value for texts in pool.values() for value in texts}
+    between = _possible(lengths, separator, pool)
+    if lengths.shortest not in between or lengths.longest not in between:
+        raise SimulationError(
+            f"{where}: no list of {lengths.shortest} or {lengths.longest} characters can be made"
+        )
     wanted = iter([lengths.shortest, lengths.longest])
-    kind = column.matches[0].type if column.matches else None
+
+    def listed() -> str:
+        length = next(wanted, None) or random.choice(between)
+        # Each try of values of their own, as not every choice of them fills the length.
+        for _ in range(_ATTEMPTS):
+            text = _list(length, separator, pool, unused, random)
+            if text is not None:
+                return text
+        raise SimulationError(f"{where}: no list of {length} characters can be made")
+
+    texts = _distinct(where, column.statistics.distinct, listed)
+    if unused:
+        raise SimulationError(
+            f"{where}: {len(texts)} lists cannot hold the {len(values)} values of its items"
+        )
+    if not is_list(texts, separator, ()):
+        raise SimulationError(f"{where}: lists of the values of its items are no lists of values")
+    return texts
+
+
+def _drawing(
+    where: str,
+    matches: tuple[Match, ...],
+    lengths: Lengths,
+    plain: Callable[[int, Random], str],
+    random: Random,
+) -> Callable[[], str]:
+    """How a text of `lengths` is drawn: of the first type of `matches`, else by `plain`.
+
+    The shortest and the longest are drawn first, the others of a length between them at random.
+    """
+    wanted = iter([lengths.shortest, lengths.longest])
+    kind = matches[0].type if matches else None
     typed = None if kind is None else _TYPED.get(kind)
     if kind is not None and typed is None:
-        raise SimulationError(
-            f"{table.name}.{column.name}: no {kind.name} is made, a semantic type of a project"
-        )
+        raise SimulationError(f"{where}: no {kind.name} is made, a semantic type of a project")
 
     def draw() -> str:
         given = next(wanted, None)
         if kind is None or typed is None:
-            return _letters(_length(given, lengths, random), random)
+            return plain(_length(given, lengths, random), random)
         # Each try of a length of its own, as not every length between the shortest and the
         # longest is one of a value of the type.
         for _ in range(_ATTEMPTS):
@@ -611,16 +745,53 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
             if len(text) == length and kind.detector.recognises(text):
                 return text
         within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"
-        raise SimulationError(
-            f"{table.name}.{column.name}: no {kind.name} of {within} characters can be made"
-        )
+        raise SimulationError(f"{where}: no {kind.name} of {within} characters can be made")
 
-    return _distinct(table, column, draw)
+    return draw
 
 
 def _length(given: int | None, lengths: Lengths, random: Random) -> int:
     """`given`, or where it is None a length from the shortest to the longest, at random."""
     return given if given is not None else random.randint(lengths.shortest, lengths.longest)
+
+
+def _possible(lengths: Lengths, separator: str, pool: dict[int, list[str]]) -> list[int]:
+    """The lengths of `lengths` a list of values of `pool`, by their lengths, can be of, in order.
+
+    Not every length between the shortest and the longest is one: a list is of a value, or of a
+    value, the separator and a shorter list.
+    """
+    possible: set[int] = set()
+    for length in range(1, lengths.longest + 1):
+        if length in pool or any(length - size - len(separator) in possible for size in pool):
+            possible.add(length)
+    return sorted(length for length in possible if length >= lengths.shortest)
+
+
+def _list(
+    length: int, separator: str, pool: dict[int, list[str]], unused: set[str], random: Random
+) -> str | None:
+    """A list of values of `pool`, by their lengths, joined by `separator`, of `length` characters.
+
+    Of the values of a length, those `unused` are drawn first, and taken from it, so that the lists
+    hold every value of the pool. None where the values drawn leave a rest no value of it fills.
+    """
+    shortest = min(pool)
+    sizes = []
+    left = length
+    while left not in pool or (left > 2 * shortest and random.random() < _LONGER):
+        # A value short enough that another of the shortest still follows it.
+        fitting = [size for size in pool if left - size - len(separator) >= shortest]
+        if not fitting:
+            return None
+        sizes.append(random.choice(fitting))
+        left -= sizes[-1] + len(separator)
+    values = []
+    for size in (*sizes, left):
+        value = random.choice([value for value in pool[size] if value in unused] or pool[size])
+        unused.discard(value)
+        values.append(value)
+    return separator.join(values)
 
 
 def _email(length: int, random: Random) -> str:
@@ -717,12 +888,11 @@ def _digits(length: int, random: Random) -> str:
     return "".join(random.choices(digits, k=length))
 
 
-def _distinct(table: Table, column: Column, draw: Callable[[], object]) -> list[object]:
-    """As many distinct values drawn by `draw` as the statistics of `column` count."""
-    count = column.statistics.distinct
+def _distinct(where: str, count: int, draw: Callable[[], object]) -> list[object]:
+    """`count` distinct values drawn by `draw`, of the column `where`."""
     pool: dict[object, None] = {}
     for _ in range(_ATTEMPTS * count):
         pool[draw()] = None
         if len(pool) == count:
             return list(pool)
-    raise SimulationError(f"{table.name}.{column.name}: {count} distinct values cannot be drawn")
+    raise SimulationError(f"{where}: {count} distinct values cannot be drawn")

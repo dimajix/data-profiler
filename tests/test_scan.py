@@ -43,10 +43,22 @@ def _scanned(
     tmp_path: Path,
     types: tuple[SemanticType, ...] = (),
     overrides: Overrides = Overrides(),  # noqa: B008  # frozen, so that no call changes it
+    list_separator: str | None = ";",
 ) -> Profile:
-    """The profile of the tables `pattern` matches, scanned into `tmp_path` as `scan` is given."""
+    """The profile of the tables `pattern` matches, scanned into `tmp_path` as `scan` is given.
+
+    The separator of lists is that of the example project unless another is given.
+    """
     workspace = _workspace(tmp_path)
-    scan(source, re.compile(pattern), workspace, types, overrides, tmp_path / "profile")
+    scan(
+        source,
+        re.compile(pattern),
+        workspace,
+        types,
+        list_separator,
+        overrides,
+        tmp_path / "profile",
+    )
     return Profile.read(tmp_path / "profile")
 
 
@@ -88,6 +100,18 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_dependencies_a
             assert abs(found.distinct - statistics.distinct) <= tolerance, (
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
             )
+            assert column.list_separator == wanted.list_separator, f"{where}: a list or none"
+            if wanted.items is not None:
+                assert column.items is not None, f"{where}: the values of its lists counted"
+                of_values, made_of = column.items.statistics, wanted.items.statistics
+                assert of_values.lengths == made_of.lengths, where
+                tolerance = _ERRORS * source.dialect.distinct_error() * made_of.distinct
+                assert abs(of_values.distinct - made_of.distinct) <= tolerance, where
+                items_matches = {match.type: match for match in column.items.matches}
+                for match in wanted.items.matches:
+                    assert items_matches.get(match.type) == match, (
+                        f"{where}: its values of {match.type.name}, in sample and on table"
+                    )
             scanned_matches = {match.type: match for match in column.matches}
             for match in wanted.matches:
                 assert scanned_matches.get(match.type) == match, (
@@ -141,6 +165,9 @@ def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
     assert columns["cust.cust_typ_cd"].values, "the values of an enumeration of no sensitivity"
     assert columns["cust.actv_flg"].values[0].value in ("true", "false"), "as the database writes"
     assert columns["cust.cust_nm"].statistics.range is not None, "a range of texts as well"
+    items = columns["cust.grp_ids"].items
+    assert items is not None
+    assert len(items.values) == 40, "the values of its lists, an enumeration of no sensitivity"
     for name in ("cntct.tel_no", "cntct.eml_adr"):
         assert columns[name].sensitivity is Sensitivity.PERSONAL, name
         assert columns[name].statistics.range is None, name
@@ -261,6 +288,9 @@ def test_a_profile_scanned_with_other_types_keeps_its_tables_until_they_are_coun
     assert not any(column.matches or column.values for column in prod.columns), (
         "a table not counted anew, without its matches and values"
     )
+    items = prod.column("sale_curr_cds").items
+    assert items is not None
+    assert (items.matches, items.values) == ((), ()), "nor those of the values of its lists"
 
 
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
@@ -333,6 +363,24 @@ def test_a_run_resumed_counts_a_table_anew_whose_sentinels_the_overrides_give_ot
     assert table.rows != -1, "counted anew"
     (column,) = [column for column in table.columns if column.name == "dlvr_pst_cd"]
     assert (column.sentinels, column.statistics.sentinels) == ((), ())
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_lists_are_of_another_separator(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "cust|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    (cust,) = failed.tables
+    assert cust.column("grp_ids").list_separator == ";"
+    # Its rows told apart from those a scan counts, to see that it is counted again.
+    failed.updated(replace(cust, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    resumed = _scanned(source, "cust|prod", tmp_path, list_separator="|")
+    table, _ = resumed.tables
+    assert table.rows != -1, "counted anew"
+    assert table.column("grp_ids").list_separator is None, "of no lists of the separator now"
 
 
 def test_a_run_resumed_counts_a_table_anew_whose_discriminator_the_overrides_give_otherwise(
@@ -410,3 +458,11 @@ def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(
     assert second.run is not None
     assert second.run.started > first.run.started, "a new run"
     assert second.tables[0].run == second.run.started, "the table is counted anew"
+
+
+def test_the_separator_of_lists_given_of_a_table_comes_before_that_of_the_project(
+    source: Source, tmp_path: Path
+) -> None:
+    given = Overrides(tables={"cust": TableOverride(list_separator="|")})
+    (cust,) = _scanned(source, "cust", tmp_path, overrides=given).tables
+    assert cust.column("grp_ids").list_separator is None, "its lists are of semicolons"

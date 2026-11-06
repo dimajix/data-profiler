@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from data_profiler.detect import EMAIL, PHONE, Sensitivity
+from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, Sensitivity
 from data_profiler.glossary import terms
 from data_profiler.overrides import (
     ColumnOverride,
@@ -21,6 +21,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
+    Findings,
     Lengths,
     Match,
     PrimaryKey,
@@ -155,6 +156,26 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
     assert '<td class="number">\u2013</td>' in page, "no share of nulls of a table without rows"
 
 
+def test_a_report_shows_a_column_of_lists_with_its_separator() -> None:
+    (table, *others) = _PROFILE.tables
+    first, *columns = table.columns
+    listed = replace(table, columns=(replace(first, list_separator=";"), *columns))
+    page = _page(profile=replace(_PROFILE, tables=(listed, *others)))
+    assert "list of values by ;" in page
+
+
+def test_a_report_shows_the_values_of_the_lists_of_a_column() -> None:
+    (table, *others) = _PROFILE.tables
+    first, *columns = table.columns
+    items = Findings(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
+    listed = replace(first, list_separator=";", items=items)
+    page = _page(
+        profile=replace(_PROFILE, tables=(replace(table, columns=(listed, *columns)), *others))
+    )
+    assert "list of values by ;: 6 distinct" in page
+    assert "currency-code 100% / 100%" in page, "its type, of the sample and of the table"
+
+
 def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:
     (table, empty) = _PROFILE.tables
     keyed = replace(
@@ -258,6 +279,22 @@ def test_a_report_shows_the_entities_by_the_share_of_their_rows_each_column_is_f
     assert (
         '<td class="original">eml_adr</td> <td class="number">100%</td> <td class="number">0%</td>'
     ) in page, "the share of the rows of each entity a column is filled in"
+
+
+def test_a_report_shows_the_entities_by_the_values_of_lists_without_rows_of_none() -> None:
+    profile = _discriminated()
+    (table, empty) = profile.tables
+    columns = tuple(
+        replace(column, list_separator=";", items=Findings(Statistics(0, 2), values=column.values))
+        if column.name == "cust_typ_cd"
+        else column
+        for column in table.columns
+    )
+    page = _page(profile=replace(profile, tables=(replace(table, columns=columns), empty)))
+    assert (
+        'Entities by <span class="original">cust_typ_cd</span>, by the values of its lists' in page
+    )
+    assert "rows of none" not in page, "a row of a list is of each entity of a value of it"
 
 
 def test_a_report_shows_the_names_and_descriptions_given_of_entities() -> None:

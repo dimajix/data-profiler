@@ -34,6 +34,14 @@ directory: `uv run data-profiler scan simulation --project examples/crm`.
 *   **`types`** gives semantic types of the project, beside those of the tool, each by a pattern its
     values match whole and its sensitivity. The profile holds them, so that it is read without its
     project.
+*   **`list_separator`** gives the character that separates the values of a list in a text, the same
+    in all tables of the database - one character, no letter, digit, `-`, `+` or `_`. `scan` takes a
+    column for one of lists where nearly every text of its sample is a list of values of letters,
+    digits, `-`, `+` and `_`, of one value or more, and one of more at least, and counts the values
+    of its lists on the whole table as it counts a column: their statistics, semantic types and
+    enumeration. The values of its lists, not its texts, are a candidate of a discriminator, a row
+    counted with each value of its list; and it is sensitive where the values of its lists are of a
+    sensitive type. The tool guesses no separator: a project without one has no columns of lists.
 
 **Variables.** A value `${NAME}` is taken from the variable `NAME`, as the whole value, never a part
 of it. The password is given only so, never written out, so that `project.yml` can be committed and
@@ -74,24 +82,27 @@ given whole in one file.
 |---|---|---|
 | the sensitivity of a column | `scan`, and every stage that reads the profile | at once: a column marked sensitive shows no values without a scan again; a mark taken out gives back values once `scan` counts the column again |
 | the sentinels of a column | `scan`, which counts the column with them | once `scan` counts the table again |
+| the separator of the lists of a table, in place of that of the project | `scan`, which finds the columns of lists by it | once `scan` counts the table again |
 | the primary key of a table | `scan`, which takes it whether or not its values are unique, and warns where they are not | once `scan` counts the table again |
 | a column that determines none, `determines: false` | `scan`, which looks for no dependency of it; the stages that read the profile drop those found of it | at once; the dependencies of the columns equivalent to it once `scan` counts the table again |
 | the discriminator of a table, or none | `scan`, which counts the entities by it | once `scan` counts the table again |
 | the names and descriptions of entities | the stages that read the profile | where the discriminator was counted with the values given |
-| the reference of a column, or none | `relate`, which does not search it but measures it, and warns where its coverage is below what a reference is found at | once `relate` relates the tables again |
+| the reference of a column, or none | `relate`, which does not search it but measures it - of a column of lists, by the values of its lists -, and warns where its coverage is below what a reference is found at | once `relate` relates the tables again |
 | concepts of the glossary | `describe`, which splits and reads the names by them, and `report` | at the next `describe`; the language model is asked of no term of a concept given |
 | the reading of a name | `describe` and `report` | once `describe` has split the name, as a reading agrees with the terms of its name |
 | the harmonized name of a table or column | `report` | at once; it comes before the name composed from the reading, and so resolves a collision of two names |
 | the description of the database, a table or a column | `describe`, which shows the first two to the language model with every question of them and asks for no column described, and `report` | at once |
 
 A scan resumed counts again the tables the overrides now give otherwise: the marks or the sentinels
-of their columns, a column that determines none, their primary keys or their discriminators. A
-column has the marks the overrides give it and no others. What the stages that read the profile lay
-over it - concepts, readings, names, descriptions, the names and descriptions of entities - is never
-written to it, so that the profile holds a reading only as `describe` read it; what `scan` and
-`relate` take - marks, sentinels, primary keys, discriminators and the values of their entities,
-references - the profile holds as given, so that the stages can tell where it was counted or related
-otherwise.
+of their columns, a column that determines none, their primary keys or their discriminators, and
+those whose columns of lists are of another separator than now given; a table of no lists cannot
+tell, and is counted with a separator given anew in the next run. A column has the marks the
+overrides give it and no others. What the stages that read the profile lay over it - concepts,
+readings, names, descriptions, the names and descriptions of entities - is never written to it, so
+that the profile holds a reading only as `describe` read it; what `scan` and `relate` take - marks,
+sentinels, primary keys, discriminators and the values of their entities, separators of lists, at
+the columns of lists, references - the profile holds as given, so that the stages can tell where it
+was counted or related otherwise.
 
 **A concept given comes before those proposed.** It takes the place of the concept proposed of its
 word, keeping only the abbreviations proposed beside those given; the terms it is written as - its
@@ -201,6 +212,29 @@ types:
   account-number:
     pattern: "A[0-9]{10}"
     sensitivity: personal
+```
+
+### Find the columns of lists
+
+Some columns hold several values in one text, `12;47;3`. The separator is the same in all tables of
+the database, given once:
+
+```yaml project.yml
+tables: .*
+environments:
+  dev:
+    url: trino://starburst.example.com:443/crm/sales
+    user: ${CRM_USER}
+    password: ${CRM_PASSWORD}
+list_separator: ";"
+```
+
+A table of another system, of other lists, is given its own:
+
+```yaml overrides.yml
+tables:
+  prod:
+    list_separator: "|"
 ```
 
 ### Describe the database and a table
@@ -395,9 +429,11 @@ of the configuration and each kind of override:
 <!-- begin file: examples/crm/project.yml -->
 ```yaml
 # The example project: the tables of the example CRM, profiled in the simulation environment.
-format: "4.0"
+format: "4.1"
 # The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
+# The character that separates the values of a list in a text, the same in all tables of the CRM.
+list_separator: ";"
 # The language model of Ollama the names are described by.
 llm: qwen3.5:2b
 # The environments, each by the URL of its schema, its user and its password; its results are kept
@@ -515,7 +551,7 @@ its description names, each with its value.
 <!-- begin reference: project.yml -->
 ### `project.yml`
 
-The document begins with `format: "4.0"`, its version.
+The document begins with `format: "4.1"`, its version.
 
 The configuration of a project, as its file holds it.
 
@@ -525,6 +561,7 @@ The configuration of a project, as its file holds it.
 | `environments` | map of [Settings](#settings) | required | The environments the database is profiled in, by their names - lower case letters, digits, `-` and `_`, beginning with a letter or a digit -, which name the directories of their results. |
 | `llm` | text | absent | The language model of Ollama that `describe` asks, as Ollama names it, or None where the project names none, so that `describe` runs only with `--without-llm`. |
 | `types` | map of [Definition](#definition) | empty | The semantic types of the project, beside those of the tool, by their names. |
+| `list_separator` | text | absent | The character that separates the values of a list in a text, the same in all tables of the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it names none, so that no column is taken for one of lists. |
 
 #### Settings
 
@@ -552,7 +589,7 @@ type of the tool.
 <!-- begin reference: overrides.yml -->
 ### `overrides.yml`
 
-The document begins with `format: "7.4"`, its version.
+The document begins with `format: "7.5"`, its version.
 
 What is given by hand of a profile: concepts, names, descriptions, columns, discriminators.
 
@@ -586,6 +623,7 @@ What is given by hand of a table and its columns.
 | `description` | text | absent | What the table holds, or None where it is not given. |
 | `discriminator` | [DiscriminatorOverride](#discriminatoroverride) or `false` | absent | The discriminator of its entities, or False where it has none, whatever is found; None where it is not given. |
 | `primary_key` | list of text | absent | The columns of its primary key, in place of the one chosen among its keys, one at least and each once, or None where it is not given. |
+| `list_separator` | text | absent | The separator of the values of the lists in its texts, in place of that of the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it is not given. |
 
 #### ColumnOverride
 
@@ -607,7 +645,7 @@ The discriminator of a table given by hand, and its entities by their harmonized
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `column` | text | required | The name of the column whose values tell the entities apart, an enumeration of no sensitivity. |
+| `column` | text | required | The name of the column whose values tell the entities apart, an enumeration of no sensitivity, or a column of lists whose values are one, which tell them apart. |
 | `entities` | map of [EntityOverride](#entityoverride) | empty | What is given of its entities, by their harmonized names, in snake_case; the values given of none join them, or are of entities found as `scan` finds them. |
 
 #### ReferenceOverride

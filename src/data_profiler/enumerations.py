@@ -11,12 +11,14 @@ into the log, and into the profile only as the module `disclosure` lets them.
 """
 
 import logging
+from collections.abc import Sequence
+from dataclasses import replace
 from typing import Final
 
 from data_profiler.detect import is_sentinel
-from data_profiler.profile import Table
+from data_profiler.profile import Table, Value
 from data_profiler.source import Source
-from data_profiler.values import counted
+from data_profiler.values import as_text, counted
 from data_profiler.workspace import Enumeration
 
 _logger = logging.getLogger(__name__)
@@ -48,7 +50,9 @@ def values(source: Source, table: Table) -> list[Enumeration]:
         if any(rows > 1 for _, rows in kept):
             ordered = tuple(sorted(kept, key=lambda v: v[1], reverse=True))
             enumerations.append(Enumeration(column=name, values=ordered))
-    _logger.info("Counted the values of %s: %d enumerations", table.name, len(enumerations))
+    _logger.info(
+        "Counted the values of %s: %d enumerations", source.name(table.name), len(enumerations)
+    )
     return enumerations
 
 
@@ -60,3 +64,26 @@ def _count(source: Source, table: str, names: list[str]) -> dict[str, list[tuple
         if value is not None:
             by_column[names[index]].append((value, counted(rows, f"{table}.{names[index]}")))
     return by_column
+
+
+def valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:
+    """`table`, each column of an enumeration with its values, as text, the most frequent first.
+
+    Args:
+        table: The table, with its columns.
+        enumerations: The enumerations of its columns, as `values` counted them.
+
+    Returns:
+        The table, each column of one of `enumerations` with its values, every other as it is.
+    """
+    found = {enumeration.column: enumeration.values for enumeration in enumerations}
+    columns = (
+        replace(
+            column,
+            values=tuple(Value(as_text(value), rows) for value, rows in found[column.name]),
+        )
+        if column.name in found
+        else column
+        for column in table.columns
+    )
+    return replace(table, columns=tuple(columns))

@@ -18,6 +18,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
+    Findings,
     Lengths,
     Match,
     PrimaryKey,
@@ -148,6 +149,20 @@ def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     )
     described.write(tmp_path)
     assert Profile.read(tmp_path) == described, "with what the database and a table hold"
+
+
+def test_a_column_of_lists_is_written_and_read_with_its_separator(tmp_path: Path) -> None:
+    (table,) = _PROFILE.tables
+    first, *others = table.columns
+    listed = replace(first, list_separator=";")
+    profile = replace(_PROFILE, tables=(replace(table, columns=(listed, *others)),))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+
+
+def test_a_column_of_lists_of_a_separator_that_cannot_be_one_is_refused(tmp_path: Path) -> None:
+    with pytest.raises(ProfileError, match=r"list_separator: 'x' is no separator of lists"):
+        Profile.read(_written(tmp_path, {"list_separator": "x"}))
 
 
 def test_a_profile_is_written_as_its_head_and_a_file_of_each_table(tmp_path: Path) -> None:
@@ -500,10 +515,19 @@ def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropp
     )
 
 
+def test_a_column_of_lists_refers_many_to_many_by_the_values_of_its_lists() -> None:
+    (table,) = _PROFILE.tables
+    first, *others = table.columns
+    listed = replace(first, list_separator=";", items=Findings(Statistics(0, 3)))
+    of_lists = replace(table, columns=(listed, *others))
+    reference = Reference(first.name, "ORD", "CUST_ID", 1.0)
+    assert of_lists.cardinality(reference) is Cardinality.MANY_TO_MANY
+
+
 def test_a_column_that_is_a_key_of_its_table_refers_one_to_one_another_many_to_one() -> None:
     (table,) = _PROFILE.tables
-    assert table.cardinality(Reference("CUST_ID", "ORD", "CUST_ID", 1.0)) is Cardinality.ONE
-    assert table.cardinality(Reference("CUST_EML", "ORD", "EML", 1.0)) is Cardinality.MANY, (
+    assert table.cardinality(Reference("CUST_ID", "ORD", "CUST_ID", 1.0)) is Cardinality.ONE_TO_ONE
+    assert table.cardinality(Reference("CUST_EML", "ORD", "EML", 1.0)) is Cardinality.MANY_TO_ONE, (
         "of a key of two columns alone"
     )
 

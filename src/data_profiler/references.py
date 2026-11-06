@@ -6,13 +6,19 @@ of them is verified, by the profile alone, without a query: a column whose type 
 refer to a key whose type is of the family of its own, whose distinct values are as many as its own
 at least, as far as those outside of the key, in rows whose reference is lost, leave, whose lengths
 hold its own, whose matches share one with its own, where both have any, and whose range overlaps
-its own. Unmistakable values, of a type such as `uuid` or of a column whose match is a UUID, refer
-to unmistakable values alone. Whole numbers that are a run from the start of the key - nearly every
+its own. A column of lists is indicated by the values of its lists, `Column.as_items`, whose
+statistics and matches are those of a column of them; they are texts, compared with a key of whole
+numbers as its numbers where they are digits, their range, counted as texts, not known where they
+are of several lengths, as `999` comes after `1000`. A column of lists is not searched for a
+reference to a key of its own table, nor measured where it is given one, as its values are read on a
+source that reads its table as a row of each of them, and would read the key so as well.
+Unmistakable values, of a type such as `uuid` or of a column whose match is a UUID, refer to
+unmistakable values alone. Whole numbers that are a run from the start of the key - nearly every
 value from the smallest of the key up to their largest -, short of its end, as a code or a counter
 is, or a key of their own table, as a key numbered from one is within any other numbered from one of
 as many values or more, refer to it only where their name agrees with it: it holds the terms of the
-name of the key and of its table. A range is compared as numbers where the column is of no text,
-else as texts.
+name of the key and of its table. A range is compared as numbers where the column is of no text, or
+of the values of lists compared as numbers, else as texts.
 
 Each reference indicated is probed: `_PROBES` values of its column, taken at random, looked up in
 the whole key by the database, so that no value leaves it, the keys of a query `PER_QUERY` of the
@@ -22,7 +28,9 @@ rows. A column of unmistakable values refers to a key where more than `_UNMISTAK
 are found, as one found tells where they come from; another is dropped where fewer than `_PROBED`
 are found, and its coverage counted on the whole table, the references of a query `PER_QUERY` at
 most: it refers to the key where `_COVERAGE` of its values, nulls and sentinels aside, are found in
-it.
+it. A column of lists is probed and counted on a source of a row of each value of its lists,
+`Source.unnested`, by queries of its own, so that the rows of no other column are repeated; its
+reference is many to many.
 
 A column of unmistakable values refers to the key of the most values found, then of the table of the
 fewest rows, the most specific. Another that refers to one key alone has that reference; one that
@@ -37,7 +45,7 @@ database.
 """
 
 import logging
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from itertools import batched, groupby
@@ -106,6 +114,20 @@ class _Pair:
         """The expression of the values of the column, its sentinels left aside as nulls."""
         return dialect.without(self.column.name, self.column.type, self.column.left_aside)
 
+    @property
+    def present(self) -> int:
+        """How many values the column has, nulls and sentinels aside; of lists, as many as its rows.
+
+        A list holds one value at least, so that the rows of the lists of a column of lists are as
+        many as its values at least, which a share of them taken holds as many of.
+        """
+        return _present(self.table, self.table.column(self.column.name))
+
+    @property
+    def separator(self) -> str | None:
+        """The separator of the lists of the column, where it refers by their values, else None."""
+        return self.table.column(self.column.name).items_separator
+
 
 def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences]) -> Profile:
     """`profile`, each table with the references and reference candidates of its columns.
@@ -123,7 +145,8 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         given none; none where none is found, with no query where none is indicated and none given.
 
     Raises:
-        SourceError: The database fails to probe the references or to count their coverage.
+        SourceError: The database fails to list the columns of a table of a column of lists, to
+            probe the references or to count their coverage.
     """
     dialect = source.dialect
     keys = [
@@ -134,7 +157,7 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         if not more
     ]
     pairs = [
-        _Pair(table, column, target, key)
+        _Pair(table, column.as_items, target, key)
         for table in profile.tables
         for column in table.columns
         if column.name not in given.get(table.name, {})
@@ -142,11 +165,12 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         and dialect.identifies(column.type)
         for target, key in keys
         if (target.name, key.name) != (table.name, column.name)
-        and _indicated(dialect, _Pair(table, column, target, key))
+        and not _of_its_lists(table, column, target)
+        and _indicated(dialect, _Pair(table, column.as_items, target, key))
     ]
     found: list[tuple[_Pair, float]] = []
     counting = []
-    for pair, share in zip(pairs, _probed(source, pairs), strict=True):
+    for pair, share in zip(pairs, _on_sources(source, pairs, _probed), strict=True):
         if _unmistakable(dialect, pair.column):
             if share > _UNMISTAKABLE:
                 found.append((pair, share))
@@ -154,7 +178,7 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
             counting.append(pair)
     covered = [
         (pair, coverage)
-        for pair, coverage in zip(counting, _covered(source, counting), strict=True)
+        for pair, coverage in zip(counting, _on_sources(source, counting, _covered), strict=True)
         if coverage >= _COVERAGE
     ]
     references: dict[str, list[Reference]] = {}
@@ -185,22 +209,31 @@ def _measured(
 
     The coverage of each is counted, or unmistakable values probed, and warned of where it falls
     below what a reference is found at, or the column referred to is no key of one column; it is
-    the reference all the same, as the overrides are of all environments.
+    the reference all the same, as the overrides are of all environments. A column of lists given a
+    key of its own table is not measured, but warned of, as its values would be read with the key.
     """
     dialect = source.dialect
     pairs = [
-        _Pair(table, table.column(name), target, target.column(key.column))
+        _Pair(table, table.column(name).as_items, target, target.column(key.column))
         for table in profile.tables
         for name, key in given.get(table.name, {}).items()
         if key is not False
         for target in (profile.table(key.table),)
     ]
-    probing = [pair for pair in pairs if _unmistakable(dialect, pair.column)]
-    counting = [pair for pair in pairs if not _unmistakable(dialect, pair.column)]
-    for pair, share in zip(probing, _probed(source, probing), strict=True):
+    unmeasured = [
+        pair
+        for pair in pairs
+        if _of_its_lists(pair.table, pair.table.column(pair.column.name), pair.target)
+    ]
+    for pair in unmeasured:
+        _warn(pair, "a key of the table of its lists, which is not measured")
+    measured = [pair for pair in pairs if pair not in unmeasured]
+    probing = [pair for pair in measured if _unmistakable(dialect, pair.column)]
+    counting = [pair for pair in measured if not _unmistakable(dialect, pair.column)]
+    for pair, share in zip(probing, _on_sources(source, probing, _probed), strict=True):
         if share <= _UNMISTAKABLE:
             _warn(pair, "most of whose values probed are not found in it")
-    coverages = dict(zip(counting, _covered(source, counting), strict=True))
+    coverages = dict(zip(counting, _on_sources(source, counting, _covered), strict=True))
     for pair, coverage in coverages.items():
         if coverage < _COVERAGE:
             _warn(pair, f"which holds {coverage:.0%} of its values")
@@ -248,17 +281,62 @@ def _numeric(dialect: Dialect, column: Column) -> bool:
     return not dialect.is_text(column.type) and not _unmistakable(dialect, column)
 
 
+def _of_its_lists(table: Table, column: Column, target: Table) -> bool:
+    """Whether `column` of `table` is one of lists that would refer to a key of its own table.
+
+    Its values are read on a source that reads its table as a row of each of them, which would read
+    the key so as well; such a reference is not searched, nor measured where it is given.
+    """
+    return column.items_separator is not None and target.name == table.name
+
+
+def _as_numbers(dialect: Dialect, pair: _Pair) -> bool:
+    """Whether the values of the column of `pair` are compared with its key as numbers.
+
+    The values of lists are texts, of digits where they refer to a key of whole numbers, whose
+    values they are as text: they are compared as the numbers of the key are.
+    """
+    key = pair.key.type
+    if (
+        pair.separator is not None
+        and dialect.is_surrogate(key)
+        and not dialect.is_unmistakable(key)
+    ):
+        return _whole(pair.column.statistics.range, numeric=True) is not None
+    return _numeric(dialect, pair.column)
+
+
+def _range(dialect: Dialect, pair: _Pair) -> Range | None:
+    """The range of the column of `pair` as it is compared with its key, or None where not known.
+
+    The range of values of lists is counted as text, whose order is not that of the numbers of
+    digits of several lengths, `999` after `1000`: compared as numbers, it is not known.
+    """
+    lengths = pair.column.statistics.lengths
+    several = lengths is None or lengths.shortest != lengths.longest
+    if pair.separator is not None and several and _as_numbers(dialect, pair):
+        return None
+    return pair.column.statistics.range
+
+
 def _indicated(dialect: Dialect, pair: _Pair) -> bool:
     """Whether the profile indicates that the column of `pair` refers to its key."""
     column, key = pair.column.statistics, pair.key.statistics
     unmistakable = _unmistakable(dialect, pair.column)
     if unmistakable != _unmistakable(dialect, pair.key):
         return False
-    # Unmistakable values are compared as text whatever their types: UUIDs of the type and as text.
-    if not unmistakable and not dialect.is_same_family(pair.column.type, pair.key.type):
+    # Unmistakable values are compared as text whatever their types: UUIDs of the type and as text;
+    # values of lists as the numbers of their key where they are numbers.
+    numeric = _as_numbers(dialect, pair)
+    listed = pair.separator is not None and numeric
+    if (
+        not unmistakable
+        and not listed
+        and not dialect.is_same_family(pair.column.type, pair.key.type)
+    ):
         return False
     # Those outside of the key are in one row each at most.
-    outside = (1 - _COVERAGE) * _present(pair.table, pair.column)
+    outside = (1 - _COVERAGE) * pair.present
     spread = 1 + _ERRORS * dialect.distinct_error()
     if column.distinct > spread * key.distinct + outside:
         return False
@@ -270,9 +348,8 @@ def _indicated(dialect: Dialect, pair: _Pair) -> bool:
     matched = {match.type for match in pair.column.matches}
     if matched and pair.key.matches and not matched & {match.type for match in pair.key.matches}:
         return False
-    numeric = _numeric(dialect, pair.column)
-    overlapping = _overlaps(column.range, key.range, numeric=numeric)
-    return overlapping and (not _run(pair, numeric=numeric) or _named(pair))
+    overlapping = _overlaps(_range(dialect, pair), key.range, numeric=numeric)
+    return overlapping and (not _run(dialect, pair, numeric=numeric) or _named(pair))
 
 
 def _overlaps(found: Range | None, key: Range | None, *, numeric: bool) -> bool:
@@ -315,7 +392,7 @@ def _whole(found: Range | None, *, numeric: bool) -> tuple[int, int] | None:
     return int(numbers[0]), int(numbers[1])
 
 
-def _run(pair: _Pair, *, numeric: bool) -> bool:
+def _run(dialect: Dialect, pair: _Pair, *, numeric: bool) -> bool:
     """Whether the column of `pair` is a run its key holds by chance, unless its name agrees.
 
     A run is of whole numbers from the start of the key, nearly all of the values from its smallest
@@ -323,7 +400,7 @@ def _run(pair: _Pair, *, numeric: bool) -> bool:
     column, as a key numbered from one is within any other numbered from one of as many values or
     more. Another column that holds nearly every value of the key refers to it whatever its name.
     """
-    column = _whole(pair.column.statistics.range, numeric=numeric)
+    column = _whole(_range(dialect, pair), numeric=numeric)
     key = _whole(pair.key.statistics.range, numeric=numeric)
     if column is None or key is None:
         return False
@@ -349,8 +426,8 @@ def _misfit(dialect: Dialect, pair: _Pair) -> float:
     Of as many values chosen at random of the key, the span expected is the share
     `(d - 1) / (d + 1)` of the span of the key; of other than whole numbers, none is known.
     """
-    numeric = _numeric(dialect, pair.column)
-    column = _whole(pair.column.statistics.range, numeric=numeric)
+    numeric = _as_numbers(dialect, pair)
+    column = _whole(_range(dialect, pair), numeric=numeric)
     key = _whole(pair.key.statistics.range, numeric=numeric)
     if column is None or key is None or key[1] == key[0]:
         return 0.0
@@ -391,6 +468,33 @@ def _related(
     )
 
 
+def _on_sources(
+    source: Source,
+    pairs: Sequence[_Pair],
+    measure: Callable[[Source, Sequence[_Pair]], list[float]],
+) -> list[float]:
+    """Of each of `pairs`, the share `measure` gives of it, of a column of lists by its values.
+
+    The pairs of a column of lists are measured on a source of a row of each value of its lists,
+    those of each such column on their own, so that the rows of no other column are repeated; the
+    others on `source`, together.
+    """
+    shares = [0.0] * len(pairs)
+    # Of each column of lists its table, its name and its separator; of the others none.
+    groups: dict[tuple[str, str, str] | None, list[int]] = {}
+    for place, pair in enumerate(pairs):
+        separator = pair.separator
+        group = None if separator is None else (*pair.referring, separator)
+        groups.setdefault(group, []).append(place)
+    for group, places in groups.items():
+        on = source if group is None else source.unnested(*group)
+        for place, share in zip(
+            places, measure(on, [pairs[place] for place in places]), strict=True
+        ):
+            shares[place] = share
+    return shares
+
+
 def _probed(source: Source, pairs: Sequence[_Pair]) -> list[float]:
     """Of each of `pairs`, the share of the values probed of its column found in its key.
 
@@ -429,7 +533,7 @@ def _place[Placed](value: object, places: Sequence[Placed]) -> Placed:
 def _probe(dialect: Dialect, pair: _Pair) -> Probe:
     """The probe of the column of `pair`, of a share of the rows of its table to take its values."""
     # A column of no values, given, is read whole.
-    share = min(100.0, 100.0 * _SPARE * _PROBES / max(1, _present(pair.table, pair.column)))
+    share = min(100.0, 100.0 * _SPARE * _PROBES / max(1, pair.present))
     return Probe(pair.table.name, pair.values(dialect), share)
 
 
