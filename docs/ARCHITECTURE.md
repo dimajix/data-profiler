@@ -162,7 +162,9 @@ names it, to `describe`, unless it is to ask none. The semantic types of a proje
     the candidates are indicated first: by the approximate distinct counts of the statistics, which
     reach the rows, and by the sample, in which they are unique; few are verified, in few queries.
     The **primary key** is the one that identifies the rows in a data model: of the keys, the one of
-    the fewest columns, then of the types a database generates keys of, then the first.
+    the fewest columns, then of the types a database generates keys of, then the first, unless an
+    override gives it, which is taken whether or not its values are unique - warned of where they
+    are not.
 *   **Group** - columns of a table filled together, such as the street, the postal code and the
     city of a delivery address: in mostly the same rows of its sample, a column filled in a row
     where it holds a value, neither null nor a sentinel. Found by the Jaccard index of the rows
@@ -207,19 +209,20 @@ names it, to `describe`, unless it is to ask none. The semantic types of a proje
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
     laid over a generated profile: what the database holds, concepts of the glossary, the reading of
     a name, the harmonized name of a table or column, the description of a table or column, the
-    sensitivity and the sentinels of a column, and the discriminator of a table, with the values,
-    the name and the description of its entities, or none. What the database and a table hold, the
-    language model is shown with every question of them. What it gives is taken as given by every
-    stage: by `scan`, which counts the columns with their sentinels, marks them and tells the
-    entities apart by the discriminator given, by `describe`, which splits and reads the names by
-    the concepts given and asks the language model for nothing given, as by `report`, which lays the
-    concepts, readings, names, descriptions and marks over the profile; sentinels and
-    discriminators changed count once `scan` counts the table again, and a reading given once
-    `describe` has split its name. A name given comes before the one composed from the reading, so
-    that it resolves a collision of harmonized names. A concept given takes the place of the one
-    proposed of its word, keeping of it the abbreviations proposed beside those given, and the terms
-    it is written as are taken from the abbreviations of the others; the word of another stays a
-    term of it, so that a term given may stand for either, as the reading of its name says.
+    sensitivity and the sentinels of a column, the primary key of a table, and the discriminator of
+    a table, with the values, the name and the description of its entities, or none. What the
+    database and a table hold, the language model is shown with every question of them. What it
+    gives is taken as given by every stage: by `scan`, which counts the columns with their
+    sentinels, marks them, takes the primary key given and tells the entities apart by the
+    discriminator given, by `describe`, which splits and reads the names by the concepts given and
+    asks the language model for nothing given, as by `report`, which lays the concepts, readings,
+    names, descriptions and marks over the profile; sentinels, primary keys and discriminators
+    changed count once `scan` counts the table again, and a reading given once `describe` has split
+    its name. A name given comes before the one composed from the reading, so that it resolves a
+    collision of harmonized names. A concept given takes the place of the one proposed of its word,
+    keeping of it the abbreviations proposed beside those given, and the terms it is written as are
+    taken from the abbreviations of the others; the word of another stays a term of it, so that a
+    term given may stand for either, as the reading of its name says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 
@@ -233,20 +236,21 @@ names it, to `describe`, unless it is to ask none. The semantic types of a proje
     sample into the workspace. The detectors check the values of the sample, its sentinels aside;
     the semantic types they find are verified on the whole table by the patterns of the detectors in
     SQL. Its keys are indicated by the statistics and the sample, and verified on the whole table,
-    and the primary key chosen among them. The columns filled together in the sample are named as
-    groups. Of the enumerations of no sensitivity, the one whose values tell entities of the rows
-    apart is the discriminator, its entities counted by one more query. The overrides of the project
-    give the sentinels of a column in place of those of the tool, mark the columns the detectors
-    miss, and give the discriminator of a table and entities of it, or none. The result is the
-    profile, with the ranges and the values of enumerations of the columns of no sensitivity,
-    written after every table: a scan that fails keeps the tables before it, and the next scan
-    resumes its run, skipping the tables it counted, unless the overrides now give their columns or
-    their discriminators otherwise. It updates the profile there is: the tables no longer selected
-    are dropped, the others kept until they are counted anew, and what the other stages filled is
-    kept - the glossary, the terms and readings of the names that stay, and the descriptions of the
-    columns; a profile scanned with other semantic types keeps its tables without their matches,
-    values, ranges and discriminators, until they are counted anew. A profile that cannot be read,
-    or one of another schema, is refused and never overwritten: it may be the work of hours.
+    and the primary key chosen among them, unless the overrides give it. The columns filled together
+    in the sample are named as groups. Of the enumerations of no sensitivity, the one whose values
+    tell entities of the rows apart is the discriminator, its entities counted by one more query.
+    The overrides of the project give the sentinels of a column in place of those of the tool, mark
+    the columns the detectors miss, and give the primary key of a table, and its discriminator and
+    entities of it, or none. The result is the profile, with the ranges and the values of
+    enumerations of the columns of no sensitivity, written after every table: a scan that fails
+    keeps the tables before it, and the next scan resumes its run, skipping the tables it counted,
+    unless the overrides now give their columns, their primary keys or their discriminators
+    otherwise. It updates the profile there is: the tables no longer selected are dropped, the
+    others kept until they are counted anew, and what the other stages filled is kept - the
+    glossary, the terms and readings of the names that stay, and the descriptions of the columns; a
+    profile scanned with other semantic types keeps its tables without their matches, values, ranges
+    and discriminators, until they are counted anew. A profile that cannot be read, or one of
+    another schema, is refused and never overwritten: it may be the work of hours.
 2.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,

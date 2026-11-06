@@ -166,6 +166,20 @@ def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:
     assert page.count('<p class="keys">') == 1, "none of a table of no keys"
 
 
+def test_a_report_shows_a_primary_key_given_and_whether_it_is_one_of_the_keys() -> None:
+    (table, empty) = _PROFILE.tables
+    given = PrimaryKey(("cust_nm", "tel_no"), given=True)
+    keyed = replace(table, keys=(("cust_nm", "tel_no"),), primary_key=given)
+    page = _page(profile=replace(_PROFILE, tables=(keyed, empty)))
+    assert '<span class="original">cust_nm, tel_no</span> (primary, given)' in page
+    unkeyed = replace(table, keys=(("eml_adr",),), primary_key=given)
+    page = _page(profile=replace(_PROFILE, tables=(unkeyed, empty)))
+    assert (
+        '<span class="original">eml_adr</span> · <span class="original">cust_nm, tel_no</span>'
+        " (primary, given; not one of the keys)"
+    ) in page
+
+
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:
     assert 'Filled together: <span class="original">eml_adr, tel_no</span> (95%)' in _page()
 

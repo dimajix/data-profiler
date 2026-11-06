@@ -5,10 +5,10 @@ project, the same for all its environments: what the database holds, concepts of
 reading of the name of a table or column, the harmonized name of a table or column, the description
 of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
 which gives back no values `scan` took out -, the sentinels of a column, in place of those of the
-tool, and the discriminator of a table, with the names, values and descriptions of its entities, or
-`false` for none, whatever is found. Concepts are named by their words, entities by their harmonized
-names, tables and columns by their original names, as keys, so that a person writes no more than
-what is given.
+tool, the primary key of a table, by its columns, and the discriminator of a table, with the names,
+values and descriptions of its entities, or `false` for none, whatever is found. Concepts are named
+by their words, entities by their harmonized names, tables and columns by their original names, as
+keys, so that a person writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
@@ -36,22 +36,24 @@ which counts the table with it, and counts once it counts the table again, as se
 profile holds the values given of its entities that a discriminator was counted with. The names and
 descriptions of its entities are laid over by the stages that read the profile, each of the entity
 that holds the values given of one, where the discriminator was counted with those given; where it
-was not, they warn of it.
+was not, they warn of it. A primary key given is taken by `scan` as well, verified with the keys it
+finds and the primary key whether or not its values are unique, which it warns of; the profile holds
+that it was given, so that it counts once `scan` counts the table again.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
 not have and the sentinels given of a column whose values the database writes as no text, which has
-none, and a discriminator given of a column they mark of a sensitivity, of entities of no values, or
-of a value twice - of a column of no values the profile holds, and of values given that the column
-does not hold, it warns, leaving them out, as the overrides are the same for all environments -; it
-does not check the concepts, readings and names, which it does not use. A stage that reads the
-profile refuses a table or a column the profile does not have, a reading of a name that is not one
-of its terms, as the vocabulary splits it - of another number of words, or a word of no concept of
-the term at its place -, a name given other than in snake_case, that of an entity among them, and a
-discriminator given as `scan` does. An abbreviation given that no name of the profile has is no
-mistake, as the overrides are the same for all environments of a project, whose tables differ: a
-stage that reads the profile warns of it, once, so that one written in another case than the terms
-of the names, which are in lower case, is seen.
+none, a primary key of no columns or of one twice, and a discriminator given of a column they mark
+of a sensitivity, of entities of no values, or of a value twice - of a column of no values the
+profile holds, and of values given that the column does not hold, it warns, leaving them out, as the
+overrides are the same for all environments -; it does not check the concepts, readings and names,
+which it does not use. A stage that reads the profile refuses a table or a column the profile does
+not have, a reading of a name that is not one of its terms, as the vocabulary splits it - of another
+number of words, or a word of no concept of the term at its place -, a name given other than in
+snake_case, that of an entity among them, and a discriminator given as `scan` does. An abbreviation
+given that no name of the profile has is no mistake, as the overrides are the same for all
+environments of a project, whose tables differ: a stage that reads the profile warns of it, once, so
+that one written in another case than the terms of the names, which are in lower case, is seen.
 """
 
 import logging
@@ -73,12 +75,12 @@ from data_profiler.glossary import (
     snake_case,
     written_as,
 )
-from data_profiler.profile import Concept, Discriminator, Profile, Table
+from data_profiler.profile import Concept, Discriminator, PrimaryKey, Profile, Table
 
 _logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `documents` says.
-_FORMAT: Final = Version(7, 1)
+_FORMAT: Final = Version(7, 2)
 
 
 class OverridesError(Exception):
@@ -160,6 +162,8 @@ class TableOverride:
         description: What the table holds, or None where it is not given.
         discriminator: The discriminator of its entities, or False where it has none, whatever is
             found; None where it is not given.
+        primary_key: The columns of its primary key, in place of the one chosen among its keys,
+            one at least and each once, or None where it is not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
@@ -167,6 +171,7 @@ class TableOverride:
     name: str | None = None
     description: str | None = None
     discriminator: GivenDiscriminator = None
+    primary_key: tuple[str, ...] | None = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -193,11 +198,12 @@ class TableOverride:
             the module `disclosure` to decide on.
 
         Raises:
-            OverridesError: A column is named that the table does not have, or a discriminator is
-                given of a column they mark of a sensitivity, or of entities of no values, or of a
-                value twice.
+            OverridesError: A column is named that the table does not have, or a primary key is
+                given of no columns or of a column twice, or a discriminator of a column they mark
+                of a sensitivity, or of entities of no values, or of a value twice.
         """
         self._refuse_missing(table)
+        self._refuse_primary_key(table)
         columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
         marked = replace(table, columns=tuple(columns))
         self._refuse_discriminator(marked)
@@ -279,18 +285,21 @@ class TableOverride:
 
         Returns:
             True where `laid_over` would leave the table as it is, each column was counted with the
-            sentinels given of it, and the table was discriminated as given: its discriminator
-            counted with the values given of its entities, none where False is given, and one
-            found or none where nothing is given; False where it would mark its columns otherwise,
-            a column was counted with others, the table was discriminated otherwise, or it lacks a
+            sentinels given of it, the table has the primary key given, or one chosen where none
+            is given, and was discriminated as given: its discriminator counted with the values
+            given of its entities, none where False is given, and one found or none where nothing
+            is given; False where it would mark its columns otherwise, a column was counted with
+            others, the table has another primary key, was discriminated otherwise, or lacks a
             column that is named.
 
         Raises:
-            OverridesError: The discriminator given is refused, as `laid_over` says.
+            OverridesError: The primary key or the discriminator given is refused, as
+                `laid_over` says, where the table has the primary key and the discriminator given.
         """
         return (
             not self._missing(table)
             and _as_given(self.discriminator, table.discriminator)
+            and _keyed_as_given(self.primary_key, table.primary_key)
             and self.laid_over(table) == table
             and not self._counted_otherwise(table)
         )
@@ -305,10 +314,11 @@ class TableOverride:
             table: The table, as `statistics.count` counted it.
 
         Raises:
-            OverridesError: A column is named that the table does not have, or sentinels are
-                given of a column of no text.
+            OverridesError: A column is named that the table does not have, a primary key is given
+                of no columns or of a column twice, or sentinels are given of a column of no text.
         """
         self._refuse_missing(table)
+        self._refuse_primary_key(table)
         refused = self._counted_otherwise(table)
         if refused:
             raise OverridesError(
@@ -317,8 +327,8 @@ class TableOverride:
             )
 
     def _missing(self, table: Table) -> list[str]:
-        """The columns given, the discriminator among them, that `table` does not have, sorted."""
-        named = set(self.columns)
+        """The columns named, of the primary key and the discriminator too, `table` lacks."""
+        named = set(self.columns) | set(self.primary_key or ())
         if self._discriminator is not None:
             named.add(self._discriminator.column)
         return sorted(named - {column.name for column in table.columns})
@@ -335,6 +345,24 @@ class TableOverride:
         """The columns of `table` counted with other sentinels than given, sorted by their names."""
         given = self.sentinels
         return sorted(c.name for c in table.columns if c.sentinels != given.get(c.name))
+
+    def _refuse_primary_key(self, table: Table) -> None:
+        """Refuses the primary key given of `table` where it is of no columns or of one twice.
+
+        Raises:
+            OverridesError: The primary key is given of no columns, or of a column twice.
+        """
+        given = self.primary_key
+        if given is None:
+            return
+        if not given:
+            raise OverridesError(f"the overrides give a primary key of {table.name} of no columns")
+        twice = sorted({name for name in given if given.count(name) > 1})
+        if twice:
+            raise OverridesError(
+                f"the overrides give a primary key of {table.name} of columns twice: "
+                + ", ".join(twice)
+            )
 
     def _refuse_discriminator(self, table: Table) -> None:
         """Refuses the discriminator given of `table`, its columns marked, where it cannot be one.
@@ -516,6 +544,13 @@ class Overrides:
     def _with_concepts(self, profile: Profile) -> Profile:
         """`profile`, the concepts given in its glossary before its own."""
         return replace(profile, glossary=_laid_over(self.glossary, profile.glossary))
+
+
+def _keyed_as_given(given: tuple[str, ...] | None, primary: PrimaryKey | None) -> bool:
+    """Whether a table of `primary` has the primary key `given`, as `agrees_with` says."""
+    if given is None:
+        return primary is None or not primary.given
+    return primary is not None and primary.given and set(primary.columns) == set(given)
 
 
 def _as_given(given: GivenDiscriminator, discriminator: Discriminator | None) -> bool:

@@ -15,9 +15,12 @@ which count the rows and the distinct values of each candidate exactly, `_PER_QU
 most in one, as each count holds the values of the table in memory: a candidate is a key where they
 are as many as the rows.
 
-The primary key is the key of the fewest columns, then of whole numbers or UUIDs, as a database
-generates keys, then the first in the table. The keys name columns alone, and no values of the
-database.
+The primary key is the one the overrides give, verified with the candidates: a key where it is
+unique, of columns that take part, two at most, and holds no key verified of fewer columns; warned
+of where its values are not unique, but the primary key all the same, as the overrides are of all
+environments. Else it is the key of the fewest columns, then of whole numbers or UUIDs, as a
+database generates keys, then the first in the table. The keys name columns alone, and no values of
+the database.
 """
 
 import logging
@@ -41,18 +44,21 @@ _PAIRS: Final = 10
 _PER_QUERY: Final = 10
 
 
-def identify(source: Source, table: Table, sample: Sample) -> Table:
-    """`table` with its keys of one and two columns, verified on the whole table, and its primary.
+def identify(source: Source, table: Table, sample: Sample, given: tuple[str, ...] | None) -> Table:
+    """`table` with its keys, verified on the whole table, and its primary: given, else chosen.
 
     Args:
         source: The schema the table is in.
         table: The table, its rows counted and its columns with their statistics.
         sample: The sample of the table, with the values of each of its columns.
+        given: The columns of the primary key the overrides give, of the table; None where they
+            give none.
 
     Returns:
-        The table with its keys, the fewer columns first, then by the places of their columns, and
-        its primary key; none of either where no candidate is unique, with no query where there is
-        no candidate.
+        The table with its keys, the fewer columns first, then by the places of their columns -
+        the key given among them where it is one -, and its primary key: the one given, else the
+        one chosen; none of either where no candidate is unique and none is given, with no query
+        where there is no candidate and none is given.
 
     Raises:
         SourceError: The database fails to count the values of the candidates.
@@ -75,29 +81,50 @@ def identify(source: Source, table: Table, sample: Sample) -> Table:
     ]
     # A column unique in the sample takes part in no pair: it shows nothing a pair tells apart.
     paired = [column for column in taking if not unique[column.name]]
-    keys = _verified(source, table, singles + _pairs(table, paired, sample))
+    candidates = singles + _pairs(table, paired, sample)
     places = {column.name: place for place, column in enumerate(table.columns)}
-    keys.sort(key=lambda key: (len(key), [places[name] for name in key]))
-    # The fewest columns, then of the types a database generates keys of, then the first.
-    primary = min(
-        keys,
-        key=lambda key: (
-            len(key),
-            not all(dialect.is_surrogate(table.column(name).type) for name in key),
-        ),
-        default=None,
+    ordered = None if given is None else tuple(sorted(given, key=places.__getitem__))
+    asked = (
+        [*candidates, ordered] if ordered is not None and ordered not in candidates else candidates
     )
+    verified = _verified(source, table, asked)
+    if ordered is not None and ordered not in verified:
+        _logger.warning(
+            "The overrides give the primary key of %s as %s, whose values are not unique",
+            table.name,
+            ", ".join(ordered),
+        )
+    # Of the candidates none holds another; the key given is one where it is of columns that take
+    # part, two at most, as a candidate is, and holds none verified.
+    took = {column.name for column in taking}
+    keys = [
+        key
+        for key in verified
+        if key in candidates
+        or (len(key) <= 2 and took.issuperset(key) and not any(set(o) < set(key) for o in verified))
+    ]
+    keys.sort(key=lambda key: (len(key), [places[name] for name in key]))
+    primary: PrimaryKey | None
+    if ordered is not None:
+        primary = PrimaryKey(columns=ordered, given=True)
+    else:
+        # The fewest columns, then of the types a database generates keys of, then the first.
+        chosen = min(
+            keys,
+            key=lambda key: (
+                len(key),
+                not all(dialect.is_surrogate(table.column(name).type) for name in key),
+            ),
+            default=None,
+        )
+        primary = None if chosen is None else PrimaryKey(columns=chosen)
     _logger.info(
         "Identified the keys of %s: %d, the primary %s",
         table.name,
         len(keys),
-        "none" if primary is None else ", ".join(primary),
+        "none" if primary is None else ", ".join(primary.columns),
     )
-    return replace(
-        table,
-        keys=tuple(keys),
-        primary_key=None if primary is None else PrimaryKey(columns=primary),
-    )
+    return replace(table, keys=tuple(keys), primary_key=primary)
 
 
 def _pairs(table: Table, paired: Sequence[Column], sample: Sample) -> list[tuple[str, ...]]:

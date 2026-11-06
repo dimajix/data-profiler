@@ -105,14 +105,20 @@
     {% endfor %}
     </tbody>
   </table>
-  {% if table.keys %}
-  {% set primary = table.primary_key.columns if table.primary_key else none %}
+  {% set primary = table.primary_key %}
+  {% if table.keys or primary %}
+  {% set marked = "primary, given" if primary and primary.given else "primary" %}
   <p class="keys">
     Keys:
     {% for key in table.keys %}
-    <span class="original">{{ key | join(", ") }}</span>{% if key == primary %} (primary){% endif %}
+    <span class="original">{{ key | join(", ") }}</span>
+    {%- if primary and key == primary.columns %} ({{ marked }}){% endif %}
     {% if not loop.last %} · {% endif %}
     {% endfor %}
+    {% if primary and primary.columns not in table.keys %}
+    {% if table.keys %} · {% endif %}
+    <span class="original">{{ primary.columns | join(", ") }}</span> ({{ marked }}; not one of the keys)
+    {% endif %}
   </p>
   {% endif %}
   {% for name, shared in collisions(table).items() %}

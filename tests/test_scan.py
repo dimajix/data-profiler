@@ -15,7 +15,7 @@ from data_profiler.overrides import (
     OverridesError,
     TableOverride,
 )
-from data_profiler.profile import Concept, Match, Profile, ProfileError, Table
+from data_profiler.profile import Concept, Match, PrimaryKey, Profile, ProfileError, Table
 from data_profiler.scan import scan
 from data_profiler.source import Source
 from data_profiler.workspace import Workspace, WorkspaceError
@@ -346,6 +346,37 @@ def test_a_scan_tells_the_entities_apart_by_the_discriminator_the_overrides_give
         ("KX",),
     ]
     assert given.agrees_with(table)
+
+
+def test_a_scan_takes_the_primary_key_the_overrides_give(source: Source, tmp_path: Path) -> None:
+    given = Overrides(tables={"ord_itm": TableOverride(primary_key=("pos_no", "ord_id"))})
+    (table,) = _scanned(source, "ord_itm", tmp_path, overrides=given).tables
+    assert table.primary_key == PrimaryKey(("ord_id", "pos_no"), given=True)
+    assert ("ord_itm_id",) in table.keys, "the key it would have chosen among the keys"
+    assert given.tables["ord_itm"].agrees_with(table)
+
+
+def test_a_primary_key_given_of_no_columns_is_refused_before_it_is_verified(
+    source: Source, tmp_path: Path
+) -> None:
+    given = Overrides(tables={"prod": TableOverride(primary_key=())})
+    with pytest.raises(OverridesError, match="a primary key of prod of no columns"):
+        _scanned(source, "prod", tmp_path, overrides=given)
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_primary_key_the_overrides_give_otherwise(
+    source: Source, tmp_path: Path
+) -> None:
+    scanned = _scanned(source, "prod", tmp_path)
+    assert scanned.run is not None
+    (prod,) = scanned.tables
+    # A run that did not finish, its table told apart from those a scan counts.
+    unfinished = replace(scanned, run=replace(scanned.run, finished=None))
+    unfinished.updated(replace(prod, rows=-1)).write(tmp_path / "profile")
+    given = Overrides(tables={"prod": TableOverride(primary_key=("prod_cd",))})
+    (table,) = _scanned(source, "prod", tmp_path, overrides=given).tables
+    assert table.rows != -1, "counted anew"
+    assert table.primary_key == PrimaryKey(("prod_cd",), given=True)
 
 
 def test_a_run_that_finished_is_followed_by_a_new_one_counting_every_table(

@@ -20,6 +20,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
+    PrimaryKey,
     Profile,
     Range,
     Statistics,
@@ -407,6 +408,34 @@ def test_a_discriminator_given_otherwise_than_counted_is_warned_of(
     assert caplog.messages == [], "a discriminator found, none given"
 
 
+def test_a_table_agrees_with_the_overrides_where_it_has_the_primary_key_given() -> None:
+    (table,) = _PROFILE.tables
+    chosen = replace(table, primary_key=PrimaryKey(("frst_nm",)))
+    given = replace(table, primary_key=PrimaryKey(("cntct_typ_cd", "frst_nm"), given=True))
+    keyed = TableOverride(primary_key=("frst_nm", "cntct_typ_cd"))
+    assert keyed.agrees_with(given), "of the same columns, in whatever order"
+    assert not keyed.agrees_with(chosen)
+    assert not keyed.agrees_with(table), "of none"
+    assert TableOverride().agrees_with(chosen), "none given, whatever is chosen"
+    assert not TableOverride().agrees_with(given), "given, and no longer"
+
+
+@pytest.mark.parametrize(
+    ("given", "problem"),
+    [
+        (("frst_nm", "kind"), "columns of cntct it does not have: kind"),
+        ((), "a primary key of cntct of no columns"),
+        (("frst_nm", "frst_nm"), "a primary key of cntct of columns twice: frst_nm"),
+    ],
+    ids=["a column missing", "no columns", "a column twice"],
+)
+def test_a_primary_key_given_that_cannot_be_one_is_refused(
+    given: tuple[str, ...], problem: str
+) -> None:
+    with pytest.raises(OverridesError, match=problem):
+        TableOverride(primary_key=given).laid_over(_PROFILE.tables[0])
+
+
 def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:
     assert Overrides.read(tmp_path / "overrides.yml") == Overrides()
 
@@ -426,6 +455,7 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     assert isinstance(discriminator, DiscriminatorOverride)
     assert discriminator.column == "prtnr_typ_cd"
     assert discriminator.entities["customer"].values == ("K",)
+    assert overrides.tables["ord_itm"].primary_key == ("ord_id", "pos_no")
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
@@ -480,6 +510,6 @@ def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
     with pytest.raises(
-        OverridesError, match=r"format 1\.0, of another major version than the format 7\.1"
+        OverridesError, match=r"format 1\.0, of another major version than the format 7\.2"
     ):
         Overrides.read(path)

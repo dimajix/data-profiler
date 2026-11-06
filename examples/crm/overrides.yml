@@ -6,10 +6,11 @@
 # one composed from a reading and a description in place of the one proposed, the sensitivity of a
 # column the detectors miss - here the names of persons, which no detector recognises -, the
 # sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
-# are empty where none is given, or would be zeros -, and the discriminator of the business
+# are empty where none is given, or would be zeros -, the primary key of the items of an order, the
+# order and the position in place of the identifier chosen, and the discriminator of the business
 # partners, its entities named by one value each, which the others it is found of join, and
 # described.
-format: "7.1"
+format: "7.2"
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
@@ -57,6 +58,7 @@ tables:
       dlvr_pst_cd: {sentinels: ["", "00000"]}
   ord_itm:
     description: The positions of an order, one product each, with its quantity and price.
+    primary_key: [ord_id, pos_no]
   prtnr:
     discriminator:
       column: prtnr_typ_cd

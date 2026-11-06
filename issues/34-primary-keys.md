@@ -1,6 +1,6 @@
 # 34 — Primary keys
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Scan
@@ -109,3 +109,11 @@ As decided with the maintainer, in two steps - the keys found, then the primary 
   of more than one row, which Trino plans the same way; and the dialect names the standard error of
   its approximate distinct counts, `Dialect.distinct_error`, which `keys` and the tests of `scan`
   take.
+- **2026-11-05** — Step 2 built: the overrides give the primary key of a table by its columns,
+  `primary_key: [ord_id, pos_no]`, their format raised to 7.2. `scan` verifies it with the
+  candidates and takes it as the primary key, which `PrimaryKey.given` records, so that a run
+  resumed counts a table anew whose primary key is given otherwise; it is a key where it is unique
+  and holds no key of fewer columns, and is warned of where its values are not unique. The
+  overrides refuse a primary key of a column the table does not have, of no columns or of one
+  twice. The report marks a primary key given, and one that is none of the keys; the example gives
+  the items of an order theirs.

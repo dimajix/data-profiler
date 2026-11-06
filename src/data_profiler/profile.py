@@ -20,7 +20,7 @@ that proposes concepts, the readings by its step that reads the names, and the d
 columns by its step that describes them. The overrides fill none: what they give, the stages lay
 over the profile they read - the names given and the descriptions of the database, of the tables and
 of the entities among it, which a profile written holds none of -, and scan takes the marks, the
-sentinels and the discriminators they give.
+sentinels, the primary keys and the discriminators they give.
 
 A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
 `Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
@@ -370,13 +370,16 @@ class Discriminator:
 
 @dataclass(frozen=True)
 class PrimaryKey:
-    """The key that identifies the rows of a table in a data model, chosen among its keys.
+    """The key that identifies the rows of a table in a data model: chosen, or given by hand.
 
     Attributes:
         columns: The names of its columns, in the order of the table.
+        given: Whether the overrides gave it, rather than it was chosen among the keys; one given
+            may be none of them: its values not unique, or holding a key of fewer columns.
     """
 
     columns: tuple[str, ...]
+    given: bool = False
 
 
 @dataclass(frozen=True)
@@ -391,7 +394,8 @@ class Table:
         keys: Its keys: the columns, one or two, whose values together identify each of its rows,
             verified on the whole table, none of them a key of fewer columns; the fewer columns
             first, each in the order of the table.
-        primary_key: The key that identifies its rows in a data model; None where it has none.
+        primary_key: What identifies its rows in a data model, a key chosen among its keys or the
+            columns given; None where it has none.
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
         discriminator: The column whose values tell the entities of its rows apart, with those

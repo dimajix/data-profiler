@@ -15,9 +15,9 @@ the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
-which skips the tables the run counted, unless the overrides now give their columns or their
-discriminators otherwise; a run that finished is followed by a new one, which counts every table
-anew. Overrides that name a table not selected are refused before anything is counted.
+which skips the tables the run counted, unless the overrides now give their columns, their primary
+keys or their discriminators otherwise; a run that finished is followed by a new one, which counts
+every table anew. Overrides that name a table not selected are refused before anything is counted.
 
 A scan updates the profile there is rather than replacing it: it drops the tables no longer
 selected, deleted or no longer matched by the pattern, keeps the others until it counts them anew,
@@ -74,7 +74,7 @@ def scan(
         workspace: Where the enumerations and the samples of the tables are kept.
         types: The semantic types of the project, recognised beside those of the tool.
         overrides: The overrides of the project, which mark the columns of the tables and give
-            their sentinels and discriminators.
+            their sentinels, primary keys and discriminators.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
@@ -83,8 +83,8 @@ def scan(
             count the rows of its entities.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
-            does not have, or give sentinels of a column whose values are no text, or a
-            discriminator that cannot be one, as `TableOverride.laid_over` says.
+            does not have, or give sentinels of a column whose values are no text, or a primary
+            key or a discriminator that cannot be one, as `TableOverride.laid_over` says.
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
     """
@@ -101,7 +101,8 @@ def scan(
             continue
         if kept is not None:
             _logger.info(
-                "Counting %s anew, as the overrides give its columns or discriminator otherwise",
+                "Counting %s anew, as the overrides give its columns, primary key or"
+                " discriminator otherwise",
                 name,
             )
         _logger.info("Scanning %s", name)
@@ -113,7 +114,8 @@ def scan(
         sample = take(source, table)
         workspace.write_sample(name, sample)
         verified = verify(source, recognise(table, sample, types))
-        found = group(identify(source, verified, sample), sample)
+        keyed = identify(source, verified, sample, given[name].primary_key)
+        found = group(keyed, sample)
         marked = given[name].laid_over(_valued(found, enumerations))
         disclosed = disclose(marked, types)
         profile = profile.updated(discriminate(source, disclosed, given[name].discriminator))
