@@ -191,7 +191,8 @@ _COMMON: Final = (
     "Yuan",
 )
 
-# Each currency, current or withdrawn: its code, its number, None where it has none, and a name.
+# Each currency, current or withdrawn: its code, its number, None where it has none, and a name;
+# those of `pycountry` are typed as of any type, so that the tuples below say they are of texts.
 _CURRENCIES: Final = (
     *(
         (currency.alpha_3, currency.numeric, currency.name)
@@ -201,13 +202,15 @@ _CURRENCIES: Final = (
     *_WITHDRAWN,
 )
 
-CODES: Final = tuple(sorted({code for code, _, _ in _CURRENCIES}))
+CODES: Final[tuple[str, ...]] = tuple(sorted({code for code, _, _ in _CURRENCIES}))
 """The alphabetic codes of the currencies, in capitals, `EUR`, sorted."""
 
-NUMBERS: Final = tuple(sorted({number for _, number, _ in _CURRENCIES if number is not None}))
+NUMBERS: Final[tuple[str, ...]] = tuple(
+    sorted({number for _, number, _ in _CURRENCIES if number is not None})
+)
 """The numbers of the currencies, of three digits, `978`, sorted."""
 
-NAMES: Final = tuple(
+NAMES: Final[tuple[str, ...]] = tuple(
     sorted({name for _, _, name in _CURRENCIES if name not in _WORDS} | set(_COMMON))
 )
 """The English names of the currencies, of ISO 4217 and more common ones, `Euro`, sorted."""
