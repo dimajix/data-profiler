@@ -52,6 +52,17 @@ def test_an_environment_is_scanned_into_its_directory(
     assert (project / "simulation" / "workspace" / "samples" / "cust.parquet").is_file()
 
 
+@pytest.mark.usefixtures("user_environment")
+def test_the_profile_of_an_environment_is_related_by_its_database(
+    project: Path, example: Profile, command_line: Callable[..., int]
+) -> None:
+    tables = tuple(replace(table, references=()) for table in example.tables)
+    replace(example, tables=tables).write(project / "simulation" / "profile")
+    assert command_line(main, "relate", "simulation", "--project", str(project)) == 0
+    related = Profile.read(project / "simulation" / "profile")
+    assert any(table.references for table in related.tables)
+
+
 def test_the_project_is_the_current_directory_if_none_is_given(
     project: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -117,7 +128,8 @@ def test_the_profile_of_an_environment_is_described_without_a_language_model(
     without = "".join(line for line in configuration.splitlines(True) if "llm" not in line)
     (project / "project.yml").write_text(without, encoding="utf-8")
     (table, *others) = example_profile.tables
-    described = replace(table, columns=(replace(table.columns[0], description="Proposed."),))
+    first, *rest = table.columns
+    described = replace(table, columns=(replace(first, description="Proposed."), *rest))
     proposed = replace(
         example_profile, tables=(described, *others), glossary={"x": Concept(("x",))}
     )

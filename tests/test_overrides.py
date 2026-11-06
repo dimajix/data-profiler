@@ -1,5 +1,6 @@
 """Tests of overrides: read from a document, laid over a profile, refused where they name amiss."""
 
+import re
 from dataclasses import replace
 from pathlib import Path
 
@@ -11,8 +12,10 @@ from data_profiler.overrides import (
     ColumnOverride,
     DiscriminatorOverride,
     EntityOverride,
+    GivenReference,
     Overrides,
     OverridesError,
+    ReferenceOverride,
     TableOverride,
 )
 from data_profiler.profile import (
@@ -23,6 +26,7 @@ from data_profiler.profile import (
     PrimaryKey,
     Profile,
     Range,
+    Reference,
     Statistics,
     Table,
     Value,
@@ -436,6 +440,111 @@ def test_a_primary_key_given_that_cannot_be_one_is_refused(
         TableOverride(primary_key=given).laid_over(_PROFILE.tables[0])
 
 
+# A profile of contacts whose column `cust_id` may refer to the key of a table of customers.
+_RELATED = replace(
+    _PROFILE,
+    tables=(
+        replace(
+            _PROFILE.tables[0],
+            columns=(*_PROFILE.tables[0].columns, Column("cust_id", "bigint", Statistics(0, 2))),
+        ),
+        Table("cust", 5, (Column("cust_id", "bigint", Statistics(0, 5)),), keys=(("cust_id",),)),
+    ),
+)
+
+
+def _referring(**given: GivenReference) -> Overrides:
+    """Overrides that give the references of the columns of `cntct` named, None of nothing given."""
+    columns = {name: ColumnOverride(reference=reference) for name, reference in given.items()}
+    return Overrides(tables={"cntct": TableOverride(columns=columns)})
+
+
+def test_the_references_given_are_those_of_the_columns_they_are_given_of() -> None:
+    key = ReferenceOverride("cust", "cust_id")
+    overrides = _referring(cust_id=key, frst_nm=False, cntct_typ_cd=None)
+    assert overrides.references(_RELATED) == {"cntct": {"cust_id": key, "frst_nm": False}}
+    assert Overrides().references(_RELATED) == {}, "of no table of none given"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "problem"),
+    [
+        (Overrides(tables={"ord": TableOverride()}), "tables that are not profiled: ord"),
+        (_referring(kind=False), "columns of cntct it does not have: kind"),
+        (
+            _referring(cust_id=ReferenceOverride("prod", "prod_id")),
+            "cntct.cust_id as a reference to prod, which is not profiled",
+        ),
+        (
+            _referring(cust_id=ReferenceOverride("cust", "cust_no")),
+            "cntct.cust_id as a reference to cust.cust_no, which cust does not have",
+        ),
+        (
+            _referring(cust_id=ReferenceOverride("cntct", "cust_id")),
+            "cntct.cust_id as a reference to itself",
+        ),
+    ],
+    ids=["a table", "a column", "a table referred to", "a column referred to", "itself"],
+)
+def test_a_reference_given_that_cannot_be_one_is_refused(
+    overrides: Overrides, problem: str
+) -> None:
+    with pytest.raises(OverridesError, match=re.escape(problem)):
+        overrides.references(_RELATED)
+    with pytest.raises(OverridesError, match=re.escape(problem)):
+        overrides.laid_over(_RELATED)
+
+
+@pytest.mark.parametrize(
+    ("references", "candidates", "given", "warned"),
+    [
+        ((), (), ReferenceOverride("cust", "cust_id"), True),
+        (
+            (Reference("cust_id", "cust", "cust_id", 1.0),),
+            (),
+            ReferenceOverride("cust", "cust_id"),
+            True,
+        ),
+        (
+            (Reference("cust_id", "cust", "cust_id", 1.0, given=True),),
+            (),
+            ReferenceOverride("cust", "cust_id"),
+            False,
+        ),
+        ((), (Reference("cust_id", "cust", "cust_id", 1.0),) * 2, False, True),
+        ((), (), False, False),
+        ((Reference("cust_id", "cust", "cust_id", 1.0, given=True),), (), None, True),
+        ((Reference("cust_id", "cust", "cust_id", 1.0),), (), None, False),
+    ],
+    ids=[
+        "none related",
+        "found",
+        "as given",
+        "candidates of none",
+        "none",
+        "no longer given",
+        "none given",
+    ],
+)
+def test_a_reference_given_otherwise_than_related_is_warned_of(
+    caplog: pytest.LogCaptureFixture,
+    references: tuple[Reference, ...],
+    candidates: tuple[Reference, ...],
+    given: GivenReference,
+    warned: bool,
+) -> None:
+    (cntct, cust) = _RELATED.tables
+    related = replace(
+        _RELATED, tables=(replace(cntct, references=references, candidates=candidates), cust)
+    )
+    _referring(cust_id=given).warn_unused(related)
+    expected = (
+        "The overrides give the references of columns otherwise than the profile was related"
+        " with, until relate relates them again: cntct.cust_id"
+    )
+    assert caplog.messages == ([expected] if warned else [])
+
+
 def test_there_are_no_overrides_where_there_is_no_file(tmp_path: Path) -> None:
     assert Overrides.read(tmp_path / "overrides.yml") == Overrides()
 
@@ -456,6 +565,9 @@ def test_the_overrides_of_the_example_project_are_read() -> None:
     assert discriminator.column == "prtnr_typ_cd"
     assert discriminator.entities["customer"].values == ("K",)
     assert overrides.tables["ord_itm"].primary_key == ("ord_id", "pos_no")
+    referring = overrides.tables["ord"].columns["cust_id"].reference
+    assert referring == ReferenceOverride("cust", "cust_id")
+    assert overrides.tables["prtnr"].columns["cust_no"].reference is False, "none"
 
 
 def test_the_overrides_of_the_example_project_lay_over_its_profile(
@@ -510,6 +622,6 @@ def test_overrides_of_another_format_are_refused(tmp_path: Path) -> None:
     path = tmp_path / "overrides.yml"
     path.write_text("format: 1\nglossary: {}\n", encoding="utf-8")
     with pytest.raises(
-        OverridesError, match=r"format 1\.0, of another major version than the format 7\.2"
+        OverridesError, match=r"format 1\.0, of another major version than the format 7\.3"
     ):
         Overrides.read(path)

@@ -2,13 +2,14 @@
 
 It runs a stage on one environment of a project, the project in the current directory if none is
 given: `scan` the tables of its database into its profile and workspace, the overrides of the
-project taken as given, `describe` the names of its profile, by the concepts of the profile and of
-the overrides and by the language model of the project, into its profile - with `--anew`, dropping
-first what the language model filled, with `--without-llm`, asking none -, and `report` its profile,
-the overrides laid over it, into its report, the last two without the database. The project
-completes the variables of the process by its `.env`, so that certificates and proxies set there
-reach the connection to the database. `data_profiler.commands.run` configures the log and ends the
-program when the stage fails.
+project taken as given, `relate` the tables of its profile to the keys of each other, by its
+database, the overrides taken as given, `describe` the names of its profile, by the concepts of the
+profile and of the overrides and by the language model of the project, into its profile - with
+`--anew`, dropping first what the language model filled, with `--without-llm`, asking none -, and
+`report` its profile, the overrides laid over it, into its report, the last two without the
+database. The project completes the variables of the process by its `.env`, so that certificates and
+proxies set there reach the connection to the database. `data_profiler.commands.run` configures the
+log and ends the program when the stage fails.
 """
 
 import logging
@@ -25,6 +26,7 @@ from data_profiler.llm import LanguageModelError, Ollama
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Profile, ProfileError
 from data_profiler.project import Environment, Project, ProjectError
+from data_profiler.relate import relate
 from data_profiler.report import ReportError, write_report
 from data_profiler.scan import scan
 from data_profiler.source import SourceError, connect
@@ -53,6 +55,7 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     stages: dict[str, tuple[_Command, str]] = {
         "scan": (lambda _: _scan, "scan the tables of an environment of a project"),
+        "relate": (lambda _: _relate, "relate the tables of the profile of an environment"),
         "describe": (_describing, "describe the names of the profile of an environment"),
         "report": (lambda _: _report, "render the profile of an environment of a project as HTML"),
     }
@@ -100,6 +103,14 @@ def _scan(project: Project, environment: Environment) -> None:
     with connect(environment.url, environment.user, environment.password) as source:
         workspace = Workspace.open(environment.workspace, source.catalog, source.schema)
         scan(source, project.tables, workspace, project.types, overrides, environment.profile)
+    _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
+
+
+def _relate(project: Project, environment: Environment) -> None:
+    """Relates the tables of the profile of `environment` of `project` to each other."""
+    overrides = Overrides.read(project.overrides)
+    with connect(environment.url, environment.user, environment.password) as source:
+        relate(source, overrides, environment.profile)
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 

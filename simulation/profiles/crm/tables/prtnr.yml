@@ -1,8 +1,13 @@
-format: '13.2'
+format: '13.3'
 name: prtnr
 rows: 6000
 columns:
-- {name: prtnr_id, type: bigint, statistics: {nulls: 0, distinct: 6000}}
+- name: prtnr_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 6000
+    range: {smallest: '1', largest: '6000'}
 - name: prtnr_typ_cd
   type: varchar(2)
   statistics: {nulls: 0, distinct: 6, lengths: {shortest: 1, longest: 2}}
@@ -45,7 +50,12 @@ columns:
   type: varchar(3)
   statistics: {nulls: 5000, distinct: 6, lengths: {shortest: 2, longest: 3}}
 - {name: cntct_dt, type: date, statistics: {nulls: 5050, distinct: 600}}
-- {name: lead_scr, type: integer, statistics: {nulls: 5000, distinct: 100}}
+- name: lead_scr
+  type: integer
+  statistics:
+    nulls: 5000
+    distinct: 100
+    range: {smallest: '1', largest: '100'}
 keys: [[prtnr_id]]
 primary_key: {columns: [prtnr_id]}
 groups:

@@ -110,9 +110,9 @@ def test_the_pattern_of_every_type_is_read_by_the_database(source: Source) -> No
 
 
 def test_a_share_of_a_column_of_numbers_is_written_with_three_digits(source: Source) -> None:
-    (match,) = _verified(source, "ord_itm", "pos_no", [POSTAL_CODE])
+    (match,) = _verified(source, "ord_itm", "ord_itm_id", [POSTAL_CODE])
     assert match.table is not None
-    assert 0 < match.table < 1, "some of the positions are numbers of five digits, not all"
+    assert 0 < match.table < 1, "some of the identifiers are numbers of five digits, not all"
     assert match.table == round(match.table, 3)
 
 

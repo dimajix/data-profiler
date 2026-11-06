@@ -121,6 +121,36 @@
     {% endif %}
   </p>
   {% endif %}
+  {% if table.references %}
+  <p class="references">
+    References:
+    {% for reference in table.references %}
+    <span class="original">{{ reference.column }}</span> → <span class="original">{{ reference.table }}.{{ reference.key }}</span>
+    ({{ table.cardinality(reference).value }}
+    {%- if reference.coverage is not none %}, {{ "{:.0%}".format(reference.coverage) }}{% endif %}
+    {%- if reference.given %}, given{% endif %})
+    {%- if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
+  {% for column, listed in candidates(table).items() %}
+  <p class="candidates">
+    Candidates of <span class="original">{{ column }}</span>:
+    {% for reference in listed %}
+    <span class="original">{{ reference.table }}.{{ reference.key }}</span> ({{ "{:.0%}".format(reference.coverage) if reference.coverage is not none else "–" }})
+    {%- if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endfor %}
+  {% set referring = profile.referring(table.name) %}
+  {% if referring %}
+  <p class="referred">
+    Referred to by:
+    {% for other, reference in referring %}
+    <span class="original">{{ other.name }}.{{ reference.column }}</span>{% if not loop.last %} · {% endif %}
+    {% endfor %}
+  </p>
+  {% endif %}
   {% for name, shared in collisions(table).items() %}
   <p class="collision">
     Same harmonized name: {{ name }} – <span class="original">{{ shared | join(", ") }}</span>

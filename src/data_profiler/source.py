@@ -14,6 +14,7 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Sequence
+from dataclasses import dataclass
 from re import Pattern
 from types import TracebackType
 from typing import Final, Self
@@ -61,6 +62,8 @@ _HAVE_TEXT: Final = (*_ORDERED, "json")
 # UUIDs - and decimals of no fraction, as which Trino reads the keys of some databases.
 _SURROGATE: Final = (*_WHOLE, "uuid")
 _WHOLE_DECIMAL: Final = re.compile(r"decimal\(\d+,\s*0\)")
+# A decimal of a scale, whose values with as many digits after the point are the same as text.
+_DECIMAL: Final = re.compile(r"decimal\(\d+,\s*(\d+)\)")
 
 # The types of Trino whose values identify a row, by how their names begin: exact values, not those
 # of floating point or of time, which are unique by chance, nor booleans, binaries or structures.
@@ -76,6 +79,36 @@ _DISTINCT_ERROR: Final = 0.005
 
 class SourceError(Exception):
     """A failure of the database: the database by its endpoint, and what was done."""
+
+
+@dataclass(frozen=True)
+class Probe:
+    """The values of a column to probe in keys, taken of a share of the rows of its table.
+
+    Attributes:
+        table: The table of the column, of the schema of the source.
+        values: The expression of the values of the column, as `Dialect.without` writes it.
+        percent: The share of the rows of the table taken, each with this chance.
+    """
+
+    table: str
+    values: str
+    percent: float
+
+
+@dataclass(frozen=True)
+class Lookup:
+    """The values of a column of a table to look up in a key of one column.
+
+    Attributes:
+        values: The expression of the values of the column, as `Dialect.without` writes it.
+        table: The table of the key, of the schema of the source.
+        key: The column of the key, of a value in each row at most.
+    """
+
+    values: str
+    table: str
+    key: str
 
 
 class Dialect(ABC):
@@ -121,6 +154,36 @@ class Dialect(ABC):
             expressions: The expressions to select.
             table: The table, of the schema of the source.
             columns: The columns to group by, each on its own.
+        """
+
+    @abstractmethod
+    def probed(self, probes: Sequence[Probe], keys: Sequence[tuple[str, str]], limit: int) -> str:
+        """The statement counting, of `limit` values taken of each probe, those found in each key.
+
+        The values of a probe are taken of a share of the rows of its table, its nulls left out,
+        and looked up in the whole column of each key, both compared as text; the keys are read
+        once, and the values taken are held in memory, not those of the keys. A row of the
+        statement is of a probe, by its place, and of a key, by its place, where any of the values
+        taken are found in the key: how many values were taken of the probe, and how many of them
+        are found.
+
+        Args:
+            probes: The values to probe.
+            keys: Of each key, its table and its column, of a value in each row at most.
+            limit: The most values taken of a probe.
+        """
+
+    @abstractmethod
+    def covered(self, table: str, lookups: Sequence[Lookup]) -> str:
+        """The statement counting, of each of `lookups` of `table`, its values found in its key.
+
+        The table is read once for all of them, and each value looked up in the whole column of its
+        key, both compared as text. The one row of the statement holds, of each lookup in their
+        order, two counts: of its values, and of those found in its key.
+
+        Args:
+            table: The table of the values looked up, of the schema of the source.
+            lookups: The values to look up, each in its key.
         """
 
     @abstractmethod
@@ -217,6 +280,14 @@ class Dialect(ABC):
     @abstractmethod
     def is_surrogate(self, kind: str) -> bool:
         """Whether the type `kind` is one of the keys a database generates: whole numbers, UUIDs."""
+
+    @abstractmethod
+    def is_unmistakable(self, kind: str) -> bool:
+        """Whether values of the type `kind` equal those of another column by no chance: UUIDs."""
+
+    @abstractmethod
+    def is_same_family(self, kind: str, other: str) -> bool:
+        """Whether values of the types `kind` and `other` are the same where their texts are."""
 
 
 class Source(ABC):
@@ -448,6 +519,43 @@ class _TrinoDialect(Dialect):
             f"GROUP BY GROUPING SETS ({sets})"
         )
 
+    def probed(self, probes: Sequence[Probe], keys: Sequence[tuple[str, str]], limit: int) -> str:
+        """The statement counting, of `limit` values taken of each probe, those in each key."""
+        taken = " UNION ALL ".join(
+            f'SELECT {place} AS "probe", "v", count(*) OVER () AS "taken" FROM (SELECT'
+            f' CAST({probe.values} AS varchar) AS "v" FROM {_identifier(probe.table)}'
+            f" TABLESAMPLE BERNOULLI ({probe.percent:.10f}) WHERE {probe.values} IS NOT NULL"
+            f" LIMIT {limit})"
+            for place, probe in enumerate(probes)
+        )
+        read = " UNION ALL ".join(
+            f'SELECT {place} AS "key", CAST({_identifier(column)} AS varchar) AS "id"'
+            f" FROM {_identifier(table)}"
+            for place, (table, column) in enumerate(keys)
+        )
+        # An inner join, of the values taken on the right, so that they are what is held in memory,
+        # and the keys are read past them; each row of them knows how many were taken.
+        return (
+            f'SELECT "probe", "key", "taken", count(*) FROM ({read}) "k"'
+            f' JOIN ({taken}) "p" ON "p"."v" = "k"."id" GROUP BY "probe", "key", "taken"'
+        )
+
+    def covered(self, table: str, lookups: Sequence[Lookup]) -> str:
+        """The statement counting, of each of `lookups` of `table`, its values found in its key."""
+        values = ", ".join(
+            f'CAST({lookup.values} AS varchar) AS "v{place}"'
+            for place, lookup in enumerate(lookups)
+        )
+        joined = "".join(
+            f' LEFT JOIN (SELECT CAST({_identifier(lookup.key)} AS varchar) AS "id"'
+            f' FROM {_identifier(lookup.table)}) "k{place}" ON "t"."v{place}" = "k{place}"."id"'
+            for place, lookup in enumerate(lookups)
+        )
+        counts = ", ".join(
+            f'count("t"."v{place}"), count("k{place}"."id")' for place in range(len(lookups))
+        )
+        return f'SELECT {counts} FROM (SELECT {values} FROM {_identifier(table)}) "t"{joined}'
+
     def column(self, column: str) -> str:
         """The expression of the values of `column`."""
         return _identifier(column)
@@ -529,7 +637,36 @@ class _TrinoDialect(Dialect):
 
     def is_surrogate(self, kind: str) -> bool:
         """Whether the type `kind` is one of the keys a database generates: whole numbers, UUIDs."""
-        return kind.startswith(_SURROGATE) or _WHOLE_DECIMAL.fullmatch(kind) is not None
+        return _is_whole(kind) or kind.startswith(_SURROGATE)
+
+    def is_unmistakable(self, kind: str) -> bool:
+        """Whether values of the type `kind` are equal to those of another column by no chance."""
+        return kind == "uuid"
+
+    def is_same_family(self, kind: str, other: str) -> bool:
+        """Whether values of `kind` and `other` are the same values where their texts are."""
+        return _family(kind) == _family(other)
+
+
+def _is_whole(kind: str) -> bool:
+    """Whether the values of the type `kind` are whole numbers: decimals of no fraction as well."""
+    return kind.startswith(_WHOLE) or _WHOLE_DECIMAL.fullmatch(kind) is not None
+
+
+def _family(kind: str) -> str:
+    """The family of the type `kind`, whose values are the same where their texts are.
+
+    Texts are one, whole numbers another - decimals of no fraction among them -, decimals of a
+    scale one each, and every other type a family of its own.
+    """
+    if kind.startswith(_TEXTS):
+        return "text"
+    if _is_whole(kind):
+        return "whole"
+    decimal = _DECIMAL.fullmatch(kind)
+    if decimal is not None:
+        return f"decimal of scale {decimal.group(1)}"
+    return kind
 
 
 def _among(column: str, kind: str, texts: Collection[str]) -> str:

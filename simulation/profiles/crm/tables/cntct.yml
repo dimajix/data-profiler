@@ -1,8 +1,17 @@
-format: '13.2'
+format: '13.3'
 name: cntct
 rows: 4100
 columns:
-- {name: cntct_id, type: bigint, statistics: {nulls: 0, distinct: 4100}}
+- name: cntct_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 4100
+    range: {smallest: '1', largest: '4100'}
+- name: cntct_uuid
+  type: uuid
+  statistics: {nulls: 0, distinct: 4100}
+  matches: [{type: uuid, sample: 1.0, table: 1.0}]
 - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 3500}}
 - name: cntct_typ_cd
   type: varchar(5)
@@ -26,5 +35,7 @@ columns:
   type: varchar(500)
   statistics: {nulls: 1500, distinct: 2600, lengths: {shortest: 12, longest: 240}}
   matches: [{type: free-text, sample: 1.0, table: 1.0}]
-keys: [[cntct_id]]
+keys: [[cntct_id], [cntct_uuid]]
 primary_key: {columns: [cntct_id]}
+references:
+- {column: cust_id, table: cust, key: cust_id, coverage: 1.0}

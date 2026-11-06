@@ -5,7 +5,7 @@ did not design - tables with dozens or hundreds of columns behind abbreviated na
 understandable data model of it. Trino and Starburst are the first databases it reads; it writes
 its SQL through a dialect, so that others can follow.
 
-It works in three stages, each of which can be run again on its own:
+It works in four stages, each of which can be run again on its own:
 
 - **scan** reads the selected tables, by a list or a regular expression, and finds for every column
   the range of its values, its nulls and the values that stand for none, such as empty texts or
@@ -16,6 +16,12 @@ It works in three stages, each of which can be run again on its own:
   filled together, such as the street, the postal code and the city of a delivery address; and,
   where a table holds the rows of several entities - customers, suppliers and employees -, the
   column whose values tell them apart, and which columns each of them fills.
+- **relate** finds the references between the tables: which column holds the values of a key of
+  another table, or of its own - the customer of an order, the parent of a customer -, how many of
+  its values are found in the key, and, where the keys of several tables hold them, each as a
+  candidate. A reference is indicated by the profile, probed by a hundred of its values looked up in
+  the whole key, and counted on the whole table; UUIDs, which are equal by no chance, are decided by
+  the probe alone.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
   language model, running locally in Ollama, for the concepts of the terms of none, and for a
@@ -85,7 +91,8 @@ and stopped by `docker compose down`; its data stays in a volume until
   `curl http://localhost:11434/api/pull -d '{"model": "qwen3.5:2b"}'`.
 
 It is filled with the tables of a profile, with generated rows that have the statistics of the
-profile and, in the texts of a column with a match, the values of its semantic type, by
+profile, in the texts of a column with a match the values of its semantic type, and in a column of a
+reference values of the key it refers to, by
 
 ```bash
 uv run simulation load simulation/profiles/crm
@@ -155,14 +162,16 @@ environments:
   the sensitivity of a column the detectors miss, such as the names of persons; and the values that
   stand for no value in a column, its sentinels, in place of those of the tool: `sentinels: ["",
   "00000"]`, or `sentinels: []` for none; the primary key of a table, by its columns, in place of
-  the one chosen among its keys, `primary_key: [ord_id, pos_no]`; and the discriminator of a table,
-  the column whose values tell its entities apart, with entities under their harmonized names, each
-  with its values - the others it is found of join it - and its description, `discriminator:
-  {column: prtnr_typ_cd, entities: {customer: {values: [K]}}}`, or `discriminator: false` for none,
-  whatever is found. `examples/crm/overrides.yml` shows them all; `scan` counts and marks the
-  columns, takes the primary keys, and tells the entities apart, as they give, `describe` splits and
-  reads the names by the concepts they give and asks the language model for nothing given, and
-  `report` lays them over the profile.
+  the one chosen among its keys, `primary_key: [ord_id, pos_no]`; the reference of a column, by the
+  table and the column of the key it refers to, `reference: {table: cust, column: cust_id}`, or
+  `reference: false` for none; and the discriminator of a table, the column whose values tell its
+  entities apart, with entities under their harmonized names, each with its values - the others it
+  is found of join it - and its description, `discriminator: {column: prtnr_typ_cd, entities:
+  {customer: {values: [K]}}}`, or `discriminator: false` for none, whatever is found.
+  `examples/crm/overrides.yml` shows them all; `scan` counts and marks the columns, takes the
+  primary keys, and tells the entities apart, as they give, `relate` takes the references, measuring
+  them, `describe` splits and reads the names by the concepts they give and asks the language model
+  for nothing given, and `report` lays them over the profile.
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -182,6 +191,16 @@ removed by hand before it is scanned anew. One of an older minor version is read
 `--project`, the project is the current directory. The progress goes to standard error; with
 `--debug` before the command, the log holds the statements sent and the values of the database, and
 stays on the machine.
+
+The tables of the profile are related to each other by
+
+```bash
+uv run data-profiler relate simulation --project examples/crm
+```
+
+which queries the database and writes the references and candidates of every table into the
+profile, in place of those it had, once, at the end: a relate that fails leaves the profile as it
+was. A table scanned anew has no references until the tables are related again.
 
 The names of the profile are split into their terms and read by
 

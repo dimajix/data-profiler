@@ -14,25 +14,28 @@ name.
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
 fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
 profile, the rows, runs, keys, primary keys, groups and discriminators of its tables, and the types,
-statistics, matches, values, marks and sentinels of their columns; the stage describe fills the
-terms of the names of the tables and columns by its step that splits them, the glossary by its step
-that proposes concepts, the readings by its step that reads the names, and the descriptions of the
-columns by its step that describes them. The overrides fill none: what they give, the stages lay
-over the profile they read - the names given and the descriptions of the database, of the tables and
-of the entities among it, which a profile written holds none of -, and scan takes the marks, the
-sentinels, the primary keys and the discriminators they give.
+statistics, matches, values, marks and sentinels of their columns; the stage relate fills the
+references and candidates of the tables, which a table counted anew has none of until relate runs
+again; the stage describe fills the terms of the names of the tables and columns by its step that
+splits them, the glossary by its step that proposes concepts, the readings by its step that reads
+the names, and the descriptions of the columns by its step that describes them. The overrides fill
+none: what they give, the stages lay over the profile they read - the names given and the
+descriptions of the database, of the tables and of the entities among it, which a profile written
+holds none of -, and scan takes the marks, the sentinels, the primary keys and the discriminators
+they give.
 
-A profile is written by runs of the stage scan. Which profile a scan starts from is decided here, by
-`Profile.updating`: the one there is, its run resumed where it did not finish, else in a new run;
-each table names the run that counted it, so that a run resumed can skip it. A table counted anew
-keeps the terms and the readings of its name and of the names of its columns, and the descriptions
-of its columns, which describe filled.
+A profile is begun by the stage scan, and written by the stages after it as well. Which profile a
+scan starts from is decided here, by `Profile.updating`: the one there is, its run resumed where it
+did not finish, else in a new run; each table names the run that counted it, so that a run resumed
+can skip it. A table counted anew keeps the terms and the readings of its name and of the names of
+its columns, and the descriptions of its columns, which describe filled.
 """
 
 import logging
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -52,7 +55,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(13, 2)
+FORMAT: Final = Version(13, 3)
 """The version of the format a profile is written in, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -382,6 +385,39 @@ class PrimaryKey:
     given: bool = False
 
 
+class Cardinality(Enum):
+    """How many rows of a table refer by a reference to one row of the key: one, or many."""
+
+    ONE = "one to one"
+    MANY = "many to one"
+
+
+@dataclass(frozen=True)
+class Reference:
+    """A column of a table whose values are among those of a key of one column of a table.
+
+    The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
+    row or many refer to one of the key, the keys of the table of the column tell, as
+    `Table.cardinality` says.
+
+    Attributes:
+        column: The name of the column that refers.
+        table: The name of the table referred to.
+        key: The name of its column of the key referred to.
+        coverage: The share of the values of the column, nulls and sentinels aside, found in the
+            key, counted on the whole table; None of unmistakable values, such as UUIDs, which are
+            equal to those of another column by no chance, so that a few found tell where they come
+            from.
+        given: Whether the overrides gave it, rather than it was found.
+    """
+
+    column: str
+    table: str
+    key: str
+    coverage: float | None
+    given: bool = False
+
+
 @dataclass(frozen=True)
 class Table:
     """A table of the schema, under its original name, and what was found about it.
@@ -396,6 +432,11 @@ class Table:
             first, each in the order of the table.
         primary_key: What identifies its rows in a data model, a key chosen among its keys or the
             columns given; None where it has none.
+        references: The references of its columns, one of each column at most, in the order of
+            the columns.
+        candidates: The references of its columns of which several keys may be the one referred
+            to, none of them preferred: those of a column after each other, in the order they are
+            ranked, the columns in their order.
         groups: The groups of its columns filled together, in the order of their first columns;
             a column is in one group at most.
         discriminator: The column whose values tell the entities of its rows apart, with those
@@ -416,6 +457,8 @@ class Table:
     columns: tuple[Column, ...]
     keys: tuple[tuple[str, ...], ...] = ()
     primary_key: PrimaryKey | None = None
+    references: tuple[Reference, ...] = ()
+    candidates: tuple[Reference, ...] = ()
     groups: tuple[Group, ...] = ()
     discriminator: Discriminator | None = None
     terms: tuple[Term, ...] | None = None
@@ -440,6 +483,17 @@ class Table:
             if column.name == name:
                 return column
         raise KeyError(name)
+
+    def cardinality(self, reference: Reference) -> Cardinality:
+        """How many of its rows refer by `reference`, of one of its columns, to one of the key.
+
+        Args:
+            reference: A reference of one of its columns.
+
+        Returns:
+            One, where the column is a key of it, else many.
+        """
+        return Cardinality.ONE if (reference.column,) in self.keys else Cardinality.MANY
 
 
 @dataclass(frozen=True)
@@ -503,6 +557,41 @@ class Profile:
     run: Run | None = None
     description: str | None = None
 
+    def referring(self, name: str) -> list[tuple[Table, Reference]]:
+        """The references of its tables to the table `name`, with the tables that refer.
+
+        Args:
+            name: The name of the table referred to.
+
+        Returns:
+            Each reference, with its table, of the tables and their columns in their order; none
+            where none refers to it. Candidates are not references.
+        """
+        return [
+            (table, reference)
+            for table in self.tables
+            for reference in table.references
+            if reference.table == name
+        ]
+
+    def table(self, name: str) -> Table:
+        """Its table of the name `name`.
+
+        Args:
+            name: The name of the table in the database.
+
+        Returns:
+            The table.
+
+        Raises:
+            KeyError: The profile has no table of the name, which a caller that names one makes
+                sure of.
+        """
+        for table in self.tables:
+            if table.name == name:
+                return table
+        raise KeyError(name)
+
     @classmethod
     def read(cls, directory: Path) -> "Profile":
         """Reads the profile written to `directory`.
@@ -521,13 +610,17 @@ class Profile:
                 nor of the project, the file of a table holds a table of another name, the groups
                 of a table name a column it does not have, or one twice, or its discriminator
                 names a column it does not have, an entity of it not the filled rows of each
-                column, or two entities the same value.
+                column, or two entities the same value, or a reference or a candidate names a
+                column its table does not have, the references name one twice or of candidates
+                as well, or a reference or a candidate refers to a table the profile does not
+                have, or to a column of it the table does not have.
         """
         try:
             head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
             tables = [_read_table(path, head.types) for path in _files(directory)]
         except DocumentError as error:
             raise ProfileError(str(error)) from error
+        _refuse_dangling(directory, tables)
         return cls(
             catalog=head.catalog,
             schema=head.schema,
@@ -537,6 +630,29 @@ class Profile:
             run=head.run,
             description=head.description,
         )
+
+    @classmethod
+    def read_of(cls, directory: Path, catalog: str, schema: str) -> "Profile":
+        """Reads the profile written to `directory`, of `schema` of `catalog`.
+
+        Args:
+            directory: The directory of the profile.
+            catalog: The catalog of the schema the profile is to be of.
+            schema: The schema the profile is to be of.
+
+        Returns:
+            The profile, its tables sorted by name.
+
+        Raises:
+            ProfileError: The profile cannot be read, as `read` says, or is of another schema.
+        """
+        profile = cls.read(directory)
+        if (profile.catalog, profile.schema) != (catalog, schema):
+            raise ProfileError(
+                f"the profile {directory} is of {profile.catalog}.{profile.schema},"
+                f" not of {catalog}.{schema}"
+            )
+        return profile
 
     @classmethod
     def updating(
@@ -576,12 +692,7 @@ class Profile:
         empty = cls(catalog=catalog, schema=schema, tables=(), types=types, run=begun)
         if not (directory / _HEAD).exists():
             return empty
-        profile = cls.read(directory)
-        if (profile.catalog, profile.schema) != (catalog, schema):
-            raise ProfileError(
-                f"the profile {directory} is of {profile.catalog}.{profile.schema},"
-                f" not of {catalog}.{schema}"
-            )
+        profile = cls.read_of(directory, catalog, schema)
         if profile.types != types:
             _logger.info("The semantic types changed: the tables of %s are scanned anew", directory)
             tables = tuple(_unmatched(table) for table in profile.tables)
@@ -644,13 +755,19 @@ class Profile:
             The profile, `table` in place of its table of the same name, or beside its tables,
             sorted by their names, and named counted by the run of the profile; with the terms and
             readings of its table of the same name and of its columns of the same names, and the
-            descriptions of those columns.
+            descriptions of those columns. The other tables keep their references to it, but those
+            to a column it no longer has.
         """
         counted = replace(table, run=None if self.run is None else self.run.started)
         for kept in self.tables:
             if kept.name == table.name:
                 counted = _described(counted, kept)
-        others = (kept for kept in self.tables if kept.name != table.name)
+        names = {column.name for column in table.columns}
+        others = (
+            _referring(kept, lambda found: found.table != table.name or found.key in names)
+            for kept in self.tables
+            if kept.name != table.name
+        )
         return replace(self, tables=_sorted((*others, counted)))
 
     def counted(self, name: str) -> Table | None:
@@ -689,9 +806,15 @@ class Profile:
             names: The names of the tables to keep.
 
         Returns:
-            The profile, without the tables `names` does not name.
+            The profile, without the tables `names` does not name, and without the references and
+            candidates of those it keeps to them.
         """
-        return replace(self, tables=tuple(table for table in self.tables if table.name in names))
+        tables = (
+            _referring(table, lambda found: found.table in names)
+            for table in self.tables
+            if table.name in names
+        )
+        return replace(self, tables=tuple(tables))
 
 
 @dataclass(frozen=True)
@@ -713,6 +836,15 @@ def _unmatched(table: Table) -> Table:
         for column in table.columns
     )
     return replace(table, columns=tuple(columns), discriminator=None)
+
+
+def _referring(table: Table, kept: Callable[[Reference], bool]) -> Table:
+    """`table`, with those of its references and candidates alone that `kept` keeps."""
+    return replace(
+        table,
+        references=tuple(found for found in table.references if kept(found)),
+        candidates=tuple(found for found in table.candidates if kept(found)),
+    )
 
 
 def _described(table: Table, kept: Table) -> Table:
@@ -748,8 +880,9 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
     Raises:
         DocumentError: The file cannot be read as a document of a table.
         ProfileError: The file holds a table of another name than its own, a key, the primary
-            key or a group names a column the table does not have, or the groups name one twice,
-            or the discriminator is not one of the table, as `_refuse_discriminator` says.
+            key, a reference, a candidate or a group names a column the table does not have, the
+            references name one twice or of candidates as well, the groups name one twice, or the
+            discriminator is not one of the table, as `_refuse_discriminator` says.
     """
     table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
@@ -757,14 +890,43 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
     names = {column.name for column in table.columns}
     primary = () if table.primary_key is None else table.primary_key.columns
     _refuse_unknown(path, "a key", [name for key in (*table.keys, primary) for name in key], names)
+    candidates = {reference.column for reference in table.candidates}
+    referring = [reference.column for reference in table.references]
+    _refuse_unknown(path, "a reference", [*referring, *candidates], names)
+    _refuse_twice(path, "the references", referring)
+    # A column has one reference, or candidates, or neither.
+    both = next((name for name in referring if name in candidates), None)
+    if both is not None:
+        raise ProfileError(f"{path}: the column {both!r} has a reference and candidates")
     grouped = [name for group in table.groups for name in group.columns]
     _refuse_unknown(path, "a group", grouped, names)
-    twice = next((name for name in grouped if grouped.count(name) > 1), None)
-    if twice is not None:
-        raise ProfileError(f"{path}: the groups name the column {twice!r} twice")
+    _refuse_twice(path, "the groups", grouped)
     if table.discriminator is not None:
         _refuse_discriminator(path, table.discriminator, names)
     return table
+
+
+def _refuse_dangling(directory: Path, tables: Collection[Table]) -> None:
+    """Refuses `tables` where a reference of one names a table or a column of none of them.
+
+    Raises:
+        ProfileError: A reference or a candidate names a table not of `tables`, or a column its
+            table does not have, the first such named.
+    """
+    names = {table.name: {column.name for column in table.columns} for table in tables}
+    for table in tables:
+        for reference in (*table.references, *table.candidates):
+            path = _file(directory, table.name)
+            if reference.table not in names:
+                raise ProfileError(
+                    f"{path}: a reference names the table {reference.table!r},"
+                    " which the profile does not have"
+                )
+            if reference.key not in names[reference.table]:
+                raise ProfileError(
+                    f"{path}: a reference names the column {reference.key!r} of the table"
+                    f" {reference.table!r}, which it does not have"
+                )
 
 
 def _refuse_unknown(path: Path, naming: str, named: Iterable[str], names: Collection[str]) -> None:
@@ -778,6 +940,17 @@ def _refuse_unknown(path: Path, naming: str, named: Iterable[str], names: Collec
         raise ProfileError(
             f"{path}: {naming} names the column {unknown!r}, which the table does not have"
         )
+
+
+def _refuse_twice(path: Path, naming: str, named: Sequence[str]) -> None:
+    """Refuses `named`, the columns `naming` names, where it names one twice.
+
+    Raises:
+        ProfileError: A column is twice in `named`, the first such named.
+    """
+    twice = next((name for name in named if named.count(name) > 1), None)
+    if twice is not None:
+        raise ProfileError(f"{path}: {naming} name the column {twice!r} twice")
 
 
 def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Collection[str]) -> None:

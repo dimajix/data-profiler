@@ -1,12 +1,21 @@
-format: '13.2'
+format: '13.3'
 name: ord
 rows: 20000
 columns:
-- {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 20000}}
+- name: ord_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 20000
+    range: {smallest: '1', largest: '20000'}
 - name: ord_no
   type: varchar(14)
   statistics: {nulls: 0, distinct: 20000, lengths: {shortest: 14, longest: 14}}
 - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4300}}
+- name: cntct_uuid
+  type: uuid
+  statistics: {nulls: 8000, distinct: 3000}
+  matches: [{type: uuid, sample: 1.0, table: 1.0}]
 - {name: ord_dt, type: date, statistics: {nulls: 0, distinct: 2900}}
 - name: ord_sts_cd
   type: varchar(3)
@@ -47,7 +56,15 @@ columns:
   type: varchar(34)
   statistics: {nulls: 16000, distinct: 3600, lengths: {shortest: 22, longest: 22}}
   matches: [{type: iban, sample: 1.0, table: 1.0}]
+- name: dlvr_addr_guid
+  type: varchar(36)
+  statistics: {nulls: 12000, distinct: 3000, lengths: {shortest: 36, longest: 36}}
+  matches: [{type: uuid, sample: 1.0, table: 1.0}]
 keys: [[ord_id], [ord_no]]
 primary_key: {columns: [ord_id]}
+references:
+- {column: cust_id, table: cust, key: cust_id, coverage: 0.98}
+- {column: cntct_uuid, table: cntct, key: cntct_uuid, coverage: null}
+- {column: dlvr_addr_guid, table: cust_addr, key: addr_guid, coverage: null}
 groups:
 - {columns: [dlvr_strt_nm, dlvr_pst_cd, dlvr_cty_nm], coherence: 0.994}

@@ -43,6 +43,7 @@ lines, each on a line of its own:
   - **Profile** - what the stages hand to each other: the profile, with its format, its schema
     and its overrides, and the workspace.
   - **Scan** - the stage `scan`: the source, the dialect, statistics, enumerations, samples.
+  - **Relate** - the stage `relate`: the references between the tables.
   - **Detection** - semantic types, their sensitivity, the detectors.
   - **Describe** - the stage `describe`: the glossary, the names, the language model.
   - **Report** - the stage `report`.

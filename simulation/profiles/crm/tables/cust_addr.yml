@@ -1,8 +1,17 @@
-format: '13.2'
+format: '13.3'
 name: cust_addr
 rows: 6200
 columns:
-- {name: addr_id, type: bigint, statistics: {nulls: 0, distinct: 6200}}
+- name: addr_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 6200
+    range: {smallest: '1', largest: '6200'}
+- name: addr_guid
+  type: varchar(36)
+  statistics: {nulls: 0, distinct: 6200, lengths: {shortest: 36, longest: 36}}
+  matches: [{type: uuid, sample: 1.0, table: 1.0}]
 - {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 4980}}
 - name: addr_typ_cd
   type: varchar(3)
@@ -25,5 +34,7 @@ columns:
   statistics: {nulls: 0, distinct: 12, lengths: {shortest: 2, longest: 2}}
 - {name: vld_frm_dt, type: date, statistics: {nulls: 0, distinct: 2700}}
 - {name: vld_to_dt, type: date, statistics: {nulls: 5100, distinct: 900}}
-keys: [[addr_id]]
+keys: [[addr_id], [addr_guid]]
 primary_key: {columns: [addr_id]}
+references:
+- {column: cust_id, table: cust, key: cust_id, coverage: 1.0}

@@ -5,7 +5,7 @@ import re
 import pytest
 
 from data_profiler.profile import Profile
-from data_profiler.source import Source, SourceError, connect
+from data_profiler.source import Lookup, Probe, Source, SourceError, connect
 
 
 def test_the_tables_that_a_pattern_matches_whole_are_listed(source: Source) -> None:
@@ -124,6 +124,69 @@ def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Sou
     sets = [("ord_itm_id",), ("pos_no",), ("ord_id", "pos_no")]
     statement = dialect.select([dialect.rows(), *map(dialect.exactly_distinct, sets)], "ord_itm")
     assert source.query(statement, "counting the distinct values") == [(61000, 61000, 9, 61000)]
+
+
+def test_names_are_quoted_in_the_statements_of_the_references() -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        values = source.dialect.column('c"y')
+        probed = source.dialect.probed([Probe('t"x', values, 2.5)], [('k"t', 'k"y')], 100)
+        covered = source.dialect.covered('t"x', [Lookup(values, 'k"t', 'k"y')])
+    assert 'CAST("c""y" AS varchar) AS "v" FROM "t""x" TABLESAMPLE BERNOULLI' in probed
+    assert 'CAST("k""y" AS varchar) AS "id" FROM "k""t"' in probed
+    assert 'CAST("c""y" AS varchar) AS "v0" FROM "t""x"' in covered
+    assert 'CAST("k""y" AS varchar) AS "id" FROM "k""t"' in covered
+
+
+def test_the_values_of_probes_found_in_keys_are_counted_of_those_taken(source: Source) -> None:
+    dialect = source.dialect
+    probes = [
+        Probe("ord", dialect.column("cust_id"), 10.0),
+        Probe("ord_itm", dialect.column("qty"), 1.0),
+    ]
+    keys = [("cust", "cust_id"), ("prod", "prod_id")]
+    rows = source.query(dialect.probed(probes, keys, 100), "probing")
+    found = {(probe, key): (taken, matched) for probe, key, taken, matched in rows}
+    (taken, matched) = found[0, 0]
+    assert taken == 100
+    assert isinstance(matched, int)
+    assert 90 <= matched <= 100, "98 of 100 orders refer to a customer"
+    assert (0, 1) not in found, "no customer is a product"
+    assert found[1, 0] == (100, 100), "a quantity is the number of a customer, by chance"
+
+
+def test_the_values_of_a_table_found_in_keys_are_counted_on_the_whole_table(source: Source) -> None:
+    dialect = source.dialect
+    cust = dialect.column("cust_id")
+    lookups = [Lookup(cust, "cust", "cust_id"), Lookup(cust, "prod", "prod_id")]
+    statement = dialect.covered("ord", lookups)
+    assert source.query(statement, "counting") == [(20000, 19600, 20000, 0)]
+
+
+@pytest.mark.parametrize(
+    ("kind", "other", "compared"),
+    [
+        ("bigint", "integer", True),
+        ("bigint", "decimal(12,0)", True),
+        ("decimal(12,2)", "decimal(10,2)", True),
+        ("decimal(12,2)", "decimal(12,3)", False),
+        ("varchar(12)", "char(12)", True),
+        ("varchar(12)", "bigint", False),
+        ("date", "date", True),
+        ("date", "timestamp(3)", False),
+        ("uuid", "uuid", True),
+    ],
+)
+def test_values_of_types_of_one_family_are_compared_as_text(
+    kind: str, other: str, compared: bool
+) -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.is_same_family(kind, other) == compared
+
+
+@pytest.mark.parametrize(("kind", "unmistakable"), [("uuid", True), ("varchar(36)", False)])
+def test_only_uuids_are_unmistakable_by_their_type(kind: str, unmistakable: bool) -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.is_unmistakable(kind) == unmistakable
 
 
 def test_a_column_without_sentinels_is_counted_as_it_is() -> None:

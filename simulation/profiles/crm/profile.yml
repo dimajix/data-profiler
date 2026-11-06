@@ -2,9 +2,11 @@
 # orders and their items, and its business partners - customers, suppliers, prospects and employees
 # in one table, told apart by their kind -, under the abbreviated names such a system has; its texts
 # of a semantic type have their match, by which they are generated, and its tables their keys - the
-# items of an order of two columns, the order and the position -, each table in a file of its own in
-# `tables/`.
+# items of an order of two columns, the order and the position -, and the references of their
+# columns to the keys of others, each table in a file of its own in `tables/`. Its keys of whole
+# numbers are numbered from one, sharing their values, but those of the products; contacts and
+# addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '13.2'
+format: '13.3'
 catalog: crm
 schema: sales

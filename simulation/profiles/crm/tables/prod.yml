@@ -1,8 +1,13 @@
-format: '13.2'
+format: '13.3'
 name: prod
 rows: 350
 columns:
-- {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 350}}
+- name: prod_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 350
+    range: {smallest: '100001', largest: '100350'}
 - name: prod_cd
   type: varchar(8)
   statistics: {nulls: 0, distinct: 350, lengths: {shortest: 8, longest: 8}}

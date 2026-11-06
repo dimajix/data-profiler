@@ -9,7 +9,6 @@ cause of the error.
 
 import logging
 from pathlib import Path
-from random import Random
 from types import TracebackType
 from typing import Final, Self
 
@@ -118,8 +117,7 @@ class Simulation:
             raise SimulationError(
                 f"the profile is of the catalog {profile.catalog}, the simulation has {_CATALOG}"
             )
-        random = Random(seed)
-        tables = [(table, rows(table, random)) for table in profile.tables]
+        tables = [(table, rows(table, profile, seed)) for table in profile.tables]
         schema = f"{_CATALOG}.{_quoted(profile.schema)}"
         self._query(f"CREATE SCHEMA IF NOT EXISTS {schema}", f"creating {profile.schema}")
         for table, data in tables:

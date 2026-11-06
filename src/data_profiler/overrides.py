@@ -5,10 +5,11 @@ project, the same for all its environments: what the database holds, concepts of
 reading of the name of a table or column, the harmonized name of a table or column, the description
 of a table or a column, the sensitivity of a column the detectors miss - or find where it is none,
 which gives back no values `scan` took out -, the sentinels of a column, in place of those of the
-tool, the primary key of a table, by its columns, and the discriminator of a table, with the names,
-values and descriptions of its entities, or `false` for none, whatever is found. Concepts are named
-by their words, entities by their harmonized names, tables and columns by their original names, as
-keys, so that a person writes no more than what is given.
+tool, the primary key of a table, by its columns, the reference of a column, by the table and the
+column of the key it refers to, or `false` for none, whatever is found, and the discriminator of a
+table, with the names, values and descriptions of its entities, or `false` for none, whatever is
+found. Concepts are named by their words, entities by their harmonized names, tables and columns by
+their original names, as keys, so that a person writes no more than what is given.
 
 Every stage takes as given what they give of its work. `scan` takes the sentinels of the columns,
 which it counts the table with, and their sensitivity: it lays the overrides over each table it
@@ -38,7 +39,13 @@ descriptions of its entities are laid over by the stages that read the profile, 
 that holds the values given of one, where the discriminator was counted with those given; where it
 was not, they warn of it. A primary key given is taken by `scan` as well, verified with the keys it
 finds and the primary key whether or not its values are unique, which it warns of; the profile holds
-that it was given, so that it counts once `scan` counts the table again.
+that it was given, so that it counts once `scan` counts the table again. A reference given is taken
+by `relate`: the column is not searched, but the reference measured, its coverage counted or its
+values probed, and warned of where its coverage, or the share probed of unmistakable values, falls
+below what a reference is found at, or where the column referred to is no key of one column; the
+profile holds that it was given, so that a stage that reads the profile warns of a reference given
+otherwise, until `relate` relates the tables again. A column given none has no reference and no
+candidates.
 
 An override that names what is not profiled is refused, naming it: `scan` refuses a table it does
 not select before it counts anything, and, once it has counted the table, a column the table does
@@ -47,13 +54,16 @@ none, a primary key of no columns or of one twice, and a discriminator given of 
 of a sensitivity, of entities of no values, or of a value twice - of a column of no values the
 profile holds, and of values given that the column does not hold, it warns, leaving them out, as the
 overrides are the same for all environments -; it does not check the concepts, readings and names,
-which it does not use. A stage that reads the profile refuses a table or a column the profile does
-not have, a reading of a name that is not one of its terms, as the vocabulary splits it - of another
-number of words, or a word of no concept of the term at its place -, a name given other than in
-snake_case, that of an entity among them, and a discriminator given as `scan` does. An abbreviation
-given that no name of the profile has is no mistake, as the overrides are the same for all
-environments of a project, whose tables differ: a stage that reads the profile warns of it, once, so
-that one written in another case than the terms of the names, which are in lower case, is seen.
+which it does not use. `relate` refuses a table or a column the profile does not have, and a
+reference given to one or of a column to itself, before it queries anything, and the stages that
+read the profile refuse them as well. A stage that reads the profile refuses a table or a column the
+profile does not have, a reading of a name that is not one of its terms, as the vocabulary
+splits it - of another number of words, or a word of no concept of the term at its place -, a name
+given other than in snake_case, that of an entity among them, and a discriminator given as `scan`
+does. An abbreviation given that no name of the profile has is no mistake, as the overrides are the
+same for all environments of a project, whose tables differ: a stage that reads the profile warns of
+it, once, so that one written in another case than the terms of the names, which are in lower case,
+is seen.
 """
 
 import logging
@@ -80,11 +90,32 @@ from data_profiler.profile import Concept, Discriminator, PrimaryKey, Profile, T
 _logger = logging.getLogger(__name__)
 
 # The version of the format of the overrides, raised as `documents` says.
-_FORMAT: Final = Version(7, 2)
+_FORMAT: Final = Version(7, 3)
 
 
 class OverridesError(Exception):
     """Overrides that cannot be read, or name what the profile they are laid over does not have."""
+
+
+@dataclass(frozen=True)
+class ReferenceOverride:
+    """The key of one column a column refers to, given by hand.
+
+    Attributes:
+        table: The name of the table referred to, of another or of the table of the column.
+        column: The name of its column of the key referred to.
+    """
+
+    table: str
+    column: str
+
+
+# What the overrides give of the reference of a column: the key it refers to, or False for none,
+# whatever is found; None where they give nothing of it.
+type GivenReference = ReferenceOverride | Literal[False] | None
+
+# The references the overrides give of the columns of a table, by their names: the key, or False.
+type GivenReferences = Mapping[str, ReferenceOverride | Literal[False]]
 
 
 @dataclass(frozen=True)
@@ -101,6 +132,8 @@ class ColumnOverride:
             or None where it is not given.
         description: What it holds, in place of the description proposed, or None where it is
             not given.
+        reference: The key it refers to, or False where it refers to none, whatever is found;
+            None where it is not given.
     """
 
     sensitivity: Sensitivity | None = None
@@ -108,6 +141,7 @@ class ColumnOverride:
     reading: tuple[str, ...] | None = None
     name: str | None = None
     description: str | None = None
+    reference: GivenReference = None
 
 
 @dataclass(frozen=True)
@@ -326,6 +360,43 @@ class TableOverride:
                 f" text: {', '.join(refused)}"
             )
 
+    def references(self, table: Table, profile: Profile) -> GivenReferences:
+        """The references given of the columns of `table`, of `profile`, of those given.
+
+        Args:
+            table: The table, of the profile.
+            profile: The profile, whose tables the references refer to.
+
+        Returns:
+            The reference given of each column, the key or False, by its name.
+
+        Raises:
+            OverridesError: A column is named that the table does not have, or a reference is
+                given of a column to itself, to a table the profile does not have, or to a column
+                the table referred to does not have.
+        """
+        self._refuse_missing(table)
+        given = {
+            name: column.reference
+            for name, column in self.columns.items()
+            if column.reference is not None
+        }
+        for name, reference in given.items():
+            if reference is False:
+                continue
+            where = f"the overrides give {table.name}.{name} as a reference to"
+            if (reference.table, reference.column) == (table.name, name):
+                raise OverridesError(f"{where} itself")
+            if reference.table not in {found.name for found in profile.tables}:
+                raise OverridesError(f"{where} {reference.table}, which is not profiled")
+            referred = profile.table(reference.table)
+            if reference.column not in {column.name for column in referred.columns}:
+                raise OverridesError(
+                    f"{where} {referred.name}.{reference.column}, which {referred.name} does not"
+                    " have"
+                )
+        return given
+
     def _missing(self, table: Table) -> list[str]:
         """The columns named, of the primary key and the discriminator too, `table` lacks."""
         named = set(self.columns) | set(self.primary_key or ())
@@ -469,13 +540,36 @@ class Overrides:
             )
         return {name: self.tables.get(name, TableOverride()) for name in names}
 
+    def references(self, profile: Profile) -> dict[str, GivenReferences]:
+        """The references given of the columns of `profile`, of those they are given of.
+
+        Args:
+            profile: The profile whose tables are related.
+
+        Returns:
+            The reference given of each column, the key or False, by the names of its table and
+            its own; none of a table of none given.
+
+        Raises:
+            OverridesError: A table is named that the profile does not have, or a column its table
+                does not have, or a reference is given that cannot be one, as
+                `TableOverride.references` says.
+        """
+        given = self.selected([table.name for table in profile.tables])
+        references = {
+            table.name: given[table.name].references(table, profile) for table in profile.tables
+        }
+        return {name: found for name, found in references.items() if found}
+
     def warn_unused(self, profile: Profile) -> None:
         """Warns of what is given that `profile` does not take, naming it.
 
         An abbreviation given that no name of it has is warned of; a word given that no name has
         is not, as a concept is given by its word whatever the names are. A discriminator given of
         a table that was discriminated otherwise is warned of as well, as it counts, and the names
-        of its entities are laid over, only once `scan` counts the table again.
+        of its entities are laid over, only once `scan` counts the table again; and a reference
+        given of a column that was related otherwise, as it counts once `relate` relates the
+        tables again.
 
         Args:
             profile: The profile the overrides are laid over.
@@ -502,6 +596,18 @@ class Overrides:
                 " counted with, until scan counts them again: %s",
                 ", ".join(otherwise),
             )
+        unrelated = [
+            f"{table.name}.{column.name}"
+            for table in profile.tables
+            for column in table.columns
+            if not _referred_as_given(self._reference(table.name, column.name), table, column.name)
+        ]
+        if unrelated:
+            _logger.warning(
+                "The overrides give the references of columns otherwise than the profile was"
+                " related with, until relate relates them again: %s",
+                ", ".join(unrelated),
+            )
 
     def laid_over(self, profile: Profile) -> Profile:
         """`profile` with what the overrides give taken as given.
@@ -523,12 +629,16 @@ class Overrides:
                 give a reading of a name that is no reading of its terms, as the vocabulary of the
                 profile splits it: of another number of words, or a word of no concept of the term
                 at its place, or a name other than in snake_case, or a discriminator that cannot be
-                one, as `TableOverride.laid_over` says.
+                one, as `TableOverride.laid_over` says, or a reference, as
+                `TableOverride.references` says.
         """
         profile = self._with_concepts(profile)
         vocabulary = Vocabulary.of(profile)
         glossary = Glossary(profile.glossary)
         given = self.selected([table.name for table in profile.tables])
+        # The references are not laid over, which relate takes, but refused as it refuses them.
+        for table in profile.tables:
+            given[table.name].references(table, profile)
         tables = (
             disclose(
                 given[table.name].described_laid_over(
@@ -541,6 +651,11 @@ class Overrides:
         description = profile.description if self.description is None else self.description
         return replace(profile, tables=tuple(tables), description=description)
 
+    def _reference(self, table: str, column: str) -> GivenReference:
+        """The reference given of the column `column` of the table `table`, or None."""
+        given = self.tables.get(table, TableOverride()).columns.get(column)
+        return None if given is None else given.reference
+
     def _with_concepts(self, profile: Profile) -> Profile:
         """`profile`, the concepts given in its glossary before its own."""
         return replace(profile, glossary=_laid_over(self.glossary, profile.glossary))
@@ -551,6 +666,23 @@ def _keyed_as_given(given: tuple[str, ...] | None, primary: PrimaryKey | None) -
     if given is None:
         return primary is None or not primary.given
     return primary is not None and primary.given and set(primary.columns) == set(given)
+
+
+def _referred_as_given(given: GivenReference, table: Table, column: str) -> bool:
+    """Whether the column `column` of `table` was related as `given`, as `warn_unused` says.
+
+    It has the reference given, where one is; none and no candidates, where False is; and none
+    given, where nothing is.
+    """
+    references = [found for found in table.references if found.column == column]
+    if given is None:
+        return not any(found.given for found in references)
+    if given is False:
+        return not references and all(found.column != column for found in table.candidates)
+    return any(
+        found.given and (found.table, found.key) == (given.table, given.column)
+        for found in references
+    )
 
 
 def _as_given(given: GivenDiscriminator, discriminator: Discriminator | None) -> bool:

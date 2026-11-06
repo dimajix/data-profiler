@@ -7,10 +7,12 @@
 # column the detectors miss - here the names of persons, which no detector recognises -, the
 # sentinels of a column in place of those of the tool - here the postal codes of a delivery, which
 # are empty where none is given, or would be zeros -, the primary key of the items of an order, the
-# order and the position in place of the identifier chosen, and the discriminator of the business
-# partners, its entities named by one value each, which the others it is found of join, and
-# described.
-format: "7.2"
+# order and the position in place of the identifier chosen, the references of two columns of whole
+# numbers, which keys numbered from one hold as candidates - the contact person of a customer and
+# the customer of an order -, and none of the number a business partner has as a customer elsewhere,
+# and the discriminator of the business partners, its entities named by one value each, which the
+# others it is found of join, and described.
+format: "7.3"
 description: >-
   The CRM of a wholesaler of office supplies: its customers, mostly companies, their contacts and
   addresses, the products it sells, and the orders of its customers.
@@ -47,6 +49,7 @@ tables:
         reading: [customer, contact_person, identifier]
         name: contact_person_id
         description: The identifier of the contact person a customer is reached through.
+        reference: {table: cntct, column: cntct_id}
       ap_ap_nm: {sensitivity: personal, reading: [airplus, contact_person, name]}
       ap_seg_cd: {reading: [airplus, segment, code]}
   cntct:
@@ -55,11 +58,14 @@ tables:
       lst_nm: {sensitivity: personal}
   ord:
     columns:
+      cust_id: {reference: {table: cust, column: cust_id}}
       dlvr_pst_cd: {sentinels: ["", "00000"]}
   ord_itm:
     description: The positions of an order, one product each, with its quantity and price.
     primary_key: [ord_id, pos_no]
   prtnr:
+    columns:
+      cust_no: {reference: false}
     discriminator:
       column: prtnr_typ_cd
       entities:

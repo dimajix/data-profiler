@@ -2,7 +2,6 @@
 
 from dataclasses import replace
 from datetime import date, datetime
-from random import Random
 
 import pytest
 
@@ -28,12 +27,20 @@ from data_profiler.profile import (
     Group,
     Lengths,
     Match,
+    Profile,
+    Range,
+    Reference,
     Statistics,
     Table,
     Value,
 )
 from simulation import SimulationError
 from simulation.data import rows
+
+
+def _profile(*tables: Table) -> Profile:
+    """A profile of `tables`, which the references of a table refer to."""
+    return Profile(catalog="crm", schema="sales", tables=tables)
 
 
 def _table(*columns: Column, count: int = 1000) -> Table:
@@ -69,19 +76,19 @@ _TABLE = _table(
 
 
 def test_a_table_has_as_many_rows_as_its_profile_counts() -> None:
-    assert len(rows(_TABLE, Random(0))) == _TABLE.rows
+    assert len(rows(_TABLE, _profile(), 0)) == _TABLE.rows
 
 
 @pytest.mark.parametrize("index", range(len(_TABLE.columns)), ids=[c.name for c in _TABLE.columns])
 def test_a_column_has_its_nulls_and_distinct_values(index: int) -> None:
     statistics = _TABLE.columns[index].statistics
-    values = [row[index] for row in rows(_TABLE, Random(0))]
+    values = [row[index] for row in rows(_TABLE, _profile(), 0)]
     assert values.count(None) == statistics.nulls
     assert len(set(values) - {None}) == statistics.distinct
 
 
 def test_a_text_column_has_its_shortest_and_its_longest_value() -> None:
-    values = [row[1] for row in rows(_TABLE, Random(0)) if row[1] is not None]
+    values = [row[1] for row in rows(_TABLE, _profile(), 0) if row[1] is not None]
     lengths = {len(str(value)) for value in values}
     assert (min(lengths), max(lengths)) == (3, 30)
 
@@ -101,7 +108,7 @@ def test_a_column_has_each_of_its_sentinels_beside_its_nulls(
     counted = tuple(Value(text, 300) for text in texts)
     statistics = Statistics(100, 50, lengths, sentinels=counted)
     table = _table(Column(name="x", type=type, statistics=statistics))
-    values = [value for (value,) in rows(table, Random(0))]
+    values = [value for (value,) in rows(table, _profile(), 0)]
     assert [values.count(sentinel) for sentinel in made] == [300] * len(made)
     assert values.count(None) == 100
     assert len(set(values) - {None, *made}) == 50
@@ -121,7 +128,7 @@ def test_the_columns_of_a_group_are_filled_in_the_same_rows_as_far_as_they_can_b
         ),
         groups=(Group(("strt", "pst", "cty"), 0.967),),
     )
-    made = rows(table, Random(0))
+    made = rows(table, _profile(), 0)
     strt, pst, cty, other = (
         {row for row, values in enumerate(made) if values[index] not in (None, "")}
         for index in range(4)
@@ -151,7 +158,7 @@ def test_the_rows_of_an_entity_hold_its_values_and_its_columns_as_it_counts_them
         Entity(("A", "C"), 600, {"kind": 600, "own": 350}),
         Entity(("B",), 300, {"kind": 300, "own": 0}),
     )
-    made = rows(table, Random(0))
+    made = rows(table, _profile(), 0)
     kinds = [kind for kind, _ in made]
     assert [kinds.count(value) for value in ("A", "B", "C", None)] == [500, 300, 100, 100]
     filled = [kind for kind, own in made if own is not None]
@@ -177,13 +184,13 @@ def test_entities_that_cannot_be_generated_are_refused_naming_the_column(
     entities: tuple[Entity, ...], problem: str
 ) -> None:
     with pytest.raises(SimulationError, match=f"t\\.(kind|own): .*{problem}"):
-        rows(_entities(*entities), Random(0))
+        rows(_entities(*entities), _profile(), 0)
 
 
 def test_the_nulls_of_a_discriminator_are_to_be_the_rows_of_no_entity() -> None:
     table = _entities(Entity(("A", "B", "C"), 900, {"kind": 900, "own": 400}), nulls=50)
     with pytest.raises(SimulationError, match=r"t\.kind: its nulls and sentinels are not"):
-        rows(table, Random(0))
+        rows(table, _profile(), 0)
 
 
 def _keyed(order: int = 300, position: int = 5, nulls: int = 0, of_order: int = 0) -> Table:
@@ -198,7 +205,7 @@ def _keyed(order: int = 300, position: int = 5, nulls: int = 0, of_order: int = 
 
 
 def test_a_key_of_two_columns_is_unique_each_column_of_its_distinct_values() -> None:
-    made = rows(_keyed(), Random(0))
+    made = rows(_keyed(), _profile(), 0)
     assert len(set(made)) == 1000, "no pair twice"
     assert (len({order for order, _ in made}), len({pos for _, pos in made})) == (300, 5)
 
@@ -216,7 +223,149 @@ def test_a_key_of_two_columns_that_cannot_be_generated_is_refused(
     table: Table, problem: str
 ) -> None:
     with pytest.raises(SimulationError, match=f"t\\.(ord|pos): {problem}"):
-        rows(table, Random(0))
+        rows(table, _profile(), 0)
+
+
+def _ranged(name: str, type: str, distinct: int, smallest: int, largest: int) -> Column:
+    """A column of `type` of no nulls, of `distinct` values from `smallest` to `largest`."""
+    statistics = Statistics(0, distinct, range=Range(str(smallest), str(largest)))
+    return Column(name=name, type=type, statistics=statistics)
+
+
+def test_whole_numbers_of_a_range_are_within_it_of_both_its_ends() -> None:
+    table = _table(_ranged("v", "integer", 25, 1, 100))
+    values = {value for (value,) in rows(table, _profile(), 0)}
+    assert len(values) == 25
+    assert {1, 100} <= values <= set(range(1, 101))
+
+
+def test_whole_numbers_as_many_as_their_range_are_all_of_it() -> None:
+    table = _table(_ranged("v", "smallint", 9, 1, 9))
+    assert {value for (value,) in rows(table, _profile(), 0)} == set(range(1, 10)), (
+        "numbered from one"
+    )
+
+
+def test_a_range_of_fewer_values_than_counted_is_refused() -> None:
+    with pytest.raises(SimulationError, match=r"t\.v: 25 distinct values do not fit their range"):
+        rows(_table(_ranged("v", "integer", 25, 1, 10)), _profile(), 0)
+
+
+def test_uuids_are_made_of_their_type() -> None:
+    column = _column("v", "uuid", 0, 1000)
+    values = {value for (value,) in rows(_table(column), _profile(), 0)}
+    assert len(values) == 1000
+    assert all(UUID.detector.recognises(str(value)) for value in values)
+
+
+_CUST = Table(
+    name="cust",
+    rows=500,
+    columns=(
+        _ranged("id", "bigint", 500, 1, 500),
+        Column(name="key", type="varchar(36)", statistics=Statistics(0, 500, Lengths(36, 36))),
+    ),
+)
+
+
+def _referring(key: str = "id", coverage: float | None = 1.0, distinct: int = 300) -> Table:
+    """A table `ord` of 1000 rows whose column `cust`, of 100 nulls, refers to `key` of `cust`."""
+    kind = _CUST.column(key).type
+    referring = _column("cust", kind, 100, distinct, Lengths(36, 36))
+    reference = Reference("cust", "cust", key, coverage)
+    return replace(_table(referring), name="ord", references=(reference,))
+
+
+def test_a_column_of_a_reference_holds_values_of_its_key_as_many_rows_as_it_covers() -> None:
+    made = [
+        value
+        for (value,) in rows(_referring(coverage=0.9), _profile(_CUST), 0)
+        if value is not None
+    ]
+    keys = {value for (value, _) in rows(_CUST, _profile(), 0)}
+    found = [value for value in made if value in keys]
+    assert len(set(made)) == 300
+    assert len(found) == 810, "nine of ten rows of the 900 filled"
+    assert all(isinstance(value, int) and value > 500 for value in set(made) - keys), (
+        "those outside above the largest of the key"
+    )
+
+
+def test_a_column_of_unmistakable_values_refers_to_its_key_with_all_of_them() -> None:
+    made = {value for (value,) in rows(_referring("key", None), _profile(_CUST), 0) if value}
+    keys = {value for (_, value) in rows(_CUST, _profile(), 0)}
+    assert len(made) == 300
+    assert made <= keys, "the same values of the key, drawn again by the same seed"
+
+
+def test_a_column_of_a_table_refers_to_a_key_of_its_own() -> None:
+    table = replace(
+        _table(_ranged("id", "bigint", 1000, 1, 1000), _column("prnt", "bigint", 900, 50)),
+        references=(Reference("prnt", "t", "id", 1.0),),
+    )
+    made = rows(table, _profile(table), 0)
+    keys = {key for key, _ in made}
+    assert {parent for _, parent in made if parent is not None} <= keys, "of the same seed"
+
+
+@pytest.mark.parametrize(
+    ("table", "column"),
+    [
+        (_keyed(), "pos"),
+        (_entities(Entity(("A", "B", "C"), 900, {"kind": 900, "own": 400})), "kind"),
+    ],
+    ids=["numbered", "discriminator"],
+)
+def test_a_column_numbered_within_another_or_a_discriminator_that_refers_is_refused(
+    table: Table, column: str
+) -> None:
+    referring = replace(table, references=(Reference(column, "cust", "id", 1.0),))
+    with pytest.raises(SimulationError, match=f"t\\.{column}: a column numbered or of a discr"):
+        rows(referring, _profile(_CUST), 0)
+
+
+@pytest.mark.parametrize(
+    ("table", "profile", "problem"),
+    [
+        (_referring(), _profile(), "refers to cust.id, not made"),
+        (
+            _referring(),
+            _profile(replace(_CUST, columns=_CUST.columns[1:])),
+            "refers to cust.id, not",
+        ),
+        (
+            _referring(),
+            _profile(replace(_CUST, references=(Reference("id", "cust", "key", None),))),
+            "refers to a key that refers itself",
+        ),
+        (_referring(distinct=600), _profile(_CUST), "600 distinct values of 900 rows cannot cover"),
+        (
+            _referring(coverage=0.5, distinct=400),
+            _profile(_CUST),
+            "400 distinct values of 900 rows",
+        ),
+        (_referring("key", 0.9), _profile(_CUST), r"no varchar\(36\) outside of a key of varch"),
+        (
+            replace(_referring(coverage=0.9), references=(Reference("cust", "cust", "key", 0.9),)),
+            _profile(_CUST),
+            r"no bigint outside of a key of varchar\(36\) is made",
+        ),
+    ],
+    ids=[
+        "no table",
+        "no column",
+        "a key that refers",
+        "more than the key",
+        "too few",
+        "no number",
+        "of no numbers",
+    ],
+)
+def test_a_reference_that_cannot_be_generated_is_refused(
+    table: Table, profile: Profile, problem: str
+) -> None:
+    with pytest.raises(SimulationError, match=f"ord\\.cust: {problem}"):
+        rows(table, profile, 0)
 
 
 # A sentinel of five rows, which is no day.
@@ -224,7 +373,7 @@ _NONE = (Value("N/A", 5),)
 
 
 def test_the_same_seed_gives_the_same_rows() -> None:
-    assert rows(_TABLE, Random(7)) == rows(_TABLE, Random(7))
+    assert rows(_TABLE, _profile(), 7) == rows(_TABLE, _profile(), 7)
 
 
 @pytest.mark.parametrize(
@@ -258,7 +407,7 @@ def test_a_column_that_cannot_be_generated_is_refused_naming_it(
     column: Column, problem: str
 ) -> None:
     with pytest.raises(SimulationError, match=f"t.x: .*{problem}"):
-        rows(_table(column), Random(0))
+        rows(_table(column), _profile(), 0)
 
 
 # The shortest and the longest text of each semantic type of the tool that is made, and how many
@@ -296,7 +445,7 @@ def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
         statistics=Statistics(0, distinct, Lengths(shortest, longest)),
         matches=(Match(kind, 1.0),),
     )
-    values = [str(value) for (value,) in rows(_table(column, count=500), Random(0))]
+    values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
     assert kind.detector.share(values) == 1.0, "every text is of the type, and so is the column"
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
 
@@ -309,7 +458,7 @@ def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: Seman
         matches=(Match(account_number, 1.0),),
     )
     with pytest.raises(SimulationError, match=r"t\.v: no account-number is made"):
-        rows(_table(column, count=10), Random(0))
+        rows(_table(column, count=10), _profile(), 0)
 
 
 def test_a_column_whose_values_fail_the_condition_of_their_type_together_is_refused() -> None:
@@ -320,7 +469,7 @@ def test_a_column_whose_values_fail_the_condition_of_their_type_together_is_refu
         matches=(Match(FREE_TEXT, 1.0),),
     )
     with pytest.raises(SimulationError, match=r"t\.v: 10 distinct values of 500 are no free-text"):
-        rows(_table(column, count=500), Random(0))
+        rows(_table(column, count=500), _profile(), 0)
 
 
 def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() -> None:
@@ -331,4 +480,4 @@ def test_a_text_of_a_semantic_type_that_no_value_has_the_length_of_is_refused() 
         matches=(Match(POSTAL_CODE, 1.0),),
     )
     with pytest.raises(SimulationError, match=r"t\.v: no postal-code of 4 characters can be made"):
-        rows(_table(column, count=10), Random(0))
+        rows(_table(column, count=10), _profile(), 0)
