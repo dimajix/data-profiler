@@ -11,13 +11,14 @@ It works in four stages, each of which can be run again on its own:
   the range of its values, its nulls and the values that stand for none, such as empty texts or
   `9999-12-31`, whether it is an enumeration of few values, whether its texts are lists of values,
   `12;47;3`, by the separator the project gives, and of what values, and what its values are - phone
-  numbers, postal codes, card numbers, dates, currencies and more - by deterministic detectors,
-  checked on a sample and, where they can, verified on the whole table; which columns identify the
-  rows of a table, its keys of one column and of two, and which of them is its primary key; which
-  columns of a table are filled together, such as the street, the postal code and the city of a
-  delivery address; which columns follow from another, such as the name of a customer copied into
-  each of its orders; and, where a table holds the rows of several entities - customers, suppliers
-  and employees -, the column whose values tell them apart, and which columns each of them fills.
+  numbers, postal codes, card numbers, dates, currencies, countries and more - by deterministic
+  detectors, checked on a sample and, where they can, verified on the whole table; which columns
+  identify the rows of a table, its keys of one column and of two, and which of them is its primary
+  key; which columns of a table are filled together, such as the street, the postal code and the
+  city of a delivery address; which columns follow from another, such as the name of a customer
+  copied into each of its orders; and, where a table holds the rows of several entities -
+  customers, suppliers and employees -, the column whose values tell them apart, and which columns
+  each of them fills.
 - **relate** finds the references between the tables: which column holds the values of a key of
   another table, or of its own - the customer of an order, the parent of a customer -, how many of
   its values are found in the key, and, where the keys of several tables hold them, each as a

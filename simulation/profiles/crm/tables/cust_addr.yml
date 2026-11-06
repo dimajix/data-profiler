@@ -1,4 +1,4 @@
-format: '14.4'
+format: '14.5'
 name: cust_addr
 rows: 6200
 columns:
@@ -32,6 +32,11 @@ columns:
 - name: cntry_cd
   type: varchar(2)
   statistics: {nulls: 0, distinct: 12, lengths: {shortest: 2, longest: 2}}
+  matches: [{type: country-alpha-2, sample: 1.0, table: 1.0}]
+- name: cntry_nm
+  type: varchar(60)
+  statistics: {nulls: 0, distinct: 12, lengths: {shortest: 4, longest: 20}}
+  matches: [{type: country-name, sample: 1.0, table: 1.0}]
 - {name: vld_frm_dt, type: date, statistics: {nulls: 0, distinct: 2700}}
 - {name: vld_to_dt, type: date, statistics: {nulls: 5100, distinct: 900}}
 keys: [[addr_id], [addr_guid]]

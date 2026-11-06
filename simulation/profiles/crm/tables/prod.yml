@@ -1,4 +1,4 @@
-format: '14.4'
+format: '14.5'
 name: prod
 rows: 350
 columns:
@@ -29,6 +29,10 @@ columns:
   type: varchar(3)
   statistics: {nulls: 0, distinct: 4, lengths: {shortest: 3, longest: 3}}
   matches: [{type: currency-number, sample: 1.0, table: 1.0}]
+- name: orgn_ctry_no
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 10, lengths: {shortest: 3, longest: 3}}
+  matches: [{type: country-number, sample: 1.0, table: 1.0}]
 - name: sale_curr_cds
   type: varchar(15)
   statistics: {nulls: 0, distinct: 30, lengths: {shortest: 3, longest: 15}}

@@ -6,10 +6,14 @@ from datetime import date, datetime
 
 import pytest
 
-from data_profiler.currencies import CODES, NUMBERS
+from data_profiler import countries, currencies
 from data_profiler.detect import (
     BUILT_IN,
     CARD_NUMBER,
+    COUNTRY_ALPHA_2,
+    COUNTRY_ALPHA_3,
+    COUNTRY_NAME,
+    COUNTRY_NUMBER,
     CURRENCY_CODE,
     CURRENCY_NAME,
     CURRENCY_NUMBER,
@@ -609,9 +613,13 @@ _TEXTS = {
     TRUE_FALSE: (4, 5, 2),
     YES_NO: (2, 3, 2),
     ZERO_ONE: (1, 1, 2),
-    CURRENCY_CODE: (3, 3, len(CODES)),
-    CURRENCY_NUMBER: (3, 3, len(NUMBERS)),
+    CURRENCY_CODE: (3, 3, len(currencies.CODES)),
+    CURRENCY_NUMBER: (3, 3, len(currencies.NUMBERS)),
     CURRENCY_NAME: (4, 20, 500),
+    COUNTRY_ALPHA_2: (2, 2, len(countries.ALPHA_2)),
+    COUNTRY_ALPHA_3: (3, 3, len(countries.ALPHA_3)),
+    COUNTRY_NUMBER: (3, 3, len(countries.NUMBERS)),
+    COUNTRY_NAME: (4, 20, 500),
 }
 
 

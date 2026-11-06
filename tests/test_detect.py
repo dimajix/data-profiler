@@ -8,6 +8,10 @@ import pytest
 
 from data_profiler.detect import (
     CARD_NUMBER,
+    COUNTRY_ALPHA_2,
+    COUNTRY_ALPHA_3,
+    COUNTRY_NAME,
+    COUNTRY_NUMBER,
     CURRENCY_CODE,
     CURRENCY_NAME,
     CURRENCY_NUMBER,
@@ -83,6 +87,23 @@ _RECOGNISED = {
         "Mexican Unidad de Inversion (UDI)",
         "Bolívar Soberano",
     ],
+    COUNTRY_ALPHA_2: ["DE", "AT", "US", "DD", "SU"],
+    COUNTRY_ALPHA_3: ["DEU", "AUT", "USA", "DDR", "YUG"],
+    COUNTRY_NUMBER: ["276", "040", "840", "278"],
+    COUNTRY_NAME: [
+        "Germany",
+        "germany",
+        "GERMANY",
+        "Federal Republic of Germany",
+        "Korea, Republic of",
+        "South Korea",
+        "USA",
+        "German Democratic Republic",
+        "Soviet Union",
+        "Côte d'Ivoire",
+        "Cote d'Ivoire",
+        "Cocos (Keeling) Islands",
+    ],
 }
 
 _NOT_RECOGNISED = {
@@ -113,6 +134,10 @@ _NOT_RECOGNISED = {
     CURRENCY_CODE: ["eur", "Eur", "EURO", "XXX", "XTS", "SUR"],
     CURRENCY_NUMBER: ["8", "08", "9780", "000", "97 8"],
     CURRENCY_NAME: ["Eur0", "Gold", "won", "Pound", "Mexican Unidad de Inversion UDI", "Mark"],
+    COUNTRY_ALPHA_2: ["de", "De", "D", "DEU", "EN", "XX"],
+    COUNTRY_ALPHA_3: ["deu", "Deu", "DE", "ABC", "XXX"],
+    COUNTRY_NUMBER: ["40", "0276", "27 6", "000", "999"],
+    COUNTRY_NAME: ["Deutschland", "Österreich", "England", "Germanyy", "Cocos Keeling Islands"],
 }
 
 
@@ -159,6 +184,10 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
             (CURRENCY_CODE, Sensitivity.NONE),
             (CURRENCY_NUMBER, Sensitivity.NONE),
             (CURRENCY_NAME, Sensitivity.NONE),
+            (COUNTRY_ALPHA_2, Sensitivity.NONE),
+            (COUNTRY_ALPHA_3, Sensitivity.NONE),
+            (COUNTRY_NUMBER, Sensitivity.NONE),
+            (COUNTRY_NAME, Sensitivity.NONE),
         ]
     ],
 )
@@ -324,16 +353,41 @@ def test_a_column_of_codes_of_capitals_most_of_them_codes_of_currencies_is_none(
     assert detect(codes, (), SENTINELS) == {}, "three quarters of the values, not nearly every"
 
 
+def test_a_column_of_flags_of_yes_and_no_is_no_column_of_codes_of_countries() -> None:
+    flags = ["YES", "NO", "NO", "YES", "NO", "NO", "NO", "NO"]
+    assert detect(flags, (), SENTINELS) == {YES_NO: 1.0}, "`NO` is Norway, but not nearly every"
+
+
 @pytest.mark.parametrize(
     ("kind", "of_it", "other"),
-    [(CURRENCY_CODE, "EUR", "ABC"), (CURRENCY_NUMBER, "978", "123")],
-    ids=["codes", "numbers"],
+    [
+        (CURRENCY_CODE, "EUR", "ABC"),
+        (CURRENCY_NUMBER, "978", "123"),
+        (COUNTRY_ALPHA_2, "DE", "EN"),
+        (COUNTRY_ALPHA_3, "DEU", "ABC"),
+        (COUNTRY_NUMBER, "010", "123"),
+    ],
+    ids=[
+        "currency-code",
+        "currency-number",
+        "country-alpha-2",
+        "country-alpha-3",
+        "country-number",
+    ],
 )
-def test_a_column_of_codes_or_numbers_of_currencies_is_one_of_nearly_every_value(
+def test_a_column_of_codes_or_numbers_is_one_of_nearly_every_value(
     kind: SemanticType, of_it: str, other: str
 ) -> None:
     assert detect([of_it] * 19 + [other], (), SENTINELS) == {kind: 0.95}
     assert detect([of_it] * 18 + [other] * 2, (), SENTINELS) == {}, "nine values of ten are not"
+
+
+def test_a_column_of_values_of_countries_and_currencies_alike_is_a_match_of_both() -> None:
+    assert detect(["276", "756", "040"], (), SENTINELS) == {
+        COUNTRY_NUMBER: 1.0,
+        CURRENCY_NUMBER: 1.0,
+    }, "Germany and its mark, Switzerland and its franc, Austria and its schilling"
+    assert detect(["CHE", "BTN"], (), SENTINELS) == {COUNTRY_ALPHA_3: 1.0, CURRENCY_CODE: 1.0}
 
 
 @pytest.mark.parametrize(

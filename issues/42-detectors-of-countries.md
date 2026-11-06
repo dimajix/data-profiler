@@ -1,6 +1,6 @@
 # 42 — Detectors of countries
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -36,6 +36,37 @@ As the maintainer asked: detectors of countries as those of currencies of
   whole check, and the whole table is checked in SQL by it alone.
 - **Numbers** of three digits alone, `40` no `040`, Austria, and a match where 95 percent of the
   values are numbers of countries, as for the currencies.
+
+## What is decided
+
+As the maintainer decided on the questions below, and on the plan of the work:
+
+- **Four semantic types**, one of each way a country is written: `country-alpha-2`, the code of two
+  letters of ISO 3166-1, `DE`; `country-alpha-3`, the code of three letters, `DEU`;
+  `country-number`, its number, `276`; and `country-name`, its English name, `Germany`. Each of the
+  sensitivity `none`. The codes are named alpha-2 and alpha-3, as ISO 3166 names them, since a
+  country has two codes, where a currency has one, `currency-code`.
+- **Codes of two letters** are a match where 95 percent of the values are codes, as the codes and
+  the numbers of currencies are, with no condition of the column: a column of flags `YES`/`NO` or
+  of codes of languages is none unless nearly every value is a country, and a condition such as
+  more than two distinct values would refuse a column of countries holding `DE` and `AT` alone.
+  So are codes of three letters and numbers, the numbers of three digits alone. Codes are in
+  capitals alone, as ISO 3166 writes them.
+- **Names in English alone**, as the system is English: no names in German or other languages.
+- **The names of ISO 3166** are the name of each country, its official name and its common name,
+  where `pycountry` gives them, beside a list of more common names of the tool's own - `USA`,
+  `Great Britain`, `Russia`, `Soviet Union` -, each as written, in lower case, with a capital and
+  in capitals, a match where half the values are names. No name is left out as a word of other
+  columns, as no column holds `Chad`, `Jordan` or `Georgia` in half of its values.
+- **The withdrawn countries** are all those of ISO 3166-3, of their codes, numbers and names, as the
+  countries an old database is likeliest to hold were withdrawn before 1999: `DDR`, `SUN`, `CSK`.
+- **Countries and currencies overlap** and are both reported: a column of values of both is a match
+  of both types, and whoever models the data decides which it is.
+- **A module of its own, `countries`**, holds the codes, numbers and names, as four tuples, as the
+  currencies are in `currencies`.
+- **Two steps**: first `detect` and the simulation tell the tuples of the currencies apart by their
+  module, `currencies.CODES`, as those of the countries are named alike, without a change of
+  behaviour; then the detectors.
 
 ## What is to be decided
 
@@ -75,3 +106,18 @@ As the maintainer asked: detectors of countries as those of currencies of
 
 - **2026-11-06** — Opened, as the maintainer asked: detectors of the names and codes of countries,
   as those of currencies of [41](41-detectors-of-currencies.md).
+
+- **2026-11-06** — Decided, as recorded under *What is decided*.
+
+- **2026-11-06** — Step 1 done: `detect`, the generator of the simulation and its test import the
+  module `currencies` and name its tuples by it, `currencies.CODES`, without a change of behaviour.
+
+- **2026-11-06** — Step 2 done as decided: the module `countries` holds `ALPHA_2`, `ALPHA_3`,
+  `NUMBERS` and `NAMES`, of the 249 countries of ISO 3166-1 and the 31 withdrawn of ISO 3166-3 of
+  `pycountry`, their names, official names and common names, and of 54 more common names, among
+  them the names of ISO 3166 written without their accents, `Cote d'Ivoire`; `detect` has
+  `COUNTRY_ALPHA_2`, `COUNTRY_ALPHA_3`, `COUNTRY_NUMBER` and `COUNTRY_NAME`, the profile the version
+  14.5, and the example profile a column of each type, `cust_addr.cntry_cd` and `cntry_nm`,
+  `cust.ntnlty_cd` and `prod.orgn_ctry_no`, which a scan of the simulation environment matches.
+  That a column may be a match of several types, each reported for a person to decide, is stated
+  under *Match* in the architecture.

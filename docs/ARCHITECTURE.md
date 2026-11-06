@@ -98,6 +98,9 @@ environment.
 *   **`data_profiler.currencies`** - the alphabetic codes, numbers and English names of the
     currencies of ISO 4217, current and withdrawn since the euro, of which `detect` makes the
     patterns of its types of currencies and the simulation their values.
+*   **`data_profiler.countries`** - the codes of two and three letters, numbers and English names
+    of the countries of ISO 3166, current and withdrawn, of which `detect` makes the patterns of its
+    types of countries and the simulation their values.
 *   **`data_profiler.glossary`** - splitting the original names of tables and columns into terms,
     those written together by the vocabulary of the profile, each with its candidates among the
     concepts of the glossary, which the profile holds, and composing harmonized names from the
@@ -177,16 +180,18 @@ from the profile.
     in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
 *   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date, a
-    currency. Each has a **sensitivity**: personal data (GDPR), payment card data (PCI), or none.
-    The tool brings its types; a project gives types of its own, each by a pattern alone, which the
-    profile holds, so that it is read without its project.
+    currency, a country. Each has a **sensitivity**: personal data (GDPR), payment card data (PCI),
+    or none. The tool brings its types; a project gives types of its own, each by a pattern alone,
+    which the profile holds, so that it is read without its project.
 *   **Detector** - recognises one semantic type: by a pattern every value of the type matches - in
     the values of a sample, and on the whole table in SQL -, by a check of a value where the
     pattern does not say enough, such as a checksum, and by a condition of the column where no
     value says enough alone, judged on the values of a sample together. Its type is a match of a
     column where it recognises at least its threshold of the values of the sample.
 *   **Match** - a semantic type found in a column, with the share of values that match it in the
-    sample and, once verified, in the whole table.
+    sample and, once verified, in the whole table. A column may be a match of several types - the
+    numbers of countries and of their currencies, `276` -: each is reported, none preferred, and
+    a person decides which it is, in modelling the data.
 *   **Key** - columns of a table, one or two, whose values together identify each of its rows,
     verified on the whole table, none of them a key alone. As a table may have hundreds of columns,
     the keys are indicated first: by the approximate distinct counts of the statistics, which reach

@@ -1,4 +1,4 @@
-format: '14.4'
+format: '14.5'
 name: cust
 rows: 5000
 columns:
@@ -26,6 +26,10 @@ columns:
   type: varchar(30)
   statistics: {nulls: 800, distinct: 5, lengths: {shortest: 4, longest: 13}}
   matches: [{type: currency-name, sample: 1.0, table: 1.0}]
+- name: ntnlty_cd
+  type: varchar(3)
+  statistics: {nulls: 0, distinct: 25, lengths: {shortest: 3, longest: 3}}
+  matches: [{type: country-alpha-3, sample: 1.0, table: 1.0}]
 - name: grp_ids
   type: varchar(40)
   statistics: {nulls: 1500, distinct: 2900, lengths: {shortest: 1, longest: 23}}
