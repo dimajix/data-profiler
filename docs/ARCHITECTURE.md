@@ -52,7 +52,9 @@ environment.
     queries of `PER_QUERY` counts at most, the limit every query of counts keeps, and runs queries
     in that schema, so that another database brings only its connection and its SQL. Trino is
     reached by HTTPS as a user with a password, both given apart from the URL; certificates and
-    proxies come from the variables of the process.
+    proxies come from the variables of the process. A source `unnested` reads one of its tables as
+    a row of each value of the lists of a column, so that what counts a column counts those values
+    alike.
 *   **`data_profiler.values`** - values of the database, as the tool takes them: a count as a
     number, any value as text, as the profile holds it.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
@@ -60,7 +62,9 @@ environment.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
     query built the same way.
 *   **`data_profiler.lists`** - the columns of lists of a table: those whose texts are lists of
-    values, by the separator of the project or of the table, found in its sample by `detect`.
+    values, by the separator of the project or of the table, found in its sample by `detect`, and
+    the values of their lists, their items, counted, enumerated and matched by the modules that do
+    so of a column, on a source `unnested`.
 *   **`data_profiler.matching`** - the matches of a table: the semantic types of its columns,
     recognised in its sample by `detect`, and verified on the whole table by one query built the
     same way.
@@ -80,8 +84,8 @@ environment.
 *   **`data_profiler.sampling`** - the sample of a table, taken at random by a query built the same
     way.
 *   **`data_profiler.scan`** - the stage `scan`: statistics, enumerations, samples, detector
-    matches, keys, column groups, column dependencies and entities of the selected tables, written
-    to the profile table by table.
+    matches, columns of lists and the values of their lists, keys, column groups, column
+    dependencies and entities of the selected tables, written to the profile table by table.
 *   **`data_profiler.references`** - the references between the tables of a profile: their columns
     whose values are those of a key, indicated by the profile, probed by values of each looked up in
     the whole key, and counted on the whole table by queries built the same way, the values staying
@@ -164,7 +168,10 @@ from the profile.
 *   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
     separator of lists the project gives, the same in all tables of the database, or an override
     of a table in its place; the tool guesses none. Nearly every text is a list, of one value or
-    more, and one of more at least. Its texts are no values of a discriminator.
+    more, and one of more at least. Its texts are no values of a discriminator. The values of its
+    lists are its **items**, counted as the values of a column are - their statistics, matches and
+    enumeration -, on the whole table; a match of them of a sensitive type makes the column as
+    sensitive, and they keep what the column keeps of a range and values.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each, its nulls and sentinels aside.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
@@ -264,15 +271,16 @@ from the profile.
     For each table it counts the statistics of all columns in one query, the approximate distinct
     counts included, the sentinels of each column counted apart and left aside; it counts the values
     of every column whose distinct count is at most the threshold of an enumeration; and it takes a
-    sample into the workspace. The columns of lists are found in the sample. The detectors check the
-    values of the sample, its sentinels aside; the semantic types they find are verified on the
-    whole table by the patterns of the detectors in SQL. Its keys are indicated by the statistics
-    and the sample, and verified on the whole table, and the primary key chosen among them, unless
-    the overrides give it. The columns filled together in the sample are named as column groups, and
-    the columns whose values follow from another in the sample, verified on the whole table, as
-    column dependencies. Of the enumerations of no sensitivity, the one whose values tell entities
-    of the rows apart is the discriminator, its entities counted by one more query. The overrides of
-    the project give the sentinels of a column in place of those of the tool, mark the columns the
+    sample into the workspace. The columns of lists are found in the sample, and the values of their
+    lists counted, enumerated and matched as those of a column are. The detectors check the values
+    of the sample, its sentinels aside; the semantic types they find are verified on the whole table
+    by the patterns of the detectors in SQL. Its keys are indicated by the statistics and the
+    sample, and verified on the whole table, and the primary key chosen among them, unless the
+    overrides give it. The columns filled together in the sample are named as column groups, and the
+    columns whose values follow from another in the sample, verified on the whole table, as column
+    dependencies. Of the enumerations of no sensitivity, the one whose values tell entities of the
+    rows apart is the discriminator, its entities counted by one more query. The overrides of the
+    project give the sentinels of a column in place of those of the tool, mark the columns the
     detectors miss, and give the primary key of a table, the columns that determine no other, its
     separator of lists, and its discriminator and entities of it, or none. The result is the
     profile, with the ranges and the values of enumerations of the columns of no sensitivity,
@@ -330,11 +338,12 @@ The design repeats a few decisions; new code follows them.
 *   **The profile holds no values of the columns found sensitive.** Raw values - the values of an
     enumeration, the range of a column - go into the profile only for columns of no sensitivity;
     samples stay in the workspace. A profile can be shared; a workspace cannot. Sensitivity is
-    judged optimistically: a column is sensitive where a sensitive type is one of its matches, or
-    where an override marks it so - the mark comes first, and marks what the detectors miss -;
-    each value that goes into the profile is checked on its own all the same, and withheld where it
-    is of a sensitive type. The sentinels of a column are no values of it, and go into the profile
-    whatever its sensitivity: those of the tool are fixed texts, those given are of the overrides.
+    judged optimistically: a column is sensitive where a sensitive type is one of its matches, or of
+    the matches of the values of its lists, or where an override marks it so - the mark comes first,
+    and marks what the detectors miss -; each value that goes into the profile is checked on its own
+    all the same, and withheld where it is of a sensitive type, a list where one of its values is.
+    The sentinels of a column are no values of it, and go into the profile whatever its sensitivity:
+    those of the tool are fixed texts, those given are of the overrides.
 *   **No value leaves the machine.** The language model runs locally, and is reached past every
     proxy, as its prompts hold values of samples; no external service gets a value, a sample or a
     profile.

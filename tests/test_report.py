@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from data_profiler.detect import EMAIL, PHONE, Sensitivity
+from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, Sensitivity
 from data_profiler.glossary import terms
 from data_profiler.overrides import (
     ColumnOverride,
@@ -21,6 +21,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
+    Items,
     Lengths,
     Match,
     PrimaryKey,
@@ -161,6 +162,18 @@ def test_a_report_shows_a_column_of_lists_with_its_separator() -> None:
     listed = replace(table, columns=(replace(first, list_separator=";"), *columns))
     page = _page(profile=replace(_PROFILE, tables=(listed, *others)))
     assert "list of values by ;" in page
+
+
+def test_a_report_shows_the_values_of_the_lists_of_a_column() -> None:
+    (table, *others) = _PROFILE.tables
+    first, *columns = table.columns
+    items = Items(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
+    listed = replace(first, list_separator=";", items=items)
+    page = _page(
+        profile=replace(_PROFILE, tables=(replace(table, columns=(listed, *columns)), *others))
+    )
+    assert "list of values by ;: 6 distinct" in page
+    assert "currency-code 100% / 100%" in page, "its type, of the sample and of the table"
 
 
 def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:

@@ -140,3 +140,20 @@ As the maintainer decided on the questions below, and on the plan of the work:
 
 - **2026-11-06** — Step 2a done: the dialect of Trino reads every table after a `FROM` by
   `_relation`, the table itself so far; the statements are what they were.
+
+- **2026-11-06** — Step 2b done: `Source.unnested` reads a table as a row of each value of the
+  lists of a column, its dialect writing the table as a statement of `UNNEST` of its own; the
+  module `lists` counts the values, `itemize`, by `statistics.count` - which counts the columns
+  asked for alone, so that the values are not counted with every column of the table -,
+  `enumerations.values` and `matching.verify` on that source, recognised in the texts of the sample
+  split at the separator; `valued`, moved from `scan` to `enumerations`, gives the values of their
+  enumeration. The profile holds them as `Items` of a column, of version 14.4; a match of them of a
+  sensitive type makes the column sensitive, and `disclosure` withholds their range and values as
+  the column's. The report and the prompts show their number and types. The example profile has
+  the items of `cust.grp_ids`, and `prod.sale_curr_cds`, lists of codes of currencies; the
+  generator draws the values of the items first, then the lists of them, each value of the items
+  in one at least. Found in the review: a text of a column of lists is withheld where one of the
+  values of its list is of a sensitive type, as an IBAN in a list would have gone into the profile;
+  a profile scanned with other semantic types drops the matches and values of the items as well;
+  the items are counted with the sentinels given of their column; `enumerations` and `matching`
+  log the name of the source of a table, so that those of the values of a list are told apart.

@@ -37,9 +37,11 @@ directory: `uv run data-profiler scan simulation --project examples/crm`.
 *   **`list_separator`** gives the character that separates the values of a list in a text, the
     same in all tables of the database - one character, no letter, digit, `-`, `+` or `_`. `scan`
     takes a column for one of lists where nearly every text of its sample is a list of values of
-    letters, digits, `-`, `+` and `_`, of one value or more, and one of more at least; a column of
-    lists is no candidate of a discriminator. The tool guesses no separator: a project without one
-    has no columns of lists.
+    letters, digits, `-`, `+` and `_`, of one value or more, and one of more at least, and counts
+    the values of its lists on the whole table as it counts a column: their statistics, semantic
+    types and enumeration. A column of lists is no candidate of a discriminator, and is sensitive
+    where the values of its lists are of a sensitive type. The tool guesses no separator: a project
+    without one has no columns of lists.
 
 **Variables.** A value `${NAME}` is taken from the variable `NAME`, as the whole value, never a part
 of it. The password is given only so, never written out, so that `project.yml` can be committed and

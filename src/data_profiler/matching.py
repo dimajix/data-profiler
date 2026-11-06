@@ -92,5 +92,5 @@ def verify(source: Source, table: Table) -> Table:
             matches.append(replace(match, table=share))
         verified[column.name] = replace(column, matches=tuple(matches))
     columns = tuple(verified.get(column.name, column) for column in table.columns)
-    _logger.info("Verified the matches of %s on the whole table", table.name)
+    _logger.info("Verified the matches of %s on the whole table", source.name(table.name))
     return replace(table, columns=columns)

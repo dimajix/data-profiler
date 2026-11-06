@@ -33,6 +33,7 @@ from data_profiler.profile import (
     ColumnGroup,
     Discriminator,
     Entity,
+    Items,
     Lengths,
     Match,
     Profile,
@@ -570,17 +571,42 @@ def test_a_text_of_a_semantic_type_is_recognised_by_its_detector(
     assert (min(map(len, values)), max(map(len, values))) == (shortest, longest)
 
 
-def test_a_column_of_lists_holds_lists_of_numbers_of_its_lengths() -> None:
+def test_a_column_of_lists_holds_lists_of_the_values_of_its_items_of_its_lengths() -> None:
     column = Column(
         name="v",
         type="varchar(40)",
         statistics=Statistics(0, 200, Lengths(1, 23)),
         list_separator=";",
+        items=Items(Statistics(0, 40, Lengths(1, 2))),
     )
     values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
     assert is_list(values, ";", SENTINELS), "lists, some of several numbers"
-    assert all(re.fullmatch(r"[0-9]{1,3}(;[0-9]{1,3})*", value) for value in values)
+    assert all(re.fullmatch(r"[0-9]{1,2}(;[0-9]{1,2})*", value) for value in values)
     assert (min(map(len, values)), max(map(len, values))) == (1, 23)
+    assert len({item for value in values for item in value.split(";")}) == 40, "its items"
+
+
+def test_a_column_of_lists_holds_lists_of_values_of_the_type_of_its_items() -> None:
+    items = Items(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),))
+    column = Column(
+        name="v",
+        type="varchar(15)",
+        statistics=Statistics(0, 30, Lengths(3, 15)),
+        list_separator=";",
+        items=items,
+    )
+    values = [str(value) for (value,) in rows(_table(column, count=100), _profile(), 0)]
+    split = [item for value in values for item in value.split(";")]
+    assert CURRENCY_CODE.detector.share(split) == 1.0, "codes of currencies"
+    assert len(set(split)) == 6
+
+
+def test_a_column_of_lists_without_its_items_is_refused() -> None:
+    column = Column(
+        name="v", type="varchar(15)", statistics=Statistics(0, 3, Lengths(1, 5)), list_separator=";"
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: a column of lists without the lengths"):
+        rows(_table(column, count=10), _profile(), 0)
 
 
 def test_a_text_of_a_semantic_type_of_a_project_is_refused(account_number: SemanticType) -> None:

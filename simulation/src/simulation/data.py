@@ -25,12 +25,13 @@ has itself. A reference of unmistakable values, of no coverage, holds values of 
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
-of its column together, where the detector has one; a column of lists holds lists of numbers of up
-to three digits, separated by its separator; whole numbers of a range lie within it, its
-ends among them, in their order, all of it where they are as many, as a key numbered from one is.
-Values are made of the semantic types of the tool alone, not of those of a project. The sentinels of
-a column are made as many times as the profile counts each: a text as it is written, a day or a
-moment of the day it names in the form of ISO 8601.
+of its column together, where the detector has one; a column of lists holds lists of the values of
+its items, separated by its separator, drawn as the texts of a column of their statistics and
+matches are, digits where they have no match; whole numbers of a range lie within it, its ends among
+them, in their order, all of it where they are as many, as a key numbered from one is. Values are
+made of the semantic types of the tool alone, not of those of a project. The sentinels of a column
+are made as many times as the profile counts each: a text as it is written, a day or a moment of the
+day it names in the form of ISO 8601.
 """
 
 import re
@@ -65,8 +66,17 @@ from data_profiler.detect import (
     SemanticType,
     cases,
     is_filled,
+    is_list,
 )
-from data_profiler.profile import Column, Discriminator, Lengths, Profile, Reference, Table
+from data_profiler.profile import (
+    Column,
+    Discriminator,
+    Lengths,
+    Match,
+    Profile,
+    Reference,
+    Table,
+)
 from simulation import SimulationError
 
 # The first day of the dates and times generated, its first moment, and how many days they span.
@@ -78,8 +88,8 @@ _DAYS: Final = 9800
 # each value drawn, before it is given up as impossible.
 _ATTEMPTS: Final = 50
 
-# The digits of a number of a list at most.
-_LISTED: Final = 3
+# The chance that a list takes one more value where the rest could be its last.
+_LONGER: Final = 0.5
 
 # The ranges of the integer types, as far as test data needs them: positive, as keys are.
 _INTEGERS: Final = {"smallint": 2**15 - 1, "integer": 2**31 - 1, "bigint": 10**12}
@@ -544,9 +554,15 @@ def _drawn(table: Table, column: Column, kind: str, random: Random) -> list[obje
         SimulationError: The type is not generated, or its values cannot be drawn.
     """
     if kind == "double":
-        return _distinct(table, column, lambda: round(random.uniform(0, 10**6), 4))
+        return _distinct(
+            f"{table.name}.{column.name}",
+            column.statistics.distinct,
+            lambda: round(random.uniform(0, 10**6), 4),
+        )
     if kind == "uuid":
-        return _distinct(table, column, lambda: _uuid(0, random))
+        return _distinct(
+            f"{table.name}.{column.name}", column.statistics.distinct, lambda: _uuid(0, random)
+        )
     if kind == "varchar":
         return _texts(table, column, random)
     raise SimulationError(f"{table.name}.{column.name}: the type {column.type} is not generated")
@@ -590,26 +606,69 @@ def _type(column: Column) -> tuple[str, tuple[int, ...]]:
 def _texts(table: Table, column: Column, random: Random) -> list[object]:
     """The distinct texts of `column`, of its lengths: its shortest and its longest among them.
 
-    They are lists of numbers where the column is one of lists, else of the first semantic type of
-    the column where it has a match, else letters.
+    They are lists of the values of its items where the column is one of lists, else of the first
+    semantic type of the column where it has a match, else letters.
     """
+    where = f"{table.name}.{column.name}"
     lengths = column.statistics.lengths
     if lengths is None:
-        raise SimulationError(f"{table.name}.{column.name}: a text column without its lengths")
+        raise SimulationError(f"{where}: a text column without its lengths")
+    if column.list_separator is None:
+        draw = _drawing(where, column.matches, lengths, _letters, random)
+        return _distinct(where, column.statistics.distinct, draw)
+    items = column.items
+    separator = column.list_separator
+    if items is None or items.statistics.lengths is None:
+        raise SimulationError(f"{where}: a column of lists without the lengths of its items")
+    item = _drawing(f"{where}, its items", items.matches, items.statistics.lengths, _digits, random)
+    pool: dict[int, list[str]] = {}
+    for value in _distinct(f"{where}, its items", items.statistics.distinct, item):
+        pool.setdefault(len(str(value)), []).append(str(value))
+    unused = {value for values in pool.values() for value in values}
     wanted = iter([lengths.shortest, lengths.longest])
-    kind = column.matches[0].type if column.matches else None
+
+    def listed() -> str:
+        given = next(wanted, None)
+        # Each try of a length of its own, as not every length is one of values of the pool.
+        for _ in range(_ATTEMPTS):
+            text = _list(_length(given, lengths, random), separator, pool, unused, random)
+            if text is not None:
+                return text
+        within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"
+        raise SimulationError(f"{where}: no list of {within} characters can be made")
+
+    texts = _distinct(where, column.statistics.distinct, listed)
+    if unused:
+        raise SimulationError(
+            f"{where}: {len(texts)} lists cannot hold the {items.statistics.distinct} values of"
+            " its items"
+        )
+    if not is_list(texts, separator, ()):
+        raise SimulationError(f"{where}: lists of the values of its items are no lists of values")
+    return texts
+
+
+def _drawing(
+    where: str,
+    matches: tuple[Match, ...],
+    lengths: Lengths,
+    plain: Callable[[int, Random], str],
+    random: Random,
+) -> Callable[[], str]:
+    """How a text of `lengths` is drawn: of the first type of `matches`, else by `plain`.
+
+    The shortest and the longest are drawn first, the others of a length between them at random.
+    """
+    wanted = iter([lengths.shortest, lengths.longest])
+    kind = matches[0].type if matches else None
     typed = None if kind is None else _TYPED.get(kind)
     if kind is not None and typed is None:
-        raise SimulationError(
-            f"{table.name}.{column.name}: no {kind.name} is made, a semantic type of a project"
-        )
+        raise SimulationError(f"{where}: no {kind.name} is made, a semantic type of a project")
 
     def draw() -> str:
         given = next(wanted, None)
-        if column.list_separator is not None:
-            return _list(_length(given, lengths, random), column.list_separator, random)
         if kind is None or typed is None:
-            return _letters(_length(given, lengths, random), random)
+            return plain(_length(given, lengths, random), random)
         # Each try of a length of its own, as not every length between the shortest and the
         # longest is one of a value of the type.
         for _ in range(_ATTEMPTS):
@@ -618,11 +677,9 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
             if len(text) == length and kind.detector.recognises(text):
                 return text
         within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"
-        raise SimulationError(
-            f"{table.name}.{column.name}: no {kind.name} of {within} characters can be made"
-        )
+        raise SimulationError(f"{where}: no {kind.name} of {within} characters can be made")
 
-    return _distinct(table, column, draw)
+    return draw
 
 
 def _length(given: int | None, lengths: Lengths, random: Random) -> int:
@@ -630,17 +687,30 @@ def _length(given: int | None, lengths: Lengths, random: Random) -> int:
     return given if given is not None else random.randint(lengths.shortest, lengths.longest)
 
 
-def _list(length: int, separator: str, random: Random) -> str:
-    """A list of numbers of up to three digits, separated by `separator`, of `length` characters."""
-    numbers = []
+def _list(
+    length: int, separator: str, pool: dict[int, list[str]], unused: set[str], random: Random
+) -> str | None:
+    """A list of values of `pool`, by their lengths, joined by `separator`, of `length` characters.
+
+    Of the values of a length, those `unused` are drawn first, and taken from it, so that the lists
+    hold every value of the pool. None where the values drawn leave a rest no value of it fills.
+    """
+    shortest = min(pool)
+    sizes = []
     left = length
-    while left > _LISTED:
-        # A number short enough that another of one digit at least follows it.
-        digits_of = random.randint(1, min(_LISTED, left - 2))
-        numbers.append(_digits(digits_of, random))
-        left -= digits_of + 1
-    numbers.append(_digits(left, random))
-    return separator.join(numbers)
+    while left not in pool or (left > 2 * shortest and random.random() < _LONGER):
+        # A value short enough that another of the shortest still follows it.
+        fitting = [size for size in pool if left - size - len(separator) >= shortest]
+        if not fitting:
+            return None
+        sizes.append(random.choice(fitting))
+        left -= sizes[-1] + len(separator)
+    values = []
+    for size in (*sizes, left):
+        value = random.choice([value for value in pool[size] if value in unused] or pool[size])
+        unused.discard(value)
+        values.append(value)
+    return separator.join(values)
 
 
 def _email(length: int, random: Random) -> str:
@@ -737,12 +807,11 @@ def _digits(length: int, random: Random) -> str:
     return "".join(random.choices(digits, k=length))
 
 
-def _distinct(table: Table, column: Column, draw: Callable[[], object]) -> list[object]:
-    """As many distinct values drawn by `draw` as the statistics of `column` count."""
-    count = column.statistics.distinct
+def _distinct(where: str, count: int, draw: Callable[[], object]) -> list[object]:
+    """`count` distinct values drawn by `draw`, of the column `where`."""
     pool: dict[object, None] = {}
     for _ in range(_ATTEMPTS * count):
         pool[draw()] = None
         if len(pool) == count:
             return list(pool)
-    raise SimulationError(f"{table.name}.{column.name}: {count} distinct values cannot be drawn")
+    raise SimulationError(f"{where}: {count} distinct values cannot be drawn")

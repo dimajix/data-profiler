@@ -101,6 +101,17 @@ def test_a_scanned_profile_has_the_statistics_matches_keys_groups_dependencies_a
                 f"{where}: {found.distinct} distinct values, made with {statistics.distinct}"
             )
             assert column.list_separator == wanted.list_separator, f"{where}: a list or none"
+            if wanted.items is not None:
+                assert column.items is not None, f"{where}: the values of its lists counted"
+                of_values, made_of = column.items.statistics, wanted.items.statistics
+                assert of_values.lengths == made_of.lengths, where
+                tolerance = _ERRORS * source.dialect.distinct_error() * made_of.distinct
+                assert abs(of_values.distinct - made_of.distinct) <= tolerance, where
+                items_matches = {match.type: match for match in column.items.matches}
+                for match in wanted.items.matches:
+                    assert items_matches.get(match.type) == match, (
+                        f"{where}: its values of {match.type.name}, in sample and on table"
+                    )
             scanned_matches = {match.type: match for match in column.matches}
             for match in wanted.matches:
                 assert scanned_matches.get(match.type) == match, (
@@ -154,6 +165,9 @@ def test_only_the_columns_of_no_sensitivity_have_their_values_in_the_profile(
     assert columns["cust.cust_typ_cd"].values, "the values of an enumeration of no sensitivity"
     assert columns["cust.actv_flg"].values[0].value in ("true", "false"), "as the database writes"
     assert columns["cust.cust_nm"].statistics.range is not None, "a range of texts as well"
+    items = columns["cust.grp_ids"].items
+    assert items is not None
+    assert len(items.values) == 40, "the values of its lists, an enumeration of no sensitivity"
     for name in ("cntct.tel_no", "cntct.eml_adr"):
         assert columns[name].sensitivity is Sensitivity.PERSONAL, name
         assert columns[name].statistics.range is None, name
@@ -274,6 +288,9 @@ def test_a_profile_scanned_with_other_types_keeps_its_tables_until_they_are_coun
     assert not any(column.matches or column.values for column in prod.columns), (
         "a table not counted anew, without its matches and values"
     )
+    items = prod.column("sale_curr_cds").items
+    assert items is not None
+    assert (items.matches, items.values) == ((), ()), "nor those of the values of its lists"
 
 
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(

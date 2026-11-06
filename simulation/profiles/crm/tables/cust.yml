@@ -1,4 +1,4 @@
-format: '14.3'
+format: '14.4'
 name: cust
 rows: 5000
 columns:
@@ -30,6 +30,7 @@ columns:
   type: varchar(40)
   statistics: {nulls: 1500, distinct: 2900, lengths: {shortest: 1, longest: 23}}
   list_separator: ';'
+  items: {statistics: {nulls: 0, distinct: 40, lengths: {shortest: 1, longest: 2}}}
 - name: actv_flg
   type: boolean
   statistics: {nulls: 0, distinct: 2}

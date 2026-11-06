@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.describe import describe, forgotten
-from data_profiler.detect import Sensitivity
+from data_profiler.detect import CURRENCY_CODE, Sensitivity
 from data_profiler.glossary import Glossary, occurrences
 from data_profiler.llm import LanguageModel, LanguageModelError
 from data_profiler.overrides import ColumnOverride, Overrides, TableOverride
@@ -18,7 +18,9 @@ from data_profiler.profile import (
     Column,
     ColumnGroup,
     Concept,
+    Items,
     Lengths,
+    Match,
     Profile,
     Range,
     Statistics,
@@ -460,6 +462,19 @@ def test_the_model_is_told_of_a_column_of_lists_and_its_separator(tmp_path: Path
     _described(replace(_profile(glossary=_GLOSSARY), tables=(listed,)), tmp_path, llm=llm)
     (prompt,) = llm.descriptions
     assert '; lists of values separated by ";"' in prompt
+
+
+def test_the_model_is_told_of_the_types_of_the_values_of_lists(tmp_path: Path) -> None:
+    (table,) = _profile("curr_cds", glossary=_GLOSSARY).tables
+    items = Items(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
+    listed = replace(table, columns=(replace(table.columns[0], list_separator=";", items=items),))
+    llm = _Answers(descriptions=("The currencies.",))
+    _described(replace(_profile(glossary=_GLOSSARY), tables=(listed,)), tmp_path, llm=llm)
+    (prompt,) = llm.descriptions
+    assert (
+        '; lists of values separated by ";", of 6 distinct values, recognised as currency-code'
+        in prompt
+    )
 
 
 def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) -> None:

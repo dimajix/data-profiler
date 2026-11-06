@@ -12,7 +12,7 @@ column is of values of the database; whether it goes into the profile, the modul
 decides.
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from itertools import chain
 
 from data_profiler.detect import sentinels
@@ -21,12 +21,19 @@ from data_profiler.source import Source
 from data_profiler.values import as_text, counted
 
 
-def count(source: Source, table: str, given: Mapping[str, tuple[str, ...]]) -> Table:
+def count(
+    source: Source,
+    table: str,
+    given: Mapping[str, tuple[str, ...]],
+    columns: Collection[str] | None = None,
+) -> Table:
     """The table `table` of `source`, its columns with their types and statistics.
 
     Args:
         source: The schema the table is in.
         table: The name of the table.
+        columns: The columns to count, by their names, all of the table where None; the table
+            holds those alone.
         given: The sentinels given by hand of its columns, by their names, in place of those of
             the tool; a column not named has those of the tool.
 
@@ -42,6 +49,8 @@ def count(source: Source, table: str, given: Mapping[str, tuple[str, ...]]) -> T
     # expressions of each group of its statistics; a group that is not asked for has none.
     asked = []
     for name, kind in source.columns(table).items():
+        if columns is not None and name not in columns:
+            continue
         has_text = dialect.has_text(kind)
         counted_with = given.get(name) if has_text else None
         texts = sentinels(counted_with) if has_text else frozenset()
@@ -63,14 +72,16 @@ def count(source: Source, table: str, given: Mapping[str, tuple[str, ...]]) -> T
     (row,) = source.query(statement, f"counting the statistics of {source.name(table)}")
     answers = iter(row)
     rows = counted(next(answers), table)
-    columns = []
+    found_columns = []
     for name, kind, counted_with, listed, groups in asked:
         counts, found, ranged, lengths = ([next(answers) for _ in group] for group in groups)
         statistics = _statistics(
             counts, zip(listed, found, strict=True), ranged, lengths, f"{table}.{name}"
         )
-        columns.append(Column(name=name, type=kind, statistics=statistics, sentinels=counted_with))
-    return Table(name=table, rows=rows, columns=tuple(columns))
+        found_columns.append(
+            Column(name=name, type=kind, statistics=statistics, sentinels=counted_with)
+        )
+    return Table(name=table, rows=rows, columns=tuple(found_columns))
 
 
 def _statistics(

@@ -10,11 +10,12 @@ are indicated by the statistics and the sample, and verified on the whole table,
 columns whose values follow from another are found in the sample and verified on the whole table, by
 the module `dependencies`, of no determinant the overrides give as determining none. Its columns of
 lists are found in the sample, by the module `lists`, of the separator the overrides give of the
-table, else that of the project. The overrides of the project mark its columns as they give, and
-which values of the database go into the profile - the ranges and enumerations of the columns of no
-sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
-enumerations the profile holds, the module `entities` finds the discriminator whose values tell the
-entities of the rows apart, by a query of its own, or takes the one the overrides give.
+table, else that of the project, which counts the values of their lists as well. The overrides of
+the project mark its columns as they give, and which values of the database go into the profile -
+the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
+the same types and those marks. Of the enumerations the profile holds, the module `entities` finds
+the discriminator whose values tell the entities of the rows apart, by a query of its own, or takes
+the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
@@ -34,8 +35,6 @@ schema, or one that cannot be read, is refused rather than overwritten.
 """
 
 import logging
-from collections.abc import Sequence
-from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from re import Pattern
@@ -44,18 +43,17 @@ from data_profiler.dependencies import determine
 from data_profiler.detect import SemanticType
 from data_profiler.disclosure import disclose
 from data_profiler.entities import discriminate
-from data_profiler.enumerations import values
+from data_profiler.enumerations import valued, values
 from data_profiler.grouping import group
 from data_profiler.keys import identify
-from data_profiler.lists import is_listed_with, listed
+from data_profiler.lists import is_listed_with, itemize, listed
 from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
-from data_profiler.profile import Profile, Table, Value
+from data_profiler.profile import Profile
 from data_profiler.sampling import take
 from data_profiler.source import Source
 from data_profiler.statistics import count
-from data_profiler.values import as_text
-from data_profiler.workspace import Enumeration, Workspace
+from data_profiler.workspace import Workspace
 
 _logger = logging.getLogger(__name__)
 
@@ -72,10 +70,11 @@ def scan(
     """Scans the tables of `source` that `pattern` matches whole into the profile in `directory`.
 
     The profile is written after every table: each table with its columns, types, statistics and
-    matches, its columns of lists, marked as the overrides give, its keys and primary key, the
-    column groups of its columns filled together, the column dependencies of its columns, the
-    discriminator of its entities, and the ranges and values of enumerations of the columns of no
-    sensitivity; and the types of the project.
+    matches, its columns of lists with the statistics, matches and enumerations of the values of
+    their lists, marked as the overrides give, its keys and primary key, the column groups of its
+    columns filled together, the column dependencies of its columns, the discriminator of its
+    entities, and the ranges and values of enumerations of the columns of no sensitivity; and the
+    types of the project.
 
     Args:
         source: The schema whose tables are scanned.
@@ -91,7 +90,8 @@ def scan(
 
     Raises:
         SourceError: The database fails to list the tables or their columns, to count one or the
-            values of its enumerations, to take its sample, to verify its matches, its keys or its
+            values of its enumerations, to take its sample, to verify its matches, to count,
+            enumerate or verify the values of the lists of a column, to verify its keys or its
             column dependencies, or to count the rows of its entities.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
@@ -127,25 +127,11 @@ def scan(
         sample = take(source, table)
         workspace.write_sample(name, sample)
         verified = verify(source, recognise(listed(table, sample, separator), sample, types))
-        keyed = identify(source, verified, sample, given[name].primary_key)
+        itemized = itemize(source, verified, sample, types)
+        keyed = identify(source, itemized, sample, given[name].primary_key)
         found = determine(source, group(keyed, sample), sample, given[name].determining_none)
-        marked = given[name].laid_over(_valued(found, enumerations))
+        marked = given[name].laid_over(valued(found, enumerations))
         disclosed = disclose(marked, types)
         profile = profile.updated(discriminate(source, disclosed, given[name].discriminator))
         profile.write(directory)
     profile.finished(datetime.now(UTC)).write(directory)
-
-
-def _valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:
-    """`table`, each column of an enumeration with its values, as text, the most frequent first."""
-    values = {enumeration.column: enumeration.values for enumeration in enumerations}
-    columns = (
-        replace(
-            column,
-            values=tuple(Value(as_text(value), rows) for value, rows in values[column.name]),
-        )
-        if column.name in values
-        else column
-        for column in table.columns
-    )
-    return replace(table, columns=tuple(columns))

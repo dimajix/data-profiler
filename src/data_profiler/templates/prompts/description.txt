@@ -42,6 +42,13 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 {%- endfor %}
 
 {% endif %}
+{% if column.items and column.items.values %}
+- the values of its lists, with how often each is in them:
+{%- for value in column.items.values[:enumerated_shown] %}
+{{- ", " if not loop.first else " " }}{{ value.value }} ({{ value.rows }})
+{%- endfor %}
+
+{% endif %}
 - the columns beside it: {{ beside(column, table) | join(", ") or "none" }}
 {% for group in table.column_groups if column.name in group.columns %}
 - filled in the same rows as: {{ group.columns | reject("equalto", column.name) | join(", ") }}

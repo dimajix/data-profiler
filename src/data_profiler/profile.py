@@ -49,7 +49,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 3)
+VERSION: Final = Version(14, 4)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -252,6 +252,23 @@ class Match:
 
 
 @dataclass(frozen=True)
+class Items:
+    """The values of the lists of a column of lists, counted as the values of a column are.
+
+    Attributes:
+        statistics: What is counted of the values of the lists, of the whole table: no nulls, as a
+            list holds none, their sentinels, distinct values, lengths and range.
+        matches: The semantic types found in the values of the lists, the most frequent first.
+        values: The values of the lists, if they are an enumeration of no sensitivity, the most
+            frequent first; none else.
+    """
+
+    statistics: Statistics
+    matches: tuple[Match, ...] = ()
+    values: tuple[Value, ...] = ()
+
+
+@dataclass(frozen=True)
 class Term:
     """A term of a name, as the vocabulary splits it, with the concepts it may stand for.
 
@@ -282,6 +299,8 @@ class Column:
         matches: The semantic types found in the column, the most frequent first.
         list_separator: The separator of the values of the lists its texts are, or None where they
             are none.
+        items: The values of its lists, counted as those of a column are, or None where its texts
+            are no lists.
         values: The values of the column, if it is an enumeration of no sensitivity, the most
             frequent first; none else.
         marked: The sensitivity of the column given by hand, by an override, or None where none
@@ -303,6 +322,7 @@ class Column:
     statistics: Statistics
     matches: tuple[Match, ...] = ()
     list_separator: ListSeparator | None = None
+    items: Items | None = None
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
@@ -318,10 +338,15 @@ class Column:
 
     @property
     def sensitivity(self) -> Sensitivity:
-        """The sensitivity given by hand, else of its first match of a sensitive type, else none."""
+        """The sensitivity given by hand, else of its first match of a sensitive type, else none.
+
+        The matches of the values of its lists are its matches as well: a list of IBANs is as
+        sensitive as an IBAN.
+        """
         if self.marked is not None:
             return self.marked
-        for match in self.matches:
+        items = self.items.matches if self.items is not None else ()
+        for match in (*self.matches, *items):
             if match.type.sensitivity is not Sensitivity.NONE:
                 return match.type.sensitivity
         return Sensitivity.NONE
@@ -909,9 +934,25 @@ class _Head:
 
 
 def _unmatched(table: Table) -> Table:
-    """`table` without its discriminator, its columns without their matches, values and ranges."""
+    """`table` without its discriminator, its columns without their matches, values and ranges.
+
+    The values of the lists of a column lose the same as the column.
+    """
     columns = (
-        replace(column, matches=(), values=(), statistics=replace(column.statistics, range=None))
+        replace(
+            column,
+            matches=(),
+            values=(),
+            statistics=replace(column.statistics, range=None),
+            items=None
+            if column.items is None
+            else replace(
+                column.items,
+                matches=(),
+                values=(),
+                statistics=replace(column.items.statistics, range=None),
+            ),
+        )
         for column in table.columns
     )
     return replace(table, columns=tuple(columns), discriminator=None)

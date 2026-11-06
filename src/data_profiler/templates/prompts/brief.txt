@@ -4,7 +4,11 @@
 {% macro brief(table, column) -%}
 {% set shown = values(table, column) -%}
 {{ column.type }}
-{%- if column.list_separator %}; lists of values separated by "{{ column.list_separator }}"{% endif %}
+{%- if column.list_separator %}; lists of values separated by "{{ column.list_separator }}"
+{%- if column.items %}, of {{ column.items.statistics.distinct }} distinct values
+{%- for match in column.items.matches %}, recognised as {{ match.type.name }}{% endfor %}
+{%- endif %}
+{%- endif %}
 {%- for match in column.matches %}; recognised as {{ match.type.name }}{% endfor %}
 {%- if column.sensitive %}; {{ column.sensitivity.value }} data, its values not shown
 {%- elif shown %}; values: {{ shown | join(", ") }}
