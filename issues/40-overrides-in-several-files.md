@@ -1,6 +1,6 @@
 # 40 — Overrides in several files
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -66,6 +66,30 @@ may have both, either of them, or neither:
   function beside it. Which interface, and whether the merge is a method of `Overrides` and of each
   override class, is put before the maintainer as the plan of the work.
 
+## What is decided
+
+As the maintainer decided:
+
+- **A field given in two files is refused**, naming the field and both files, whatever each gives -
+  also the same value twice.
+- **The files are merged as the documents give them**, before the classes take their defaults:
+  maps key by key, every other value - a list, `false` - a field of its own. Merging the classes
+  instead was rejected, as a default no longer tells a field given as its default -
+  `omitted: false` - from one not given, and every class of the overrides would need a merge of
+  its own.
+- **`documents` merges**, by `Format.read_merged(paths)`: each document is read and checked by
+  itself, as `Format.read` reads it, so that an error of a field names its file; then the documents
+  are merged, and the merged one is checked once more. As each is checked by itself, a
+  discriminator and a reference, which have fields that are required, are given whole in one file.
+  Merging in `overrides` was rejected, as it would need the step between reading the version and
+  checking the fields that `Format` owns.
+- **`Project.overrides` names the files**, `overrides.yml` and the files `*.yml` of `overrides/`,
+  those there are, the file first and those of the directory by their names; `Overrides.read(paths)`
+  reads them merged, none where there are none. Subdirectories and files of other names, `.yaml`
+  among them, are ignored.
+- **Each file names its own version**, `format:`, and is read by it.
+- **What the stages refuse or warn of names no file** for now, only the table and the column.
+
 ## Done when
 
 - The overrides of a project are read from `overrides.yml`, from all files of `overrides/`, from
@@ -79,3 +103,7 @@ may have both, either of them, or neither:
 
 - **2026-11-06** — Opened, as the maintainer asked: the overrides split into the files of a
   directory `overrides/`, beside or in place of `overrides.yml`.
+
+- **2026-11-06** — Done as decided: `Format.read_merged` in `documents`, `Overrides.read` of the
+  files `Project.overrides` names, `docs/PROJECT.md` with the files of the overrides and how they
+  are merged; the README and `docs/ARCHITECTURE.md` name the directory beside `overrides.yml`.

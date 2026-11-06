@@ -4,9 +4,10 @@ A project is a directory. Its configuration, `project.yml`, is a document that n
 profile, for the whole project, the semantic types of its own its columns are checked for beside
 those of the tool, the language model its names are described by, and the environments the
 database is profiled in - dev, test, prod -, each by the URL of its schema, and the user and the
-password it is reached as; beside it, `overrides.yml` gives by hand what the profiles of all
-environments take as given. Each environment keeps its results in a directory of its own, named
-after it: its profile, its workspace and its report.
+password it is reached as; beside it, the overrides - `overrides.yml`, the files of the directory
+`overrides/`, or both - give by hand what the profiles of all environments take as given. Each
+environment keeps its results in a directory of its own, named after it: its profile, its workspace
+and its report.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
@@ -305,9 +306,17 @@ class Project:
         return f"{parts.scheme}://{f'[{host}]' if ':' in host else host}:{port}"
 
     @property
-    def overrides(self) -> Path:
-        """The file of the overrides of the project, the same for all its environments."""
-        return self._file.parent / "overrides.yml"
+    def overrides(self) -> list[Path]:
+        """The files of the overrides of the project, the same for all its environments.
+
+        They are `overrides.yml` and the files `*.yml` of the directory `overrides/`, those there
+        are, in this order and those of the directory by their names; its subdirectories and its
+        files of other names are not of them.
+        """
+        directory = self._file.parent
+        file = directory / "overrides.yml"
+        files = [file, *sorted((directory / "overrides").glob("*.yml"))]
+        return [file for file in files if file.is_file()]
 
     def environment(self, name: str) -> Environment:
         """The environment `name`, its values taken from the variables when they are asked for.

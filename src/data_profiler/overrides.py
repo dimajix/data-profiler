@@ -1,10 +1,11 @@
 """Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
 
-The overrides of a project are a document of their own, `overrides.yml` in the directory of the
-project, the same for all its environments, read by `Overrides.read`: what is given of the database,
-concepts of the glossary, and what is given of each table and its columns, as the classes below
-hold it. What each override gives, which stage takes it and when it counts, and what is refused or
-warned of, is said in `docs/PROJECT.md`; here is how the stages take it.
+The overrides of a project are documents of their own, `overrides.yml` and the files of the
+directory `overrides/` of the project, the same for all its environments, read merged by
+`Overrides.read`: what is given of the database, concepts of the glossary, and what is given of each
+table and its columns, as the classes below hold it. What each override gives, which stage takes it
+and when it counts, and what is refused or warned of, is said in `docs/PROJECT.md`; here is how the
+stages take it.
 
 `scan` takes what is given of each table it selects, a `TableOverride`, by `Overrides.selected`:
 `agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels`
@@ -27,7 +28,7 @@ profile does not take. `describe` shows the language model the description given
 """
 
 import logging
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Final, Literal
@@ -470,24 +471,22 @@ class Overrides:
     tables: Mapping[str, TableOverride] = field(default_factory=dict)
 
     @classmethod
-    def read(cls, path: Path) -> "Overrides":
-        """The overrides in `path`; none where there is no such file.
+    def read(cls, paths: Sequence[Path]) -> "Overrides":
+        """The overrides in the files `paths`, merged; none where there are no files.
 
         Args:
-            path: The file of the overrides.
+            paths: The files of the overrides.
 
         Returns:
             The overrides.
 
         Raises:
-            OverridesError: The file cannot be read, is no YAML, names no version of a format, is
-                of another major version or of a newer minor version, or a field is missing,
-                unknown or of the wrong type.
+            OverridesError: A file cannot be read, is no YAML, names no version of a format, is of
+                another major version or of a newer minor version, or a field is missing, unknown
+                or of the wrong type; or a field is given in two files.
         """
-        if not path.exists():
-            return cls()
         try:
-            return FORMAT.read(path)
+            return FORMAT.read_merged(paths)
         except DocumentError as error:
             raise OverridesError(str(error)) from error
 

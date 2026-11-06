@@ -9,6 +9,12 @@ document read, by which a field is checked against another that holds what it na
 document, or in another one, whose reader gives what it holds to begin the context with. The profile
 is made of such documents, and the configuration of a project is one.
 
+Several documents of a format may be read as one, as the overrides of a project are: each is read by
+itself, then their maps are merged key by key, and a field two of them give is refused, whatever
+each gives, so that the order of the documents does not matter. The fields are merged as the
+documents give them, before the classes take their defaults, which no longer tell a field given as
+its default from one not given.
+
 The version of a format has a major and a minor part. The major version is raised with a change to
 the fields of the classes of the format that is incompatible, and the minor version set to 0: a
 field added that is required, a field renamed or removed, a default changed - a default is not
@@ -21,7 +27,7 @@ of another major version as well.
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
@@ -84,6 +90,59 @@ class Format[T]:
                 of a format, is of another major version or of a newer minor version, or a field is
                 missing, unknown or of the wrong type.
         """
+        return self._validated(self._content(path), str(path), context)
+
+    def read_merged(self, paths: Sequence[Path]) -> T:
+        """The YAML documents in `paths`, each read as `read` reads it, merged into one.
+
+        Their fields are merged key by key where both give a map, so that one document may give some
+        fields of an entry and another the others; a field given in two of them is refused, whatever
+        either gives, so that what is read does not depend on the order of the documents. No
+        documents merge into the empty one.
+
+        Args:
+            paths: The files of the documents.
+
+        Returns:
+            What the documents hold, merged.
+
+        Raises:
+            DocumentError: A document cannot be read as `read` reads it, naming its file; a field is
+                given in two documents, naming the field and both files; or the documents merged
+                are refused as `read` refuses a document, naming them all.
+        """
+        merged: dict[str, Any] = {}
+        givers: dict[tuple[object, ...], Path] = {}
+        for path in paths:
+            content = self._content(path)
+            # Each document is checked by itself first, so that a field of the wrong type is named
+            # with its file: the merged document no longer tells which file gave it.
+            self._validated(content, str(path), None)
+            _merge(merged, content, path, (), givers)
+        return self._validated(merged, ", ".join(str(path) for path in paths), None)
+
+    def write(self, path: Path, value: T) -> None:
+        """Writes `value` to `path` as a YAML document of this format, whole or not at all.
+
+        Args:
+            path: The file of the document.
+            value: What the document is to hold.
+
+        Raises:
+            DocumentError: The file cannot be written.
+        """
+        content = {
+            "format": str(self.version),
+            **self._adapter.dump_python(value, mode="json", exclude_defaults=True),
+        }
+        try:
+            text = safe_dump(content, sort_keys=False, allow_unicode=True)
+            write_whole(path, text.encode("utf-8"))
+        except OSError as error:
+            raise DocumentError(f"{path} cannot be written: {error.strerror}") from error
+
+    def _content(self, path: Path) -> dict[str, Any]:
+        """The fields of the document in `path`, once its version is found to be read."""
         try:
             with path.open(encoding="utf-8") as file:
                 content = safe_load(file)
@@ -107,33 +166,55 @@ class Format[T]:
                 f"{path} is of format {given}, newer than the format {self.version} that is read:"
                 " the tool is older than the document"
             )
+        return content
+
+    def _validated(
+        self, content: dict[str, Any], source: str, context: Mapping[str, object] | None
+    ) -> T:
+        """What the fields `content` of the documents named `source` hold, checked by pydantic."""
         try:
             return self._adapter.validate_python(
                 content, extra="forbid", context=dict(context or {})
             )
         except ValidationError as error:
             problems = "; ".join(_problem(detail) for detail in error.errors())
-            raise DocumentError(f"{path}: {problems}") from error
+            raise DocumentError(f"{source}: {problems}") from error
 
-    def write(self, path: Path, value: T) -> None:
-        """Writes `value` to `path` as a YAML document of this format, whole or not at all.
 
-        Args:
-            path: The file of the document.
-            value: What the document is to hold.
+def _merge(
+    merged: dict[Any, Any],
+    content: dict[Any, Any],
+    path: Path,
+    at: tuple[object, ...],
+    givers: dict[tuple[object, ...], Path],
+) -> None:
+    """Merges `content` of the document in `path` into `merged`, the map at the field `at`.
 
-        Raises:
-            DocumentError: The file cannot be written.
-        """
-        content = {
-            "format": str(self.version),
-            **self._adapter.dump_python(value, mode="json", exclude_defaults=True),
-        }
-        try:
-            text = safe_dump(content, sort_keys=False, allow_unicode=True)
-            write_whole(path, text.encode("utf-8"))
-        except OSError as error:
-            raise DocumentError(f"{path} cannot be written: {error.strerror}") from error
+    Args:
+        merged: The fields merged so far, changed in place.
+        content: The fields of the document.
+        path: The file of the document.
+        at: The keys of the field that is the map `merged`, none for the document.
+        givers: The file that gave each field first, by its keys, changed in place.
+
+    Raises:
+        DocumentError: A field of `content` is given in a document merged before.
+    """
+    for key, value in content.items():
+        field = (*at, key)
+        if key not in merged:
+            givers[field] = path
+            # A map is merged into one of its own, never taken: the aliases of an anchor of YAML are
+            # one dict, which a later document would otherwise extend at each of them.
+            if isinstance(value, dict):
+                merged[key] = {}
+                _merge(merged[key], value, path, field, givers)
+            else:
+                merged[key] = value
+        elif isinstance(merged[key], dict) and isinstance(value, dict):
+            _merge(merged[key], value, path, field, givers)
+        else:
+            raise DocumentError(f"{_field(field)} is given in {givers[field]} and in {path}")
 
 
 def _version(path: Path, found: object) -> Version:
@@ -149,5 +230,9 @@ def _version(path: Path, found: object) -> Version:
 
 def _problem(detail: Any) -> str:
     """The field a detail of a `ValidationError` is about, and what is wrong with it."""
-    field = ".".join(str(part) for part in detail["loc"])
-    return f"{field}: {detail['msg']}"
+    return f"{_field(detail['loc'])}: {detail['msg']}"
+
+
+def _field(keys: Sequence[object]) -> str:
+    """The field of a document the keys `keys` lead to, as a message names it: `parts.0.name`."""
+    return ".".join(str(key) for key in keys)

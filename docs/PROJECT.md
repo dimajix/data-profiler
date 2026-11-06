@@ -1,10 +1,11 @@
 # Projects and overrides
 
 What the developer of a project writes: the configuration `project.yml`, which names the tables to
-profile and the environments the database is profiled in, and the overrides `overrides.yml`, which
-give by hand what the profiles of all environments take as given. This document says what holds
-for both, shows a recipe for each task, and ends with the reference of every field, generated from
-the classes the tool reads them by. What the profile holds is described in [PROFILE.md](PROFILE.md).
+profile and the environments the database is profiled in, and the overrides, `overrides.yml` and the
+files of `overrides/`, which give by hand what the profiles of all environments take as given. This
+document says what holds for both, shows a recipe for each task, and ends with the reference of
+every field, generated from the classes the tool reads them by. What the profile holds is described
+in [PROFILE.md](PROFILE.md).
 
 ## The directory of a project
 
@@ -15,6 +16,7 @@ A project is a directory - `examples/crm/` is one, for the simulation environmen
 | `project.yml` | the configuration: the tables, the semantic types of the project, the language model, the environments | yes |
 | `.env` | the variables of the project: the passwords, the users where they differ from one person to the next, what reaches the database | never |
 | `overrides.yml` | what is given by hand, the same for all environments; optional | yes |
+| `overrides/` | more files of what is given by hand, `*.yml`, merged with `overrides.yml`; optional | yes |
 | `<environment>/` | the results of an environment, in a directory named after it: `profile/`, `workspace/` and `report.html` | the profile and the report may be; the workspace keeps itself out |
 
 Every command names the environment it runs on, and the project by `--project`, else the current
@@ -47,13 +49,24 @@ no proxy reaches.
 `http://localhost:11434`. The tool reaches it
 past every proxy, as its prompts hold values of the database.
 
-## The overrides: `overrides.yml`
+## The overrides: `overrides.yml` and `overrides/`
 
 A proposal of the tool - a concept, a reading, a description, a key, a reference - that is wrong is
-corrected in `overrides.yml`, not in the profile, where the next run of a stage would replace it.
+corrected in the overrides, not in the profile, where the next run of a stage would replace it.
 The overrides are the same for all environments of a project, and laid over every profile of it.
 Tables and columns are named by their original names, concepts by their words, entities by their
 harmonized names, all as keys, so that a person writes no more than what is given.
+
+**The files of the overrides** are `overrides.yml` and the files `*.yml` of the directory
+`overrides/`, not those of its subdirectories nor of other names; a project may have both, either,
+or neither. So the overrides can be kept by subject: the glossary in a file of its own, the tables
+of one area of the business in another. Each file is a document of the format of the
+[reference](#overridesyml), with its own line `format:`, read by itself first; then the files are
+merged into one, their maps - the glossary and its concepts, the tables and their columns - key by
+key, so that one file may give the reading of a column and another its sensitivity. A field given
+in two files is refused, naming it and both files, whatever each gives, so that the order of the
+files does not matter. A discriminator and a reference, which have fields that are required, are
+given whole in one file.
 
 **Each override is taken by the stage whose work it is**, and counts once that stage has run again:
 
@@ -118,12 +131,12 @@ some of what is given, and go on:
 
 ## Recipes
 
-Each recipe is a snippet of `project.yml` or `overrides.yml`, as it stands in the file; the
-snippets of the overrides name the tables of the example profile `simulation/profiles/crm`.
-`tests/test_recipes.py` reads every snippet - the line `format:` left out, which the file has
-first - and lays those of the overrides over that profile as the stages that read it do, so that a
-recipe that names what the profile does not have, or gives a reading of no terms of its name, fails
-the tests.
+Each recipe is a snippet of `project.yml` or `overrides.yml`, as it stands in the file - a snippet
+of the overrides stands in a file of `overrides/` alike -; the snippets of the overrides name the
+tables of the example profile `simulation/profiles/crm`. `tests/test_recipes.py` reads every
+snippet - the line `format:` left out, which the file has first - and lays those of the overrides
+over that profile as the stages that read it do, so that a recipe that names what the profile does
+not have, or gives a reading of no terms of its name, fails the tests.
 
 ### Select tables
 
@@ -492,8 +505,9 @@ tables:
 
 ## Reference of the fields
 
-Every field of both files, generated from the classes the tool reads them by, with the descriptions
-of their doc comments, by `scripts/generate.py`; it is never edited by hand. A field of the default
+Every field of both formats - of `project.yml`, and of `overrides.yml` and every file of
+`overrides/` alike -, generated from the classes the tool reads them by, with the descriptions of
+their doc comments, by `scripts/generate.py`; it is never edited by hand. A field of the default
 *absent* is left out where nothing is given of it - its description says *None* -, and one of the
 default *empty* where it holds no entries; *False* is written `false`. A map is written as the keys
 its description names, each with its value.

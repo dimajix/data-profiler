@@ -44,7 +44,7 @@ The project is at its beginning: the stages above are what it is being built for
   how they work together, and the principles of the design -, with the detailed documents in
   [docs/](docs/).
 - **[docs/PROJECT.md](docs/PROJECT.md)**: What the developer of a project writes - `project.yml`
-  and `overrides.yml` -, with a recipe of each task and the reference of every field;
+  and the overrides -, with a recipe of each task and the reference of every field;
   **[docs/PROFILE.md](docs/PROFILE.md)** what the profile holds, with the reference of its fields.
 - **[AGENTS.md](AGENTS.md)**: How we work together - for coding agents and contributors alike.
 - **[issues/INDEX.md](issues/INDEX.md)**: Every issue, one line each, by area;
@@ -109,9 +109,9 @@ of the same names.
 ### Profiling a Database
 
 The tool works on a project: a directory with its configuration `project.yml`, its variables in
-`.env`, what is given by hand in `overrides.yml`, and the results of each of its environments - dev,
-test, prod - in a directory named after the environment. `examples/crm/` is a project for the
-simulation environment:
+`.env`, what is given by hand in `overrides.yml` and the files of `overrides/`, and the results of
+each of its environments - dev, test, prod - in a directory named after the environment.
+`examples/crm/` is a project for the simulation environment:
 
 ```yaml
 format: "4.0"
@@ -131,12 +131,15 @@ environments:
 - **`.env`** holds the variables, and is never committed. For the example, copy
   `examples/crm/.env.example` to `examples/crm/.env`, and set the absolute path of the certificate
   of the simulation in it.
-- **`overrides.yml`**, where there is one, gives by hand what the profiles are to take as given -
-  concepts of the glossary, readings, names and descriptions, the sensitivity and the sentinels of
-  columns, primary keys, references and discriminators -, which each stage takes as given.
+- **`overrides.yml`** and the files `*.yml` of **`overrides/`**, where there are any, give by hand
+  what the profiles are to take as given - concepts of the glossary, readings, names and
+  descriptions, the sensitivity and the sentinels of columns, primary keys, references and
+  discriminators -, which each stage takes as given; the files are merged, a field given in two of
+  them refused.
 
-Every field of both files, a recipe of each task, and how each override is taken are described in
-[docs/PROJECT.md](docs/PROJECT.md); what the profile holds in [docs/PROFILE.md](docs/PROFILE.md).
+Every field of `project.yml` and of the files of the overrides, a recipe of each task, and how each
+override is taken are described in [docs/PROJECT.md](docs/PROJECT.md); what the profile holds in
+[docs/PROFILE.md](docs/PROFILE.md).
 
 With the simulation environment loaded, as above, the example is scanned by
 
@@ -178,13 +181,13 @@ project proposes a concept of each term of none, shown the samples of the worksp
 columns of a sensitivity, into the glossary of the profile, chooses the concept of each term of
 several in a name, of which the reading of the name is made, and proposes a description of each
 column. A concept proposed, a reading chosen or a description proposed wrongly is corrected in
-`overrides.yml`, which comes first. It asks only for what the profile lacks, and writes the profile
+the overrides, which come first. It asks only for what the profile lacks, and writes the profile
 after each concept and each table read or described, so that a run interrupted is resumed by the
 next; `--anew` drops first what the language model filled, to describe the profile anew, with
 another model, say. `--without-llm` asks no language model, and the project needs none: the names
 are split and read where each term has one concept, but no concept is proposed, no concept of a term
 of several chosen and no column described, while what a model filled before is kept, and the
-profile is written once, at the end - a quick round while the glossary is built in `overrides.yml`.
+profile is written once, at the end - a quick round while the glossary is built in the overrides.
 The profile is rendered as a report by
 
 ```bash

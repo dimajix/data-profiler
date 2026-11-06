@@ -51,5 +51,5 @@ def test_a_recipe_of_the_configuration_is_read(tmp_path: Path, snippet: str) -> 
 def test_a_recipe_of_the_overrides_is_laid_over_the_example_profile(
     tmp_path: Path, snippet: str
 ) -> None:
-    given = Overrides.read(_written(tmp_path, "overrides.yml", snippet))
+    given = Overrides.read([_written(tmp_path, "overrides.yml", snippet)])
     given.laid_over(Profile.read(_PROFILE))

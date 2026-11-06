@@ -25,23 +25,24 @@ environment.
     and written as a directory of documents, one of the schema and one of each table; the profile
     a scan starts from, in its run, resumed or new; and the form the semantic types of a project
     take in a document, which `project` reads them in as well.
-*   **`data_profiler.overrides`** - the overrides of a project: read as a document, and laid over
-    each table a scan counts and over a profile a stage reads, refused where they name what is not
-    profiled or give what cannot be, and warned of where they give what a profile does not take, as
-    [PROJECT.md](PROJECT.md#the-overrides-overridesyml) says.
+*   **`data_profiler.overrides`** - the overrides of a project: read from its documents, merged, and
+    laid over each table a scan counts and over a profile a stage reads, refused where they name
+    what is not profiled or give what cannot be, and warned of where they give what a profile does
+    not take, as [PROJECT.md](PROJECT.md#the-overrides-overridesyml-and-overrides) says.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
     profile, the semantic types of its own, the language model, and the environments, each by its
     URL, its user and its password, the password given by a variable -, its variables in `.env`,
-    which complete those of the process, its overrides in `overrides.yml`, and the directories of
-    the results of each environment.
+    which complete those of the process, its overrides in `overrides.yml` and `overrides/`, and the
+    directories of the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, those of
     the profile and the configuration of a project among them, each the fields of one class with
     the version of its format, of a major and a minor part, so that a document of an older minor
     version is read with the defaults of what it lacks; what is wrong with one is named, field by
-    field.
+    field. Several documents of a format are read merged into one, a field given in two of them
+    refused.
 *   **`data_profiler.files`** - files written whole or not at all, for documents and the
     workspace, under names every system takes - the names of tables among them.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and
@@ -231,16 +232,17 @@ types of a project reach `scan` from `project`, and every stage after it from th
     matches and its sample; its name is the harmonized one. What a table and the database hold are
     descriptions as well, given by hand alone, and shown to the language model with every question
     of them.
-*   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml`, and
-    laid over a generated profile: what the database and a table hold, concepts of the glossary,
-    the reading, the harmonized name and the description of a table or column, the sensitivity and
-    the sentinels of a column, the primary key of a table, the reference of a column, or none, a
-    column that determines no other, whatever is found, and the discriminator of a table, with the
-    values, the name and the description of its entities, or none. What it gives is taken as given
-    by the stage whose work it is, and counts once that stage runs again. A name given comes before
-    the one composed from the reading, so that it resolves a collision of harmonized names, and a
-    concept given before the one proposed of its word. Which stage takes what, when it counts, and
-    what is refused, [PROJECT.md](PROJECT.md#the-overrides-overridesyml) says.
+*   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml` and
+    the files of `overrides/`, and laid over a generated profile: what the database and a table
+    hold, concepts of the glossary, the reading, the harmonized name and the description of a table
+    or column, the sensitivity and the sentinels of a column, the primary key of a table, the
+    reference of a column, or none, a column that determines no other, whatever is found, and the
+    discriminator of a table, with the values, the name and the description of its entities, or
+    none. What it gives is taken as given by the stage whose work it is, and counts once that stage
+    runs again. A name given comes before the one composed from the reading, so that it resolves a
+    collision of harmonized names, and a concept given before the one proposed of its word. Which
+    stage takes what, when it counts, and what is refused,
+    [PROJECT.md](PROJECT.md#the-overrides-overridesyml-and-overrides) says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
 

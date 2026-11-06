@@ -48,7 +48,7 @@ def test_the_references_the_overrides_give_are_taken_as_given(
     source: Source, example: Profile, tmp_path: Path
 ) -> None:
     _unrelated(example).write(tmp_path)
-    relate(source, Overrides.read(_EXAMPLE), tmp_path)
+    relate(source, Overrides.read([_EXAMPLE]), tmp_path)
     related = Profile.read(tmp_path)
     (cust_id,) = [r for r in related.table("ord").references if r.column == "cust_id"]
     assert (cust_id.table, cust_id.given) == ("cust", True)

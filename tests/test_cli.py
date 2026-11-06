@@ -97,6 +97,18 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
     assert "personal (marked)" in page, "the overrides of the project are laid over"
 
 
+def test_the_overrides_of_the_directory_of_a_project_are_laid_over(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / "overrides").mkdir()
+    shutil.copy(_EXAMPLE / "overrides.yml", project / "overrides" / "crm.yml")
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    assert command_line(main, "report", "simulation", "--project", str(project)) == 0
+    page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
+    assert "personal (marked)" in page, "the overrides of the directory are laid over"
+
+
 def test_the_profile_of_an_environment_is_described_into_its_directory(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:
