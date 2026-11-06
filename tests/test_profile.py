@@ -18,6 +18,7 @@ from data_profiler.profile import (
     Concept,
     Discriminator,
     Entity,
+    Findings,
     Lengths,
     Match,
     PrimaryKey,
@@ -514,10 +515,19 @@ def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropp
     )
 
 
+def test_a_column_of_lists_refers_many_to_many_by_the_values_of_its_lists() -> None:
+    (table,) = _PROFILE.tables
+    first, *others = table.columns
+    listed = replace(first, list_separator=";", items=Findings(Statistics(0, 3)))
+    of_lists = replace(table, columns=(listed, *others))
+    reference = Reference(first.name, "ORD", "CUST_ID", 1.0)
+    assert of_lists.cardinality(reference) is Cardinality.MANY_TO_MANY
+
+
 def test_a_column_that_is_a_key_of_its_table_refers_one_to_one_another_many_to_one() -> None:
     (table,) = _PROFILE.tables
-    assert table.cardinality(Reference("CUST_ID", "ORD", "CUST_ID", 1.0)) is Cardinality.ONE
-    assert table.cardinality(Reference("CUST_EML", "ORD", "EML", 1.0)) is Cardinality.MANY, (
+    assert table.cardinality(Reference("CUST_ID", "ORD", "CUST_ID", 1.0)) is Cardinality.ONE_TO_ONE
+    assert table.cardinality(Reference("CUST_EML", "ORD", "EML", 1.0)) is Cardinality.MANY_TO_ONE, (
         "of a key of two columns alone"
     )
 

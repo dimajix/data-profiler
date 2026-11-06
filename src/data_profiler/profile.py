@@ -356,6 +356,14 @@ class Column:
         return Findings(self.statistics, self.matches, self.values)
 
     @property
+    def items_separator(self) -> str | None:
+        """The separator its values are read by, of its lists, where it has items; None else.
+
+        A column of items is read by the values of its lists, wherever they are counted.
+        """
+        return self.list_separator if self.items is not None else None
+
+    @property
     def as_items(self) -> Self:
         """It as a column of the values of its lists, where it is one of lists, else itself.
 
@@ -520,10 +528,11 @@ class PrimaryKey:
 
 
 class Cardinality(Enum):
-    """How many rows of a table refer by a reference to one row of the key: one, or many."""
+    """How many rows of a table refer by a reference to how many rows of the key."""
 
-    ONE = "one to one"
-    MANY = "many to one"
+    ONE_TO_ONE = "one to one"
+    MANY_TO_ONE = "many to one"
+    MANY_TO_MANY = "many to many"
 
 
 @dataclass(frozen=True)
@@ -532,16 +541,17 @@ class Reference:
 
     The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
     row or many refer to one of the key, the keys of the table of the column tell: one, where the
-    column is a key of it, else many.
+    column is a key of it, else many; a column of lists refers by the values of its lists, a row to
+    as many of the key as its list holds values, many to many.
 
     Attributes:
         column: The name of the column that refers.
         table: The name of the table referred to.
         key: The name of its column of the key referred to.
         coverage: The share of the values of the column, nulls and sentinels aside, found in the
-            key, counted on the whole table; None of unmistakable values, such as UUIDs, which are
-            equal to those of another column by no chance, so that a few found tell where they come
-            from.
+            key, counted on the whole table - of a column of lists, of the values of its lists -;
+            None of unmistakable values, such as UUIDs, which are equal to those of another column
+            by no chance, so that a few found tell where they come from.
         given: Whether the overrides gave it, rather than it was found.
     """
 
@@ -628,7 +638,10 @@ class Table:
         They are not told of a discriminator of lists, whose entities count a row with each value
         of its list, nor where it has no discriminator.
         """
-        if self.discriminator is None or self.column(self.discriminator.column).items is not None:
+        if (
+            self.discriminator is None
+            or self.column(self.discriminator.column).items_separator is not None
+        ):
             return None
         return self.rows - self.discriminator.rows
 
@@ -650,9 +663,14 @@ class Table:
             reference: A reference of one of its columns.
 
         Returns:
-            One, where the column is a key of it, else many.
+            Many to many, where the column is one of lists, which refer by their values, a row to
+            several of the key; else one, where the column is a key of it, else many.
         """
-        return Cardinality.ONE if (reference.column,) in self.keys else Cardinality.MANY
+        if self.column(reference.column).items_separator is not None:
+            return Cardinality.MANY_TO_MANY
+        if (reference.column,) in self.keys:
+            return Cardinality.ONE_TO_ONE
+        return Cardinality.MANY_TO_ONE
 
 
 @dataclass(frozen=True)

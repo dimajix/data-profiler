@@ -218,21 +218,15 @@ def _own(table: Table, column: Column, seed: int) -> Random:
     return Random(f"{seed}/{table.name}/{column.name}")
 
 
-def _referred(
-    table: Table, reference: Reference, profile: Profile, seed: int, random: Random
-) -> _Pool:
-    """Of the column of `reference`, the distinct values of its key it holds, and those outside.
-
-    The values of the key are drawn again as it draws them; those outside, as many as the rows its
-    coverage leaves, are whole numbers above the largest of the key, each in one row.
+def _key(
+    where: str, reference: Reference, profile: Profile, seed: int
+) -> tuple[Column, list[object]]:
+    """The key `reference` of the column `where` refers to, and its values, drawn as it draws them.
 
     Raises:
         SimulationError: The reference refers to a table `profile` does not have, to a column it
-            does not have, or to one that refers itself, or of a coverage that no values of the
-            column and the key can have, or of values outside of the key that cannot be made.
+            does not have, or to one that refers itself.
     """
-    column = table.column(reference.column)
-    where = f"{table.name}.{column.name}"
     try:
         referred = profile.table(reference.table)
         key = referred.column(reference.key)
@@ -242,7 +236,63 @@ def _referred(
         ) from error
     if any(found.column == key.name for found in referred.references):
         raise SimulationError(f"{where}: refers to a key that refers itself")
-    values = _pool(referred, key, _own(referred, key, seed))
+    return key, _pool(referred, key, _own(referred, key, seed))
+
+
+def _referred_lists(
+    where: str, column: Column, reference: Reference, values: list[object], random: Random
+) -> list[object]:
+    """The distinct texts of `column` of lists that refer by `reference`, lists of `values`.
+
+    The values of its lists are as many of the values of the key as its items count, of their texts
+    of the lengths of its items, the shortest and the longest among them.
+
+    Raises:
+        SimulationError: The reference is of a coverage below all, as no value outside of a key is
+            made of a list, or of more values of lists of their lengths than the key has, or the
+            lists cannot be made of them.
+    """
+    items = column.items
+    if items is None or items.statistics.lengths is None:
+        raise SimulationError(f"{where}: a column of lists without the lengths of its items")
+    if reference.coverage not in (None, 1.0):
+        raise SimulationError(f"{where}: no list of values outside of a key is made")
+    shortest, longest = items.statistics.lengths.shortest, items.statistics.lengths.longest
+    texts = [text for text in map(str, values) if shortest <= len(text) <= longest]
+    ends = [
+        next((text for text in texts if len(text) == length), None)
+        for length in (shortest, longest)
+    ]
+    rest = [text for text in texts if text not in ends]
+    count = items.statistics.distinct - len(set(ends))
+    if None in ends or not 0 <= count <= len(rest):
+        raise SimulationError(
+            f"{where}: {items.statistics.distinct} values of lists of {shortest} to {longest}"
+            f" characters of a key of {len(values)}"
+        )
+    held: list[object] = [*dict.fromkeys(ends), *random.sample(rest, count)]
+    return _lists(where, column, held, random)
+
+
+def _referred(
+    table: Table, reference: Reference, profile: Profile, seed: int, random: Random
+) -> _Pool:
+    """Of the column of `reference`, the distinct values of its key it holds, and those outside.
+
+    The values of the key are drawn again as it draws them; those outside, as many as the rows its
+    coverage leaves, are whole numbers above the largest of the key, each in one row. A column of
+    lists holds lists of values of the key.
+
+    Raises:
+        SimulationError: The reference refers to a table `profile` does not have, to a column it
+            does not have, or to one that refers itself, or of a coverage that no values of the
+            column and the key can have, or of values outside of the key that cannot be made.
+    """
+    column = table.column(reference.column)
+    where = f"{table.name}.{column.name}"
+    key, values = _key(where, reference, profile, seed)
+    if column.list_separator is not None:
+        return _Pool(_referred_lists(where, column, reference, values, random))
     statistics = column.statistics
     present = table.rows - statistics.nulls - statistics.sentinel_rows
     outside = 0 if reference.coverage is None else round((1 - reference.coverage) * present)
@@ -618,31 +668,48 @@ def _texts(table: Table, column: Column, random: Random) -> list[object]:
         draw = _drawing(where, column.matches, lengths, _letters, random)
         return _distinct(where, column.statistics.distinct, draw)
     items = column.items
-    separator = column.list_separator
     if items is None or items.statistics.lengths is None:
         raise SimulationError(f"{where}: a column of lists without the lengths of its items")
     item = _drawing(f"{where}, its items", items.matches, items.statistics.lengths, _digits, random)
+    values = _distinct(f"{where}, its items", items.statistics.distinct, item)
+    return _lists(where, column, values, random)
+
+
+def _lists(where: str, column: Column, values: list[object], random: Random) -> list[object]:
+    """The distinct texts of `column` of lists, of its lengths, of `values`, each of them in one.
+
+    Raises:
+        SimulationError: The column has no separator or lengths, or its lists cannot hold each of
+            the values, or are no lists.
+    """
+    separator = column.list_separator
+    lengths = column.statistics.lengths
+    if separator is None or lengths is None:
+        raise SimulationError(f"{where}: a column of lists without its separator or its lengths")
     pool: dict[int, list[str]] = {}
-    for value in _distinct(f"{where}, its items", items.statistics.distinct, item):
+    for value in values:
         pool.setdefault(len(str(value)), []).append(str(value))
-    unused = {value for values in pool.values() for value in values}
+    unused = {value for texts in pool.values() for value in texts}
+    between = _possible(lengths, separator, pool)
+    if lengths.shortest not in between or lengths.longest not in between:
+        raise SimulationError(
+            f"{where}: no list of {lengths.shortest} or {lengths.longest} characters can be made"
+        )
     wanted = iter([lengths.shortest, lengths.longest])
 
     def listed() -> str:
-        given = next(wanted, None)
-        # Each try of a length of its own, as not every length is one of values of the pool.
+        length = next(wanted, None) or random.choice(between)
+        # Each try of values of their own, as not every choice of them fills the length.
         for _ in range(_ATTEMPTS):
-            text = _list(_length(given, lengths, random), separator, pool, unused, random)
+            text = _list(length, separator, pool, unused, random)
             if text is not None:
                 return text
-        within = given if given is not None else f"{lengths.shortest} to {lengths.longest}"
-        raise SimulationError(f"{where}: no list of {within} characters can be made")
+        raise SimulationError(f"{where}: no list of {length} characters can be made")
 
     texts = _distinct(where, column.statistics.distinct, listed)
     if unused:
         raise SimulationError(
-            f"{where}: {len(texts)} lists cannot hold the {items.statistics.distinct} values of"
-            " its items"
+            f"{where}: {len(texts)} lists cannot hold the {len(values)} values of its items"
         )
     if not is_list(texts, separator, ()):
         raise SimulationError(f"{where}: lists of the values of its items are no lists of values")
@@ -686,6 +753,19 @@ def _drawing(
 def _length(given: int | None, lengths: Lengths, random: Random) -> int:
     """`given`, or where it is None a length from the shortest to the longest, at random."""
     return given if given is not None else random.randint(lengths.shortest, lengths.longest)
+
+
+def _possible(lengths: Lengths, separator: str, pool: dict[int, list[str]]) -> list[int]:
+    """The lengths of `lengths` a list of values of `pool`, by their lengths, can be of, in order.
+
+    Not every length between the shortest and the longest is one: a list is of a value, or of a
+    value, the separator and a shorter list.
+    """
+    possible: set[int] = set()
+    for length in range(1, lengths.longest + 1):
+        if length in pool or any(length - size - len(separator) in possible for size in pool):
+            possible.add(length)
+    return sorted(length for length in possible if length >= lengths.shortest)
 
 
 def _list(

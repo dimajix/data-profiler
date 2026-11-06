@@ -30,7 +30,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [34](34-primary-keys.md) | done | Nothing tells which columns identify the rows of a table, so that a data model derived from the profile has no keys, and no reference of another table can be found to them. |
 | [36](36-entities-of-a-table.md) | done | A table that holds the rows of several entities of the business - told apart by a simple condition, such as the value of a column of their kind, each with columns of its own filled - is profiled as one, so that nothing tells which entities it holds and which columns belong to each. |
 | [37](37-values-determined-by-another-column.md) | done | Nothing tells which columns of a table are determined by another column than its key - the name of a customer repeated in each of its orders -, so that values copied from another entity, which a normalized model holds once, are not seen. |
-| [43](43-columns-of-lists-of-values.md) | in progress | A column whose texts are lists of values, separated by semicolons - `12;47;3` -, is taken for a column of texts like any other, so that what its values are, whether they are values of a key of another table, and whether they tell kinds of rows apart is not found: each text is counted whole, as a value of its own. |
+| [43](43-columns-of-lists-of-values.md) | done | A column whose texts are lists of values, separated by semicolons - `12;47;3` -, is taken for a column of texts like any other, so that what its values are, whether they are values of a key of another table, and whether they tell kinds of rows apart is not found: each text is counted whole, as a value of its own. |
 
 ## Relate
 

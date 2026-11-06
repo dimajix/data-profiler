@@ -87,7 +87,7 @@ given whole in one file.
 | a column that determines none, `determines: false` | `scan`, which looks for no dependency of it; the stages that read the profile drop those found of it | at once; the dependencies of the columns equivalent to it once `scan` counts the table again |
 | the discriminator of a table, or none | `scan`, which counts the entities by it | once `scan` counts the table again |
 | the names and descriptions of entities | the stages that read the profile | where the discriminator was counted with the values given |
-| the reference of a column, or none | `relate`, which does not search it but measures it, and warns where its coverage is below what a reference is found at | once `relate` relates the tables again |
+| the reference of a column, or none | `relate`, which does not search it but measures it - of a column of lists, by the values of its lists -, and warns where its coverage is below what a reference is found at | once `relate` relates the tables again |
 | concepts of the glossary | `describe`, which splits and reads the names by them, and `report` | at the next `describe`; the language model is asked of no term of a concept given |
 | the reading of a name | `describe` and `report` | once `describe` has split the name, as a reading agrees with the terms of its name |
 | the harmonized name of a table or column | `report` | at once; it comes before the name composed from the reading, and so resolves a collision of two names |

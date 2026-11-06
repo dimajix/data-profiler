@@ -409,6 +409,72 @@ def test_a_column_of_a_reference_holds_values_of_its_key_as_many_rows_as_it_cove
     )
 
 
+def test_a_column_of_lists_of_a_reference_holds_lists_of_values_of_its_key() -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(100, 300, Lengths(1, 11)),
+        list_separator=";",
+        items=Findings(Statistics(0, 40, Lengths(1, 3))),
+    )
+    reference = Reference("custs", "cust", "id", 1.0)
+    table = replace(_table(listed), name="ord", references=(reference,))
+    made = [str(value) for (value,) in rows(table, _profile(_CUST), 0) if value is not None]
+    keys = {str(value) for (value, _) in rows(_CUST, _profile(), 0)}
+    values = {value for text in made for value in text.split(";")}
+    assert len(values) == 40
+    assert values <= keys, "values of the key, as text"
+
+
+@pytest.mark.parametrize(
+    ("items", "lengths", "problem"),
+    [
+        (Statistics(0, 600, Lengths(1, 3)), Lengths(1, 11), "600 values of lists of 1 to 3"),
+        (Statistics(0, 40, Lengths(4, 6)), Lengths(4, 11), "40 values of lists of 4 to 6"),
+        (Statistics(0, 40), Lengths(1, 11), "a column of lists without the lengths of its items"),
+    ],
+    ids=["more values than the key", "of lengths the key has none of", "of no lengths"],
+)
+def test_a_column_of_lists_of_a_reference_that_cannot_be_made_is_refused(
+    items: Statistics, lengths: Lengths, problem: str
+) -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(0, 30, lengths),
+        list_separator=";",
+        items=Findings(items),
+    )
+    table = replace(_table(listed), name="ord", references=(Reference("custs", "cust", "id", 1.0),))
+    with pytest.raises(SimulationError, match=f"ord\\.custs: {problem}"):
+        rows(table, _profile(_CUST), 0)
+
+
+def test_a_column_of_lists_of_lengths_no_list_of_its_values_is_of_is_refused() -> None:
+    column = Column(
+        name="v",
+        type="varchar(15)",
+        statistics=Statistics(0, 30, Lengths(3, 14)),
+        list_separator=";",
+        items=Findings(Statistics(0, 6, Lengths(3, 3)), matches=(Match(CURRENCY_CODE, 1.0),)),
+    )
+    with pytest.raises(SimulationError, match=r"t\.v: no list of 3 or 14 characters can be made"):
+        rows(_table(column, count=100), _profile(), 0)
+
+
+def test_a_column_of_lists_of_a_reference_of_values_outside_of_its_key_is_refused() -> None:
+    listed = Column(
+        name="custs",
+        type="varchar(20)",
+        statistics=Statistics(0, 30, Lengths(1, 11)),
+        list_separator=";",
+        items=Findings(Statistics(0, 40, Lengths(1, 3))),
+    )
+    table = replace(_table(listed), name="ord", references=(Reference("custs", "cust", "id", 0.9),))
+    with pytest.raises(SimulationError, match=r"ord\.custs: no list of values outside of a key"):
+        rows(table, _profile(_CUST), 0)
+
+
 def test_a_column_of_unmistakable_values_refers_to_its_key_with_all_of_them() -> None:
     made = {value for (value,) in rows(_referring("key", None), _profile(_CUST), 0) if value}
     keys = {value for (_, value) in rows(_CUST, _profile(), 0)}

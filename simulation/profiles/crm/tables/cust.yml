@@ -31,6 +31,11 @@ columns:
   statistics: {nulls: 1500, distinct: 2900, lengths: {shortest: 1, longest: 23}}
   list_separator: ';'
   items: {statistics: {nulls: 0, distinct: 40, lengths: {shortest: 1, longest: 2}}}
+- name: fav_prod_ids
+  type: varchar(41)
+  statistics: {nulls: 2000, distinct: 2400, lengths: {shortest: 6, longest: 41}}
+  list_separator: ';'
+  items: {statistics: {nulls: 0, distinct: 30, lengths: {shortest: 6, longest: 6}}}
 - name: actv_flg
   type: boolean
   statistics: {nulls: 0, distinct: 2}
@@ -59,3 +64,4 @@ primary_key: {columns: [cust_id]}
 references:
 - {column: cust_ap_id, table: cntct, key: cntct_id, coverage: 1.0}
 - {column: prnt_cust_id, table: cust, key: cust_id, coverage: 1.0}
+- {column: fav_prod_ids, table: prod, key: prod_id, coverage: 1.0}

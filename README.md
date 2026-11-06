@@ -23,7 +23,7 @@ It works in four stages, each of which can be run again on its own:
   its values are found in the key, and, where the keys of several tables hold them, each as a
   candidate. A reference is indicated by the profile, probed by a hundred of its values looked up in
   the whole key, and counted on the whole table; UUIDs, which are equal by no chance, are decided by
-  the probe alone.
+  the probe alone. A column of lists refers by the values of its lists, many to many.
 - **describe** splits the names of the tables and columns into their terms - mostly abbreviations,
   those written together as well - and reads each, a concept for every term, and asks a small
   language model, running locally in Ollama, for the concepts of the terms of none, and for a

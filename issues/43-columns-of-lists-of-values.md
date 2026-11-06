@@ -1,6 +1,6 @@
 # 43 — Columns of lists of values
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -181,3 +181,22 @@ As the maintainer decided on the questions below, and on the plan of the work:
   discriminator of lists, and refuses one, so that it is tested by tables made by hand and the query
   on the database by the scan of the example profile, whose columns of lists are candidates, of
   entities of none.
+
+- **2026-11-06** — Step 3 done: `relate` indicates a reference of a column of lists by the values
+  of its lists, `Column.as_items`, and compares them, texts of digits, with a key of whole numbers
+  as its numbers, which a column of texts is not; it probes and counts each such column on a source
+  of a row of each value of its lists, by queries of its own, so that the rows of no other column
+  are repeated. A reference given of a column of lists is measured alike. `Cardinality` has
+  `MANY_TO_MANY`, of a reference of a column of lists, which the report shows. The example profile
+  has `cust.fav_prod_ids`, lists of products referring to `prod.prod_id`, which `relate` finds on
+  the database; the generator draws the values of such lists from the key, the shortest and the
+  longest of the lengths of its items among them, of a coverage of all alone, and makes lists only
+  of the lengths their values can be joined to. Found in the review: the range of the values of
+  lists, counted as texts, is not known compared as numbers where they are of several lengths, as
+  `999` comes after `1000`; a key of whole numbers is one of a type a database generates keys of,
+  not one of no text; a list column's probe takes as many values of a share of its rows with a
+  list, not of all; and a column of lists is not searched for a reference to a key of its own
+  table, nor measured where given one, as the source of its values would read the key so as well.
+  `Column.items_separator` is the one place that says a column is read by the values of its lists,
+  for `entities`, `references` and the profile; `Cardinality` is `ONE_TO_ONE`, `MANY_TO_ONE` and
+  `MANY_TO_MANY`.

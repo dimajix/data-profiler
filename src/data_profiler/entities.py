@@ -155,9 +155,8 @@ def _count(
     counts: dict[str, dict[str, _Counts]] = {}
     plain = []
     for column in candidates:
-        of = table.column(column.name)
-        separator = of.list_separator
-        if of.items is None or separator is None:
+        separator = table.column(column.name).items_separator
+        if separator is None:
             plain.append(column)
         else:
             unnested = source.unnested(table.name, column.name, separator)

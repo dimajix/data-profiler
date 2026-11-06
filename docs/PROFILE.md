@@ -298,14 +298,15 @@ A column of a table whose values are among those of a key of one column of a tab
 
 The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
 row or many refer to one of the key, the keys of the table of the column tell: one, where the
-column is a key of it, else many.
+column is a key of it, else many; a column of lists refers by the values of its lists, a row to
+as many of the key as its list holds values, many to many.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `column` | text | required | The name of the column that refers. |
 | `table` | text | required | The name of the table referred to. |
 | `key` | text | required | The name of its column of the key referred to. |
-| `coverage` | number or `null` | required | The share of the values of the column, nulls and sentinels aside, found in the key, counted on the whole table; None of unmistakable values, such as UUIDs, which are equal to those of another column by no chance, so that a few found tell where they come from. |
+| `coverage` | number or `null` | required | The share of the values of the column, nulls and sentinels aside, found in the key, counted on the whole table - of a column of lists, of the values of its lists -; None of unmistakable values, such as UUIDs, which are equal to those of another column by no chance, so that a few found tell where they come from. |
 | `given` | boolean | `false` | Whether the overrides gave it, rather than it was found. |
 
 #### ColumnGroup

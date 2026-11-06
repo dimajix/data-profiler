@@ -201,7 +201,8 @@ from the profile.
     unmistakable values, such as UUIDs, which are equal to those of another column by no chance. A
     column has one reference at most; where several keys may be the one, the profile holds each as a
     **reference candidate**, none of them preferred. Whether a row or many refer to one of the key,
-    the keys of the table tell.
+    the keys of the table tell. A column of lists refers by the values of its lists, many to many: a
+    row to as many of the key as its list holds values.
 *   **Column group** - columns of a table filled together, such as the street, the postal code and
     the city of a delivery address: in mostly the same rows of its sample, a column filled in a row
     where it holds a value, neither null nor a sentinel. Found by the Jaccard index of the rows
@@ -309,9 +310,12 @@ from the profile.
     nine of ten of its values are found. A column found in several keys has each as a reference
     candidate, ranked. The overrides give the reference of a column, or none: it is not searched,
     but measured, and warned of where its coverage, or the share probed of UUIDs, falls below what a
-    reference is found at. The result is the profile, with the references and reference candidates
-    of every table in place of those it had, written once at the end, so that a relate that fails
-    leaves it as it was.
+    reference is found at. A column of lists is indicated by the values of its lists - of digits, as
+    numbers, where the key is of whole numbers -, and probed and counted on a source of a row of
+    each of them, by queries of its own; it is not searched for a reference to a key of its own
+    table, which that source would read so as well. The result is the profile, with the references
+    and reference candidates of every table in place of those it had, written once at the end, so
+    that a relate that fails leaves it as it was.
 3.  `describe` splits the original names of all tables and columns into terms, those written
     together by the vocabulary, each with its candidates. It asks the language model of the project
     for the concept of each term of none, showing it the tables and columns the term appears in,
