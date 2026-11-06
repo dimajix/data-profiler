@@ -165,6 +165,13 @@ names it, to `describe`, unless it is to ask none. The semantic types of a proje
     the fewest columns, then of the types a database generates keys of, then the first, unless an
     override gives it, which is taken whether or not its values are unique - warned of where they
     are not.
+*   **Reference** - a column of a table whose values are among those of a key of one column of a
+    table, of another or of the same, as a hierarchy refers to itself, with its coverage: the share
+    of its values found in the key, as real data hold rows whose reference is lost; none of
+    unmistakable values, such as UUIDs, which are equal to those of another column by no chance. A
+    column has one reference at most; where several keys may be the one, the profile holds each as a
+    **candidate**, none of them preferred. Whether a row or many refer to one of the key, the keys
+    of the table tell.
 *   **Group** - columns of a table filled together, such as the street, the postal code and the
     city of a delivery address: in mostly the same rows of its sample, a column filled in a row
     where it holds a value, neither null nor a sentinel. Found by the Jaccard index of the rows

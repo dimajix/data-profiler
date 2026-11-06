@@ -26,9 +26,14 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [23](23-sentinel-values.md) | done | A value that stands for no value - an empty text, `00000`, `9999-12-31` - is counted as a value like any other, so that a column of them looks filled, its range runs to the sentinel, and its share of a semantic type falls below the threshold. |
 | [25](25-groups-of-columns-filled-together.md) | done | Nothing tells which columns of a table are filled together - the street, postal code and city of a different delivery address -, so that columns that belong together are named and described each on its own. |
 | [34](34-primary-keys.md) | done | Nothing tells which columns identify the rows of a table, so that a data model derived from the profile has no keys, and no reference of another table can be found to them. |
-| [35](35-references-between-tables.md) | open | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. |
 | [36](36-entities-of-a-table.md) | done | A table that holds the rows of several entities of the business - told apart by a simple condition, such as the value of a column of their kind, each with columns of its own filled - is profiled as one, so that nothing tells which entities it holds and which columns belong to each. |
 | [37](37-values-determined-by-another-column.md) | open | Nothing tells which columns of a table are determined by another column than its key - the name of a customer repeated in each of its orders -, so that values copied from another entity, which a normalized model holds once, are not seen. |
+
+## Relate
+
+| No. | Status | Issue |
+|---|---|---|
+| [35](35-references-between-tables.md) | in progress | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. |
 
 ## Detection
 

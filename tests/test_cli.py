@@ -117,7 +117,8 @@ def test_the_profile_of_an_environment_is_described_without_a_language_model(
     without = "".join(line for line in configuration.splitlines(True) if "llm" not in line)
     (project / "project.yml").write_text(without, encoding="utf-8")
     (table, *others) = example_profile.tables
-    described = replace(table, columns=(replace(table.columns[0], description="Proposed."),))
+    first, *rest = table.columns
+    described = replace(table, columns=(replace(first, description="Proposed."), *rest))
     proposed = replace(
         example_profile, tables=(described, *others), glossary={"x": Concept(("x",))}
     )

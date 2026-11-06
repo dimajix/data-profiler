@@ -12,18 +12,26 @@ column of text. Of a key of two columns, the column of fewer distinct values is 
 other: its values, in their order, by the place of each row among the rows of the same value of the
 other, which holds each of its values in as many rows at most as the first has values, and one of
 them in as many, so that the pair is unique and each column has its distinct values.
+Each column draws its values from a random of its own, made of the seed and its name and that of its
+table, its pool first, so that the values of a key are drawn again the same for a column of a
+reference to it, of whatever table: the column holds as many of them as its distinct values count,
+less those outside of the key, in as many rows as its coverage says; those outside, of a column of
+whole numbers alone, are above the largest of the key, each in one row, whatever range the column
+has itself. A reference of unmistakable values, of no coverage, holds values of the key alone.
 What the values are follows from the type of the column: texts are letters of the counted lengths,
 and where the column has a match, values of its first semantic type, of those lengths, which its
 detector recognises - all of them, whatever the shares of the match -, and which meet the condition
-of its column together, where the detector has one. Values are made of the semantic types of the
-tool alone, not of those of a project. The sentinels of a column are made as many times as the
-profile counts each: a text as it is written, a day or a moment of the day it names in the form of
-ISO 8601.
+of its column together, where the detector has one; whole numbers of a range lie within it, its
+ends among them, in their order, all of it where they are as many, as a key numbered from one is.
+Values are made of the semantic types of the tool alone, not of those of a project. The sentinels of
+a column are made as many times as the profile counts each: a text as it is written, a day or a
+moment of the day it names in the form of ISO 8601.
 """
 
 import re
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from random import Random
@@ -47,7 +55,7 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
 )
-from data_profiler.profile import Column, Discriminator, Lengths, Table
+from data_profiler.profile import Column, Discriminator, Lengths, Profile, Reference, Table
 from simulation import SimulationError
 
 # The first day of the dates and times generated, its first moment, and how many days they span.
@@ -81,16 +89,21 @@ _DATES: Final = {
 }
 
 
-def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
+def rows(table: Table, profile: Profile, seed: int) -> list[tuple[object, ...]]:
     """The rows of `table`, each column with its nulls, sentinels, distinct values and lengths.
 
     The columns of each of its groups are filled in the same rows, as far as their nulls and
     sentinels allow, and in as many rows of each entity of its discriminator as the entity counts;
-    of each of its keys of two columns, the column of fewer values is numbered within the other.
+    of each of its keys of two columns, the column of fewer values is numbered within the other;
+    each column of a reference holds values of the key it refers to, and as many rows of values
+    outside of it as its coverage leaves.
 
     Args:
         table: The table, with the statistics of its columns.
-        random: Where the values are drawn from; the same seed gives the same rows.
+        profile: The profile of the tables its references refer to, `table` among them where it
+            refers to itself.
+        seed: Where the values are drawn from; the same seed gives the same rows, and the same
+            values of a key to the tables that refer to it.
 
     Returns:
         The rows, each a tuple of the values of the columns in their order; None is a null.
@@ -99,31 +112,118 @@ def rows(table: Table, random: Random) -> list[tuple[object, ...]]:
         SimulationError: A column has a type that is not generated, or statistics that no values
             can have, or the entities of its discriminator rows that its column or the statistics
             of a column do not have, or a column of a key of two columns nulls or sentinels, or
-            values too few for the rows.
+            values too few for the rows, or a reference refers to a table `profile` does not
+            have, to a column it does not have, or to one that refers itself, is of a coverage
+            that no values of the column and the key can have, or of a column numbered within
+            another or of the discriminator.
     """
+    random = Random(f"{seed}/{table.name}")
     # Of each key of two columns, the column numbered within the other, and the rows each value of
     # the other is in at most.
     numbered = _numbered(table)
     most = {other: table.column(name).statistics.distinct for name, other in numbered.items()}
+    references = {reference.column: reference for reference in table.references}
+    discriminator = table.discriminator
+    told = set() if discriminator is None else {discriminator.column}
+    unreferring = next((name for name in references if name in numbered or name in told), None)
+    if unreferring is not None:
+        raise SimulationError(
+            f"{table.name}.{unreferring}: a column numbered or of a discriminator refers"
+        )
     shared = {}
     for found in table.groups:
         order = random.sample(range(table.rows), table.rows)
         shared.update(dict.fromkeys(found.columns, order))
-    discriminator = table.discriminator
     kinds = [] if discriminator is None else _kinds(table, discriminator, random)
     columns: dict[str, list[object]] = {}
     for column in (column for column in table.columns if column.name not in numbered):
         order = shared.get(column.name) or random.sample(range(table.rows), table.rows)
-        if discriminator is None:
-            columns[column.name] = _values(table, column, order, random, most.get(column.name))
-        elif column.name == discriminator.column:
+        own = _own(table, column, seed)
+        if discriminator is not None and column.name == discriminator.column:
             columns[column.name] = _discriminated(table, column, kinds, random)
-        else:
-            within = _within(table, column, discriminator, order, kinds)
-            columns[column.name] = _values(table, column, within, random, most.get(column.name))
+            continue
+        if discriminator is not None:
+            order = _within(table, column, discriminator, order, kinds)
+        reference = references.get(column.name)
+        pool = (
+            _Pool(_pool(table, column, own))
+            if reference is None
+            else _referred(table, reference, profile, seed, own)
+        )
+        columns[column.name] = _values(table, column, order, own, pool, most.get(column.name))
     for name, other in numbered.items():
-        columns[name] = _within_other(table, table.column(name), columns[other], random)
+        column = table.column(name)
+        own = _own(table, column, seed)
+        columns[name] = _within_other(_pool(table, column, own), columns[other])
     return list(zip(*(columns[column.name] for column in table.columns), strict=True))
+
+
+@dataclass(frozen=True)
+class _Pool:
+    """The distinct values of a column: those in the rows they fill, and those in one row each.
+
+    Attributes:
+        filling: The values in the rows they fill, each in one at least.
+        once: The values in one row each: of a column of a reference, those outside of its key.
+    """
+
+    filling: list[object]
+    once: list[object] = field(default_factory=list)
+
+
+def _own(table: Table, column: Column, seed: int) -> Random:
+    """Where the values of `column` of `table` are drawn from, its pool first, by `seed`.
+
+    A column draws from a random of its own, so that the values of a key are drawn again the same
+    for a column that refers to it, of whatever table.
+    """
+    return Random(f"{seed}/{table.name}/{column.name}")
+
+
+def _referred(
+    table: Table, reference: Reference, profile: Profile, seed: int, random: Random
+) -> _Pool:
+    """Of the column of `reference`, the distinct values of its key it holds, and those outside.
+
+    The values of the key are drawn again as it draws them; those outside, as many as the rows its
+    coverage leaves, are whole numbers above the largest of the key, each in one row.
+
+    Raises:
+        SimulationError: The reference refers to a table `profile` does not have, to a column it
+            does not have, or to one that refers itself, or of a coverage that no values of the
+            column and the key can have, or of values outside of the key that cannot be made.
+    """
+    column = table.column(reference.column)
+    where = f"{table.name}.{column.name}"
+    try:
+        referred = profile.table(reference.table)
+        key = referred.column(reference.key)
+    except KeyError as error:
+        raise SimulationError(
+            f"{where}: refers to {reference.table}.{reference.key}, not made"
+        ) from error
+    if any(found.column == key.name for found in referred.references):
+        raise SimulationError(f"{where}: refers to a key that refers itself")
+    values = _pool(referred, key, _own(referred, key, seed))
+    statistics = column.statistics
+    present = table.rows - statistics.nulls - statistics.sentinel_rows
+    outside = 0 if reference.coverage is None else round((1 - reference.coverage) * present)
+    held = statistics.distinct - outside
+    if not 0 < held <= len(values) or held > present - outside:
+        raise SimulationError(
+            f"{where}: {statistics.distinct} distinct values of {present} rows cannot cover"
+            f" {reference.coverage} of a key of {len(values)}"
+        )
+    if not outside:
+        return _Pool(random.sample(values, held))
+    kind, _ = _type(column)
+    numbers = [value for value in values if isinstance(value, int)]
+    if kind not in _INTEGERS or len(numbers) != len(values):
+        raise SimulationError(f"{where}: no {column.type} outside of a key of {key.type} is made")
+    beyond = max(numbers) + 1
+    if beyond + outside > _INTEGERS[kind]:
+        raise SimulationError(f"{where}: {outside} values above the key exceed a {column.type}")
+    return _Pool(random.sample(values, held), list(range(beyond, beyond + outside)))
 
 
 def _numbered(table: Table) -> dict[str, str]:
@@ -146,11 +246,8 @@ def _numbered(table: Table) -> dict[str, str]:
     return numbered
 
 
-def _within_other(
-    table: Table, column: Column, other: list[object], random: Random
-) -> list[object]:
-    """The values of `column`, of each row the one at the place of the row in those of `other`."""
-    pool = _pool(table, column, random)
+def _within_other(pool: list[object], other: list[object]) -> list[object]:
+    """Of each row of `other`, the value of `pool` at the place of the row in those of its value."""
     seen: dict[object, int] = {}
     values = []
     for value in other:
@@ -239,11 +336,17 @@ def _within(
 
 
 def _values(
-    table: Table, column: Column, order: list[int], random: Random, most: int | None
+    table: Table,
+    column: Column,
+    order: list[int],
+    random: Random,
+    pool: _Pool,
+    most: int | None,
 ) -> list[object]:
     """The values of `column`, one per row of `table`, its nulls and sentinels first in `order`.
 
-    Where `most` is given, each value is in as many rows at most, and the first in as many.
+    The values are those of `pool`. Where `most` is given, each of those that fill rows is in as
+    many rows at most, and the first of them in as many.
     """
     statistics = column.statistics
     sentinels = statistics.sentinel_rows
@@ -253,11 +356,11 @@ def _values(
             f"{table.name}.{column.name}: {statistics.distinct} distinct values, "
             f"{statistics.nulls} nulls and {sentinels} sentinels do not fit {table.rows} rows"
         )
-    pool = _pool(table, column, random)
-    values = (
-        [*pool, *random.choices(pool, k=present - len(pool))]
+    held, filled = pool.filling, present - len(pool.once)
+    values = pool.once + (
+        [*held, *random.choices(held, k=filled - len(held))]
         if most is None
-        else _spread(table, column, pool, present, most, random)
+        else _spread(table, column, held, filled, most, random)
     )
     # The condition of a column is met by the values as they repeat, not by the pool alone.
     if column.matches:
@@ -325,7 +428,7 @@ def _pool(table: Table, column: Column, random: Random) -> list[object]:
         return []
     try:
         if kind in _INTEGERS:
-            return list(random.sample(range(1, _INTEGERS[kind]), count))
+            return list(_integers(table, column, kind, random))
         if kind == "decimal" and parameters:
             precision, scale = (*parameters, 0)[:2]
             numbers = random.sample(range(10**precision), count)
@@ -341,11 +444,49 @@ def _pool(table: Table, column: Column, random: Random) -> list[object]:
         raise SimulationError(
             f"{table.name}.{column.name}: a {column.type} has fewer than {count} distinct values"
         ) from error
+    return _drawn(table, column, kind, random)
+
+
+def _drawn(table: Table, column: Column, kind: str, random: Random) -> list[object]:
+    """The distinct values of `column` of the type `kind`, of those drawn one by one.
+
+    Raises:
+        SimulationError: The type is not generated, or its values cannot be drawn.
+    """
     if kind == "double":
         return _distinct(table, column, lambda: round(random.uniform(0, 10**6), 4))
+    if kind == "uuid":
+        return _distinct(table, column, lambda: _uuid(0, random))
     if kind == "varchar":
         return _texts(table, column, random)
     raise SimulationError(f"{table.name}.{column.name}: the type {column.type} is not generated")
+
+
+def _integers(table: Table, column: Column, kind: str, random: Random) -> list[int]:
+    """The distinct whole numbers of `column`, within its range where it has one, of both its ends.
+
+    Of a range, they are in their order, as positions are numbered, and all of it where they are
+    as many, as a key numbered from one.
+
+    Raises:
+        SimulationError: The range is of no whole numbers, or of other values than the column
+            counts: fewer, or one other than its ends.
+    """
+    count = column.statistics.distinct
+    found = column.statistics.range
+    if found is None or found.smallest is None or found.largest is None:
+        return list(random.sample(range(1, _INTEGERS[kind]), count))
+    try:
+        smallest, largest = int(found.smallest), int(found.largest)
+    except ValueError as error:
+        raise SimulationError(f"{table.name}.{column.name}: a range of no whole numbers") from error
+    if largest - smallest + 1 < count or (count == 1) != (smallest == largest):
+        raise SimulationError(
+            f"{table.name}.{column.name}: {count} distinct values do not fit their range"
+        )
+    if count == 1:
+        return [smallest]
+    return sorted([smallest, *random.sample(range(smallest + 1, largest), count - 2), largest])
 
 
 def _type(column: Column) -> tuple[str, tuple[int, ...]]:

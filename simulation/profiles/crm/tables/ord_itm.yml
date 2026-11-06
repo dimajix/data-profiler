@@ -1,16 +1,34 @@
-format: '13.2'
+format: '13.3'
 name: ord_itm
 rows: 61000
 columns:
-- {name: ord_itm_id, type: bigint, statistics: {nulls: 0, distinct: 61000}}
+- name: ord_itm_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 61000
+    range: {smallest: '1', largest: '61000'}
 - {name: ord_id, type: bigint, statistics: {nulls: 0, distinct: 19800}}
-- {name: pos_no, type: smallint, statistics: {nulls: 0, distinct: 9}}
+- name: pos_no
+  type: smallint
+  statistics:
+    nulls: 0
+    distinct: 9
+    range: {smallest: '1', largest: '9'}
 - {name: prod_id, type: bigint, statistics: {nulls: 0, distinct: 340}}
 - name: prodgrp_cd
   type: varchar(4)
   statistics: {nulls: 0, distinct: 14, lengths: {shortest: 2, longest: 4}}
-- {name: qty, type: integer, statistics: {nulls: 0, distinct: 25}}
+- name: qty
+  type: integer
+  statistics:
+    nulls: 0
+    distinct: 25
+    range: {smallest: '1', largest: '25'}
 - {name: unt_prc_amt, type: "decimal(10,2)", statistics: {nulls: 0, distinct: 290}}
 - {name: dscnt_pct, type: "decimal(5,2)", statistics: {nulls: 52000, distinct: 8}}
 keys: [[ord_itm_id], [ord_id, pos_no]]
 primary_key: {columns: [ord_itm_id]}
+references:
+- {column: ord_id, table: ord, key: ord_id, coverage: 1.0}
+- {column: prod_id, table: prod, key: prod_id, coverage: 1.0}

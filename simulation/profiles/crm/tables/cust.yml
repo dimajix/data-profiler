@@ -1,8 +1,13 @@
-format: '13.2'
+format: '13.3'
 name: cust
 rows: 5000
 columns:
-- {name: cust_id, type: bigint, statistics: {nulls: 0, distinct: 5000}}
+- name: cust_id
+  type: bigint
+  statistics:
+    nulls: 0
+    distinct: 5000
+    range: {smallest: '1', largest: '5000'}
 - name: cust_no
   type: varchar(12)
   statistics: {nulls: 0, distinct: 5000, lengths: {shortest: 10, longest: 10}}
@@ -26,6 +31,7 @@ columns:
   statistics: {nulls: 600, distinct: 2, lengths: {shortest: 2, longest: 3}}
   matches: [{type: yes-no, sample: 1.0, table: 1.0}]
 - {name: cust_ap_id, type: bigint, statistics: {nulls: 2100, distinct: 2400}}
+- {name: prnt_cust_id, type: bigint, statistics: {nulls: 4700, distinct: 120}}
 - name: ap_ap_nm
   type: varchar(60)
   statistics: {nulls: 3000, distinct: 1800, lengths: {shortest: 3, longest: 40}}
@@ -41,3 +47,6 @@ columns:
   statistics: {nulls: 3200, distinct: 9, lengths: {shortest: 2, longest: 4}}
 keys: [[cust_id], [cust_no]]
 primary_key: {columns: [cust_id]}
+references:
+- {column: cust_ap_id, table: cntct, key: cntct_id, coverage: 1.0}
+- {column: prnt_cust_id, table: cust, key: cust_id, coverage: 1.0}

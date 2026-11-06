@@ -85,7 +85,8 @@ and stopped by `docker compose down`; its data stays in a volume until
   `curl http://localhost:11434/api/pull -d '{"model": "qwen3.5:2b"}'`.
 
 It is filled with the tables of a profile, with generated rows that have the statistics of the
-profile and, in the texts of a column with a match, the values of its semantic type, by
+profile, in the texts of a column with a match the values of its semantic type, and in a column of a
+reference values of the key it refers to, by
 
 ```bash
 uv run simulation load simulation/profiles/crm

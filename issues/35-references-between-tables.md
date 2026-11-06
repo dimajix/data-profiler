@@ -1,9 +1,9 @@
 # 35 — References between tables
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** high
-**Area:** Scan
+**Area:** Relate
 **Epic:** [38](38-a-data-model-derived-from-the-profile-epic.md)
 **Summary:** Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find.
 
@@ -58,6 +58,52 @@ The interface first, put before the maintainer. It needs the keys of
   per entity of the key.
 - **The report** shows the references of each table, and what refers to it.
 
+## How
+
+As decided with the maintainer, in three steps - the profile and the simulation, the references
+found, then those given:
+
+- **The stage `relate`**, after `scan` and before `describe`, queries the database and writes the
+  profile once at its end, without a run of its own: one that fails leaves the profile as it was,
+  and the next begins anew. The module `references` finds them; the area is Relate. `scan` drops
+  the references and candidates of a table it counts anew; those of others to it stay until
+  `relate` runs again.
+- **References of one column** alone, to a key of one column of a table, of another or the same.
+- **The profile** holds, in the document of the table that refers, its `references`, one per
+  column at most, and its `candidates`, of the columns of which several keys pass, in the order
+  they are ranked, none of them preferred: each a `Reference` of the column, the table and key it
+  refers to, its coverage and whether it was given. The cardinality is not held: a column that is
+  a key of its table refers one to one, else many to one.
+- **Unmistakable values**, of a type such as `uuid` or of a column whose match is a UUID, are
+  equal to those of another column by no chance, so that one value found proves where they come
+  from. Their coverage is of no interest, and not counted.
+- **The candidates**, indicated without a query: of the keys of one column as targets, the columns
+  of a type that identifies a row, of a family of types, distinct count, lengths, matches and range
+  that agree with the key. A column of whole numbers whose values are a dense run at the start of
+  the key, as a code or a counter is, stays a candidate only where its name agrees with the key.
+  The ranges of sensitive columns are not needed: a sensitive column is no key.
+- **The probe:** 100 values of each candidate, taken at random by `BERNOULLI` as the sample is -
+  all candidates of a table in one read -, looked up in the whole key by Trino, so that no value
+  leaves the database; batched, ten keys at most in a query, the result counts alone. A pair of
+  random samples of two tables would say nothing. A candidate of unmistakable values refers to a
+  key where more than half of its values probed are found; another is dropped below 80 %.
+- **The coverage** of the other candidates is counted on the whole table: the values of the column,
+  nulls and sentinels aside, found in the key, by joins built from the building blocks of the
+  dialect, one read of the table for ten candidates at most. A candidate covered 90 % or more
+  refers to the key.
+- **Several keys:** of unmistakable values, the one of the most values found, then of the fewest
+  rows, the most specific; of others, all kept as candidates, ranked by how the span of the values
+  fits the one expected of a random choice of the key, by the original names - not the readings of
+  `describe`, which runs after `relate` -, and by the fewest rows.
+- **The overrides** give the reference of a column by the table and column it refers to, or
+  `false` for none and no candidates. For a column given, nothing is searched; its coverage, or the
+  probe of unmistakable values, is measured all the same, and warned of below the thresholds or
+  where the column given is no key. A table or column the profile lacks is refused. No option
+  searches what the overrides give.
+- **The simulation** draws the values of a column of a reference from the key it refers to, a
+  share of them outside of it as its coverage says, and its profile has keys of UUIDs, a reference
+  of a table to itself, a code of whole numbers and keys of whole numbers sharing their values.
+
 ## Done when
 
 - The interface is agreed with the maintainer.
@@ -70,3 +116,24 @@ The interface first, put before the maintainer. It needs the keys of
 
 - **2026-11-05** — Opened with [38](38-a-data-model-derived-from-the-profile-epic.md), as agreed
   with the maintainer.
+- **2026-11-06** — The interface agreed with the maintainer (see How): a stage `relate` of its own,
+  references of one column; the candidates indicated by the profile, probed by 100 values looked up
+  in the whole key by Trino, and the coverage counted on the whole table of all but unmistakable
+  values, such as UUIDs, which the probe decides; the targets of a column of several kept as
+  candidates; the references given measured, not searched, without an option to search them.
+- **2026-11-06** — Step 1 built: the profile holds the references and candidates of a table,
+  `Reference` of the column, the table and key referred to, the coverage and whether it was given,
+  its format raised to 13.3; it refuses a reference of a column or to a table or column it does not
+  have, and a column of two references or of a reference and candidates, and drops those to the
+  tables it no longer selects and to a column a table counted anew no longer has. The simulation
+  draws each column from a random of its own, so that a column of a reference holds values of its
+  key, as many rows outside of it as its coverage leaves; it keeps whole numbers within their range
+  and makes UUIDs of the type `uuid`. Its profile numbers the keys of whole numbers from one, those
+  of the products apart, and has keys of UUIDs, of the type and as text, a reference of the
+  customers to themselves, codes of whole numbers, and the references of its tables.
+- **2026-11-06** — After the review, the maintainer decided: `Table.candidates` keeps its name, as
+  it means what `Term.candidates` means, possibilities of which one is to be chosen; what is
+  indicated before it is verified is no candidate, in `keys` as in `references`, and `keys` is
+  renamed so, in a commit of its own before step 2. The profile finds a table by its name,
+  `Profile.table`, which the simulation takes its tables from; a column has a reference, candidates
+  or neither, checked as the profile is read rather than a type of its own.

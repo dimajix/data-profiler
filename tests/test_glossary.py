@@ -149,7 +149,7 @@ def test_the_terms_of_the_example_are_found_with_their_tables_and_columns(
     assert found["cust"][:3] == ["cntct.cust_id", "cust", "cust.cust_id"]
     assert "cust_addr" in found["addr"], "the terms of the names of tables are found as well"
     assert found["iban"] == ["ord.iban"]
-    assert list(found)[:4] == ["cntct", "id", "cust", "typ"], "in the order they first appear"
+    assert list(found)[:4] == ["cntct", "id", "uuid", "cust"], "in the order they first appear"
     assert "ord_itm.prodgrp_cd" in found["grp"], "a term written together split"
     vocabulary = Vocabulary.of(example_profile)
     names = [c.name for t in example_profile.tables for c in t.columns]
