@@ -518,6 +518,13 @@ def test_a_scan_with_other_types_keeps_the_tables_without_their_matches_and_valu
     assert [c.statistics.nulls for c in table.columns] == [c.statistics.nulls for c in cust.columns]
 
 
+def test_a_profile_of_its_schema_is_read_and_one_of_another_refused(tmp_path: Path) -> None:
+    _PROFILE.write(tmp_path)
+    assert Profile.read_of(tmp_path, "crm", "sales") == _PROFILE
+    with pytest.raises(ProfileError, match=r"is of crm\.sales, not of crm\.billing"):
+        Profile.read_of(tmp_path, "crm", "billing")
+
+
 def test_a_scan_of_another_schema_refuses_the_profile(tmp_path: Path) -> None:
     _PROFILE.write(tmp_path)
     with pytest.raises(ProfileError, match=r"is of crm\.sales, not of crm\.billing"):

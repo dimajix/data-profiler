@@ -596,6 +596,29 @@ class Profile:
         )
 
     @classmethod
+    def read_of(cls, directory: Path, catalog: str, schema: str) -> "Profile":
+        """Reads the profile written to `directory`, of `schema` of `catalog`.
+
+        Args:
+            directory: The directory of the profile.
+            catalog: The catalog of the schema the profile is to be of.
+            schema: The schema the profile is to be of.
+
+        Returns:
+            The profile, its tables sorted by name.
+
+        Raises:
+            ProfileError: The profile cannot be read, as `read` says, or is of another schema.
+        """
+        profile = cls.read(directory)
+        if (profile.catalog, profile.schema) != (catalog, schema):
+            raise ProfileError(
+                f"the profile {directory} is of {profile.catalog}.{profile.schema},"
+                f" not of {catalog}.{schema}"
+            )
+        return profile
+
+    @classmethod
     def updating(
         cls,
         directory: Path,
@@ -633,12 +656,7 @@ class Profile:
         empty = cls(catalog=catalog, schema=schema, tables=(), types=types, run=begun)
         if not (directory / _HEAD).exists():
             return empty
-        profile = cls.read(directory)
-        if (profile.catalog, profile.schema) != (catalog, schema):
-            raise ProfileError(
-                f"the profile {directory} is of {profile.catalog}.{profile.schema},"
-                f" not of {catalog}.{schema}"
-            )
+        profile = cls.read_of(directory, catalog, schema)
         if profile.types != types:
             _logger.info("The semantic types changed: the tables of %s are scanned anew", directory)
             tables = tuple(_unmatched(table) for table in profile.tables)
