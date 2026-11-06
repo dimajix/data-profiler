@@ -6,10 +6,9 @@ from pathlib import Path
 from typing import Final
 
 import pytest
-from pydantic import TypeAdapter
 from yaml import safe_dump, safe_load
 
-from data_profiler.documents import DocumentError, Version, read_document, write_document
+from data_profiler.documents import DocumentError, Format, Version
 
 
 @dataclass(frozen=True)
@@ -27,15 +26,14 @@ class _Whole:
     parts: tuple[_Part, ...] = ()
 
 
-_ADAPTER: Final = TypeAdapter(_Whole)
-_VERSION: Final = Version(3, 2)
+_FORMAT: Final = Format(_Whole, Version(3, 2))
 _WHOLE: Final = _Whole(name="whole", parts=(_Part("one"), _Part("two")))
 
 
 def _written(tmp_path: Path, change: dict[str, object] | None = None) -> Path:
     """The document of `_WHOLE`, with the fields of its first part changed as `change` says."""
     path = tmp_path / "document.yml"
-    write_document(path, _ADAPTER, _VERSION, _WHOLE)
+    _FORMAT.write(path, _WHOLE)
     if change is not None:
         content = safe_load(path.read_text(encoding="utf-8"))
         part = content["parts"][0]
@@ -49,7 +47,7 @@ def _written(tmp_path: Path, change: dict[str, object] | None = None) -> Path:
 
 
 def test_a_document_written_and_read_is_unchanged(tmp_path: Path) -> None:
-    assert read_document(_written(tmp_path), _ADAPTER, _VERSION) == _WHOLE
+    assert _FORMAT.read(_written(tmp_path)) == _WHOLE
 
 
 def test_a_document_is_written_with_its_format_first(tmp_path: Path) -> None:
@@ -60,16 +58,16 @@ def test_a_document_is_written_with_its_format_first(tmp_path: Path) -> None:
 
 def test_a_field_that_has_its_default_is_not_written(tmp_path: Path) -> None:
     path = tmp_path / "document.yml"
-    write_document(path, _ADAPTER, _VERSION, _Whole(name="whole"))
+    _FORMAT.write(path, _Whole(name="whole"))
     assert safe_load(path.read_text(encoding="utf-8")) == {"format": "3.2", "name": "whole"}
-    assert read_document(path, _ADAPTER, _VERSION) == _Whole(name="whole")
+    assert _FORMAT.read(path) == _Whole(name="whole")
 
 
 def test_a_document_written_over_another_replaces_it(tmp_path: Path) -> None:
     path = _written(tmp_path)
     other = _Whole(name="other", parts=())
-    write_document(path, _ADAPTER, _VERSION, other)
-    assert read_document(path, _ADAPTER, _VERSION) == other
+    _FORMAT.write(path, other)
+    assert _FORMAT.read(path) == other
     left = [file.name for file in tmp_path.iterdir()]
     assert left == ["document.yml"], "no temporary file is left"
 
@@ -88,11 +86,11 @@ def test_a_document_of_an_older_minor_version_is_read_with_the_defaults_of_what_
 ) -> None:
     path = tmp_path / "document.yml"
     path.write_text("format: '3.0'\nname: whole\n", encoding="utf-8")
-    assert read_document(path, _ADAPTER, _VERSION) == _Whole(name="whole")
+    assert _FORMAT.read(path) == _Whole(name="whole")
 
 
 def test_a_format_given_as_a_number_is_of_minor_version_0(tmp_path: Path) -> None:
-    assert read_document(_of_format(tmp_path, "3"), _ADAPTER, _VERSION) == _WHOLE
+    assert _FORMAT.read(_of_format(tmp_path, "3")) == _WHOLE
 
 
 def test_a_document_of_a_newer_minor_version_is_refused_as_newer_than_the_tool(
@@ -103,7 +101,7 @@ def test_a_document_of_a_newer_minor_version_is_refused_as_newer_than_the_tool(
         DocumentError,
         match=r"format 3\.3, newer than the format 3\.2 that is read: the tool is older",
     ):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 @pytest.mark.parametrize(
@@ -119,7 +117,7 @@ def test_a_document_of_another_major_version_is_refused_naming_both(
         DocumentError,
         match=rf"format {re.escape(named)}, of another major version than the format 3\.2",
     ):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 @pytest.mark.parametrize(
@@ -134,14 +132,14 @@ def test_a_document_of_a_format_that_is_no_version_is_refused(
     with pytest.raises(
         DocumentError, match=f"names the format {re.escape(named)}, which is no version"
     ):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 def test_a_document_without_a_format_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "document.yml"
     path.write_text("name: whole\nparts: []\n", encoding="utf-8")
     with pytest.raises(DocumentError, match="names no format"):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 @pytest.mark.parametrize(
@@ -158,7 +156,7 @@ def test_a_document_with_a_wrong_field_is_refused_naming_the_field(
 ) -> None:
     path = _written(tmp_path, change)
     with pytest.raises(DocumentError, match=problem):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 @pytest.mark.parametrize("text", ["- a list\n", ""], ids=["a list", "nothing"])
@@ -166,26 +164,26 @@ def test_a_file_that_holds_no_fields_is_refused(tmp_path: Path, text: str) -> No
     path = tmp_path / "document.yml"
     path.write_text(text, encoding="utf-8")
     with pytest.raises(DocumentError, match="holds no fields"):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 def test_a_file_that_is_no_yaml_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "document.yml"
     path.write_text("name: [whole\n", encoding="utf-8")
     with pytest.raises(DocumentError, match="is no YAML"):
-        read_document(path, _ADAPTER, _VERSION)
+        _FORMAT.read(path)
 
 
 def test_a_document_that_does_not_exist_is_refused(tmp_path: Path) -> None:
     with pytest.raises(DocumentError, match="cannot be read"):
-        read_document(tmp_path / "document.yml", _ADAPTER, _VERSION)
+        _FORMAT.read(tmp_path / "document.yml")
 
 
 def test_a_document_that_cannot_be_written_leaves_nothing_behind(tmp_path: Path) -> None:
     path = tmp_path / "document.yml"
     path.mkdir()
     with pytest.raises(DocumentError, match="cannot be written"):
-        write_document(path, _ADAPTER, _VERSION, _WHOLE)
+        _FORMAT.write(path, _WHOLE)
     left = [file.name for file in tmp_path.iterdir()]
     assert left == ["document.yml"], "no temporary file is left"
     assert path.is_dir(), "what was there before is left as it was"
@@ -193,4 +191,4 @@ def test_a_document_that_cannot_be_written_leaves_nothing_behind(tmp_path: Path)
 
 def test_a_document_in_a_directory_that_does_not_exist_is_refused(tmp_path: Path) -> None:
     with pytest.raises(DocumentError, match="cannot be written"):
-        write_document(tmp_path / "missing" / "document.yml", _ADAPTER, _VERSION, _WHOLE)
+        _FORMAT.write(tmp_path / "missing" / "document.yml", _WHOLE)

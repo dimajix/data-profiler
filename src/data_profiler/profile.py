@@ -5,24 +5,15 @@ the overrides of the project, laid over it: it holds no values of the columns fo
 match names its semantic type by its name, of a type of the tool or of the project, whose types the
 profile holds in the form `project.yml` gives them, so that it is read without its project.
 
-A profile is a directory of documents, written as YAML in the format below and read back by the
-same classes: `profile.yml` holds the profile but its tables, and `tables/` a file of each table,
-named after it, so that a person finds a table in a file of its own, and its changes in a diff of
-their own. A file of a table is read with the semantic types of `profile.yml`, which its matches
-name.
+A profile is a directory of documents, written as YAML in the formats below, of one version, and
+read back by the same classes: `profile.yml` holds the profile but its tables, and `tables/` a file
+of each table, named after it, so that a person finds a table in a file of its own, and its changes
+in a diff of their own. A file of a table is read with the semantic types of `profile.yml`, which
+its matches name.
 
 Every attribute of a profile is filled by one step, which replaces in a profile there is those it
-fills alone, and keeps all others. The stage scan fills the run and the semantic types of the
-profile, the rows, runs, keys, primary keys, column groups, column dependencies and discriminators
-of its tables, and the types, statistics, matches, values, marks and sentinels of their columns; the
-stage relate fills the references and reference candidates of the tables, which a table counted anew
-has none of until relate runs again; the stage describe fills the terms of the names of the tables
-and columns by its step that splits them, the glossary by its step that proposes concepts, the
-readings by its step that reads the names, and the descriptions of the columns by its step that
-describes them. The overrides fill none: what they give, the stages lay over the profile they read -
-the names given and the descriptions of the database, of the tables and of the entities among it,
-which a profile written holds none of -, and scan takes the marks, the sentinels, the primary keys
-and the discriminators they give.
+fills alone, and keeps all others; which step fills which, and that the overrides fill none, is said
+in `docs/PROFILE.md`.
 
 A profile is begun by the stage scan, and written by the stages after it as well. Which profile a
 scan starts from is decided here, by `Profile.updating`: the one there is, its run resumed where it
@@ -50,13 +41,13 @@ from data_profiler.detect import (
     project_type,
     semantic_type,
 )
-from data_profiler.documents import DocumentError, Version, read_document, write_document
+from data_profiler.documents import DocumentError, Format, Version
 from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-FORMAT: Final = Version(14, 1)
-"""The version of the format a profile is written in, raised as `documents` says.
+VERSION: Final = Version(14, 1)
+"""The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
 another major version is removed and scanned again, not converted.
@@ -85,7 +76,17 @@ _EXTENSION: Final = ".yml"
 
 @dataclass(frozen=True)
 class _Definition:
-    """A semantic type of a project, as a document gives it under its name."""
+    """A semantic type of a project, as a document gives it under its name.
+
+    Its name is of lower case letters, digits and `-`, beginning with a letter or a digit, and of no
+    type of the tool.
+
+    Attributes:
+        pattern: The regular expression every value of the type matches whole. It is read by Python
+            and by the database alike, so that it uses what both share: classes, repetitions,
+            groups and alternatives, and no other escapes than of a character.
+        sensitivity: The rules the values of the type fall under.
+    """
 
     pattern: str
     sensitivity: Sensitivity
@@ -115,7 +116,9 @@ def _definitions(types: tuple[SemanticType, ...]) -> dict[str, dict[str, str]]:
 
 
 type SemanticTypes = Annotated[
-    tuple[SemanticType, ...], PlainValidator(_semantic_types), PlainSerializer(_definitions)
+    tuple[SemanticType, ...],
+    PlainValidator(_semantic_types, json_schema_input_type=dict[str, _Definition]),
+    PlainSerializer(_definitions),
 ]
 """The semantic types of a project in a document: each under its name, its pattern and sensitivity.
 
@@ -136,7 +139,9 @@ def _semantic_type(name: object, info: ValidationInfo) -> SemanticType:
 
 # A semantic type, written by its name.
 type _Named = Annotated[
-    SemanticType, PlainValidator(_semantic_type), PlainSerializer(lambda kind: kind.name)
+    SemanticType,
+    PlainValidator(_semantic_type, json_schema_input_type=str),
+    PlainSerializer(lambda kind: kind.name),
 ]
 
 
@@ -213,7 +218,7 @@ class Match:
     """A semantic type found in a column, with the share of its values that are of it.
 
     Attributes:
-        type: The semantic type.
+        type: The semantic type, by its name: of the tool, or of the project.
         sample: The share of the values of the sample, nulls and sentinels aside, that are of the
             type, from 0 to 1.
         table: The share of the values of the whole table, nulls and sentinels aside, that the
@@ -422,8 +427,8 @@ class Reference:
     """A column of a table whose values are among those of a key of one column of a table.
 
     The table referred to may be the one of the column, as a hierarchy refers to itself. Whether a
-    row or many refer to one of the key, the keys of the table of the column tell, as
-    `Table.cardinality` says.
+    row or many refer to one of the key, the keys of the table of the column tell: one, where the
+    column is a key of it, else many.
 
     Attributes:
         column: The name of the column that refers.
@@ -560,7 +565,8 @@ class Concept:
 
     Attributes:
         abbreviations: The terms it is written as beside its word, in lower case, none where none
-            is given; its word is a term of it where it is one, as `glossary.written_as` tells.
+            is given; its word is a term of it where it is one term - `iban` -, and a word of
+            several terms - `contact_person` - is written as its abbreviations alone.
         description: What it means, in English; None where none is given.
         omitted: Whether it is left out of harmonized names, as a prefix that marks a custom
             column, which says nothing of what the column holds.
@@ -656,7 +662,7 @@ class Profile:
                 table the profile does not have, or to a column of it the table does not have.
         """
         try:
-            head = read_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT)
+            head = HEAD_FORMAT.read(directory / _HEAD)
             tables = [_read_table(path, head.types) for path in _files(directory)]
         except DocumentError as error:
             raise ProfileError(str(error)) from error
@@ -779,9 +785,9 @@ class Profile:
             description=self.description,
         )
         try:
-            write_document(directory / _HEAD, _HEAD_ADAPTER, FORMAT, head)
+            HEAD_FORMAT.write(directory / _HEAD, head)
             for table in self.tables:
-                write_document(_file(directory, table.name), _TABLE_ADAPTER, FORMAT, table)
+                TABLE_FORMAT.write(_file(directory, table.name), table)
         except DocumentError as error:
             raise ProfileError(str(error)) from error
 
@@ -859,7 +865,19 @@ class Profile:
 
 @dataclass(frozen=True)
 class _Head:
-    """What `profile.yml` holds: the profile but its tables, whose matches name its types."""
+    """What `profile.yml` holds: the profile but its tables, whose matches name its types.
+
+    Attributes:
+        catalog: The catalog of the schema, as Trino names the database it reads.
+        schema: The schema whose tables the profile describes.
+        run: The last run of scan, or None where no scan wrote the profile.
+        glossary: The concepts of the names of the tables and columns, by their words, once
+            proposed.
+        types: The semantic types of the project the tables were scanned with, beside those of
+            the tool, by their names.
+        description: What the database holds, given by hand, by an override; None in a profile
+            written.
+    """
 
     catalog: str
     schema: str
@@ -926,7 +944,7 @@ def _read_table(path: Path, types: tuple[SemanticType, ...]) -> Table:
             twice or fewer than two, the determinants of the column dependencies name one twice,
             or the discriminator is not one of the table, as `_refuse_discriminator` says.
     """
-    table = read_document(path, _TABLE_ADAPTER, FORMAT, {_TYPES: types})
+    table = TABLE_FORMAT.read(path, {_TYPES: types})
     if table.name != path.name.removesuffix(_EXTENSION):
         raise ProfileError(f"{path} holds the table {table.name!r}, not the one it is named after")
     names = {column.name for column in table.columns}
@@ -1022,5 +1040,8 @@ def _refuse_discriminator(path: Path, discriminator: Discriminator, names: Colle
             values.add(value)
 
 
-_HEAD_ADAPTER: Final = TypeAdapter(_Head)
-_TABLE_ADAPTER: Final = TypeAdapter(Table)
+HEAD_FORMAT: Final = Format(_Head, VERSION)
+"""The format of `profile.yml`, which holds the profile but its tables."""
+
+TABLE_FORMAT: Final = Format(Table, VERSION)
+"""The format of the file of a table, in `tables/`, named after the table."""

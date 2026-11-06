@@ -10,12 +10,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
-## Profile
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [39](39-documents-of-the-formats.md) | open | medium | feature | The formats of `project.yml`, `overrides.yml` and the profile are described only in the prose of the README and in doc comments, without a reference of their fields and without examples of what a person writes, so that a developer writing overrides reads the code to learn what a field takes, and a description written by hand would drift from the classes it describes. |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |
