@@ -1,6 +1,6 @@
 # 39 — Documents of the formats, generated from the code
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -105,3 +105,9 @@ editor completion and checks of `project.yml` and `overrides.yml`; an issue of i
   `docs/PROJECT.md` alone, the rules the module docs of `overrides` alone held added there; the
   module docs say how the stages take the overrides in the code, by which methods, and point to the
   document, as the entry of `data_profiler.overrides` in `docs/ARCHITECTURE.md` does.
+
+- **2026-11-06** — Done, as the maintainer agreed after the review of each step. Open as findings,
+  for issues of their own if wanted: `_Head` of `profile` repeats the descriptions of the fields of
+  `Profile`; the file of a document is known to the owner of its format and repeated by
+  `scripts/generate.py`, where a `Format` could know it; and JSON schemas of the formats for
+  editors.
