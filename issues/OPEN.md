@@ -9,6 +9,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
+| [45](45-a-stage-interrupted-ends-in-a-traceback.md) | open | low | bug | A command stopped by Ctrl-C ends in the traceback of Python on standard error, though users are to see of a failure its message alone and the traceback goes to the log at `debug`. |
 
 ## Profile
 
