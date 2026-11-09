@@ -51,7 +51,7 @@ class _Answers(LanguageModel):
         self._descriptions = [json.dumps({"description": text}) for text in descriptions]
 
     def answer(self, prompt: str, form: Mapping[str, object]) -> str:
-        if "Describe in one or two sentences" in prompt:
+        if "State what the column holds" in prompt:
             self.descriptions.append(prompt)
             return self._descriptions.pop(0) if self._descriptions else "{}"
         self.prompts.append(prompt)
@@ -519,7 +519,7 @@ def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) ->
     assert [c.description for c in described.tables[0].columns] == ["The name.", "The status."]
     first, second = llm.descriptions
     for fact in (
-        "- its name reads: customer_name",
+        "- its name reads: customer name",
         "- customer: Who buys.",
         "- the name of the table reads: customer",
         "- type: varchar(10); values: Anna, Otto",
@@ -531,10 +531,24 @@ def test_a_column_of_no_description_is_described_by_the_model(tmp_path: Path) ->
     ):
         assert fact in first, fact
     assert "- its values, with their rows: A (6), B (4)" in second
-    assert "- its name reads: customer_status_code" in second, "read by the model before"
+    assert "- its name reads: customer status code" in second, "read by the model before"
     again = _Answers()
     _described(described, tmp_path, llm=again)
     assert again.descriptions == [], "a column described is not asked for again"
+
+
+def test_the_name_read_of_a_table_is_shown_to_the_model_in_words(tmp_path: Path) -> None:
+    glossary = {
+        **_GLOSSARY,
+        "customer": Concept(("cust",), "Who buys."),
+        "address": Concept(("addr",), "Where."),
+    }
+    (table,) = _profile("cust_nm", glossary=glossary).tables
+    profile = replace(_profile(glossary=glossary), tables=(replace(table, name="cust_addr"),))
+    llm = _Answers(descriptions=("The name.",))
+    _described(profile, tmp_path, llm=llm)
+    (prompt,) = llm.descriptions
+    assert "- the name of the table reads: customer address\n" in prompt
 
 
 def test_the_profile_is_written_after_each_table_described(tmp_path: Path) -> None:

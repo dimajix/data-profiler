@@ -28,9 +28,3 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
-
-## Low priority
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [47](47-descriptions-written-as-a-dictionary-does.md) | open | low | feature | The descriptions `describe` proposes of columns and concepts talk about the column or the word, `This column contains the serial number of a credit card`, where the information alone, `serial number of a credit card`, says the same. |
