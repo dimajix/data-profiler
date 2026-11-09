@@ -1,6 +1,6 @@
 # 45 — A stage interrupted ends in a traceback
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** low
 **Area:** Command line
@@ -45,3 +45,13 @@ Nothing is lost at present; what is wrong is what the person sees.
 
 - **2026-11-09** — Opened, as the maintainer asked, from a finding of the review of
   [44](44-merging-the-glossary-proposed-into-the-overrides.md).
+
+- **2026-11-09** — Done in the frame, for every command, the message at `info` as an interruption
+  is no failure. The exit code differs from what was recommended above: Python does not exit with
+  130 today, it ends by the signal, which a shell reports as 130, and a shell goes on with the next
+  command of a script after a program that exits, whatever the code, which was tried:
+  `sys.exit(130)` let the step after an interrupted command run. `run` therefore raises the signal
+  again once it has logged, and ends as Python does, the script stopping with it. What was written
+  stays as it is by `write_whole`, unchanged. At a question of `adopt` the line of the log follows
+  the `^C` of the terminal on the same line; left so, as an end of the line would be output beside
+  the log.

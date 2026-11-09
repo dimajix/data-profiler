@@ -81,6 +81,7 @@ ban-relative-imports = "all"
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "typing.Protocol".msg = "Interfaces between parts are abstract classes (abc.ABC)."
 "sys.exit".msg = "Only commands ends the program."
+"signal.raise_signal".msg = "Only commands ends the program."
 "sys.stdout".msg = "Nothing is printed: log through logging."
 "sys.stderr".msg = "Nothing is printed: log through logging."
 "logging.basicConfig".msg = "Only commands configures where logs go."

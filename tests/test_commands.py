@@ -1,5 +1,6 @@
-"""Tests of commands: their work run, and the program ended when it fails."""
+"""Tests of commands: their work run, and the program ended when it fails or is interrupted."""
 
+import signal
 import subprocess
 import sys
 
@@ -52,3 +53,16 @@ def test_the_log_of_work_that_fails_holds_its_traceback_at_debug_level() -> None
     assert failed.returncode == 1
     assert "DEBUG The command failed.\nTraceback" in failed.stderr
     assert "ValueError: the value 4111 1111" in failed.stderr
+
+
+def test_work_interrupted_ends_by_the_signal_with_one_line_of_the_log() -> None:
+    interrupted = _failed("KeyboardInterrupt()", debug=False)
+    assert interrupted.returncode == -signal.SIGINT, "a shell reports this as the exit code 130"
+    assert interrupted.stderr == "INFO The command was interrupted.\n"
+
+
+def test_the_log_of_work_interrupted_holds_its_traceback_at_debug_level() -> None:
+    interrupted = _failed("KeyboardInterrupt()", debug=True)
+    assert interrupted.returncode == -signal.SIGINT
+    assert "DEBUG Where the command was interrupted:\nTraceback" in interrupted.stderr
+    assert "KeyboardInterrupt" in interrupted.stderr
