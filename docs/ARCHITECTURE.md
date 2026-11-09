@@ -43,7 +43,7 @@ environment.
     the version of its format, of a major and a minor part, so that a document of an older minor
     version is read with the defaults of what it lacks; what is wrong with one is named, field by
     field. Several documents of a format are read merged into one, a field given in two of them
-    refused.
+    refused; a field of them is set in the one that gives it, all else kept as a person wrote it.
 *   **`data_profiler.files`** - files written whole or not at all, for documents and the
     workspace, under names every system takes - the names of tables among them.
 *   **`data_profiler.source`** - the database: the `Source`, which `connect` makes from a URL, and

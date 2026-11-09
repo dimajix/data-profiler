@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [44](44-merging-the-glossary-proposed-into-the-overrides.md) | open | medium | feature | What `describe` proposes of the glossary reaches the overrides only where a person copies it there by hand, concept by concept and into the right one of several files, so that the glossary of a project does not grow with what the tool found and a proposal a person agrees with stays a proposal. |
+| [44](44-merging-the-glossary-proposed-into-the-overrides.md) | in progress | medium | feature | What `describe` proposes of the glossary reaches the overrides only where a person copies it there by hand, concept by concept and into the right one of several files, so that the glossary of a project does not grow with what the tool found and a proposal a person agrees with stays a proposal. |
 
 ## Describe
 

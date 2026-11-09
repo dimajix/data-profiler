@@ -1,6 +1,6 @@
 # 44 — Merging the glossary proposed into the overrides
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -116,6 +116,35 @@ this issue; each would be an issue of its own, once somebody needs it.
   alone, where this one writes the overrides and never the profile. The interface is put before the
   maintainer as the plan of the work.
 
+## What is decided
+
+As the maintainer decided, each as recommended above:
+
+- **The step is called `adopt`**, as `merge` is the word for reading the files of the overrides as
+  one.
+- **`Y` adds** the abbreviations proposed to those given; `M` replaces them by what is entered.
+- **Two descriptions that differ** are nothing to ask: the description given stands, with the short
+  message.
+- **A proposal answered `N` is asked of again** at the next run; refusals are not recorded.
+- **A field is changed in the file that gives it.** One that no file gives goes to the first file
+  that names the concept, in the order of `Project.overrides`; a new concept to
+  `overrides/glossary.yml`, made with the line `format:` of the current version where it is not
+  there.
+- **The files are written by a round trip of `ruamel.yaml`**, so that comments and order survive.
+- **Every answer is written at once**, whole by `files.write_whole`.
+- **Input that is no terminal, or ends, stops the run with an error**, the answers given so far
+  kept; nothing is answered by default.
+- **Abbreviations entered are in lower case**, and an empty description or list is asked of again.
+
+- **`adopt` is a fifth stage**: it works from what `describe` left, as a stage does, and differs in
+  writing the overrides and never the profile.
+- **Who owns what.** `Format.amend` of `documents` sets a field where it is given, keeping all else;
+  `Overrides.adoptable` says what a concept proposed adds to those given, by the rule of
+  `_laid_over`; a module `adopt` asks and writes the answers; `Project.glossary_file` names the file
+  of new concepts.
+- **The questions of `adopt` are the one output of the tool besides its files and its log**, through
+  `input`, and `docs/CODING-GUIDELINES.md` says so.
+
 ## Done when
 
 - A command run on an environment of a project goes through the concepts of its results and those
@@ -133,3 +162,12 @@ this issue; each would be an issue of its own, once somebody needs it.
 - **2026-11-09** — Opened, as the maintainer asked: an interactive step that compares the concepts
   of the overrides with those of the results, asks about each difference, and writes the answers to
   the files of the overrides.
+
+- **2026-11-09** — Decided as the section above says, the step named `adopt`. A round trip of
+  `examples/crm/overrides.yml` by `ruamel.yaml` left the file unchanged to the byte, comments and
+  folded texts included.
+
+- **2026-11-09** — Step 1: `Format.amend` sets a field where it is given, by a round trip of
+  `ruamel.yaml`. What it changes of what is not set is said in its doc comment: the indentation of
+  lists over several lines, nulls written empty, and a comment after a text or such a list coming
+  before a new field. What an anchor shares is refused.
