@@ -1,6 +1,6 @@
 # 46 — A word proposed as its own abbreviation
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** low
 **Area:** Describe
@@ -47,3 +47,13 @@ and has to cope with the profiles already written.
 
 - **2026-11-09** — Opened, as the maintainer asked, from a finding of the work on
   [44](44-merging-the-glossary-proposed-into-the-overrides.md).
+
+- **2026-11-09** — Done: a concept proposed of a term that is its word has no abbreviations. Given
+  `account: [iban]`, a concept `iban` of no abbreviations is dropped, as `iban: [iban]` is: a
+  concept proposed goes once its abbreviations are all taken, or its word where it has none. It
+  would else have left the term standing for either and had `adopt` offer its description. The same
+  holds of a concept that `describe` left without abbreviations as no name has them any longer. The
+  format of the profile stays as it is, the meaning of its field unchanged. A word the glossary has
+  still takes the term as an abbreviation, its own word as well: that is only where the concept was
+  dropped for an abbreviation given and a name has its word, and the abbreviation is what keeps it,
+  as the language model would else be asked of the term at every run.

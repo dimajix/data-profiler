@@ -257,6 +257,18 @@ def test_a_term_of_no_concept_is_of_the_concept_the_model_proposes(tmp_path: Pat
     )
 
 
+def test_a_term_written_out_is_no_abbreviation_of_the_concept_of_its_word(tmp_path: Path) -> None:
+    profile = _profile("cust_iban", glossary={"customer": Concept(("cust",))})
+    llm = _Answers(_proposal("IBAN", "An account number."))
+    described = _described(profile, tmp_path, llm=llm)
+    assert described.glossary["iban"] == Concept((), "An account number.")
+    (column,) = described.tables[0].columns
+    assert column.reading == ("customer", "iban"), "a term of its concept by its word"
+    llm = _Answers()
+    _described(described, tmp_path, llm=llm)
+    assert llm.prompts == [], "nothing is asked for again"
+
+
 def test_a_word_the_glossary_has_takes_the_term_as_one_more_abbreviation(tmp_path: Path) -> None:
     glossary = {"customer": Concept(("cust",)), "address": Concept(("addr",), "Where one lives.")}
     profile = _profile("cust_addr", "cust_adr", glossary=glossary)
@@ -266,6 +278,17 @@ def test_a_word_the_glossary_has_takes_the_term_as_one_more_abbreviation(tmp_pat
         ("customer", "address"),
         ("customer", "address"),
     ]
+
+
+def test_a_term_that_is_the_word_of_a_concept_dropped_is_asked_for_once(tmp_path: Path) -> None:
+    glossary = {"customer": Concept(("cust",)), "iban": Concept(("ibn",))}
+    overrides = Overrides(glossary={"account": Concept(("ibn",))})
+    profile = _profile("cust_ibn", "cust_iban", glossary=glossary)
+    described = _described(profile, tmp_path, overrides, _Answers(_proposal("iban")))
+    assert described.glossary["iban"] == Concept(("ibn", "iban")), "the term is what keeps it"
+    llm = _Answers()
+    _described(described, tmp_path, overrides, llm)
+    assert llm.prompts == [], "nothing is asked for again"
 
 
 def test_the_values_of_a_column_of_a_sensitivity_are_not_shown_to_the_model(

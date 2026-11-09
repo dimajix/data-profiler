@@ -107,10 +107,11 @@ was counted or related otherwise.
 **A concept given comes before those proposed.** It takes the place of the concept proposed of its
 word, keeping only the abbreviations proposed beside those given; the terms it is written as - its
 abbreviations, and its word where it is one term - are taken from the other concepts proposed, and a
-concept proposed whose abbreviations they take all is dropped, so that a term given stands for the
-concepts given alone. A term that is the word of another concept stays a term of that concept as
-well, and the reading of a name tells which of them it stands for. A term the language model
-proposes as one more abbreviation of a concept given is one of it.
+concept proposed whose abbreviations they take all, or whose word they take where it has none, is
+dropped, so that a term given stands for the concepts given alone. A term that is the word of a
+concept proposed with an abbreviation left stays a term of that concept as well, and the reading of
+a name tells which of them it stands for. A term the language model proposes as one more
+abbreviation of a concept given is one of it.
 
 **What is refused, and what is warned of.** An override that names what is not profiled, or cannot
 be what it gives, is refused, naming it:
