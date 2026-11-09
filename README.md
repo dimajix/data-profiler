@@ -5,7 +5,7 @@ did not design - tables with dozens or hundreds of columns behind abbreviated na
 understandable data model of it. Trino and Starburst are the first databases it reads; it writes
 its SQL through a dialect, so that others can follow.
 
-It works in four stages, each of which can be run again on its own:
+It works in five stages, each of which can be run again on its own:
 
 - **scan** reads the selected tables, by a list or a regular expression, and finds for every column
   the range of its values, its nulls and the values that stand for none, such as empty texts or
@@ -31,6 +31,8 @@ It works in four stages, each of which can be run again on its own:
   description of every column. Harmonized English names are composed from one glossary of the
   concepts of the whole schema - each a word, its abbreviations and a description -, so that the
   same concept reads the same in every table, whether written as its word or an abbreviation.
+- **adopt** asks a person at the terminal about each concept `describe` proposed, and takes what is
+  agreed to into the overrides of the project, which hold for all its environments.
 - **report** renders the result as HTML.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
@@ -190,7 +192,15 @@ another model, say. `--without-llm` asks no language model, and the project need
 are split and read where each term has one concept, but no concept is proposed, no concept of a term
 of several chosen and no column described, while what a model filled before is kept, and the
 profile is written once, at the end - a quick round while the glossary is built in the overrides.
-The profile is rendered as a report by
+The concepts proposed are taken into the overrides by
+
+```bash
+uv run data-profiler adopt simulation --project examples/crm
+```
+
+which asks about each thing a concept adds, without the database, and writes each answer at once;
+[docs/PROJECT.md](docs/PROJECT.md#adopt-the-concepts-proposed) says how. The profile is rendered as
+a report by
 
 ```bash
 uv run data-profiler report simulation --project examples/crm

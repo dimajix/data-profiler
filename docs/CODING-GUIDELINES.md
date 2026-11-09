@@ -258,7 +258,7 @@ the database.
 *   Only `commands` configures where logs go, in one place: to standard error. Ruff reports the
     configuration of the log anywhere else (`TID251`). The command line reports the progress of an
     invocation through the log as well, at `info`; the command line has no output of its own
-    besides the files it writes.
+    besides the files it writes and the questions of a stage that asks, through `input`.
 
 ### Levels
 

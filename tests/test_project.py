@@ -134,6 +134,10 @@ def test_a_project_may_have_either_of_the_overrides_or_neither(
     assert _project(tmp_path).overrides == [tmp_path / path for path in paths]
 
 
+def test_new_concepts_of_a_project_go_to_the_glossary_of_its_directory(tmp_path: Path) -> None:
+    assert _project(tmp_path).glossary_file == tmp_path / "overrides" / "glossary.yml"
+
+
 def test_the_language_model_of_a_project_is_named_by_its_configuration(tmp_path: Path) -> None:
     assert _project(tmp_path, _CONFIGURATION + "llm: qwen3.5:2b\n").llm == "qwen3.5:2b"
     with pytest.raises(ProjectError, match="names no language model, llm, to describe"):

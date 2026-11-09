@@ -1,6 +1,6 @@
 # 44 — Merging the glossary proposed into the overrides
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Profile
@@ -171,3 +171,9 @@ As the maintainer decided, each as recommended above:
   `ruamel.yaml`. What it changes of what is not set is said in its doc comment: the indentation of
   lists over several lines, nulls written empty, and a comment after a text or such a list coming
   before a new field. What an anchor shares is refused.
+
+- **2026-11-09** — Step 2 done as decided: the stage `adopt`, by `Overrides.adoptable`,
+  `Overrides.amend`, `Project.glossary_file` and the module `adopt`. A word proposed as its own
+  abbreviation, as `describe` proposes every term written out, is not offered as one, since a word
+  of one term is written as itself; it would have asked of nearly every such concept. A concept
+  that adds nothing is named in the log alone, whatever the reason.

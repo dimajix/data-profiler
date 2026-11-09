@@ -29,7 +29,8 @@ environment.
 *   **`data_profiler.overrides`** - the overrides of a project: read from its documents, merged, and
     laid over each table a scan counts and over a profile a stage reads, refused where they name
     what is not profiled or give what cannot be, and warned of where they give what a profile does
-    not take, as [PROJECT.md](PROJECT.md#the-overrides-overridesyml-and-overrides) says.
+    not take, as [PROJECT.md](PROJECT.md#the-overrides-overridesyml-and-overrides) says; what a
+    concept proposed adds to them, and a field of them set in the file it belongs to.
 *   **`data_profiler.workspace`** - the workspace: the local directory of samples and intermediate
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
@@ -112,6 +113,8 @@ environment.
     candidate of each term, else by the language model -; and the glossary's concepts and the
     columns' descriptions, proposed by the language model, asked by prompts rendered from Jinja2
     templates in `data_profiler/templates/prompts/`.
+*   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
+    proposes, and the answers written to the overrides.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
@@ -130,10 +133,11 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
 `disclosure`, `values` and `workspace`, `report` the profile and `overrides`, which it lays over it,
-and `glossary` for its names; `cli` runs the stages, gives the overrides to each, and the language
-model, made by `llm` as the project names it, to `describe`, unless it is to ask none. The semantic
-types of a project and its separator of lists reach `scan` from `project`, and every stage after it
-from the profile.
+and `glossary` for its names, and `adopt` reads the profile and writes through `overrides`; `cli`
+runs the stages, gives the overrides to each but `adopt`, which reads them anew for each concept,
+and the language model, made by `llm` as the project names it, to `describe`, unless it is to ask
+none. The semantic types of a project and its separator of lists reach `scan` from `project`, and
+every stage after it from the profile.
 
 ## The domain
 
@@ -145,8 +149,9 @@ from the profile.
     the simulation environment -, each a schema with a URL, a user and a password of its own; its
     results, a profile, a workspace and a report, are kept in a directory of its own, named after
     it.
-*   **Stage** - one of `scan`, `relate`, `describe` and `report`: a step of the work that can be run
-    on its own, from what the stages before it left.
+*   **Stage** - one of `scan`, `relate`, `describe`, `adopt` and `report`: a step of the work that
+    can be run on its own, from what the stages before it left. `adopt` alone writes the overrides,
+    as a person answers, and never the profile.
 *   **Run** - the counting of the selected tables of an environment, which may take several
     scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
     interrupted -, and it finishes once every selected table is counted. It is told apart by when
@@ -259,15 +264,15 @@ from the profile.
     descriptions as well, given by hand alone, and shown to the language model with every question
     of them.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml` and
-    the files of `overrides/`, and laid over a generated profile: what the database and a table
-    hold, concepts of the glossary, the reading, the harmonized name and the description of a table
-    or column, the sensitivity and the sentinels of a column, the primary key of a table, the
-    reference of a column, or none, a column that determines no other, whatever is found, and the
-    discriminator of a table, with the values, the name and the description of its entities, or
-    none. What it gives is taken as given by the stage whose work it is, and counts once that stage
-    runs again. A name given comes before the one composed from the reading, so that it resolves a
-    collision of harmonized names, and a concept given before the one proposed of its word. Which
-    stage takes what, when it counts, and what is refused,
+    the files of `overrides/`, or by a person answering `adopt`, and laid over a generated profile:
+    what the database and a table hold, concepts of the glossary, the reading, the harmonized name
+    and the description of a table or column, the sensitivity and the sentinels of a column, the
+    primary key of a table, the reference of a column, or none, a column that determines no other,
+    whatever is found, and the discriminator of a table, with the values, the name and the
+    description of its entities, or none. What it gives is taken as given by the stage whose work it
+    is, and counts once that stage runs again. A name given comes before the one composed from the
+    reading, so that it resolves a collision of harmonized names, and a concept given before the one
+    proposed of its word. Which stage takes what, when it counts, and what is refused,
     [PROJECT.md](PROJECT.md#the-overrides-overridesyml-and-overrides) says.
 *   **Workspace** - the directory of samples and intermediate results; it may hold sensitive
     values, and keeps itself out of version control.
@@ -337,7 +342,13 @@ from the profile.
     language model filled, and `describe --without-llm` asks it nothing, doing what needs no model
     alone: the names split, and read where each term has one candidate, the profile written once at
     the end. The result is the profile, with terms, glossary, readings and descriptions.
-4.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
+4.  `adopt` compares the concepts of the profile with those of the overrides, and asks a person at
+    the terminal about what each adds: a description where none is given, and abbreviations no
+    concept given has. Each answer is written at once, to the file of the overrides that gives the
+    field, else to the first that names the concept, a new concept to `overrides/glossary.yml`,
+    keeping the comments and the order of the file. The result is the overrides; it is the one stage
+    that writes them, and it does so only as a person answers.
+5.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
     each table hold, its keys, its references and reference candidates and the references to it, its
     column groups and column dependencies, the harmonized names and descriptions of the columns, the
     entities of a table by the share of their rows each column is filled in, with the names and
@@ -384,9 +395,9 @@ The design repeats a few decisions; new code follows them.
     two columns of a table come to the same name, the report shows it, rather than one name taking
     the place of the other. An override gives a name in place of the composed one, which resolves a
     collision.
-*   **The stages share nothing but the profile and the workspace.** Each stage can be run again on
-    its own: `describe` with another model without querying the database, `report` without
-    either.
+*   **The stages share nothing but the profile and the workspace**, besides the overrides, which a
+    person keeps and `adopt` writes only as a person answers. Each stage can be run again on its
+    own: `describe` with another model without querying the database, `report` without either.
 
 ## The repository
 

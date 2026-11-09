@@ -5,21 +5,24 @@ given: `scan` the tables of its database into its profile and workspace, the ove
 project taken as given, `relate` the tables of its profile to the keys of each other, by its
 database, the overrides taken as given, `describe` the names of its profile, by the concepts of the
 profile and of the overrides and by the language model of the project, into its profile - with
-`--anew`, dropping first what the language model filled, with `--without-llm`, asking none -, and
-`report` its profile, the overrides laid over it, into its report, the last two without the
-database. The project completes the variables of the process by its `.env`, so that certificates and
-proxies set there reach the connection to the database. `data_profiler.commands.run` configures the
-log and ends the program when the stage fails.
+`--anew`, dropping first what the language model filled, with `--without-llm`, asking none -,
+`adopt` the concepts its profile proposes into the overrides, asking a person at the terminal about
+each, and `report` its profile, the overrides laid over it, into its report, the last three without
+the database. The project completes the variables of the process by its `.env`, so that
+certificates and proxies set there reach the connection to the database.
+`data_profiler.commands.run` configures the log and ends the program when the stage fails.
 """
 
 import logging
 import os
+import sys
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 from typing import Final
 
+from data_profiler.adopt import AdoptError, adopt
 from data_profiler.commands import run
 from data_profiler.describe import describe, forgotten
 from data_profiler.llm import LanguageModelError, Ollama
@@ -43,6 +46,7 @@ _SHOWN: Final = (
     OverridesError,
     LanguageModelError,
     ReportError,
+    AdoptError,
 )
 
 
@@ -57,6 +61,10 @@ def main() -> None:
         "scan": (lambda _: _scan, "scan the tables of an environment of a project"),
         "relate": (lambda _: _relate, "relate the tables of the profile of an environment"),
         "describe": (_describing, "describe the names of the profile of an environment"),
+        "adopt": (
+            lambda _: _adopt,
+            "take the concepts proposed into the overrides, asking of each",
+        ),
         "report": (lambda _: _report, "render the profile of an environment of a project as HTML"),
     }
     for name, (made, summary) in stages.items():
@@ -147,6 +155,14 @@ def _describe(project: Project, environment: Environment, *, anew: bool, without
     workspace = Workspace.open(environment.workspace, profile.catalog, profile.schema)
     describe(profile, overrides, llm, workspace, environment.profile)
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
+
+
+def _adopt(project: Project, environment: Environment) -> None:
+    """Asks about the concepts the profile of `environment` proposes, into the overrides."""
+    if not sys.stdin.isatty():
+        raise AdoptError("adopt asks a person, and its input is no terminal")
+    adopt(Profile.read(environment.profile).glossary, project, input)
+    _logger.info("Went through the concepts of the profile of %s", environment.name)
 
 
 def _report(project: Project, environment: Environment) -> None:
