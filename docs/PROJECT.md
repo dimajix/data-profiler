@@ -147,7 +147,8 @@ of the overrides stands in a file of `overrides/` alike -; the snippets of the o
 tables of the example profile `simulation/profiles/crm`. `tests/test_recipes.py` reads every
 snippet - the line `format:` left out, which the file has first - and lays those of the overrides
 over that profile as the stages that read it do, so that a recipe that names what the profile does
-not have, or gives a reading of no terms of its name, fails the tests.
+not have, or gives a reading of no terms of its name, fails the tests. One recipe is a command
+instead, [the one that adopts concepts](#adopt-the-concepts-proposed).
 
 ### Select tables
 
@@ -297,6 +298,44 @@ glossary:
   # A word alone: `iban` is a term of it.
   iban: {}
 ```
+
+### Adopt the concepts proposed
+
+Concepts that `describe` proposed are taken into the overrides, instead of being copied by hand, by
+
+```bash
+uv run data-profiler adopt simulation --project examples/crm
+```
+
+It goes through the concepts of the profile of the environment and asks about what each adds to the
+concepts given, the database not being needed:
+
+```text
+customer: no description given, add "A person or company that buys."? [Y/N/M] y
+customer: abbreviations given [cust], add [kd]? [Y/N/M] m
+All abbreviations of customer, separated by commas: cust, kd, kunde
+```
+
+| Answer | Of a description | Of abbreviations |
+|---|---|---|
+| `Y` | taken as proposed | those proposed join those given |
+| `N` | left, and asked about again at the next run | the same |
+| `M` | the person enters it | all abbreviations entered in one line, separated by commas, in place of those given, in lower case |
+
+A description is asked about only where the concept has none given: a description given stands,
+however the one proposed is worded. An abbreviation is asked about only where the concept is not
+written as it yet and no other concept given is. A concept that adds nothing is only named in the
+log.
+
+Each answer is written at once, so that a run interrupted is resumed by the next. A field is set in
+the file that gives it, one no file gives in the first file naming the concept, in the order of the
+files as read, and a new concept in `overrides/glossary.yml`, which is made with its line `format:`
+where it is not there; the comments and the order of each file stay as they are written, though a
+list over several lines or a map may be indented anew. A list over several lines followed by a
+comment has a field added after it placed behind that comment.
+
+`adopt` asks a person: where its input is no terminal, it stops with an error, and where its input
+ends, it stops with the answers given so far written; nothing is answered by default.
 
 ### Leave a prefix out of the names
 

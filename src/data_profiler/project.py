@@ -327,6 +327,11 @@ class Project:
         files = [file, *sorted((directory / "overrides").glob("*.yml"))]
         return [file for file in files if file.is_file()]
 
+    @property
+    def glossary_file(self) -> Path:
+        """The file of the overrides new concepts are added to, `overrides/glossary.yml`."""
+        return self._file.parent / "overrides" / "glossary.yml"
+
     def environment(self, name: str) -> Environment:
         """The environment `name`, its values taken from the variables when they are asked for.
 

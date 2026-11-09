@@ -12,12 +12,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | [45](45-a-stage-interrupted-ends-in-a-traceback.md) | open | low | bug | A command stopped by Ctrl-C ends in the traceback of Python on standard error, though users are to see of a failure its message alone and the traceback goes to the log at `debug`. |
 | [46](46-a-word-proposed-as-its-own-abbreviation.md) | open | low | bug | `describe` records a term written out as an abbreviation of the concept of the same word, `iban: [iban]`, though the abbreviations of a concept are the terms it is written as beside its word. |
 
-## Profile
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [44](44-merging-the-glossary-proposed-into-the-overrides.md) | open | medium | feature | What `describe` proposes of the glossary reaches the overrides only where a person copies it there by hand, concept by concept and into the right one of several files, so that the glossary of a project does not grow with what the tool found and a proposal a person agrees with stays a proposal. |
-
 ## Describe
 
 | No. | Status | Priority | Type | Issue |

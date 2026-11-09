@@ -3,8 +3,10 @@
 import logging
 import os
 import shutil
+import sys
 from collections.abc import Callable
 from dataclasses import replace
+from io import StringIO
 from pathlib import Path
 
 import pytest
@@ -13,6 +15,7 @@ from yaml import safe_dump
 from data_profiler.cli import main
 from data_profiler.detect import Sensitivity
 from data_profiler.glossary import occurrences
+from data_profiler.overrides import Overrides
 from data_profiler.profile import Concept, Profile
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
@@ -95,6 +98,59 @@ def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
     page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
     assert "<h1>crm.sales</h1>" in page
     assert "personal (marked)" in page, "the overrides of the project are laid over"
+
+
+class _Terminal(StringIO):
+    def isatty(self) -> bool:
+        return True
+
+
+def _proposing(project: Path, example_profile: Profile) -> None:
+    (project / "simulation").mkdir()
+    glossary = {"customer": Concept(("cust",), "Who buys.")}
+    replace(example_profile, glossary=glossary).write(project / "simulation" / "profile")
+
+
+def test_the_concepts_proposed_are_adopted_into_the_overrides_as_answered_at_a_terminal(
+    project: Path,
+    example_profile: Profile,
+    command_line: Callable[..., int],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _proposing(project, example_profile)
+    monkeypatch.setattr(sys, "stdin", _Terminal("y\ny\n"))
+    assert command_line(main, "adopt", "simulation", "--project", str(project)) == 0
+    written = Overrides.read([project / "overrides" / "glossary.yml"])
+    assert written.glossary == {"customer": Concept(("cust",), "Who buys.")}
+
+
+def test_adopt_refuses_input_that_is_no_terminal(
+    project: Path,
+    example_profile: Profile,
+    command_line: Callable[..., int],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _proposing(project, example_profile)
+    monkeypatch.setattr(sys, "stdin", StringIO("y\ny\n"))
+    assert command_line(main, "adopt", "simulation", "--project", str(project)) == 1
+    assert caplog.messages[-1] == "adopt asks a person, and its input is no terminal"
+    assert not (project / "overrides").exists(), "nothing is answered by default"
+
+
+def test_adopt_stops_where_its_input_ends_keeping_the_answers_given(
+    project: Path,
+    example_profile: Profile,
+    command_line: Callable[..., int],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    _proposing(project, example_profile)
+    monkeypatch.setattr(sys, "stdin", _Terminal("y\n"))
+    assert command_line(main, "adopt", "simulation", "--project", str(project)) == 1
+    assert caplog.messages[-1] == "the input ended before every concept was asked about"
+    written = Overrides.read([project / "overrides" / "glossary.yml"])
+    assert written.glossary == {"customer": Concept((), "Who buys.")}
 
 
 def test_the_overrides_of_the_directory_of_a_project_are_laid_over(

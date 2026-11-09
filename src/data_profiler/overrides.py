@@ -1,4 +1,4 @@
-"""Overrides: what is given by hand of a profile, and taken as given where it is laid over it.
+"""Overrides: what is given by hand of a profile, kept in files and taken as given laid over it.
 
 The overrides of a project are documents of their own, `overrides.yml` and the files of the
 directory `overrides/` of the project, the same for all its environments, read merged by
@@ -24,7 +24,9 @@ described as given, by `TableOverride.described_laid_over`, then disclosed again
 given after a scan withholds the values without a scan again; `Overrides.warn_unused` warns of what
 is given that the profile does not take. `describe` shows the language model the description given
 of the database, `Overrides.description`, and `report` tells the concepts given apart from those
-proposed by `Overrides.glossary`.
+proposed by `Overrides.glossary`. `adopt` writes to the overrides what a person takes over of the
+concepts proposed: `Overrides.adoptable` says what a concept proposed adds, and `Overrides.amend`
+sets it in the file it belongs to.
 """
 
 import logging
@@ -503,6 +505,52 @@ class Overrides:
             return FORMAT.read_merged(paths)
         except DocumentError as error:
             raise OverridesError(str(error)) from error
+
+    @classmethod
+    def amend(
+        cls, paths: Sequence[Path], field: Sequence[str], value: object, otherwise: Path
+    ) -> None:
+        """Sets a field of the overrides in the files `paths`, as `Format.amend` does.
+
+        Args:
+            paths: The files of the overrides.
+            field: The keys of the field, from the top of a document on.
+            value: Its value.
+            otherwise: The file it is set in where no file of `paths` names its entry.
+
+        Raises:
+            OverridesError: A file cannot be read or written, is no YAML or of another format, or
+                what holds the field cannot hold it.
+        """
+        try:
+            FORMAT.amend(paths, field, value, otherwise)
+        except DocumentError as error:
+            raise OverridesError(str(error)) from error
+
+    def adoptable(self, word: str, proposed: Concept) -> Concept:
+        """What `proposed`, the concept proposed of `word`, adds to those given, empty if nothing.
+
+        What is left of it is what `Overrides.laid_over` leaves of it: a concept whose abbreviations
+        the concepts given have all taken adds nothing.
+
+        Args:
+            word: The word of the concept proposed.
+            proposed: The concept proposed.
+
+        Returns:
+            A concept of the abbreviations proposed that it is not written as yet, by the concepts
+            given and its word, and of the description proposed where none is given of it; empty,
+            equal to `Concept()`, where there is neither.
+        """
+        laid = _laid_over(self.glossary, {word: proposed}).get(word)
+        if laid is None:
+            return Concept()
+        given = self.glossary.get(word, Concept())
+        written = written_as(word, given)
+        return Concept(
+            tuple(term for term in laid.abbreviations if term not in written),
+            proposed.description if given.description is None else None,
+        )
 
     def selected(self, names: Collection[str]) -> dict[str, TableOverride]:
         """What is given of each table of `names`, an override of nothing where none is given.

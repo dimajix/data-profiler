@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "python-stdnum>=2.2",
     "pyyaml>=6.0.3",
+    "ruamel-yaml>=0.19.1",
     "trino>=0.340.0",
 ]
 

@@ -43,6 +43,21 @@ class _Entries:
     tags: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class _ListEntry:
+    """An entry of a map a document holds, whose colours are written in a list."""
+
+    colour: tuple[str, ...] = ()
+    size: int | None = None
+
+
+@dataclass(frozen=True)
+class _ListEntries:
+    """A class a document holds whose entries end in a list."""
+
+    entries: Mapping[str, _ListEntry] = field(default_factory=dict)
+
+
 _FORMAT: Final = Format(_Whole, Version(3, 2))
 _MERGED: Final = Format(_Entries, Version(3, 2))
 _WHOLE: Final = _Whole(name="whole", parts=(_Part("one"), _Part("two")))
@@ -288,3 +303,207 @@ def test_a_field_of_the_wrong_type_in_a_document_read_merged_is_refused_naming_i
     wrong = _document(tmp_path, "wrong.yml", "entries: {one: {size: big}}")
     with pytest.raises(DocumentError, match=rf"^{re.escape(str(wrong))}: entries\.one\..*size"):
         _MERGED.read_merged([right, wrong])
+
+
+_WRITTEN_BY_HAND: Final = """\
+format: "3.2"
+# What is given by hand: the entries, the first of them folded.
+entries:
+  one:
+    # Red, as in the catalogue.
+    colour: >-
+      a colour of
+      two lines
+    size: 1  # the smallest
+  # Nothing given yet.
+  two: {}
+tags: [a, 'b']
+"""
+
+
+def _amended(path: Path, field: tuple[str, ...], value: object, others: list[Path]) -> None:
+    """`path` and the documents `others`, `field` set to `value`, a new one in `new.yml`."""
+    _MERGED.amend([path, *others], field, value, path.parent / "new.yml")
+
+
+def test_a_document_amended_keeps_all_that_is_not_set_as_it_was_written(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", _WRITTEN_BY_HAND)
+    _amended(path, ("entries", "one", "size"), 2, [])
+    assert path.read_text("utf-8") == _WRITTEN_BY_HAND.replace("size: 1 ", "size: 2 ")
+
+
+def test_a_list_amended_stays_written_as_it_was(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", _WRITTEN_BY_HAND)
+    _amended(path, ("tags",), ["a", "b", "c"], [])
+    assert "tags: [a, 'b', c]\n" in path.read_text("utf-8")
+
+
+@pytest.mark.parametrize(
+    ("tags", "written"),
+    [(["a", "b", "c", "d"], "- a  # first\n- b\n- c\n- d\n"), (["a", "b"], "- a  # first\n- b\n")],
+    ids=["an item added", "an item taken out"],
+)
+def test_what_follows_a_list_of_several_lines_stays_after_it(
+    tmp_path: Path, tags: list[str], written: str
+) -> None:
+    text = "entries: {}\ntags:\n- a  # first\n- b\n- c\n\n# What follows.\n"
+    path = _document(tmp_path, "hand.yml", text)
+    _amended(path, ("tags",), tags, [])
+    assert path.read_text("utf-8").endswith(f"tags:\n{written}\n# What follows.\n")
+
+
+def test_a_new_field_after_a_list_in_one_line_stays_before_a_comment_that_follows(
+    tmp_path: Path,
+) -> None:
+    text = "entries:\n  one:\n    colour: [a]\n  # The second.\n  two: {}\n"
+    path = tmp_path / "hand.yml"
+    path.write_text(f"format: '3.2'\n{text}", "utf-8")
+    Format(_ListEntries, Version(3, 2)).amend(
+        [path], ("entries", "one", "size"), 2, tmp_path / "n.yml"
+    )
+    assert "    size: 2\n  # The second.\n  two: {}\n" in path.read_text("utf-8")
+
+
+def test_a_list_given_as_a_tuple_is_written_as_a_list_is(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "entries: {}\n")
+    _amended(path, ("tags",), ("no", "a"), [])
+    assert path.read_text("utf-8").endswith("tags: ['no', a]\n")
+
+
+def test_a_text_of_other_letters_is_not_quoted(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "entries: {}\n")
+    _amended(path, ("tags",), ["Straße"], [])
+    assert path.read_text("utf-8").endswith("tags: [Straße]\n")
+
+
+def test_the_other_file_among_the_documents_is_read_once_and_extended(tmp_path: Path) -> None:
+    new = _document(tmp_path, "new.yml", "entries: {one: {colour: red}}\n")
+    _amended(new, ("entries", "one", "size"), 2, [])
+    assert _MERGED.read(new).entries == {"one": _Entry(colour="red", size=2)}
+
+
+@pytest.mark.parametrize(
+    ("text", "field"),
+    [
+        ("entries: {one: &red {colour: red}, two: *red}\n", ("entries", "one", "size")),
+        ("entries: {one: &red {colour: red}, two: *red}\n", ("entries", "two", "size")),
+        ("tags: &all [a]\n", ("tags",)),
+    ],
+    ids=["the anchor", "an alias", "a list"],
+)
+def test_what_an_anchor_shares_is_not_amended(
+    tmp_path: Path, text: str, field: tuple[str, ...]
+) -> None:
+    path = _document(tmp_path, "hand.yml", text)
+    before = path.read_text("utf-8")
+    with pytest.raises(DocumentError, match="an anchor shares it"):
+        _amended(path, field, ["b"] if field == ("tags",) else 2, [])
+    assert path.read_text("utf-8") == before
+
+
+def test_a_key_on_the_way_that_holds_no_map_is_refused_naming_the_field(tmp_path: Path) -> None:
+    new = _document(tmp_path, "new.yml", "entries:\n")
+    with pytest.raises(DocumentError, match=r"entries\.one\.size cannot be set"):
+        _MERGED.amend([], ("entries", "one", "size"), 2, new)
+
+
+def test_a_document_only_the_round_trip_can_read_is_refused(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "tags: !own [a]\nentries: {one: {}}\n")
+    with pytest.raises(DocumentError, match="is no YAML"):
+        _amended(path, ("entries", "one", "size"), 2, [])
+
+
+def test_a_new_list_is_written_in_one_line(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "entries: {}\n")
+    _amended(path, ("tags",), ["a", "b"], [])
+    assert path.read_text("utf-8").endswith("tags: [a, b]\n")
+
+
+def test_a_field_is_amended_in_the_document_that_gives_it(tmp_path: Path) -> None:
+    first = _document(tmp_path, "first.yml", "entries: {one: {colour: red}}\n")
+    second = _document(tmp_path, "second.yml", "entries: {one: {size: 1}}\n")
+    before = first.read_text("utf-8")
+    _amended(first, ("entries", "one", "size"), 2, [second])
+    assert first.read_text("utf-8") == before, "the document that does not give it is left"
+    assert _MERGED.read_merged([first, second]).entries == {"one": _Entry(colour="red", size=2)}
+
+
+def test_a_field_no_document_gives_goes_to_the_first_that_gives_its_entry(tmp_path: Path) -> None:
+    empty = _document(tmp_path, "empty.yml", "entries: {two: {size: 1}}\n")
+    first = _document(tmp_path, "first.yml", "entries: {one: {colour: red}}\n")
+    second = _document(tmp_path, "second.yml", "entries: {one: {}}\n")
+    before = [empty.read_text("utf-8"), second.read_text("utf-8")]
+    _amended(empty, ("entries", "one", "size"), 2, [first, second])
+    assert [empty.read_text("utf-8"), second.read_text("utf-8")] == before
+    assert _MERGED.read(first).entries == {"one": _Entry(colour="red", size=2)}
+
+
+def test_a_field_of_an_entry_no_document_gives_goes_to_the_other_file(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "entries: {one: {colour: red}}\n")
+    before = path.read_text("utf-8")
+    _amended(path, ("entries", "two", "size"), 2, [])
+    assert path.read_text("utf-8") == before, "not to the document that gives the map of entries"
+    assert _MERGED.read(tmp_path / "new.yml").entries == {"two": _Entry(size=2)}
+
+
+def test_a_file_made_by_amending_holds_the_version_and_its_directory_is_made(
+    tmp_path: Path,
+) -> None:
+    new = tmp_path / "missing" / "new.yml"
+    _MERGED.amend([], ("entries", "one", "colour"), "red", new)
+    assert new.read_text("utf-8") == 'format: "3.2"\nentries:\n  one:\n    colour: red\n'
+
+
+def test_the_other_file_is_extended_where_it_is_there(tmp_path: Path) -> None:
+    new = _document(tmp_path, "new.yml", "# Kept.\ntags: [a]\n")
+    _MERGED.amend([], ("entries", "one", "colour"), "red", new)
+    assert "# Kept.\ntags: [a]\n" in new.read_text("utf-8")
+    assert _MERGED.read(new) == _Entries(entries={"one": _Entry(colour="red")}, tags=("a",))
+
+
+@pytest.mark.parametrize("text", ["no", "on", "true", "null", "010", "1:30", "a: b"])
+def test_a_text_is_amended_so_that_it_is_read_as_that_text(tmp_path: Path, text: str) -> None:
+    path = _document(tmp_path, "hand.yml", "entries: {}\n")
+    _amended(path, ("entries", text, "colour"), text, [])
+    _amended(path, ("tags",), [text, "a"], [])
+    assert _MERGED.read_merged([path, tmp_path / "new.yml"]) == _Entries(
+        entries={text: _Entry(colour=text)}, tags=(text, "a")
+    )
+
+
+def test_a_value_the_format_refuses_leaves_the_document_as_it_was(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", _WRITTEN_BY_HAND)
+    with pytest.raises(DocumentError, match=rf"^{re.escape(str(path))}: entries\.one\..*size"):
+        _amended(path, ("entries", "one", "size"), "big", [])
+    assert path.read_text("utf-8") == _WRITTEN_BY_HAND
+
+
+def test_a_document_of_a_newer_version_is_not_amended(tmp_path: Path) -> None:
+    path = _document(tmp_path, "hand.yml", "format: '3.3'\ntags: [a]\n")
+    with pytest.raises(DocumentError, match=r"is of format 3\.3, newer"):
+        _amended(path, ("tags",), ["b"], [])
+    assert path.read_text("utf-8") == "format: '3.3'\ntags: [a]\n"
+
+
+@pytest.mark.parametrize(
+    ("text", "problem"),
+    [("name: [whole\n", "is no YAML"), ("- a list\n", "holds no fields")],
+    ids=["no YAML", "no fields"],
+)
+def test_a_file_that_is_no_document_is_not_amended(tmp_path: Path, text: str, problem: str) -> None:
+    path = tmp_path / "hand.yml"
+    path.write_text(text, "utf-8")
+    with pytest.raises(DocumentError, match=problem):
+        _amended(path, ("tags",), ["a"], [])
+
+
+def test_a_document_that_does_not_exist_is_not_amended(tmp_path: Path) -> None:
+    with pytest.raises(DocumentError, match="cannot be read"):
+        _amended(tmp_path / "missing.yml", ("tags",), ["a"], [])
+
+
+def test_a_file_that_cannot_be_written_is_named(tmp_path: Path) -> None:
+    new = tmp_path / "new.yml"
+    new.mkdir()
+    with pytest.raises(DocumentError, match=f"{re.escape(str(new))} cannot be written"):
+        _MERGED.amend([], ("tags",), ["a"], new)

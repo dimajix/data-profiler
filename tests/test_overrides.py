@@ -189,6 +189,44 @@ def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
     assert laid.glossary["first_name"] == Concept(("frstnm",)), "not split into frst and nm"
 
 
+@pytest.mark.parametrize(
+    ("given", "word", "proposed", "adoptable"),
+    [
+        ({}, "contact", Concept(("cntct",), "A."), Concept(("cntct",), "A.")),
+        ({}, "contact", Concept((), "A."), Concept((), "A.")),
+        ({}, "iban", Concept(("iban",), "A."), Concept((), "A.")),
+        ({"contact": Concept(("cntct",))}, "contact", Concept(("cntct",), "A."), Concept((), "A.")),
+        ({"contact": Concept((), "B.")}, "contact", Concept(("c",), "A."), Concept(("c",))),
+        ({"contact": Concept(("c",), "B.")}, "contact", Concept(("c",), "A."), Concept()),
+        ({"contact": Concept(("c", "d"), "B.")}, "contact", Concept(("c",), "A."), Concept()),
+        ({"customer": Concept(("c",))}, "contact", Concept(("c",), "A."), Concept()),
+        ({"customer": Concept(("c",))}, "contact", Concept(("c", "d")), Concept(("d",))),
+    ],
+    ids=[
+        "a concept of no word given",
+        "one of no abbreviations",
+        "its word no abbreviation of it",
+        "one given without a description",
+        "new abbreviations of one given",
+        "one given as proposed",
+        "one given of more",
+        "abbreviations taken by another",
+        "those left of them",
+    ],
+)
+def test_what_a_concept_proposed_adds_to_those_given(
+    given: dict[str, Concept], word: str, proposed: Concept, adoptable: Concept
+) -> None:
+    assert Overrides(glossary=given).adoptable(word, proposed) == adoptable
+
+
+def test_a_field_of_overrides_that_cannot_be_set_is_refused_as_overrides(tmp_path: Path) -> None:
+    file = tmp_path / "overrides.yml"
+    file.write_text("glossary: {}\n", encoding="utf-8")
+    with pytest.raises(OverridesError, match=r"overrides\.yml"):
+        Overrides.amend([file], ("glossary", "customer", "description"), "A.", file)
+
+
 def _read(table: tuple[str, ...] | None, column: tuple[str, ...]) -> Overrides:
     """Overrides that read the name of `cntct` as `table`, and of its `frst_nm` as `column`."""
     given = TableOverride(reading=table, columns={"frst_nm": ColumnOverride(reading=column)})
