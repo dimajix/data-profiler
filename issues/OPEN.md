@@ -9,7 +9,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
-| [46](46-a-word-proposed-as-its-own-abbreviation.md) | open | low | bug | `describe` records a term written out as an abbreviation of the concept of the same word, `iban: [iban]`, though the abbreviations of a concept are the terms it is written as beside its word. |
 
 ## Describe
 

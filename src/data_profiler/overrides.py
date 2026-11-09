@@ -530,8 +530,8 @@ class Overrides:
     def adoptable(self, word: str, proposed: Concept) -> Concept:
         """What `proposed`, the concept proposed of `word`, adds to those given, empty if nothing.
 
-        What is left of it is what `Overrides.laid_over` leaves of it: a concept whose abbreviations
-        the concepts given have all taken adds nothing.
+        What is left of it is what `Overrides.laid_over` leaves of it: a concept dropped there adds
+        nothing.
 
         Args:
             word: The word of the concept proposed.
@@ -737,8 +737,8 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     """The concepts `given`, with those `proposed` without the terms the given are written as.
 
     A concept proposed of the word of one given adds to it the abbreviations it has left; one of
-    another word is dropped once all its abbreviations are taken, and keeps its word, which is
-    taken from none: one without abbreviations, written as its word alone, is kept.
+    another word is dropped once its abbreviations are all taken, or its word where it has none.
+    Else it keeps its word, which is taken from none.
     """
     taken = {term for word, concept in given.items() for term in written_as(word, concept)}
     concepts = dict(given)
@@ -746,7 +746,7 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
         left = tuple(term for term in concept.abbreviations if term not in taken)
         if word in given:
             concepts[word] = replace(given[word], abbreviations=(*given[word].abbreviations, *left))
-        elif left or not concept.abbreviations:
+        elif left or not (concept.abbreviations or word in taken):
             concepts[word] = replace(concept, abbreviations=left)
     return concepts
 

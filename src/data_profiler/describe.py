@@ -283,8 +283,11 @@ class _Asking:
                 continue
             concept = profile.glossary.get(word)
             if concept is None:
-                concept = Concept((term,), proposal.description.strip() or None)
+                abbreviations = () if term in written_as(word, Concept()) else (term,)
+                concept = Concept(abbreviations, proposal.description.strip() or None)
             else:
+                # Its own word only where the concept was dropped for an abbreviation given: the
+                # term is then what keeps it, or the model would be asked of it at every run.
                 concept = replace(concept, abbreviations=(*concept.abbreviations, term))
             profile = replace(profile, glossary={**profile.glossary, word: concept})
             profile.write(self._directory)

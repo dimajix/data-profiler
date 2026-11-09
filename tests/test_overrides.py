@@ -177,6 +177,20 @@ def test_a_term_given_that_is_the_word_of_a_concept_proposed_stands_for_either()
     assert Glossary(laid.glossary).words("contact") == ("person", "contact")
 
 
+@pytest.mark.parametrize(
+    "proposed",
+    [Concept(()), Concept(("iban",))],
+    ids=["of its word alone", "its word as an abbreviation, as profiles written before hold it"],
+)
+def test_a_term_given_that_is_all_a_concept_proposed_is_written_as_stands_for_the_given_alone(
+    proposed: Concept,
+) -> None:
+    profile = replace(_PROFILE, glossary={**_PROFILE.glossary, "iban": proposed})
+    laid = Overrides(glossary={"account": Concept(("iban",))}).laid_over(profile)
+    assert "iban" not in laid.glossary
+    assert Glossary(laid.glossary).words("iban") == ("account",)
+
+
 def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
     (table,) = _PROFILE.tables
     profile = replace(
@@ -201,6 +215,7 @@ def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
         ({"contact": Concept(("c", "d"), "B.")}, "contact", Concept(("c",), "A."), Concept()),
         ({"customer": Concept(("c",))}, "contact", Concept(("c",), "A."), Concept()),
         ({"customer": Concept(("c",))}, "contact", Concept(("c", "d")), Concept(("d",))),
+        ({"account": Concept(("iban",))}, "iban", Concept((), "A."), Concept()),
     ],
     ids=[
         "a concept of no word given",
@@ -212,6 +227,7 @@ def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
         "one given of more",
         "abbreviations taken by another",
         "those left of them",
+        "its word taken by another, of no abbreviations",
     ],
 )
 def test_what_a_concept_proposed_adds_to_those_given(
