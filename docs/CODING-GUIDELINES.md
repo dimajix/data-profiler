@@ -218,8 +218,8 @@ Errors carry what failed, and only what may be shown goes to users.
     the handler raises again or logs the traceback (`BLE001`).
 *   An expected failure never ends the program and is never silently dropped: it is passed on or
     handled. Ruff reports an exception passed over by `pass` or `continue`, of whatever class
-    (`S110`, `S112`). Ending the program is for broken invariants alone; `sys.exit` is called in
-    `commands` alone, and reported everywhere else (`TID251`).
+    (`S110`, `S112`). Ending the program is for broken invariants alone; `sys.exit` and
+    `signal.raise_signal` are called in `commands` alone, and reported everywhere else (`TID251`).
 
 ### Messages name what failed
 
