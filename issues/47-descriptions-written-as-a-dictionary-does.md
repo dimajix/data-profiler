@@ -1,6 +1,6 @@
 # 47 — Descriptions written as a dictionary does
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** low
 **Area:** Describe
@@ -52,3 +52,60 @@ to the next.
 
 - **2026-11-09** — Opened, as the maintainer asked, with trials of the wording to be run on the
   simulation environment.
+
+- **2026-11-09** — The wording is changed, after trials on the simulation environment: `describe`
+  run whole on the example CRM, 94 columns and about 60 concepts, at temperature 0.
+
+  `concept.txt` now asks for the meaning as a dictionary gives it, a short phrase, a whole sentence
+  only where the meaning takes one. `description.txt` asks for what the column holds as a dictionary
+  entry, names what is not to be said, and shows the names of the column and the table in words.
+
+  What was tried on `qwen3.5:2b`, the model of the example project, and what came of it:
+
+  - **Asking for a dictionary's form** ended the talk about the concepts, from 20 of 60 descriptions
+    opening with it to none, but left 21 of the columns as `The column ...`.
+  - **Examples** in the question, `serial number of a credit card`, gave short answers and were
+    copied: 32 columns held the example, among them `cust_nm` and an IBAN described as a credit card
+    serial number. Rejected.
+  - **Asking what one value of the column is** gave phrases of the right form and wrong content:
+    `a collection of office supplies` for a list price.
+  - **Naming the reader**, `for a person who knows the business but not the database`, was given
+    back as the description of `cust_nm`, and made the answers longer. It is left out of
+    `description.txt`, and kept in `concept.txt`, where it did no harm.
+  - **Naming what is not to be said** took the openings about the column from 21 to 3.
+  - **`Where it was recognised as something, say what that is`** is kept for what it should bring
+    the columns recognised, though answers of an IBAN stayed unsteady from one wording to the next.
+  - **The names in words.** 23 of 94 answers were the harmonized name, `customer_type_code`, copied
+    from the line that shows it. Shown in words none was, without a word about it in the question.
+  - **A renamed key of the answer**, `definition` for `description`, tried with the wording of
+    before, did not help: the answers named the column as often, and grew longer. Not kept.
+  - **Asking for both meanings of a word used in two ways** brought the openings back, 10 of 64, and
+    changed words. Not kept.
+
+  | Model | Wording | Columns opening about the column | Words per column | Words per concept |
+  |---|---|---|---|---|
+  | `qwen3.5:2b` | before | 78 of 94 | 32.5 | 15.2 |
+  | `qwen3.5:2b` | now | 2 | 4.9 | 5.6 |
+  | `qwen3.5:4b` | before | 90 | 23.7 | 21.6 |
+  | `qwen3.5:4b` | now | 2 | 14.5 | 6.5 |
+  | `gemma4:e2b` | before | 81 | 14.0 | 16.2 |
+  | `gemma4:e2b` | now | 5 | 5.1 | 8.8 |
+  | `lfm3:1.7b` | before | 80 | 34.7 | 31.3 |
+  | `lfm3:1.7b` | now | 5 | 30.6 | 11.7 |
+
+  Judged by the agent on `qwen3.5:2b`, right / usable / wrong, the columns were 42 / 26 / 26 before
+  and are 59 / 13 / 22 now: the long sentences made up the meanings of codes and asides of phone
+  numbers and postal codes. Four went from right to wrong: `ord.iban`, `prtnr.bnk_acct`,
+  `cust.crdt_lmt_amt` and `ord_itm.unt_prc_amt`.
+
+  The words of `qwen3.5:2b` changed for 9 terms of 72, seven of them for the better (`sts` from
+  `stock` to `status`, `actv` from `customer` to `active`), `scr` and `uuid` wrong before and after.
+  `qwen3.5:4b` changed 2 and `gemma4:e2b` 4, among them `frm` from `from` to `form` and `crt` from
+  `created` to `credit`, for the worse. `lfm3:1.7b` changed 13, wrong before and after for most.
+
+  Not reached: none of the four models gave both meanings of `default`, shown it in a loan and in a
+  configuration, by this wording, nor `qwen3.5:2b` by the two wordings that asked for them. The
+  question allows a sentence where it is needed, but the sentence wanted did not come.
+
+- **2026-11-09** — Done, as the maintainer accepted it: a word of two meanings is left to a
+  description given in the overrides.

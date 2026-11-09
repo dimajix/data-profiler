@@ -66,7 +66,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [31](31-describe-without-llm.md) | done | `describe` cannot run without the language model of its project, though splitting the names and reading those of one candidate for each term needs none, so that a person working on the glossary waits for Ollama at every run, and cannot run it at all where Ollama is not there. |
 | [32](32-descriptions-of-the-database-and-its-tables.md) | done | Nothing tells the language model what the database is about - the business it serves - or what a table holds, so that it proposes concepts, chooses readings and describes columns from the names, values and statistics of one column alone, without the context a person who knows the business has. |
 | [46](46-a-word-proposed-as-its-own-abbreviation.md) | done | `describe` records a term written out as an abbreviation of the concept of the same word, `iban: [iban]`, though the abbreviations of a concept are the terms it is written as beside its word. |
-| [47](47-descriptions-written-as-a-dictionary-does.md) | open | The descriptions `describe` proposes of columns and concepts talk about the column or the word, `This column contains the serial number of a credit card`, where the information alone, `serial number of a credit card`, says the same. |
+| [47](47-descriptions-written-as-a-dictionary-does.md) | done | The descriptions `describe` proposes of columns and concepts talk about the column or the word, `This column contains the serial number of a credit card`, where the information alone, `serial number of a credit card`, says the same. |
 
 ## Report
 
