@@ -2,10 +2,11 @@
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, Sensitivity
+from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, UUID, Sensitivity
 from data_profiler.glossary import terms
 from data_profiler.overrides import (
     ColumnOverride,
@@ -142,6 +143,14 @@ def _page(overrides: Overrides | None = None, profile: Profile = _PROFILE) -> st
     return " ".join(render(profile, overrides or _overrides()).split())
 
 
+def _with_first(**changes: Any) -> Profile:
+    """`_PROFILE`, its first column with `changes`."""
+    (table, *others) = _PROFILE.tables
+    first, *columns = table.columns
+    changed = replace(table, columns=(replace(first, **changes), *columns))
+    return replace(_PROFILE, tables=(changed, *others))
+
+
 def test_a_report_shows_the_tables_and_their_columns() -> None:
     page = _page()
     assert "<h1>crm.sales</h1>" in page
@@ -157,23 +166,61 @@ def test_a_report_shows_the_tables_and_their_columns() -> None:
 
 
 def test_a_report_shows_a_column_of_lists_with_its_separator() -> None:
-    (table, *others) = _PROFILE.tables
-    first, *columns = table.columns
-    listed = replace(table, columns=(replace(first, list_separator=";"), *columns))
-    page = _page(profile=replace(_PROFILE, tables=(listed, *others)))
+    page = _page(profile=_with_first(list_separator=";"))
     assert "list of values by ;" in page
 
 
 def test_a_report_shows_the_values_of_the_lists_of_a_column() -> None:
-    (table, *others) = _PROFILE.tables
-    first, *columns = table.columns
     items = Findings(Statistics(0, 6), matches=(Match(CURRENCY_CODE, 1.0, 1.0),))
-    listed = replace(first, list_separator=";", items=items)
-    page = _page(
-        profile=replace(_PROFILE, tables=(replace(table, columns=(listed, *columns)), *others))
-    )
+    page = _page(profile=_with_first(list_separator=";", items=items))
     assert "list of values by ;: 6 distinct" in page
     assert "currency-code 100% / 100%" in page, "its type, of the sample and of the table"
+
+
+# Seven UUIDs, the most frequent first.
+_UUIDS = tuple(Value(f"00000000-0000-4000-8000-00000000000{n}", 9 - n) for n in range(7))
+
+
+@pytest.mark.parametrize("verified", [1.0, None])
+def test_a_column_of_nothing_but_uuids_lists_its_five_most_frequent_values(
+    verified: float | None,
+) -> None:
+    page = _page(profile=_with_first(values=_UUIDS, matches=(Match(UUID, 1.0, verified),)))
+    assert "<summary>5 of 7 values</summary>" in page
+    assert _UUIDS[4].value in page, "the fifth most frequent"
+    assert _UUIDS[5].value not in page, "the sixth most frequent"
+
+
+def test_the_values_of_lists_of_nothing_but_uuids_are_limited_by_their_own_matches() -> None:
+    items = Findings(Statistics(0, 7), matches=(Match(UUID, 1.0, 1.0),), values=_UUIDS)
+    page = _page(profile=_with_first(list_separator=";", items=items))
+    assert "<summary>5 of 7 values of its lists</summary>" in page
+    assert _UUIDS[5].value not in page, "the sixth most frequent"
+    assert "<summary>2 values</summary>" in page, "the values of the column, of other matches"
+
+
+@pytest.mark.parametrize(("sample", "table"), [(0.95, 0.95), (1.0, 0.95), (0.95, None)])
+def test_a_column_partly_of_uuids_lists_all_of_its_values(
+    sample: float, table: float | None
+) -> None:
+    page = _page(profile=_with_first(values=_UUIDS, matches=(Match(UUID, sample, table),)))
+    assert "<summary>7 values</summary>" in page
+    assert _UUIDS[6].value in page, "the last"
+
+
+def test_a_column_of_five_uuids_says_nothing_of_a_limit() -> None:
+    page = _page(profile=_with_first(values=_UUIDS[:5], matches=(Match(UUID, 1.0, 1.0),)))
+    assert "<summary>5 values</summary>" in page
+
+
+def test_the_sentinels_of_a_column_of_nothing_but_uuids_are_all_listed() -> None:
+    statistics = Statistics(0, 7, sentinels=_UUIDS)
+    page = _page(profile=_with_first(statistics=statistics, matches=(Match(UUID, 1.0, 1.0),)))
+    assert "<summary>7 sentinels</summary>" in page
+
+
+def test_the_line_below_a_column_runs_below_what_is_listed_of_it() -> None:
+    assert "tr:has(+ .values) td { border-bottom: none; }" in _page()
 
 
 def test_a_report_shows_the_keys_of_a_table_and_which_is_primary() -> None:

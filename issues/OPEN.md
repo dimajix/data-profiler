@@ -16,12 +16,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 
-## Report
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [48](48-the-values-of-a-column-in-the-report.md) | open | medium | feature | The line that separates the columns in a table of the report runs between a column and its values instead of below them, and a column of nothing but UUIDs lists all of its values, up to 500, where five say all there is to see. |
-
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

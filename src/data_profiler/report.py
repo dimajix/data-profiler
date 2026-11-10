@@ -5,16 +5,16 @@ shows the profile with the overrides of the project laid over it: what the datab
 is given; each table, with what it holds, where it is given, and with its columns - their original
 names and harmonized names, composed from their readings or given, descriptions, types, statistics,
 the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of their
-enumerations and each of their sentinels -, with its keys, the primary marked, and whether it is
-given, the references of its columns, one to one or many to one, their coverage and whether they are
-given, the reference candidates of each column ranked, and the references of others to it, the
-column groups of its columns filled together, its column dependencies, each determinant marked where
-it is a reference, the harmonized names two of its columns share, and its entities, by the share of
-their rows each column is filled in, with their names and descriptions, where they are given; and
-the glossary, each concept with its abbreviations and description, those proposed told apart from
-those given, and each term of no concept, as describe split the names, with where it appears. It
-renders what the profile holds, and nothing of the workspace: the values in it are those the profile
-may hold, which the template escapes.
+enumerations, the first few of those of nothing but UUIDs, and each of their sentinels -, with its
+keys, the primary marked, and whether it is given, the references of its columns, one to one or many
+to one, their coverage and whether they are given, the reference candidates of each column ranked,
+and the references of others to it, the column groups of its columns filled together, its column
+dependencies, each determinant marked where it is a reference, the harmonized names two of its
+columns share, and its entities, by the share of their rows each column is filled in, with their
+names and descriptions, where they are given; and the glossary, each concept with its abbreviations
+and description, those proposed told apart from those given, and each term of no concept, as
+describe split the names, with where it appears. It renders what the profile holds, and nothing of
+the workspace: the values in it are those the profile may hold, which the template escapes.
 """
 
 from pathlib import Path
@@ -22,13 +22,17 @@ from typing import Final
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
+from data_profiler.detect import UUID
 from data_profiler.files import write_whole
 from data_profiler.glossary import Glossary, unknown
 from data_profiler.overrides import Overrides
-from data_profiler.profile import Profile, Reference, Table
+from data_profiler.profile import Findings, Profile, Reference, Table
 
 # The places a term of no concept is shown with, before the number of the others.
 _PLACES: Final = 8
+
+# The values listed of a column of nothing but UUIDs, any one of which looks like the next.
+_UUIDS: Final = 5
 
 _TEMPLATES: Final = Environment(
     loader=PackageLoader("data_profiler", "templates"),
@@ -74,7 +78,21 @@ def render(profile: Profile, overrides: Overrides) -> str:
         harmonized=glossary.harmonized,
         collisions=glossary.collisions,
         reference_candidates=_reference_candidates,
+        limit=_limit,
     )
+
+
+def _limit(found: Findings) -> int | None:
+    """The most values of `found` to list: a few of nothing but UUIDs, else None, for all of them.
+
+    Nothing but UUIDs is all of the sample, and all of the table where the table was verified, by
+    the shares as the profile rounds them and the report shows them.
+    """
+    uuids = any(
+        match.type == UUID and match.sample == 1 and match.table in (None, 1)
+        for match in found.matches
+    )
+    return _UUIDS if uuids else None
 
 
 def _reference_candidates(table: Table) -> dict[str, list[Reference]]:

@@ -98,16 +98,22 @@
         </td>
       </tr>
       {% set items = column.items.values if column.items else () %}
-      {% for what, listed in (
-        ("values", column.values), ("values of its lists", items), ("sentinels", statistics.sentinels)
+      {% for what, listed, most in (
+        ("values", column.values, limit(column.findings)),
+        ("values of its lists", items, limit(column.items) if column.items else none),
+        ("sentinels", statistics.sentinels, none)
       ) %}
       {% if listed %}
+      {% set shown = listed[:most] %}
       <tr class="values">
         <td></td>
         <td colspan="9">
           <details>
-            <summary>{{ listed | length }} {{ what }}</summary>
-            {% for value in listed %}
+            <summary>
+              {%- if shown | length < listed | length %}{{ shown | length }} of {% endif -%}
+              {{ listed | length }} {{ what -}}
+            </summary>
+            {% for value in shown %}
             <span class="value">{{ value.value or "(empty)" }}</span> {{ "{:,}".format(value.rows) }}
             {% if not loop.last %} · {% endif %}
             {% endfor %}
