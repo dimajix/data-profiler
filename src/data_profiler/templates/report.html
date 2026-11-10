@@ -5,6 +5,19 @@
   {%- if match.table is not none %} / {{ "{:.0%}".format(match.table) }}{% endif %}
 </span>
 {%- endmacro %}
+{#- The reading of a name, each term with the word of its concept; nothing where it has none. #}
+{% macro read(named) -%}
+{% if agrees(named.terms, named.reading) %}
+<span class="reading">
+  {% for word in named.reading %}
+  {% set concept = glossary.concept(word) %}
+  <span class="original">{{ named.terms[loop.index0].text }}</span> → {{ word }}
+  {%- if concept and concept.omitted %} <span class="omitted">(omitted)</span>{% endif %}
+  {% if not loop.last %} · {% endif %}
+  {% endfor %}
+</span>
+{%- endif %}
+{%- endmacro %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -40,6 +53,7 @@
     {% set name = harmonized(table) %}
     {% if name %}<span class="harmonized">→ {{ name }}</span>{% endif %}
     <span class="rows">{{ "{:,}".format(table.rows) }} rows</span>
+    {{ read(table) }}
   </h2>
   {% if table.description %}<p class="about">{{ table.description }}</p>{% endif %}
   <table>
@@ -55,7 +69,7 @@
       {% set statistics = column.statistics %}
       <tr{% if column.sensitive %} class="sensitive"{% endif %}>
         <td class="original">{{ column.name }}</td>
-        <td>{{ harmonized(column) or "–" }}</td>
+        <td>{{ harmonized(column) or "–" }}{{ read(column) }}</td>
         <td class="description">{{ column.description or "–" }}</td>
         <td class="type">
           {{ column.type }}

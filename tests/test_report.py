@@ -392,8 +392,47 @@ def test_the_glossary_shows_each_concept_and_where_the_terms_of_none_appear() ->
 def test_a_harmonized_name_is_composed_of_the_reading_of_its_name() -> None:
     page = _page()
     assert '<span class="harmonized">→ customer</span>' in page, "of a table"
-    assert "<td>customer_type_code</td>" in page
+    assert '<td>customer_type_code<span class="reading">' in page
     assert '<td class="original">eml_adr</td> <td>\u2013</td>' in page, "of a name not read"
+
+
+def test_a_report_shows_the_reading_of_a_table_and_of_a_column() -> None:
+    page = _page()
+    assert '<span class="original">cust</span> \u2192 customer</span> </h2>' in page, "of a table"
+    terms = (
+        '<span class="reading"> <span class="original">cust</span> \u2192 customer \u00b7 '
+        '<span class="original">typ</span> \u2192 type \u00b7 '
+        '<span class="original">cd</span> \u2192 code</span></td>'
+    )
+    assert terms in page, "of a column"
+
+
+def test_a_reading_marks_the_concepts_omitted() -> None:
+    assert (
+        '<span class="original">ap</span> \u2192 airplus <span class="omitted">(omitted)</span>'
+        in (_page())
+    )
+
+
+def test_a_reading_is_shown_of_a_name_with_a_word_of_no_concept() -> None:
+    glossary = {word: c for word, c in _PROFILE.glossary.items() if word != "type"}
+    page = _page(profile=replace(_PROFILE, glossary=glossary))
+    assert '<td>\u2013<span class="reading">' in page, "no harmonized name, but its reading"
+    assert '<span class="original">typ</span> \u2192 type' in page
+
+
+@pytest.mark.parametrize("reading", [None, ("customer", "type"), ("customer", "kind", "code")])
+def test_a_reading_that_does_not_agree_with_the_terms_of_its_name_is_not_shown(
+    reading: tuple[str, ...] | None,
+) -> None:
+    assert '<span class="original">typ</span> \u2192' not in _page(
+        profile=_with_first(reading=reading)
+    )
+
+
+def test_a_term_of_digits_is_read_as_itself() -> None:
+    profile = _with_first(terms=(Term("addr", ("address",)), Term("2")), reading=("address", "2"))
+    assert '<span class="original">2</span> → 2</span>' in _page(profile=profile)
 
 
 def test_an_abbreviation_given_that_no_name_has_is_warned_of(
@@ -439,7 +478,7 @@ def test_a_name_given_comes_before_the_harmonized_name_and_resolves_a_collision(
     given = {"tel_no": ColumnOverride(sensitivity=Sensitivity.NONE, name="phone")}
     page = _page(_overrides(given, name="client"))
     assert '<span class="harmonized">→ client</span>' in page
-    assert '<td class="original">tel_no</td> <td>phone</td>' in page
+    assert '<td class="original">tel_no</td> <td>phone<span class="reading">' in page
     assert "Same harmonized name" not in page
 
 

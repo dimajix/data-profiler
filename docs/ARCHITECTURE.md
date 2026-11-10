@@ -350,9 +350,10 @@ every stage after it from the profile.
     that writes them, and it does so only as a person answers.
 5.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
     each table hold, its keys, its references and reference candidates and the references to it, its
-    column groups and column dependencies, the harmonized names and descriptions of the columns, the
-    entities of a table by the share of their rows each column is filled in, with the names and
-    descriptions given of them, and the concepts proposed told apart from those given.
+    column groups and column dependencies, the harmonized names and readings of the tables and
+    columns, the descriptions of the columns, the entities of a table by the share of their rows
+    each column is filled in, with the names and descriptions given of them, and the concepts
+    proposed told apart from those given.
 
 ## Principles
 
