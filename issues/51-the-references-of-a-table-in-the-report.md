@@ -1,6 +1,6 @@
 # 51 — The references of a table in the report
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** low
 **Area:** Report
@@ -74,3 +74,14 @@ To be decided with the interface, before anything is built:
 ## History
 
 - **2026-11-10** — Opened at the request of the maintainer.
+- **2026-11-10** — Done, as the maintainer decided: reference candidates are dashed in the diagram
+  and stay the paragraph they are below the references, and the boxes hold original names. The
+  layout is computed in `report`, the SVG written by the template. Of a table referring to itself,
+  the diagram draws a loop on its box; a table that both refers and is referred to stands on each
+  side; a side shows twenty tables and the number of the others. `Profile.candidates_referring` is
+  new, beside `Profile.referring`, as the diagram shows the candidates coming in as well. A line
+  stands for a connected table and says nothing of how many references it is; the columns are in
+  the tables above it.
+- **2026-11-10** — After the review, as the maintainer decided: the layout is the module `diagram`,
+  not a part of `report`, which gathers the connections from the profile and has `diagram` lay them
+  out; `Profile.candidates_referring` stays as it is, rather than one method for the connections.
