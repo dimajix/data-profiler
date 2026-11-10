@@ -1,6 +1,6 @@
 # 48 — The values of a column in the report
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Report
@@ -66,3 +66,6 @@ that its first five do not, and takes the room of what does.
 ## History
 
 - **2026-11-10** — Opened, as the maintainer asked.
+- **2026-11-10** — Done, as the considerations recommend: one rule of the styles moves the line, and
+  the module `report` limits the values listed of a column of nothing but UUIDs to five, with the
+  profile unchanged.

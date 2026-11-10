@@ -87,7 +87,7 @@ th {
     margin-right: 8px;
 }
 
-.values td {
+tr:has(+ .values) td {
     border-bottom: none;
 }
 
