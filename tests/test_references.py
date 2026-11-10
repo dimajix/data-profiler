@@ -29,7 +29,7 @@ from data_profiler.profile import (
 )
 from data_profiler.references import find
 from data_profiler.scan import scan
-from data_profiler.source import Source, connect
+from data_profiler.source import PROBES_PER_QUERY, Source, connect
 from data_profiler.workspace import Workspace
 
 
@@ -360,6 +360,20 @@ def test_the_references_of_more_keys_than_ten_are_probed_and_counted_in_several_
     probed, counted = source.sent[:2], source.sent[2:]
     assert [statement.count(' AS "key"') for statement in probed] == [10, 1]
     assert [statement.count("LEFT JOIN") for statement in counted] == [10, 1]
+
+
+def test_the_columns_of_more_than_a_query_takes_are_probed_in_several_and_all_refer() -> None:
+    columns = [
+        _ranged(f"ref{place}", "bigint", 3000, 100001, 104990)
+        for place in range(PROBES_PER_QUERY + 1)
+    ]
+    source = _Answering()
+    found = _ordered(find(source, _ordering(*columns), {}))
+    assert [reference.column for reference in found.references] == [
+        column.name for column in columns
+    ], "each of its own column, the last query's as the first's"
+    probed = [statement for statement in source.sent if ' AS "probe"' in statement]
+    assert [statement.count(' AS "probe"') for statement in probed] == [PROBES_PER_QUERY, 1]
 
 
 def test_the_sentinels_of_a_column_are_left_aside_as_nulls_where_it_is_probed() -> None:

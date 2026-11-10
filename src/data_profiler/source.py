@@ -92,6 +92,14 @@ Each count holds values of the table in memory, as many as the rows where they a
 each key looked up its values: a query of more would hold more than the memory of the database.
 """
 
+PROBES_PER_QUERY: Final = 50
+"""The probes of one query at most.
+
+Each is planned as one stage of the query or, where its tables have no statistics, as two, and
+Starburst refuses a query of more than 150 stages by default: this leaves room for the others, and
+for a database that plans otherwise.
+"""
+
 
 class SourceError(Exception):
     """A failure of the database: the database by its endpoint, and what was done."""

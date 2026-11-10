@@ -314,7 +314,8 @@ every stage after it from the profile.
     a key, a run of whole numbers from the start of the key - short of its end, as a code or a
     counter is, or a key of its own table numbered from one - only where its name holds the terms of
     the key and of its table. It probes each by a hundred of its values, taken at random and looked
-    up in the whole key by the database, ten keys at most in a query, so that no value leaves it;
+    up in the whole key by the database, so that no value leaves it, ten keys and fifty columns at
+    most in a query, as each column costs a stage or two, of which a database allows only so many;
     UUIDs, unmistakable values, refer to a key where more than half of them are found, of several to
     the one of the most, and the coverage of others is counted on the whole table, a reference where
     nine of ten of its values are found. A column found in several keys has each as a reference

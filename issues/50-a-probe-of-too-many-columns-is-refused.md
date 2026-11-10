@@ -1,6 +1,6 @@
 # 50 — A probe of too many columns is refused
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** high
 **Area:** Relate
@@ -56,3 +56,9 @@ keys by it; `Dialect.probed` stays as it is.
 
 - **2026-11-10** — Opened: `relate` failed on Starburst with too many stages (478, maximum is 150).
   Measured on the simulation environment, and the limit decided with the maintainer.
+- **2026-11-10** — Done: `_probed` splits the columns of each batch of keys by `PROBES_PER_QUERY`.
+  The measurement above holds only for tables with statistics. Tables just loaded, without them, are
+  planned with two stages for each column and twelve more, for ten keys: 92 for 40 columns, 150 for
+  69, refused for 70. The limit of 100 decided above would be refused there, so that it is 50
+  instead: 53 stages with statistics, 112 without. The query refused may so have held about 233
+  columns.
