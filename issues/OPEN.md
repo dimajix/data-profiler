@@ -28,3 +28,9 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
+
+## Low priority
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [51](51-the-references-of-a-table-in-the-report.md) | open | low | feature | The report writes the references of a table as running text, those to it without their key, cardinality or coverage, and nothing shows at a glance which tables a table is connected to. |
