@@ -2,13 +2,14 @@
 
 The document holds its styles inside, and no script, so that it can be sent and printed as it is. It
 shows the profile with the overrides of the project laid over it: what the database holds, where it
-is given; each table, with what it holds, where it is given, and with its columns - their original
-names and harmonized names, composed from their readings or given, descriptions, types, statistics,
-the shares of their nulls and sentinels among them, semantic types, sensitivity, the values of their
-enumerations, the first few of those of nothing but UUIDs, and each of their sentinels -, with its
-keys, the primary marked, and whether it is given, the references of its columns, one to one or many
-to one, their coverage and whether they are given, the reference candidates of each column ranked,
-and the references of others to it, the column groups of its columns filled together, its column
+is given; each table, with the reading of its name, what it holds, where it is given, and with its
+columns - their original names, harmonized names, composed from their readings or given, readings,
+each term with the word of its concept, descriptions, types, statistics, the shares of their nulls
+and sentinels among them, semantic types, sensitivity, the values of their enumerations, the first
+few of those of nothing but UUIDs, and each of their sentinels -, with its keys, the primary
+marked, and whether it is given, the references of its columns, one to one or many to one, their
+coverage and whether they are given, the reference candidates of each column ranked, and the
+references of others to it, the column groups of its columns filled together, its column
 dependencies, each determinant marked where it is a reference, the harmonized names two of its
 columns share, and its entities, by the share of their rows each column is filled in, with their
 names and descriptions, where they are given; and the glossary, each concept with its abbreviations
@@ -24,7 +25,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.detect import UUID
 from data_profiler.files import write_whole
-from data_profiler.glossary import Glossary, unknown
+from data_profiler.glossary import Glossary, agrees, unknown
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Findings, Profile, Reference, Table
 
@@ -75,7 +76,9 @@ def render(profile: Profile, overrides: Overrides) -> str:
         unknown=unknown(profile),
         given=overrides.glossary.keys(),
         places=_PLACES,
+        glossary=glossary,
         harmonized=glossary.harmonized,
+        agrees=agrees,
         collisions=glossary.collisions,
         reference_candidates=_reference_candidates,
         limit=_limit,

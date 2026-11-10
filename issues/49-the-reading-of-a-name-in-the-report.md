@@ -1,6 +1,6 @@
 # 49 — The reading of a name in the report
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** low
 **Area:** Report
@@ -61,3 +61,5 @@ one link between the two is the thing missing. Today it can be found only in `pr
 ## History
 
 - **2026-11-10** — Opened, as the maintainer asked.
+- **2026-11-10** — Done, as the considerations recommend: each term with its word, under the name of
+  a column and of a table alike, on a line of its own.
