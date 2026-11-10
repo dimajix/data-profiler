@@ -44,9 +44,10 @@ that its first five do not, and takes the room of what does.
   a discriminator are checked against it (`disclosure.py`), and the report renders what the profile
   holds. Cutting at the scan would make the profile depend on how it is shown. Recommended.
 - **What counts as nothing but UUIDs:** a match of the semantic type `uuid` with a share of 100% of
-  the sample, and of 100% of the table where the table was verified. A column of the database type
-  `uuid` has no share of the table, as only columns with text are verified, and counts by its
-  sample. A column of 95% UUIDs lists all its values, as what does not fit is what is worth seeing.
+  the sample, and of 100% of the table where the table was verified, as it is for a column of the
+  database type `uuid` as for one of texts; a column whose values the database casts to no text has
+  no share of the table, and counts by its sample. A column of 95% UUIDs lists all its values, as
+  what does not fit is what is worth seeing.
 - **The values of the lists of a column** follow the same rule by their own matches. Sentinels do
   not: they are no values of the column, and each of them says something.
 - **Which five:** the first, the most frequent, in the order of the profile.
