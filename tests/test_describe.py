@@ -587,6 +587,16 @@ def test_the_reference_of_a_column_is_shown_to_the_model_with_the_name_read_of_i
     assert "refers to" not in referred, "the column referred to refers to nothing"
 
 
+def test_a_column_of_a_reference_is_asked_what_of_that_table_it_identifies(tmp_path: Path) -> None:
+    asked = "say which thing of that table it identifies"
+    reference = Reference("cust_ref", "cust", "cust_id", 1.0)
+    prompt, referred = _asked_of_referring(tmp_path / "reference", references=(reference,))
+    assert asked in prompt
+    assert asked not in referred, "a column of no reference is asked as before"
+    candidate, _ = _asked_of_referring(tmp_path / "candidate", reference_candidates=(reference,))
+    assert asked not in candidate, "a column of reference candidates alone is asked as before"
+
+
 def test_a_reference_to_a_table_of_no_name_read_is_shown_by_its_names_alone(tmp_path: Path) -> None:
     reference = Reference("cust_ref", "xy", "cust_id", 1.0)
     prompt, _ = _asked_of_referring(tmp_path, "xy", references=(reference,))

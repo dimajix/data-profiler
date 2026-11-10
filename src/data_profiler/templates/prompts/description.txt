@@ -4,7 +4,8 @@
     with underscores. Its reader is not named, as such a model gave the reader for its answer, nor
     is an example given, as it copies one into its answers. Of the keys a column may refer to, its
     reference alone is shown: of reference candidates, none is the one, and the model would state
-    one as a fact. #}
+    one as a fact. A column of a reference is asked what of that table it identifies, as a model
+    shown the reference alone mostly answered as if it was not there. #}
 {% from "brief.txt" import brief with context %}
 {% set statistics = column.statistics %}
 {% set name = glossary.harmonized(column) %}
@@ -62,6 +63,9 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 - filled in the same rows as: {{ group.columns | reject("equalto", column.name) | join(", ") }}
 {% endfor %}
 
+{% if reference is not none %}
+Where it refers to a table, say which thing of that table it identifies.
+{% endif %}
 State what the column holds, as a dictionary entry states a meaning: a short phrase in plain words,
 as a person would say it. Where it was recognised as something, say what that is. Do not speak of
 the column: no "the column", "this column", "contains", "stores" or "holds". Leave out its type,
