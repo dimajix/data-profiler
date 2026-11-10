@@ -1,12 +1,15 @@
-{#- The question of the description of `column`, of `table`, shown what is known of it, and what
-    the database and the table hold, where it is given. The names of the column and the table are
-    shown in words, as a small model asked for a short phrase repeats one written with underscores.
-    Its reader is not named, as such a model gave the reader for its answer, nor is an example
-    given, as it copies one into its answers. #}
+{#- The question of the description of `column`, of `table`, of `profile`, shown what is known of
+    it, and what the database and the table hold, where it is given. The names of the column and
+    the tables are shown in words, as a small model asked for a short phrase repeats one written
+    with underscores. Its reader is not named, as such a model gave the reader for its answer, nor
+    is an example given, as it copies one into its answers. Of the keys a column may refer to, its
+    reference alone is shown: of reference candidates, none is the one, and the model would state
+    one as a fact. #}
 {% from "brief.txt" import brief with context %}
 {% set statistics = column.statistics %}
 {% set name = glossary.harmonized(column) %}
 {% set table_name = glossary.harmonized(table) %}
+{% set reference = table.reference(column.name) %}
 You help to document the tables of a database whose names are made of English abbreviations.
 {% if database %}
 What the database holds: {{ database }}
@@ -22,6 +25,12 @@ Here is what is known of the column "{{ column.name }}" of the table "{{ table.n
 - {{ word }}: {{ concept.description }}
 {% endif %}
 {% endfor %}
+{% if reference is not none %}
+{% set referred_name = glossary.harmonized(profile.table(reference.table)) %}
+- refers to: the column "{{ reference.key }}" of the table "{{ reference.table }}"
+{%- if referred_name is not none %}, whose name reads: {{ referred_name | replace("_", " ") }}{% endif %}
+
+{% endif %}
 {% if table_name is not none %}
 - the name of the table reads: {{ table_name | replace("_", " ") }}
 {% endif %}

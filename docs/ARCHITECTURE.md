@@ -262,9 +262,9 @@ reach `scan` from `project`, and every stage after it from the profile.
 *   **Glossary** - the concepts of a profile, once for the whole profile, each under its word.
 *   **Description** - what a column holds, in English, for a person who knows the business but not
     the database, proposed by the language model from the reading of its name, its statistics, its
-    matches and its sample; its name is the harmonized one. What a table and the database hold are
-    descriptions as well, given by hand alone, and shown to the language model with every question
-    of them.
+    matches, its sample and its reference; its name is the harmonized one. What a table and the
+    database hold are descriptions as well, given by hand alone, and shown to the language model
+    with every question of them.
 *   **Override** - what is given by hand of the profiles of a project, in its `overrides.yml` and
     the files of `overrides/`, or by a person answering `adopt`, and laid over a generated profile:
     what the database and a table hold, concepts of the glossary, the reading, the harmonized name
@@ -337,14 +337,16 @@ reach `scan` from `project`, and every stage after it from the profile.
     whose terms have one candidate each, and asks the language model for the reading of each name of
     a term of several concepts, shown the concepts with their descriptions. From the reading of its
     name and the descriptions of its concepts, and from each column's statistics, matches, values,
-    sample and the columns filled together with it, it asks for the column's description - its name
-    stays the one harmonized. Overrides are taken as given: no term of a concept given, no name of a
-    reading given and no column of a description given is asked for. The language model is asked
-    only for what the profile lacks, and the profile is written after each concept and each table
-    read or described, so that a run interrupted is resumed; `describe --anew` drops first what the
-    language model filled, and `describe --without-llm` asks it nothing, doing what needs no model
-    alone: the names split, and read where each term has one candidate, the profile written once at
-    the end. The result is the profile, with terms, glossary, readings and descriptions.
+    sample, the columns filled together with it and the key it refers to, with the reading of the
+    name of that table, it asks for the column's description - its name stays the one harmonized; a
+    reference candidate is not shown, as none of several keys is the one. Overrides are taken as
+    given: no term of a concept given, no name of a reading given and no column of a description
+    given is asked for. The language model is asked only for what the profile lacks, and the profile
+    is written after each concept and each table read or described, so that a run interrupted is
+    resumed; `describe --anew` drops first what the language model filled, and
+    `describe --without-llm` asks it nothing, doing what needs no model alone: the names split, and
+    read where each term has one candidate, the profile written once at the end. The result is the
+    profile, with terms, glossary, readings and descriptions.
 4.  `adopt` compares the concepts of the profile with those of the overrides, and asks a person at
     the terminal about what each adds: a description where none is given, and abbreviations no
     concept given has. Each answer is written at once, to the file of the overrides that gives the

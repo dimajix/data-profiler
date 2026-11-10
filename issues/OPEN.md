@@ -15,7 +15,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
-| [52](52-the-reference-of-a-column-shown-to-the-model.md) | open | medium | feature | The question for the description of a column does not show the language model the reference of the column to a key of another table, though the profile holds it. |
 
 ## Architecture
 

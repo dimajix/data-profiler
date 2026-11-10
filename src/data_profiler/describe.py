@@ -17,7 +17,8 @@ and any other, of a term of none, is left unread. The terms a split finds are wr
 readings of their names alone, table by table, so that the profile never holds a reading of other
 terms than its own. The fourth asks the language model for the description of each column of none,
 shown the reading of its name with the descriptions of its concepts, what is counted of it, its
-values and those of its sample, the columns beside it and those filled together with it.
+values and those of its sample, the columns beside it and those filled together with it, and the key
+it refers to, with the reading of the name of that table.
 
 The steps see the profile with the overrides laid over it, so that the concepts given count and no
 term of one, no name of a reading given and no column of a description given is asked for; but they
@@ -332,7 +333,7 @@ class _Asking:
             columns = []
             for column, given in zip(tables[index].columns, shown.columns, strict=True):
                 description = (
-                    None if given.description else self._description(given, shown, glossary)
+                    None if given.description else self._description(given, shown, laid, glossary)
                 )
                 columns.append(replace(column, description=description or column.description))
             table = replace(tables[index], columns=tuple(columns))
@@ -341,15 +342,20 @@ class _Asking:
                 replace(profile, tables=tuple(tables)).write(self._directory)
         return replace(profile, tables=tuple(tables))
 
-    def _description(self, column: Column, table: Table, glossary: Glossary) -> str | None:
+    def _description(
+        self, column: Column, table: Table, profile: Profile, glossary: Glossary
+    ) -> str | None:
         """The description the model proposes of `column`, of `table`, or None where it gives none.
 
         Args:
             column: The column, with the overrides laid over it.
             table: Its table, with the overrides laid over it.
+            profile: The profile, with the overrides laid over it, of the table a column refers to.
             glossary: The concepts, those of the overrides among them.
         """
-        prompt = self._prompt("description.txt", column=column, table=table, glossary=glossary)
+        prompt = self._prompt(
+            "description.txt", column=column, table=table, profile=profile, glossary=glossary
+        )
         answer = self._asked(prompt, _DESCRIPTION, _DESCRIPTION.json_schema())
         description = answer.description.strip() if answer is not None else ""
         if not description:

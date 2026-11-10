@@ -1,6 +1,6 @@
 # 52 — The reference of a column shown to the model
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Describe
@@ -46,3 +46,8 @@ of them into the description as if it were a fact.
 
 - **2026-11-10** — Opened at the request of the maintainer, who decided what is shown: the key, its
   table and the reading of the name of that table, and no reference candidates.
+- **2026-11-10** — Done, as decided. `description.txt` shows the reference as one line among the
+  facts of the column, `- refers to: the column "cust_id" of the table "cust", whose name reads:
+  customer`, the name of the table as `Glossary.harmonized` gives it, a name given among them. The
+  template is given the profile with the overrides laid over it, to reach the table referred to.
+  The closing instruction of the question is unchanged, and the wording was not tried on a model.
