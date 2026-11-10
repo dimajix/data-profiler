@@ -745,10 +745,28 @@ class Profile:
             Each reference, with its table, of the tables and their columns in their order; none
             where none refers to it. Candidates are not references.
         """
+        return self._to(name, lambda table: table.references)
+
+    def candidates_referring(self, name: str) -> list[tuple[Table, Reference]]:
+        """The reference candidates of its tables to the table `name`, with the tables they are of.
+
+        Args:
+            name: The name of the table referred to.
+
+        Returns:
+            Each reference candidate, with its table, of the tables and their columns in their
+            order, those of a column as they are ranked; none where none refers to it.
+        """
+        return self._to(name, lambda table: table.reference_candidates)
+
+    def _to(
+        self, name: str, of: Callable[[Table], Iterable[Reference]]
+    ) -> list[tuple[Table, Reference]]:
+        """Those `of` each of its tables that refer to the table `name`, each with its table."""
         return [
             (table, reference)
             for table in self.tables
-            for reference in table.references
+            for reference in of(table)
             if reference.table == name
         ]
 

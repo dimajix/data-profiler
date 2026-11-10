@@ -543,6 +543,18 @@ def test_the_references_to_a_table_are_those_of_the_tables_that_refer() -> None:
     assert profile.referring("ORD") == [(ordered, ordered.references[1])], "of itself as well"
 
 
+def test_the_reference_candidates_to_a_table_are_those_of_the_tables_they_are_of() -> None:
+    profile = _related(
+        Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
+        reference_candidates=(Reference("REF_NO", "CUST", "CUST_ID", 1.0),),
+    )
+    ordered = profile.table("ORD")
+    assert profile.candidates_referring("CUST") == [(ordered, ordered.reference_candidates[0])], (
+        "no reference"
+    )
+    assert profile.candidates_referring("ORD") == []
+
+
 def test_a_restricted_profile_drops_the_references_to_the_tables_it_drops() -> None:
     profile = _related(
         Reference("CUST_ID", "CUST", "CUST_ID", 1.0),

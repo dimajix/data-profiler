@@ -117,6 +117,8 @@ environment.
     proposes, and the answers written to the overrides.
 *   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
     its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
+*   **`data_profiler.diagram`** - the layout of a table and the tables connected to it, in pixels,
+    which the template of `report` draws.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
     environment of a project through `commands`.
 *   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
@@ -133,11 +135,11 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
 `disclosure`, `values` and `workspace`, `report` the profile and `overrides`, which it lays over it,
-and `glossary` for its names, and `adopt` reads the profile and writes through `overrides`; `cli`
-runs the stages, gives the overrides to each but `adopt`, which reads them anew for each concept,
-and the language model, made by `llm` as the project names it, to `describe`, unless it is to ask
-none. The semantic types of a project and its separator of lists reach `scan` from `project`, and
-every stage after it from the profile.
+and `glossary` and `diagram` for its names and diagrams, and `adopt` reads the profile and writes
+through `overrides`; `cli` runs the stages, gives the overrides to each but `adopt`, which reads
+them anew for each concept, and the language model, made by `llm` as the project names it, to
+`describe`, unless it is to ask none. The semantic types of a project and its separator of lists
+reach `scan` from `project`, and every stage after it from the profile.
 
 ## The domain
 
@@ -350,11 +352,11 @@ every stage after it from the profile.
     keeping the comments and the order of the file. The result is the overrides; it is the one stage
     that writes them, and it does so only as a person answers.
 5.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
-    each table hold, its keys, its references and reference candidates and the references to it, its
-    column groups and column dependencies, the harmonized names and readings of the tables and
-    columns, the descriptions of the columns, the entities of a table by the share of their rows
-    each column is filled in, with the names and descriptions given of them, and the concepts
-    proposed told apart from those given.
+    each table hold, its keys, its references and reference candidates and the references to it,
+    with a diagram of the tables connected to it, its column groups and column dependencies, the
+    harmonized names and readings of the tables and columns, the descriptions of the columns, the
+    entities of a table by the share of their rows each column is filled in, with the names and
+    descriptions given of them, and the concepts proposed told apart from those given.
 
 ## Principles
 

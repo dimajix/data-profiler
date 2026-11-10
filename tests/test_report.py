@@ -1,5 +1,6 @@
 """Tests of the stage report: a profile made by hand, rendered as HTML."""
 
+import re
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -266,19 +267,138 @@ def test_a_report_shows_the_references_of_a_table_its_candidates_and_those_to_it
     )
     page = _page(profile=replace(_PROFILE, tables=(related, empty)))
     assert (
-        'References: <span class="original">eml_adr</span> → <span class="original">empty.x'
-        '</span> (one to one, 100%) · <span class="original">tel_no</span> →'
-        ' <span class="original">cust.eml_adr</span> (many to one, given) </p>'
-    ) in page, "a key refers one to one; unmistakable values of no coverage, given"
+        '<td class="original">eml_adr</td> <td class="original">empty</td>'
+        ' <td class="original">x</td> <td>one to one</td> <td class="number">100%</td>'
+        " <td>\u2013</td>"
+    ) in page, "a key refers one to one"
+    assert (
+        '<td class="original">tel_no</td> <td class="original">cust</td>'
+        ' <td class="original">eml_adr</td> <td>many to one</td> <td class="number">\u2013</td>'
+        " <td>given</td>"
+    ) in page, "unmistakable values of no coverage, given"
     assert (
         'Reference candidates of <span class="original">cust_nm</span>:'
         ' <span class="original">empty.x</span> (96%) ·'
         ' <span class="original">cust.eml_adr</span> (100%) </p>'
     ) in page, "as they are ranked"
-    assert ('Referred to by: <span class="original">cust.eml_adr</span> </p>') in page, (
-        "of the references alone, not the candidates"
+    assert (
+        "<caption>Referred to by</caption>" in page
+        and '<td class="original">cust</td> <td class="original">tel_no</td>'
+        ' <td class="original">eml_adr</td> <td>many to one</td>'
+        in page
+    ), "of the references alone, not the candidates, each with the key referred to"
+    assert page.count("<caption>References</caption>") == 1, "none of a table of no references"
+    assert page.count("<caption>Referred to by</caption>") == 2, "cust, and empty, referred to"
+
+
+def _figures(*tables: Table) -> list[str]:
+    """The diagrams of a report of `tables`, as they appear in it."""
+    profile = replace(_PROFILE, tables=tables)
+    return re.findall(r'<figure class="diagram">.*?</figure>', _page(profile=profile))
+
+
+def _lefts(figure: str, name: str) -> list[int]:
+    """The left edges of the boxes of the table `name` in `figure`."""
+    return [int(x) for x in re.findall(rf'<a href="#table-{name}"><rect x="(\d+)"', figure)]
+
+
+def _centre(figure: str) -> int:
+    """The left edge of the box of the table in the centre of `figure`."""
+    found = re.search(r'<g class="centre"><rect x="(\d+)"', figure)
+    assert found, "the box of the table"
+    return int(found[1])
+
+
+_ORD = Table("ord", 10, (Column("cust_ref", "bigint", Statistics(0, 5)),))
+
+
+def _connected_both_ways() -> list[Table]:
+    """`cust` refers to `empty`, `ord` to `cust`, and `cust` by a candidate to `ord`."""
+    (cust, empty) = _PROFILE.tables
+    cust = replace(
+        cust,
+        references=(Reference("eml_adr", "empty", "x", 1.0),),
+        reference_candidates=(Reference("cust_nm", "ord", "cust_ref", 0.96),),
     )
-    assert page.count('<p class="references">') == 1, "none of a table of no references"
+    return [cust, empty, replace(_ORD, references=(Reference("cust_ref", "cust", "eml_adr", 1.0),))]
+
+
+def test_a_diagram_shows_those_that_refer_on_the_left_and_those_referred_to_on_the_right() -> None:
+    figure = _figures(*_connected_both_ways())[0]
+    assert ">cust</text>" in figure
+    centre = _centre(figure)
+    (coming, going) = _lefts(figure, "ord")
+    assert coming < centre < going, "ord on the left by a reference, on the right by a candidate"
+    assert _lefts(figure, "empty")[0] > centre
+
+
+def test_a_diagram_dashes_the_tables_connected_by_reference_candidates_alone() -> None:
+    going = _figures(*_connected_both_ways())[0]
+    assert going.count('class="line candidate"') == 1, "the candidate going out alone"
+    assert going.count('class="line"') == 2
+    coming = _figures(*_connected_both_ways())[2]
+    assert coming.count('class="line candidate"') == 1, "the candidate coming in"
+    assert coming.count('class="line"') == 1
+
+
+def test_a_report_with_a_diagram_holds_no_script() -> None:
+    page = _page(profile=replace(_PROFILE, tables=tuple(_connected_both_ways())))
+    assert '<figure class="diagram">' in page
+    assert "<script" not in page
+
+
+def test_a_table_connected_by_a_reference_and_a_candidate_is_connected_by_the_reference() -> None:
+    (cust, empty) = _PROFILE.tables
+    cust = replace(
+        cust,
+        references=(Reference("eml_adr", "empty", "x", 1.0),),
+        reference_candidates=(Reference("cust_nm", "empty", "x", 0.96),),
+    )
+    figure = _figures(cust, empty)[0]
+    assert figure.count('<a href="#table-empty">') == 1, "one box, however many references"
+    assert 'class="line candidate"' not in figure
+
+
+def test_a_diagram_shows_a_table_connected_to_itself_as_a_loop_and_not_as_a_box() -> None:
+    (cust, empty) = _PROFILE.tables
+    cust = replace(cust, references=(Reference("tel_no", "cust", "eml_adr", None, given=True),))
+    (figure,) = _figures(cust, empty)
+    assert "#table-cust" not in figure
+    assert figure.count('class="line"') == 1
+
+
+def test_a_diagram_dashes_the_loop_of_a_table_connected_to_itself_by_a_candidate_alone() -> None:
+    (cust, empty) = _PROFILE.tables
+    cust = replace(cust, reference_candidates=(Reference("cust_nm", "cust", "eml_adr", 0.96),))
+    (figure,) = _figures(cust, empty)
+    assert "#table-cust" not in figure
+    assert figure.count('class="line candidate"') == 1
+
+
+def test_a_diagram_shows_the_number_of_the_tables_it_does_not_show() -> None:
+    (cust, _) = _PROFILE.tables
+    referring = [
+        replace(
+            _ORD, name=f"t{place:02}", references=(Reference("cust_ref", "cust", "eml_adr", 1.0),)
+        )
+        for place in range(22)
+    ]
+    figure = _figures(cust, *referring)[0]
+    assert "#table-t19" in figure
+    assert "#table-t20" not in figure
+    assert '<g class="more">' in figure and ">+ 2 more</text>" in figure
+
+
+def test_a_diagram_escapes_the_names_it_shows() -> None:
+    (cust, _) = _PROFILE.tables
+    named = replace(_ORD, name="<b>", references=(Reference("cust_ref", "cust", "eml_adr", 1.0),))
+    figure = _figures(cust, named)[0]
+    assert ">&lt;b&gt;</text>" in figure
+    assert "<b>" not in figure
+
+
+def test_a_table_connected_to_none_has_no_diagram() -> None:
+    assert '<figure class="diagram">' not in _page()
 
 
 def test_a_report_shows_the_groups_of_columns_filled_together() -> None:

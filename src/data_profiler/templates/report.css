@@ -75,7 +75,8 @@ th {
 
 .original,
 .type,
-.value {
+.value,
+.diagram text {
     font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
 }
 
@@ -104,14 +105,79 @@ tr:has(+ .values) td {
     margin: 8px 0 0;
 }
 
-.entities {
+.entities,
+.references {
     width: auto;
     margin: 16px 0 0;
 }
 
-.entities caption {
+.entities caption,
+.references caption {
     text-align: left;
     padding: 0 0 4px;
+}
+
+.diagram {
+    margin: 16px 0 0;
+    break-inside: avoid;
+}
+
+.diagram svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.diagram figcaption {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+.diagram rect {
+    fill: var(--head);
+    stroke: var(--line);
+}
+
+.diagram text {
+    fill: var(--text);
+    font-size: 12px;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+.diagram .centre rect {
+    stroke: var(--text);
+}
+
+.diagram .centre text {
+    font-weight: bold;
+}
+
+.diagram .more rect {
+    fill: none;
+    stroke: none;
+}
+
+.diagram .more text {
+    fill: var(--muted);
+}
+
+.diagram a:hover rect {
+    stroke: var(--accent);
+}
+
+.diagram .line {
+    fill: none;
+    stroke: var(--muted);
+}
+
+.diagram .candidate {
+    stroke-dasharray: 5 4;
+}
+
+.diagram .head {
+    fill: var(--muted);
 }
 
 .collision {

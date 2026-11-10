@@ -18,6 +18,21 @@
 </span>
 {%- endif %}
 {%- endmacro %}
+{#- What `reference` covers, or a dash where that is not known. #}
+{% macro coverage(reference) -%}
+{{ "{:.0%}".format(reference.coverage) if reference.coverage is not none else "–" }}
+{%- endmacro %}
+{#- How many rows of `referring` refer by `reference`, what it covers and whether it is given. #}
+{% macro measured(referring, reference) -%}
+<td>{{ referring.cardinality(reference).value }}</td>
+<td class="number">{{ coverage(reference) }}</td>
+<td>{{ "given" if reference.given else "–" }}</td>
+{%- endmacro %}
+{#- A box of a diagram. #}
+{% macro box(drawn) -%}
+<rect x="{{ drawn.x }}" y="{{ drawn.y }}" width="{{ drawn.width }}" height="{{ drawn.height }}" rx="4"/>
+<text x="{{ drawn.centre }}" y="{{ drawn.middle }}">{{ drawn.text }}</text>
+{%- endmacro %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -156,34 +171,75 @@
   </p>
   {% endif %}
   {% if table.references %}
-  <p class="references">
-    References:
+  <table class="references">
+    <caption>References</caption>
+    <thead>
+      <tr>
+        <th>Column</th><th>Table</th><th>Key</th><th>Cardinality</th><th class="number">Coverage</th>
+        <th>Given</th>
+      </tr>
+    </thead>
+    <tbody>
     {% for reference in table.references %}
-    <span class="original">{{ reference.column }}</span> → <span class="original">{{ reference.table }}.{{ reference.key }}</span>
-    ({{ table.cardinality(reference).value }}
-    {%- if reference.coverage is not none %}, {{ "{:.0%}".format(reference.coverage) }}{% endif %}
-    {%- if reference.given %}, given{% endif %})
-    {%- if not loop.last %} · {% endif %}
+      <tr>
+        <td class="original">{{ reference.column }}</td>
+        <td class="original">{{ reference.table }}</td>
+        <td class="original">{{ reference.key }}</td>
+        {{ measured(table, reference) }}
+      </tr>
     {% endfor %}
-  </p>
+    </tbody>
+  </table>
   {% endif %}
   {% for column, listed in reference_candidates(table).items() %}
   <p class="candidates">
     Reference candidates of <span class="original">{{ column }}</span>:
     {% for reference in listed %}
-    <span class="original">{{ reference.table }}.{{ reference.key }}</span> ({{ "{:.0%}".format(reference.coverage) if reference.coverage is not none else "–" }})
+    <span class="original">{{ reference.table }}.{{ reference.key }}</span> ({{ coverage(reference) }})
     {%- if not loop.last %} · {% endif %}
     {% endfor %}
   </p>
   {% endfor %}
   {% set referring = profile.referring(table.name) %}
   {% if referring %}
-  <p class="referred">
-    Referred to by:
+  <table class="references">
+    <caption>Referred to by</caption>
+    <thead>
+      <tr>
+        <th>Table</th><th>Column</th><th>Key</th><th>Cardinality</th><th class="number">Coverage</th>
+        <th>Given</th>
+      </tr>
+    </thead>
+    <tbody>
     {% for other, reference in referring %}
-    <span class="original">{{ other.name }}.{{ reference.column }}</span>{% if not loop.last %} · {% endif %}
+      <tr>
+        <td class="original">{{ other.name }}</td>
+        <td class="original">{{ reference.column }}</td>
+        <td class="original">{{ reference.key }}</td>
+        {{ measured(other, reference) }}
+      </tr>
     {% endfor %}
-  </p>
+    </tbody>
+  </table>
+  {% endif %}
+  {% set drawn = diagram(profile, table) %}
+  {% if drawn %}
+  <figure class="diagram">
+    <svg viewBox="0 0 {{ drawn.width }} {{ drawn.height }}" width="{{ drawn.width }}" height="{{ drawn.height }}" role="img" aria-label="The tables connected to {{ table.name }}">
+      {% for line in drawn.lines %}
+      <path class="line{% if line.dashed %} candidate{% endif %}" d="{{ line.path }}"/>
+      <path class="head" d="{{ line.head }}"/>
+      {% endfor %}
+      <g class="centre">{{ box(drawn.centre) }}</g>
+      {% for connected in drawn.boxes %}
+      <a href="#table-{{ connected.text }}">{{ box(connected) }}</a>
+      {% endfor %}
+      {% for others in drawn.more %}
+      <g class="more">{{ box(others) }}</g>
+      {% endfor %}
+    </svg>
+    <figcaption>Tables that refer to it on the left, tables it refers to on the right; dashed where connected by reference candidates alone</figcaption>
+  </figure>
   {% endif %}
   {% for name, shared in collisions(table).items() %}
   <p class="collision">

@@ -7,23 +7,27 @@ columns - their original names, harmonized names, composed from their readings o
 each term with the word of its concept, descriptions, types, statistics, the shares of their nulls
 and sentinels among them, semantic types, sensitivity, the values of their enumerations, the first
 few of those of nothing but UUIDs, and each of their sentinels -, with its keys, the primary
-marked, and whether it is given, the references of its columns, one to one or many to one, their
-coverage and whether they are given, the reference candidates of each column ranked, and the
-references of others to it, the column groups of its columns filled together, its column
-dependencies, each determinant marked where it is a reference, the harmonized names two of its
-columns share, and its entities, by the share of their rows each column is filled in, with their
-names and descriptions, where they are given; and the glossary, each concept with its abbreviations
-and description, those proposed told apart from those given, and each term of no concept, as
-describe split the names, with where it appears. It renders what the profile holds, and nothing of
-the workspace: the values in it are those the profile may hold, which the template escapes.
+marked, and whether it is given, a table of the references of its columns, one to one or many to
+one, their coverage and whether they are given, the reference candidates of each column ranked, a
+table of the references of others to it, of the same, and a diagram of the tables connected to it
+by their original names, those by reference candidates alone dashed, the column groups of its
+columns filled together, its column dependencies, each determinant marked where it is a reference,
+the harmonized names two of its columns share, and its entities, by the share of their rows each
+column is filled in, with their names and descriptions, where they are given; and the glossary,
+each concept with its abbreviations and description, those proposed told apart from those given,
+and each term of no concept, as describe split the names, with where it appears. It renders what
+the profile holds, and nothing of the workspace: the values in it are those the profile may hold,
+which the template escapes.
 """
 
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Final
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.detect import UUID
+from data_profiler.diagram import Diagram, lay_out
 from data_profiler.files import write_whole
 from data_profiler.glossary import Glossary, agrees, unknown
 from data_profiler.overrides import Overrides
@@ -81,6 +85,7 @@ def render(profile: Profile, overrides: Overrides) -> str:
         agrees=agrees,
         collisions=glossary.collisions,
         reference_candidates=_reference_candidates,
+        diagram=_diagram,
         limit=_limit,
     )
 
@@ -104,6 +109,29 @@ def _reference_candidates(table: Table) -> dict[str, list[Reference]]:
     for reference in table.reference_candidates:
         found.setdefault(reference.column, []).append(reference)
     return found
+
+
+def _diagram(profile: Profile, table: Table) -> Diagram | None:
+    """The diagram of the tables connected to `table`, or None where none is."""
+    coming = _connected(
+        (other.name for other, _ in profile.referring(table.name)),
+        (other.name for other, _ in profile.candidates_referring(table.name)),
+    )
+    going = _connected(
+        (reference.table for reference in table.references),
+        (reference.table for reference in table.reference_candidates),
+    )
+    coming.pop(table.name, None)
+    itself = going.pop(table.name, None)
+    if not coming and not going and itself is None:
+        return None
+    return lay_out(table.name, coming, going, itself)
+
+
+def _connected(references: Iterable[str], candidates: Iterable[str]) -> dict[str, bool]:
+    """Whether each table is connected by reference candidates alone, those of references first."""
+    connected = dict.fromkeys(references, False)
+    return connected | {name: True for name in candidates if name not in connected}
 
 
 def write_report(profile: Profile, overrides: Overrides, path: Path) -> None:
