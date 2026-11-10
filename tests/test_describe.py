@@ -23,6 +23,7 @@ from data_profiler.profile import (
     Match,
     Profile,
     Range,
+    Reference,
     Statistics,
     Table,
     Term,
@@ -549,6 +550,61 @@ def test_the_name_read_of_a_table_is_shown_to_the_model_in_words(tmp_path: Path)
     _described(profile, tmp_path, llm=llm)
     (prompt,) = llm.descriptions
     assert "- the name of the table reads: customer address\n" in prompt
+
+
+def _asked_of_referring(
+    tmp_path: Path,
+    name: str = "cust",
+    references: tuple[Reference, ...] = (),
+    reference_candidates: tuple[Reference, ...] = (),
+    overrides: Overrides | None = None,
+) -> list[str]:
+    """The questions of a table `ord` of a column `cust_ref`, of what it has, and a table `name`."""
+    columns = (Column("cust_ref", "varchar(10)", Statistics(0, 1)),)
+    referring = Table(
+        name="ord",
+        rows=1,
+        columns=columns,
+        references=references,
+        reference_candidates=reference_candidates,
+    )
+    referred = replace(_profile("cust_id", glossary=_GLOSSARY).tables[0], name=name)
+    profile = replace(_profile(glossary=_GLOSSARY), tables=(referring, referred))
+    llm = _Answers(descriptions=("The customer.",))
+    _described(profile, tmp_path, overrides, llm)
+    return llm.descriptions
+
+
+def test_the_reference_of_a_column_is_shown_to_the_model_with_the_name_read_of_its_table(
+    tmp_path: Path,
+) -> None:
+    reference = Reference("cust_ref", "cust", "cust_id", 1.0)
+    prompt, referred = _asked_of_referring(tmp_path, references=(reference,))
+    assert (
+        '- refers to: the column "cust_id" of the table "cust", whose name reads: customer\n'
+        in prompt
+    )
+    assert "refers to" not in referred, "the column referred to refers to nothing"
+
+
+def test_a_reference_to_a_table_of_no_name_read_is_shown_by_its_names_alone(tmp_path: Path) -> None:
+    reference = Reference("cust_ref", "xy", "cust_id", 1.0)
+    prompt, _ = _asked_of_referring(tmp_path, "xy", references=(reference,))
+    assert '- refers to: the column "cust_id" of the table "xy"\n' in prompt
+
+
+def test_the_name_given_of_the_table_referred_to_is_shown_to_the_model(tmp_path: Path) -> None:
+    reference = Reference("cust_ref", "cust", "cust_id", 1.0)
+    overrides = Overrides(tables={"cust": TableOverride(name="buying_party")})
+    prompt, _ = _asked_of_referring(tmp_path, references=(reference,), overrides=overrides)
+    assert ", whose name reads: buying party\n" in prompt, "with the overrides laid over it"
+
+
+def test_reference_candidates_are_not_shown_to_the_model(tmp_path: Path) -> None:
+    candidate = Reference("cust_ref", "cust", "cust_id", 1.0)
+    prompt, _ = _asked_of_referring(tmp_path, reference_candidates=(candidate,))
+    assert "refers to" not in prompt, "of several keys, none is the one"
+    assert "cust_id" not in prompt, "nor is the key shown in other words"
 
 
 def test_the_profile_is_written_after_each_table_described(tmp_path: Path) -> None:
