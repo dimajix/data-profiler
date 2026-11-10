@@ -1,6 +1,6 @@
 # 53 — A term that begins with digits is cut in two
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** medium
 **Area:** Describe
@@ -73,6 +73,22 @@ the terms of its name are unchanged, so that these names are read again; the for
 does not change. Concepts of `rd` or `nd` given in overrides simply find no term any longer, which
 [30](30-abbreviations-given-that-no-name-has.md) allows.
 
+## What is decided
+
+As the maintainer decided, instead of the proposal above:
+
+- **No rule by position.** Names are cut as before, and the cuts are candidates.
+- **A term a concept is written as is found across those cuts**: parts of a name, one after the
+  other, that are the pieces of such a term are that one term, the fewest terms being taken.
+  `3rd`, `b2b` and `contract_item` are found so, once a concept is written as them.
+- **The word of a concept is a term of it, of several terms as well**, so that `contract_item: {}`
+  is enough. That changes what [29](29-the-word-of-a-concept-as-a-term.md) decided, where a word of
+  several terms was written as its abbreviations alone.
+- **All concepts count**, those proposed as well as those given, as in the vocabulary already.
+- **A word is not cut at digits**: `snake_case` cuts it as a name is cut but between letters and
+  digits, so that `b2b: {}` is the term `b2b` and makes the name `b2b_flag`, and `Address2` is
+  `address2`. A term of digits still stands apart in a harmonized name, `address_2` of `addr2`.
+
 ## Done when
 
 - The names above are split as decided, and `test_a_name_is_split_into_its_terms` shows it, the
@@ -86,3 +102,21 @@ does not change. Concepts of `rd` or `nd` given in overrides simply find no term
 
 - **2026-11-10** — Opened, as the maintainer asked, with the question whether digits should join
   the term after them or something else keeps such terms recognisable. The decision is open.
+
+- **2026-11-10** — Decided by the maintainer, as under "What is decided": terms of the concepts are
+  found across the cuts of a name, and the word of several terms is a term.
+
+- **2026-11-10** — Done, as decided: `Vocabulary.split` joins the pieces of a term a concept is
+  written as, by the routine that splits terms written together. The pieces of such a term are not
+  split either, and are not found as terms of their own, so that `rd` of `3rd` splits no `card`. As
+  names are cut as before, `test_a_name_is_split_into_its_terms` did not change; the tests of the
+  decision are `test_a_term_a_concept_is_written_as_is_found_across_the_cuts_of_a_name` and those
+  after it. The format of the profile is unchanged: no field changed, and a profile is split anew
+  by `describe`.
+
+- **2026-11-10** — As the maintainer decided on seeing `b_2_b_flag`: `snake_case` no longer cuts at
+  digits. A name given by hand may therefore hold digits among its letters, `address2`, which an
+  older tool refuses, so that the minor version of the format of the overrides is raised. A word
+  a profile already holds as `b_2_b` stays as it is until a concept given of `b2b`, which takes its
+  place, or `describe --anew`. That terms are cut and words composed otherwise was not taken for a
+  change of the meaning of a field, as in [24](24-terms-written-together.md).

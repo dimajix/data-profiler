@@ -151,6 +151,23 @@ def test_a_name_written_as_the_words_of_concepts_is_read_by_them(tmp_path: Path)
     assert described.glossary["name"] == Concept(()), "kept by its word, without its abbreviation"
 
 
+def test_a_term_given_across_the_cuts_of_a_name_is_read_and_not_warned_of(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    overrides = Overrides(glossary={"third": Concept(("3rd",)), "party": Concept()})
+    glossary = {**_GLOSSARY, "contract_item": Concept()}
+    described = _described(
+        _profile("3rd_party", "contract_item", glossary=glossary), tmp_path, overrides
+    )
+    (table,) = described.tables
+    assert [column.reading for column in table.columns] == [
+        ("third", "party"),
+        ("contract_item",),
+    ]
+    assert described.glossary["contract_item"] == Concept(), "kept by its word of two terms"
+    assert not [m for m in caplog.messages if "that no name of the profile has" in m]
+
+
 def test_an_abbreviation_given_that_no_name_has_is_warned_of_once(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:

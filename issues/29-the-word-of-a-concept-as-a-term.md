@@ -76,3 +76,6 @@ The interface first, put before the maintainer.
   where none is given, in the overrides of format 6 and the profile of format 12, which may hold
   a concept without abbreviations since step 1; a profile of format 11 is refused, and removed to
   be scanned again. The example gives `iban: {}`, by which the column `iban` is read.
+
+- **2026-11-10** — What was decided here of a word of several terms is changed by
+  [53](53-a-term-that-begins-with-digits.md): `contact_person` is a term of its concept as well.

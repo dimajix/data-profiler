@@ -44,6 +44,7 @@ from data_profiler.glossary import (
     agrees,
     occurrences,
     snake_case,
+    terms,
     written_as,
 )
 from data_profiler.profile import (
@@ -246,7 +247,7 @@ class TableOverride:
         Raises:
             OverridesError: A column is named that the table does not have, a reading is given that
                 is no reading of the terms of its name, or a name is given that is not in
-                snake_case, as `glossary.snake_case` writes it: `address_2`, not `address2`.
+                snake_case, as `glossary.snake_case` writes it: `first_name`, not `FirstName`.
         """
         self._refuse_missing(table)
         given = [(table.name, self.reading, self.name)]
@@ -738,18 +739,22 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
 
     A concept proposed of the word of one given adds to it the abbreviations it has left; one of
     another word is dropped once its abbreviations are all taken, or its word where it has none.
-    Else it keeps its word, which is taken from none.
+    Else it keeps its word, which is taken from none. Two words are one where their pieces are, as
+    `b_2_b`, which a profile may hold of words written before, and `b2b` are.
     """
     taken = {term for word, concept in given.items() for term in written_as(word, concept)}
+    same_word = {tuple(terms(word)): word for word in given}
     concepts = dict(given)
     for word, concept in proposed.items():
         left = tuple(term for term in concept.abbreviations if term not in taken)
-        if word in given:
-            concepts[word] = replace(given[word], abbreviations=(*given[word].abbreviations, *left))
+        word_given = same_word.get(tuple(terms(word)))
+        if word_given is not None:
+            written = (*given[word_given].abbreviations, *left)
+            concepts[word_given] = replace(given[word_given], abbreviations=written)
         elif left or not (concept.abbreviations or word in taken):
             concepts[word] = replace(concept, abbreviations=left)
     return concepts
 
 
-FORMAT: Final = Format(Overrides, Version(7, 5))
+FORMAT: Final = Format(Overrides, Version(7, 6))
 """The format of the overrides, its version raised as `documents` says."""

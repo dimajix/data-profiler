@@ -250,12 +250,13 @@ reach `scan` from `project`, and every stage after it from the profile.
     chooses, or an override gives. The terms and the reading of a name are written together, so that
     a profile never holds a reading of other terms than its own. A harmonized name is composed from
     the reading alone, unless an override gives the name.
-*   **Vocabulary** - the terms a term written together is split into: those found in the names of
-    a profile, and the terms its concepts are written as. A term is split only where other terms of
-    the vocabulary cover it whole - `lfadr` in `KD_LFADR_PLZ` into `lf` and `adr` -, and a term a
-    concept is written as never.
+*   **Vocabulary** - the terms by which a name is split beyond its separators, changes of case and
+    digits: those found in the names of a profile, and the terms its concepts are written as. A
+    term is split only where other terms of the vocabulary cover it whole - `lfadr` in
+    `KD_LFADR_PLZ` into `lf` and `adr` -, and a term a concept is written as never; that term is
+    found whole across those cuts as well - `3rd` in `3rd_party`, `contract_item` in `ContractItem`.
 *   **Concept** - an entry of the glossary: a word, from which harmonized names are composed, the
-    terms it is written as - its word, where the word is one term, and its abbreviations:
+    terms it is written as - its word and its abbreviations:
     `customer`, `cust` and `kd` for `customer` -, and its description, in English, from which the
     language model proposes descriptions of columns. A concept omitted is left out of the harmonized
     names, as a prefix that marks a custom column.
