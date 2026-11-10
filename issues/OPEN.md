@@ -8,6 +8,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
+| [50](50-a-probe-of-too-many-columns-is-refused.md) | open | high | bug | The stage relate puts every column indicated for ten keys into one query, without a limit, so that on a wide schema Starburst refuses the query for having too many stages and relate fails. |
 | [19](19-names-of-tables-that-differ-in-case-alone.md) | open | low | bug | Two tables whose names differ in case alone, `Cust` and `cust`, get two files of the profile and of the workspace that are one file on a file system that ignores case, as those of Windows and macOS do. |
 
 ## Describe

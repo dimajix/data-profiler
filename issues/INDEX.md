@@ -38,6 +38,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [35](35-references-between-tables.md) | done | Nothing tells which columns of a table refer to the key of another - the customer of an order -, so that the relationships between the tables, which a data model is made of, are left to a person to find. |
+| [50](50-a-probe-of-too-many-columns-is-refused.md) | open | The stage relate puts every column indicated for ten keys into one query, without a limit, so that on a wide schema Starburst refuses the query for having too many stages and relate fails. |
 
 ## Detection
 
