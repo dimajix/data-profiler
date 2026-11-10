@@ -28,3 +28,9 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
+
+## Low priority
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [49](49-the-reading-of-a-name-in-the-report.md) | open | low | feature | The report shows the harmonized name of a table or column but not its reading, the concept each term of the name stands for, so that a person cannot see how a name was understood, and not at all where no harmonized name comes of it. |
