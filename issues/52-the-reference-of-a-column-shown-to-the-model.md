@@ -51,3 +51,13 @@ of them into the description as if it were a fact.
   customer`, the name of the table as `Glossary.harmonized` gives it, a name given among them. The
   template is given the profile with the overrides laid over it, to reach the table referred to.
   The closing instruction of the question is unchanged, and the wording was not tried on a model.
+- **2026-11-10** — Tried on the example of the CRM, the seven columns of a reference not described
+  by the overrides, with `qwen3.5:2b` and `qwen3.5:9b`. Shown the reference alone, the first changed
+  two answers, one for the better and one for the worse, and the second none. As the maintainer
+  decided, a column of a reference is now asked in addition: `Where it refers to a table, say which
+  thing of that table it identifies.` Against the reference alone, four of the fourteen answers
+  became better and none worse, by what the descriptions say; the answer the first model had made
+  worse by the reference stayed so. No answer repeated the line of the reference. The larger model
+  did not do better by itself, and was not taken. Nearly every column of the example has its table
+  in its name, so that the case the reference is for most, a name that does not say it, was not
+  tried.
