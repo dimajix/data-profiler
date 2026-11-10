@@ -22,15 +22,15 @@ of the values of lists compared as numbers, else as texts.
 
 Each reference indicated is probed: `_PROBES` values of its column, taken at random, looked up in
 the whole key by the database, so that no value leaves it, the keys of a query `PER_QUERY` of the
-module `source` at most, each column taken by a sampled read of its own, which ends once it has
-taken them. A pair of random samples of two tables would say nothing, as they hold few of the same
-rows. A column of unmistakable values refers to a key where more than `_UNMISTAKABLE` of its values
-are found, as one found tells where they come from; another is dropped where fewer than `_PROBED`
-are found, and its coverage counted on the whole table, the references of a query `PER_QUERY` at
-most: it refers to the key where `_COVERAGE` of its values, nulls and sentinels aside, are found in
-it. A column of lists is probed and counted on a source of a row of each value of its lists,
-`Source.unnested`, by queries of its own, so that the rows of no other column are repeated; its
-reference is many to many.
+module `source` at most and its columns `PROBES_PER_QUERY`, each column taken by a sampled read of
+its own, which ends once it has taken them. A pair of random samples of two tables would say
+nothing, as they hold few of the same rows. A column of unmistakable values refers to a key where
+more than `_UNMISTAKABLE` of its values are found, as one found tells where they come from; another
+is dropped where fewer than `_PROBED` are found, and its coverage counted on the whole table, the
+references of a query `PER_QUERY` at most: it refers to the key where `_COVERAGE` of its values,
+nulls and sentinels aside, are found in it. A column of lists is probed and counted on a source of a
+row of each value of its lists, `Source.unnested`, by queries of its own, so that the rows of no
+other column are repeated; its reference is many to many.
 
 A column of unmistakable values refers to the key of the most values found, then of the table of the
 fewest rows, the most specific. Another that refers to one key alone has that reference; one that
@@ -55,7 +55,7 @@ from data_profiler.detect import UUID
 from data_profiler.glossary import terms
 from data_profiler.overrides import GivenReferences
 from data_profiler.profile import DIGITS, Column, Profile, Range, Reference, Table
-from data_profiler.source import PER_QUERY, Dialect, Lookup, Probe, Source
+from data_profiler.source import PER_QUERY, PROBES_PER_QUERY, Dialect, Lookup, Probe, Source
 from data_profiler.values import counted
 
 _logger = logging.getLogger(__name__)
@@ -507,13 +507,14 @@ def _probed(source: Source, pairs: Sequence[_Pair]) -> list[float]:
         within = [pair for pair in pairs if pair.referred in batch]
         # One probe of each column, of whichever of its pairs.
         probing = list({pair.referring: pair for pair in within}.values())
-        columns = [pair.referring for pair in probing]
-        statement = dialect.probed([_probe(dialect, pair) for pair in probing], batch, _PROBES)
         found: dict[tuple[tuple[str, str], tuple[str, str]], float] = {}
         where = "the references"
-        for probe, key, taken, matched in source.query(statement, "probing the references"):
-            share = counted(matched, where) / counted(taken, where)
-            found[_place(probe, columns), _place(key, batch)] = share
+        for part in batched(probing, PROBES_PER_QUERY, strict=False):
+            columns = [pair.referring for pair in part]
+            statement = dialect.probed([_probe(dialect, pair) for pair in part], batch, _PROBES)
+            for probe, key, taken, matched in source.query(statement, "probing the references"):
+                share = counted(matched, where) / counted(taken, where)
+                found[_place(probe, columns), _place(key, batch)] = share
         shares.update({pair: found.get((pair.referring, pair.referred), 0.0) for pair in within})
     return [shares[pair] for pair in pairs]
 
