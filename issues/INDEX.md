@@ -73,6 +73,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [12](12-the-stage-report.md) | done | What the tool found can only be read as YAML: there is no report a person reads. |
+| [48](48-the-values-of-a-column-in-the-report.md) | open | The line that separates the columns in a table of the report runs between a column and its values instead of below them, and a column of nothing but UUIDs lists all of its values, up to 500, where five say all there is to see. |
 
 ## Command line
 
