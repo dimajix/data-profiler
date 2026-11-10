@@ -221,7 +221,7 @@ An abbreviation may be of several concepts, which a term of a name may each stan
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `abbreviations` | list of text | empty | The terms it is written as beside its word, in lower case, none where none is given; its word is a term of it where it is one term - `iban` -, and a word of several terms - `contact_person` - is written as its abbreviations alone. |
+| `abbreviations` | list of text | empty | The terms it is written as beside its word, in lower case, none where none is given; its word is a term of it, of one term - `iban` - or of several - `contact_person`. |
 | `description` | text | absent | What it means, in English; None where none is given. |
 | `omitted` | boolean | `false` | Whether it is left out of harmonized names, as a prefix that marks a custom column, which says nothing of what the column holds. |
 

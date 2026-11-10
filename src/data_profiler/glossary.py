@@ -14,19 +14,26 @@ split again the same way. Where they leave a character uncovered, it stays whole
 covered in part would split most abbreviations, `strt` into `st` and `rt`. A term a concept is
 written as is never split, so that a person stops a wrong split by giving the term a concept.
 
+The same holds across the cuts above: pieces of a name, one after the other, that are the pieces of
+a term a concept is written as are that one term, however the name writes them - `3` and `rd` the
+term `3rd` of `3rd_party`, `contract` and `item` the term `contract_item` of `ContractItem`. Where
+such terms can be found in several ways, the fewest terms are taken, the longer first where two have
+as many. A term is compared by its pieces, so that `manage` is not found in `man_age`.
+
 The glossary of a profile is its concepts, once for the whole schema, each a word with the terms it
-is written as: its word, where the word is one term, and its abbreviations - `customer` as
-`customer`, `cust` and `kd`, `contact_person`, of two terms, as its abbreviations alone. A term may
-stand for the concepts written as it, its candidates; which one it stands for in a name, the
-reading of the name says, one word for each term. A harmonized name is composed of the words of its
-reading, each split as a name is, in `snake_case`: a term of digits stands for itself, and a concept
-omitted is left out; a name given by hand comes before it. A reading that no longer agrees with the
-terms of its name - of another length, or a word that is no candidate of its term - is none.
+is written as: its word and its abbreviations - `customer` as `customer`, `cust` and `kd`,
+`contact_person` as `contact_person` and `ap`. A term may stand for the concepts written as it, its
+candidates; which one it stands for in a name, the reading of the name says, one word for each
+term. A harmonized name is composed of the words of its reading, each in `snake_case`, which cuts
+a word as a name is cut but not at digits, so that the word `b2b` stays whole: a term of digits
+stands for itself, and a concept omitted is left out; a name given by hand comes before it. A
+reading that no longer agrees with the terms of its name - of another length, or a word that is no
+candidate of its term - is none.
 """
 
 import re
 import unicodedata
-from collections.abc import Collection, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from typing import Final, Self
 
 from data_profiler.profile import Column, Concept, Profile, Table, Term
@@ -42,17 +49,35 @@ def terms(name: str) -> list[str]:
     """The terms of the original name `name`, in lower case, in their order.
 
     Args:
-        name: The name, of a table or a column; or a word, whose terms make it snake_case.
+        name: The name, of a table or a column; or a term of a concept, to compare its pieces.
 
     Returns:
         The terms; none of a name without letters and digits.
     """
+    return _cut(name, _splits)
+
+
+def snake_case(name: str) -> str:
+    """`name` in snake_case: cut as `terms` cuts a name, but not at digits, and joined by `_`.
+
+    Args:
+        name: A name or a word.
+
+    Returns:
+        Its pieces joined by `_`, digits staying with the letters around them: `b2b` of `B2B`,
+        `address2` of `Address2`; empty where it has no letters and digits.
+    """
+    return "_".join(_cut(name, _changes_case))
+
+
+def _cut(name: str, cuts: Callable[[str, int], bool]) -> list[str]:
+    """The pieces of `name`, in lower case: between its separators, and where `cuts` says."""
     found = []
     # Composed, so that a letter with its accent is one character, as in most names it is.
     for part in _SEPARATORS.split(unicodedata.normalize("NFC", name)):
         start = 0
         for index in range(1, len(part)):
-            if _splits(part, index):
+            if cuts(part, index):
                 found.append(part[start:index].lower())
                 start = index
         if part:
@@ -60,42 +85,32 @@ def terms(name: str) -> list[str]:
     return found
 
 
-def snake_case(name: str) -> str:
-    """`name` in snake_case: its terms, as `terms` splits a name, joined by `_`.
-
-    Args:
-        name: A name or a word.
-
-    Returns:
-        Its terms joined by `_`, a term of digits apart from the letters before it: `address_2` of
-        `Address2`; empty where it has no letters and digits.
-    """
-    return "_".join(terms(name))
-
-
 def written_as(word: str, concept: Concept) -> tuple[str, ...]:
-    """The terms a concept is written as: its word, where it is one term, and its abbreviations.
+    """The terms a concept is written as: its word and its abbreviations.
 
     Args:
         word: The word of the concept.
         concept: The concept.
 
     Returns:
-        The word as `terms` writes it, where it is one term, then the abbreviations; a word of
-        several terms, `contact_person`, is written as the abbreviations alone.
+        The word in snake_case, then the abbreviations; the abbreviations alone where the word has
+        no letters and digits.
     """
-    own = terms(word)
-    return (*own, *concept.abbreviations) if len(own) == 1 else concept.abbreviations
+    own = snake_case(word)
+    return (own, *concept.abbreviations) if own else concept.abbreviations
 
 
 def _splits(part: str, index: int) -> bool:
     """Whether a term of `part`, a name without separators, begins at `index`."""
+    return part[index - 1].isdigit() != part[index].isdigit() or _changes_case(part, index)
+
+
+def _changes_case(part: str, index: int) -> bool:
+    """Whether the case of `part`, a name without separators, says a piece begins at `index`."""
     before, at = part[index - 1], part[index]
     after = part[index + 1 : index + 2]
-    return (
-        before.isdigit() != at.isdigit()
-        or (before.islower() and at.isupper())
-        or (before.isupper() and at.isupper() and after.islower())
+    return (before.islower() and at.isupper()) or (
+        before.isupper() and at.isupper() and after.islower()
     )
 
 
@@ -152,16 +167,45 @@ def _places(profile: Profile) -> Iterator[Place]:
             yield table, column, f"{table.name}.{column.name}"
 
 
+def _fewest(length: int, piece: Callable[[int, int], str | None]) -> list[str] | None:
+    """The fewest pieces that cover `length` places whole, or None where none do.
+
+    Of two covers of as many pieces, the one of the longer first piece is taken.
+
+    Args:
+        length: The number of places to cover.
+        piece: The piece that covers the places from a first up to a last, excluded, or None.
+
+    Returns:
+        The pieces, in their order, or None where they do not cover every place.
+    """
+    # The fewest pieces that cover the rest from each place on, or None.
+    covers: list[list[str] | None] = [None] * length + [[]]
+    for start in range(length - 1, -1, -1):
+        for end in range(length, start, -1):
+            found, rest = piece(start, end), covers[end]
+            if found is None or rest is None:
+                continue
+            cover = covers[start]
+            if cover is None or len(rest) + 1 < len(cover):
+                covers[start] = [found, *rest]
+    return covers[0]
+
+
 class Vocabulary:
-    """The terms a term written together is split into, of a profile.
+    """The terms a name is split into, of a profile, beyond the cuts `terms` makes.
 
     They are the terms found in its names and the terms its concepts are written as, which are
-    never split.
+    never split, and are found whole across the cuts of `terms`.
     """
 
     def __init__(self, found: Collection[str], written: Collection[str]) -> None:
         """Takes the terms found in the names, and the terms the concepts are written as."""
-        self._kept = frozenset(written)
+        # Sorted, so that of two terms of the same pieces every run takes the same. One not in lower
+        # case, as no term is, finds no name, and is warned of as any such abbreviation is.
+        self._pieces = {tuple(terms(t)): t for t in sorted(written) if t.islower()}
+        # Their pieces as well, as a term is not found any longer where one of them is split.
+        self._kept = frozenset(written).union(*self._pieces)
         self._parts = frozenset(t for t in (*found, *written) if len(t) >= _SHORTEST)
 
     @classmethod
@@ -172,53 +216,55 @@ class Vocabulary:
             profile: The profile.
 
         Returns:
-            The vocabulary, of the terms `terms` finds in the names of the tables and columns, but
-            those of digits, and of the terms its concepts are written as.
+            The vocabulary, of the terms found in the names of the tables and columns, as the
+            terms of its concepts split them, but those of digits, and of the terms its concepts
+            are written as.
         """
         names = [table.name for table in profile.tables]
         names += [column.name for table in profile.tables for column in table.columns]
-        found = {term for name in names for term in terms(name) if not term.isdigit()}
         written = {
             t for word, concept in profile.glossary.items() for t in written_as(word, concept)
         }
+        # By its concepts alone, so that a piece of a term of theirs, `rd` of `3rd`, is no term.
+        concepts_only = cls((), written)
+        found = {term for name in names for term in concepts_only.split(name) if not term.isdigit()}
         return cls(found, written)
 
     def split(self, name: str) -> list[str]:
-        """The terms of `name`, as `terms` gives them, those written together split.
+        """The terms of `name`: as `terms` cuts it, then split and joined by the vocabulary.
 
         Args:
             name: The original name, of a table or a column.
 
         Returns:
-            The terms, in lower case, in their order.
+            The terms, in lower case, in their order: those written together split, and the pieces
+            of a term a concept is written as joined into it.
         """
-        return [part for term in terms(name) for part in self._split(term)]
+        return self._joined([part for term in terms(name) for part in self._split(term)])
 
     def _split(self, term: str) -> list[str]:
         """The parts of `term`, itself where the vocabulary does not cover it whole."""
         if term in self._kept or term.isdigit():
             return [term]
-        parts = self._fewest(term)
+
+        def other_term(start: int, end: int) -> str | None:
+            part = term[start:end]
+            return part if part != term and part in self._parts else None
+
+        parts = _fewest(len(term), other_term)
         if parts is None:
             return [term]
         return [found for part in parts for found in self._split(part)]
 
-    def _fewest(self, term: str) -> list[str] | None:
-        """The fewest other terms of the vocabulary that cover `term` whole, or None where none do.
+    def _joined(self, parts: list[str]) -> list[str]:
+        """`parts`, those that are the pieces of a term a concept is written as joined into it."""
 
-        Of two covers of as many terms, the one of the longer first term is taken.
-        """
-        # The fewest terms that cover the rest of `term` from each place on, or None.
-        covers: list[list[str] | None] = [None] * len(term) + [[]]
-        for start in range(len(term) - 1, -1, -1):
-            for end in range(len(term), start, -1):
-                part, rest = term[start:end], covers[end]
-                if part == term or part not in self._parts or rest is None:
-                    continue
-                cover = covers[start]
-                if cover is None or len(rest) + 1 < len(cover):
-                    covers[start] = [part, *rest]
-        return covers[0]
+        def part_or_term(start: int, end: int) -> str | None:
+            pieces = tuple(parts[start:end])
+            return parts[start] if len(pieces) == 1 else self._pieces.get(pieces)
+
+        # Each part covers its own place, so that a cover always is found.
+        return _fewest(len(parts), part_or_term) or parts
 
 
 def agrees(terms: tuple[Term, ...] | None, reading: tuple[str, ...] | None) -> bool:

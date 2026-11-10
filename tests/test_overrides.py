@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import SemanticType, Sensitivity
-from data_profiler.glossary import Glossary
+from data_profiler.glossary import Glossary, Vocabulary
 from data_profiler.overrides import (
     FORMAT,
     ColumnOverride,
@@ -191,6 +191,17 @@ def test_a_term_given_that_is_all_a_concept_proposed_is_written_as_stands_for_th
     assert Glossary(laid.glossary).words("iban") == ("account",)
 
 
+def test_a_word_of_several_terms_given_is_a_term_taken_from_the_concepts_proposed() -> None:
+    profile = replace(_PROFILE, glossary={"contact": Concept(("contact_person",))})
+    overrides = Overrides(glossary={"contact_person": Concept()})
+    laid = overrides.laid_over(profile)
+    assert "contact" not in laid.glossary
+    assert Glossary(laid.glossary).words("contact_person") == ("contact_person",)
+    assert overrides.adoptable("contact_person", Concept(("contact_person", "ap"))) == Concept(
+        ("ap",)
+    ), "not what it is written as by its word"
+
+
 def test_an_abbreviation_of_a_term_written_together_is_taken_as_given() -> None:
     (table,) = _PROFILE.tables
     profile = replace(
@@ -281,6 +292,19 @@ def test_the_names_and_descriptions_of_the_overrides_are_taken_as_given() -> Non
     assert (first.name_given, first.description) == ("first_name", "Its first name.")
     assert (kind.name_given, kind.description) == (None, "The kind of a contact."), "as proposed"
     assert given.laid_over(table) == table, "not by a scan"
+
+
+def test_a_word_proposed_of_the_pieces_of_a_word_given_is_that_word() -> None:
+    profile = replace(_PROFILE, glossary={"b_2_b": Concept(("bb",))})
+    laid = Overrides(glossary={"b2b": Concept()}).laid_over(profile)
+    assert laid.glossary == {"b2b": Concept(("bb",))}, "the word as it is given"
+    assert Vocabulary.of(laid).split("b2b_flag") == ["b2b", "flag"]
+
+
+def test_a_name_given_of_digits_among_its_letters_is_in_snake_case() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(name="b2b_name")})
+    laid = Overrides(tables={"cntct": given}).laid_over(_PROFILE)
+    assert laid.tables[0].columns[0].name_given == "b2b_name"
 
 
 def test_a_name_given_other_than_in_snake_case_is_refused_naming_it() -> None:

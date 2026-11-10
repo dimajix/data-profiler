@@ -69,7 +69,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [46](46-a-word-proposed-as-its-own-abbreviation.md) | done | `describe` records a term written out as an abbreviation of the concept of the same word, `iban: [iban]`, though the abbreviations of a concept are the terms it is written as beside its word. |
 | [47](47-descriptions-written-as-a-dictionary-does.md) | done | The descriptions `describe` proposes of columns and concepts talk about the column or the word, `This column contains the serial number of a credit card`, where the information alone, `serial number of a credit card`, says the same. |
 | [52](52-the-reference-of-a-column-shown-to-the-model.md) | done | The question for the description of a column does not show the language model the reference of the column to a key of another table, though the profile holds it. |
-| [53](53-a-term-that-begins-with-digits.md) | open | A name is cut inside `3rd`, into `3` and `rd`, and a concept of `3rd` is never found. |
+| [53](53-a-term-that-begins-with-digits.md) | done | A name is cut inside `3rd`, into `3` and `rd`, and a concept of `3rd` is never found. |
 
 ## Report
 

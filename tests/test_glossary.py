@@ -108,6 +108,77 @@ def test_each_part_of_a_term_written_together_is_split_again() -> None:
     ], "but an abbreviation of a concept"
 
 
+@pytest.mark.parametrize(
+    ("name", "found"),
+    [
+        ("3rd_party", ["3rd", "party"]),
+        ("party_3rd", ["party", "3rd"]),
+        ("address3rd", ["address", "3rd"]),
+        ("B2B", ["b2b"]),
+        ("b2b_flag", ["b2b", "flag"]),
+        ("contract_item_id", ["contract_item", "id"]),
+        ("ContractItem", ["contract_item"]),
+        ("contract-item", ["contract_item"]),
+        ("date_of_birth", ["date_of_birth"]),
+        ("2ndAddr", ["2", "nd", "addr"]),
+        ("sales_30d", ["sales", "30", "d"]),
+        ("addr2", ["addr", "2"]),
+    ],
+)
+def test_a_term_a_concept_is_written_as_is_found_across_the_cuts_of_a_name(
+    name: str, found: list[str]
+) -> None:
+    vocabulary = Vocabulary([], ["3rd", "b2b", "contract_item", "date_of_birth"])
+    assert vocabulary.split(name) == found
+
+
+def test_terms_found_across_the_cuts_of_a_name_are_the_fewest_the_longer_first() -> None:
+    assert Vocabulary([], ["a_b", "b_c_d"]).split("a_b_c_d") == ["a", "b_c_d"], "of two, not three"
+    assert Vocabulary([], ["order_item", "item_no"]).split("order_item_no") == ["order_item", "no"]
+
+
+def test_a_term_is_found_across_the_cuts_of_a_name_by_its_pieces_alone() -> None:
+    assert Vocabulary([], ["manage"]).split("man_age") == ["man", "age"], "written as one piece"
+    assert Vocabulary([], ["B2B"]).split("b2b") == ["b", "2", "b"], "and not in another case"
+
+
+def test_a_term_written_together_is_split_before_terms_are_found_across_the_cuts() -> None:
+    vocabulary = Vocabulary(["lf", "adr", "plz"], ["adr_plz"])
+    assert vocabulary.split("lfadr_plz") == ["lf", "adr_plz"]
+
+
+def test_a_piece_of_a_term_a_concept_is_written_as_is_never_split() -> None:
+    vocabulary = Vocabulary(["con", "tract"], ["contract_item"])
+    assert vocabulary.split("contract_item") == ["contract_item"], "not into con, tract and item"
+
+
+def test_a_piece_of_a_term_found_across_the_cuts_splits_no_other_term() -> None:
+    concepts = {"third": Concept(("3rd",))}
+    profile = _profile(_table("t", "3rd_party", "card", "ca_no"), glossary=concepts)
+    assert Vocabulary.of(profile).split("card") == ["card"], "not into ca and rd"
+
+
+def test_of_two_terms_of_the_same_pieces_the_same_is_taken_in_any_order() -> None:
+    assert Vocabulary([], ["e-mail", "e_mail"]).split("e-mail") == ["e_mail"]
+    assert Vocabulary([], ["e_mail", "e-mail"]).split("e-mail") == ["e_mail"]
+
+
+def test_a_term_found_across_the_cuts_of_a_name_stands_for_its_concept() -> None:
+    concepts = {"third": Concept(("3rd",)), "party": Concept(), "contract_item": Concept()}
+    profile = _profile(_table("t", "3rd_party", "ContractItem"), glossary=concepts)
+    glossary, vocabulary = Glossary(concepts), Vocabulary.of(profile)
+    split = glossary.terms("3rd_party", vocabulary)
+    assert split == (Term("3rd", ("third",)), Term("party", ("party",)))
+    assert glossary.terms("ContractItem", vocabulary) == (
+        Term("contract_item", ("contract_item",)),
+    ), "a word of two terms alone"
+    assert "rd" not in occurrences(profile), "and no piece of it is asked about"
+    read = Column(
+        "3rd_party", "varchar(10)", Statistics(0, 1), terms=split, reading=("third", "party")
+    )
+    assert glossary.harmonized(read) == "third_party"
+
+
 def test_the_terms_of_no_concept_are_those_of_no_candidates_as_the_names_were_split() -> None:
     split = (Term("cust", ("customer",)), Term("xy"), Term("2"), Term("xy"))
     columns = (
@@ -173,13 +244,15 @@ def test_a_term_stands_for_the_concept_whose_word_it_is() -> None:
     glossary = _glossary(customer=("cust",), name=("nm", "name"), contact_person=("ap",))
     assert glossary.words("customer") == ("customer",)
     assert glossary.words("name") == ("name",), "once, though its abbreviation as well"
-    assert glossary.words("contact") == (), "not of a word of two terms"
+    assert glossary.words("contact_person") == ("contact_person",), "of two terms as well"
+    assert glossary.words("contact") == (), "and not of one of them"
 
 
-def test_a_concept_is_written_as_its_word_where_it_is_one_term_and_as_its_abbreviations() -> None:
+def test_a_concept_is_written_as_its_word_and_as_its_abbreviations() -> None:
     assert written_as("Customer", Concept(("cust", "kd"))) == ("customer", "cust", "kd")
-    assert written_as("contact_person", Concept(("ap",))) == ("ap",)
-    assert written_as("e-mail", Concept(("eml",))) == ("eml",), "of two terms as split"
+    assert written_as("contact_person", Concept(("ap",))) == ("contact_person", "ap")
+    assert written_as("e-mail", Concept(("eml",))) == ("e_mail", "eml"), "in snake_case"
+    assert written_as("--", Concept(("x",))) == ("x",), "a word of nothing is no term"
 
 
 def _named(*read: tuple[str, str]) -> Column:
@@ -263,10 +336,23 @@ def test_columns_of_the_same_harmonized_name_are_a_collision() -> None:
     assert glossary.collisions(table) == {"status": ("ap_sts", "st")}, "id has no name"
 
 
-def test_a_name_in_snake_case_is_of_its_terms_joined() -> None:
-    assert [snake_case(name) for name in ("Contact Person", "custCrtDt", "Address2", "--")] == [
+def test_a_name_in_snake_case_is_cut_as_a_name_is_but_not_at_digits() -> None:
+    assert [
+        snake_case(name) for name in ("Contact Person", "custCrtDt", "Address2", "B2B", "--")
+    ] == [
         "contact_person",
         "cust_crt_dt",
-        "address_2",
+        "address2",
+        "b2b",
         "",
     ]
+
+
+def test_a_word_of_digits_among_its_letters_is_one_term_and_stays_whole_in_a_name() -> None:
+    concepts = {"b2b": Concept(), "flag": Concept()}
+    profile = _profile(_table("t", "b2b_flag"), glossary=concepts)
+    glossary, vocabulary = Glossary(concepts), Vocabulary.of(profile)
+    split = glossary.terms("b2b_flag", vocabulary)
+    assert split == (Term("b2b", ("b2b",)), Term("flag", ("flag",)))
+    read = Column("b2b_flag", "varchar(10)", Statistics(0, 1), terms=split, reading=("b2b", "flag"))
+    assert glossary.harmonized(read) == "b2b_flag"

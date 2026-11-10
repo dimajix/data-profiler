@@ -106,12 +106,12 @@ was counted or related otherwise.
 
 **A concept given comes before those proposed.** It takes the place of the concept proposed of its
 word, keeping only the abbreviations proposed beside those given; the terms it is written as - its
-abbreviations, and its word where it is one term - are taken from the other concepts proposed, and a
-concept proposed whose abbreviations they take all, or whose word they take where it has none, is
-dropped, so that a term given stands for the concepts given alone. A term that is the word of a
-concept proposed with an abbreviation left stays a term of that concept as well, and the reading of
-a name tells which of them it stands for. A term the language model proposes as one more
-abbreviation of a concept given is one of it.
+abbreviations and its word - are taken from the other concepts proposed, and a concept proposed
+whose abbreviations they take all, or whose word they take where it has none, is dropped, so that a
+term given stands for the concepts given alone. A term that is the word of a concept proposed with
+an abbreviation left stays a term of that concept as well, and the reading of a name tells which of
+them it stands for. A term the language model proposes as one more abbreviation of a concept given
+is one of it.
 
 **What is refused, and what is warned of.** An override that names what is not profiled, or cannot
 be what it gives, is refused, naming it:
@@ -126,8 +126,9 @@ be what it gives, is refused, naming it:
     column to itself, before it queries anything.
 *   The stages that read the profile refuse a table or column it does not have, a reading that is
     no reading of the terms of its name - of another number of words, or a word of no concept of
-    the term at its place -, a name other than in snake_case, that of an entity among them, a
-    discriminator as `scan` does, and a reference as `relate` does.
+    the term at its place -, a name other than in snake_case, where digits may stand among the
+    letters, `address2` as well as `address_2`, that of an entity among them, a discriminator as
+    `scan` does, and a reference as `relate` does.
 
 As the overrides are the same for all environments, whose tables may differ, the stages warn of
 some of what is given, and go on:
@@ -285,7 +286,13 @@ tables:
 
 A concept is a word, from which the harmonized names are composed, the abbreviations it is written
 as in the names, and a description, from which the language model describes the columns. Its word
-is a term of it, where it is one term; a word alone is given as `{}`.
+is a term of it; a word alone is given as `{}`.
+
+A term of a concept is found whole, however a name cuts it: the abbreviation `3rd` in `3rd_party`,
+though a name is cut between digits and letters, the word `contract_item` in `ContractItem`. What
+were several terms are then one, of one word in a reading given of such a name; a reading given of
+the words before is refused, also where the concept is one `describe` proposed. A word stays whole
+at its digits in a harmonized name: `b2b: {}` makes `b2b_flag` of `b2b_flag`.
 
 ```yaml overrides.yml
 glossary:
@@ -629,7 +636,7 @@ type of the tool.
 <!-- begin reference: overrides.yml -->
 ### `overrides.yml`
 
-The document begins with `format: "7.5"`, its version.
+The document begins with `format: "7.6"`, its version.
 
 What is given by hand of a profile: concepts, names, descriptions, columns, discriminators.
 
@@ -647,7 +654,7 @@ An abbreviation may be of several concepts, which a term of a name may each stan
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `abbreviations` | list of text | empty | The terms it is written as beside its word, in lower case, none where none is given; its word is a term of it where it is one term - `iban` -, and a word of several terms - `contact_person` - is written as its abbreviations alone. |
+| `abbreviations` | list of text | empty | The terms it is written as beside its word, in lower case, none where none is given; its word is a term of it, of one term - `iban` - or of several - `contact_person`. |
 | `description` | text | absent | What it means, in English; None where none is given. |
 | `omitted` | boolean | `false` | Whether it is left out of harmonized names, as a prefix that marks a custom column, which says nothing of what the column holds. |
 
