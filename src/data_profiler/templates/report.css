@@ -7,6 +7,7 @@
     --line: #d8dde2;
     --head: #f2f4f6;
     --sensitive: #fbeaea;
+    --no-information: #ebebeb;
     --accent: #8a1c1c;
 }
 
@@ -82,6 +83,11 @@ th {
 
 .sensitive {
     background: var(--sensitive);
+}
+
+.no-information {
+    color: var(--muted);
+    background: var(--no-information);
 }
 
 .sensitivity {
