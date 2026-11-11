@@ -631,6 +631,24 @@ class Table:
                 return column
         raise KeyError(name)
 
+    def filled(self, name: str) -> int:
+        """How many of its rows its column of the name `name` is filled in.
+
+        A column is filled in a row where it holds a value, neither null nor a sentinel, as its
+        statistics count them on the whole table.
+
+        Args:
+            name: The name of the column in the database.
+
+        Returns:
+            The number of the rows.
+
+        Raises:
+            KeyError: The table has no column of the name, as `column` says.
+        """
+        statistics = self.column(name).statistics
+        return self.rows - statistics.nulls - statistics.sentinel_rows
+
     @property
     def rows_of_no_entity(self) -> int | None:
         """The rows of no entity of its discriminator, or None where they are not told.

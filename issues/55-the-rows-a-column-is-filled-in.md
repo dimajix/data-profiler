@@ -1,6 +1,6 @@
 # 55 — The rows a column is filled in
 
-**Status:** open
+**Status:** done
 **Type:** refactoring
 **Priority:** low
 **Area:** Profile
@@ -57,3 +57,9 @@ A refactoring without a change of behaviour: the report and the references found
 
 - **2026-11-11** — Opened, as the maintainer asked, from a finding of the review of
   [54](54-a-column-of-no-information-in-the-report.md).
+- **2026-11-11** — Done, as the first consideration recommends, by the name of the column, as
+  `Table.column` and `Table.reference` take one: `_Pair` holds its column as the column of the
+  values of its lists, whose statistics are not those of its rows, so that a method taking a column
+  could be handed the wrong one unnoticed. `Table.filled(name)` replaces `_present`, `_Pair.present`
+  is `_Pair.filled`, and the template of the report asks the table. The rows filled that
+  `matching` counts anew, by the query that verifies the matches, are called so as well.

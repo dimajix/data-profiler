@@ -141,6 +141,15 @@ def test_a_column_of_a_table_is_found_by_its_name() -> None:
         table.column("CUST_TYP")
 
 
+def test_a_column_is_filled_in_the_rows_of_its_table_of_neither_nulls_nor_sentinels() -> None:
+    (table, *_) = _PROFILE.tables
+    statistics = Statistics(312, 803455, sentinels=(Value("", 40), Value("-", 8)))
+    table = replace(table, columns=(replace(table.column("CUST_NM"), statistics=statistics),))
+    assert table.filled("CUST_NM") == 1250000 - 312 - 48
+    with pytest.raises(KeyError):
+        table.filled("CUST_TYP")
+
+
 def test_a_profile_written_and_read_is_unchanged(tmp_path: Path) -> None:
     assert Profile.read(_written(tmp_path)) == _PROFILE
     (table,) = _PROFILE.tables

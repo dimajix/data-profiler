@@ -82,8 +82,7 @@
     {% for column in table.columns %}
     {% set statistics = column.statistics %}
     {#- Of no information: filled in no row, every row null or a sentinel; of a table of rows. #}
-    {% set no_information =
-      table.rows and statistics.nulls + statistics.sentinel_rows == table.rows %}
+    {% set no_information = table.rows and table.filled(column.name) == 0 %}
     {#- One body for each column, so that its mark covers all of its rows. #}
     <tbody
       {%- if column.sensitive %} class="sensitive"

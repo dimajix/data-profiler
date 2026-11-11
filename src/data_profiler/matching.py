@@ -84,11 +84,11 @@ def verify(source: Source, table: Table) -> Table:
     verified = {}
     for column in asked:
         where = f"{table.name}.{column.name}"
-        present = rows - counted(next(answers), where)
+        filled = rows - counted(next(answers), where)
         matches = []
         for match in column.matches:
             matched = counted(next(answers), where)
-            share = round(matched / present, DIGITS) if present else 0.0
+            share = round(matched / filled, DIGITS) if filled else 0.0
             matches.append(replace(match, table=share))
         verified[column.name] = replace(column, matches=tuple(matches))
     columns = tuple(verified.get(column.name, column) for column in table.columns)
