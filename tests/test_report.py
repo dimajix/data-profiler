@@ -513,6 +513,59 @@ def test_a_sensitive_column_of_no_information_is_marked_as_sensitive() -> None:
     assert page.count("personal (marked)") == 2, "its sensitivity in place of no information"
 
 
+# A column of `_PROFILE` filled in all of its 1,200 rows by one value.
+_OF_ONE_VALUE = {
+    "statistics": Statistics(0, 1, Lengths(1, 1), Range("B", "B")),
+    "values": (Value("B", 1200),),
+}
+
+
+def test_a_column_filled_in_every_row_by_one_value_is_marked_as_of_one_value() -> None:
+    page = _page(profile=_with_first(**_OF_ONE_VALUE))
+    assert page.count('<tbody class="one-value">') == 1
+    marked = page.split('<tbody class="one-value">')[1].split("</tbody>")[0]
+    assert "<summary>1 values</summary>" in marked, "all of its rows marked, its values too"
+    assert '<td class="value"> one value </td>' in page, "said in words, as print shows it"
+
+
+def test_a_column_of_one_value_is_marked_by_its_statistics_without_its_values() -> None:
+    page = _page(profile=_with_first(**{**_OF_ONE_VALUE, "values": ()}))
+    assert page.count('<tbody class="one-value">') == 1, "its values withheld or not counted"
+
+
+@pytest.mark.parametrize(
+    "statistics",
+    [
+        Statistics(100, 1, Lengths(1, 1), Range("B", "B")),
+        Statistics(0, 1, Lengths(1, 1), Range("B", "B"), (Value("", 40),)),
+        Statistics(0, 2, Lengths(1, 1), Range("B", "P")),
+    ],
+    ids=["and nulls", "and sentinels", "of two values"],
+)
+def test_a_column_of_one_value_and_none_or_of_more_values_is_not_of_one_value(
+    statistics: Statistics,
+) -> None:
+    page = _page(profile=_with_first(statistics=statistics))
+    assert 'class="one-value"' not in page
+    assert "one value </td>" not in page
+
+
+def test_a_column_of_a_table_of_one_row_is_not_of_one_value() -> None:
+    (table, *others) = _with_first(**_OF_ONE_VALUE).tables
+    page = _page(profile=replace(_PROFILE, tables=(replace(table, rows=1), *others)))
+    assert 'class="one-value"' not in page
+
+
+def test_a_sensitive_column_of_one_value_is_marked_as_sensitive() -> None:
+    profile = _with_first(**_OF_ONE_VALUE, marked=Sensitivity.PERSONAL)
+    page = _page(
+        _overrides({"cust_typ_cd": ColumnOverride(sensitivity=Sensitivity.PERSONAL)}), profile
+    )
+    assert page.count('<tbody class="sensitive">') == 3, "of the sensitivity marked"
+    assert 'class="one-value"' not in page
+    assert page.count("personal (marked)") == 2, "its sensitivity in place of one value"
+
+
 def test_a_range_shows_both_its_ends_and_says_where_one_is_withheld() -> None:
     page = _page()
     assert "&lt;b&gt; … withheld" in page

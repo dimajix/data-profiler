@@ -1,6 +1,6 @@
 # 56 — A column of one value in the report
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Report
@@ -81,3 +81,8 @@ once - filled in no row and in every row of a table of rows.
 ## History
 
 - **2026-11-11** — Opened, as the maintainer asked.
+- **2026-11-11** — Done, as the considerations recommend but for the grey: a variable of the
+  template beside `no_information` marks a column filled in every row of a table of more than one
+  row by one distinct value, with the words `one value` in the column *Range*. A lighter neutral
+  grey, `#f5f5f5`, could hardly be told from `--head`; the maintainer chose a grey of another hue,
+  a warm grey, `#f4f1ea`, for `--one-value`.
