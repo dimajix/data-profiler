@@ -115,13 +115,13 @@ class _Pair:
         return dialect.without(self.column.name, self.column.type, self.column.left_aside)
 
     @property
-    def present(self) -> int:
-        """How many values the column has, nulls and sentinels aside; of lists, as many as its rows.
+    def filled(self) -> int:
+        """How many rows of its table the column is filled in; of lists, its rows, not its values.
 
         A list holds one value at least, so that the rows of the lists of a column of lists are as
         many as its values at least, which a share of them taken holds as many of.
         """
-        return _present(self.table, self.table.column(self.column.name))
+        return self.table.filled(self.column.name)
 
     @property
     def separator(self) -> str | None:
@@ -161,7 +161,7 @@ def find(source: Source, profile: Profile, given: Mapping[str, GivenReferences])
         for table in profile.tables
         for column in table.columns
         if column.name not in given.get(table.name, {})
-        and _present(table, column) > 0
+        and table.filled(column.name) > 0
         and dialect.identifies(column.type)
         for target, key in keys
         if (target.name, key.name) != (table.name, column.name)
@@ -263,12 +263,6 @@ def _warn(pair: _Pair, what: str) -> None:
     )
 
 
-def _present(table: Table, column: Column) -> int:
-    """How many values `column` of `table` has, neither nulls nor sentinels."""
-    statistics = column.statistics
-    return table.rows - statistics.nulls - statistics.sentinel_rows
-
-
 def _unmistakable(dialect: Dialect, column: Column) -> bool:
     """Whether the values of `column` are equal to those of another by no chance: UUIDs."""
     return dialect.is_unmistakable(column.type) or any(
@@ -336,7 +330,7 @@ def _indicated(dialect: Dialect, pair: _Pair) -> bool:
     ):
         return False
     # Those outside of the key are in one row each at most.
-    outside = (1 - _COVERAGE) * pair.present
+    outside = (1 - _COVERAGE) * pair.filled
     spread = 1 + _ERRORS * dialect.distinct_error()
     if column.distinct > spread * key.distinct + outside:
         return False
@@ -534,7 +528,7 @@ def _place[Placed](value: object, places: Sequence[Placed]) -> Placed:
 def _probe(dialect: Dialect, pair: _Pair) -> Probe:
     """The probe of the column of `pair`, of a share of the rows of its table to take its values."""
     # A column of no values, given, is read whole.
-    share = min(100.0, 100.0 * _SPARE * _PROBES / max(1, pair.present))
+    share = min(100.0, 100.0 * _SPARE * _PROBES / max(1, pair.filled))
     return Probe(pair.table.name, pair.values(dialect), share)
 
 
