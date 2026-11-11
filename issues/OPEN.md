@@ -34,3 +34,9 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
+
+## Low priority
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [55](55-the-rows-a-column-is-filled-in.md) | open | low | refactoring | How many rows of its table a column is filled in - holds a value, neither null nor a sentinel - is computed from its statistics in two places, `references` and the template of the report, under two names, "present" and "filled", instead of being asked of the table. |
