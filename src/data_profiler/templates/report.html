@@ -79,10 +79,17 @@
         <th>Range</th><th>Semantic type</th>
       </tr>
     </thead>
-    <tbody>
     {% for column in table.columns %}
-      {% set statistics = column.statistics %}
-      <tr{% if column.sensitive %} class="sensitive"{% endif %}>
+    {% set statistics = column.statistics %}
+    {#- Of no information: filled in no row, every row null or a sentinel; of a table of rows. #}
+    {% set no_information =
+      table.rows and statistics.nulls + statistics.sentinel_rows == table.rows %}
+    {#- One body for each column, so that its mark covers all of its rows. #}
+    <tbody
+      {%- if column.sensitive %} class="sensitive"
+      {%- elif no_information %} class="no-information"
+      {%- endif %}>
+      <tr>
         <td class="original">{{ column.name }}</td>
         <td>{{ harmonized(column) or "–" }}{{ read(column) }}</td>
         <td class="description">{{ column.description or "–" }}</td>
@@ -109,6 +116,8 @@
           <span class="sensitivity">
             {{ column.sensitivity.value }}{% if column.marked is not none %} (marked){% endif %}
           </span>
+          {% elif no_information %}
+          no information
           {% elif statistics.range %}
           {{ end(statistics.range.smallest) }} … {{ end(statistics.range.largest) }}
           {% else %}
@@ -151,8 +160,8 @@
       </tr>
       {% endif %}
       {% endfor %}
-    {% endfor %}
     </tbody>
+    {% endfor %}
   </table>
   {% set primary = table.primary_key %}
   {% if table.keys or primary %}

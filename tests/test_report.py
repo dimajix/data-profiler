@@ -483,6 +483,36 @@ def test_a_report_shows_the_sensitivity_of_a_column_and_whether_it_is_marked() -
     assert "none (marked)" in page, "a mark of no sensitivity over a sensitive match"
 
 
+# The statistics of a column of `_PROFILE` filled in none of its 1,200 rows.
+_FILLED_IN_NONE = Statistics(1140, 0, sentinels=(Value("", 40), Value("-", 20)))
+
+
+def test_a_column_filled_in_no_row_is_marked_as_of_no_information() -> None:
+    page = _page(profile=_with_first(statistics=_FILLED_IN_NONE))
+    assert page.count('<tbody class="no-information">') == 1
+    marked = page.split('<tbody class="no-information">')[1].split("</tbody>")[0]
+    assert "<summary>2 sentinels</summary>" in marked, "all of its rows marked, its sentinels too"
+    assert '<td class="value"> no information </td>' in page, "said in words, as print shows it"
+
+
+def test_a_column_filled_in_a_row_and_one_of_a_table_of_no_rows_are_of_information() -> None:
+    page = _page()
+    assert 'class="no-information"' not in page
+    assert "no information </td>" not in page
+
+
+def test_a_sensitive_column_of_no_information_is_marked_as_sensitive() -> None:
+    profile = _with_first(statistics=_FILLED_IN_NONE, marked=Sensitivity.PERSONAL)
+    page = _page(
+        _overrides({"cust_typ_cd": ColumnOverride(sensitivity=Sensitivity.PERSONAL)}), profile
+    )
+    assert page.count('<tbody class="sensitive">') == 3, "of the sensitivity marked"
+    marked = page.split('<tbody class="sensitive">')[1].split("</tbody>")[0]
+    assert "<summary>2 sentinels</summary>" in marked, "all of its rows marked, its sentinels too"
+    assert 'class="no-information"' not in page
+    assert page.count("personal (marked)") == 2, "its sensitivity in place of no information"
+
+
 def test_a_range_shows_both_its_ends_and_says_where_one_is_withheld() -> None:
     page = _page()
     assert "&lt;b&gt; … withheld" in page

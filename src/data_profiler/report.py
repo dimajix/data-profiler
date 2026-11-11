@@ -5,19 +5,19 @@ shows the profile with the overrides of the project laid over it: what the datab
 is given; each table, with the reading of its name, what it holds, where it is given, and with its
 columns - their original names, harmonized names, composed from their readings or given, readings,
 each term with the word of its concept, descriptions, types, statistics, the shares of their nulls
-and sentinels among them, semantic types, sensitivity, the values of their enumerations, the first
-few of those of nothing but UUIDs, and each of their sentinels -, with its keys, the primary
-marked, and whether it is given, a table of the references of its columns, one to one or many to
-one, their coverage and whether they are given, the reference candidates of each column ranked, a
-table of the references of others to it, of the same, and a diagram of the tables connected to it
-by their original names, those by reference candidates alone dashed, the column groups of its
-columns filled together, its column dependencies, each determinant marked where it is a reference,
-the harmonized names two of its columns share, and its entities, by the share of their rows each
-column is filled in, with their names and descriptions, where they are given; and the glossary,
-each concept with its abbreviations and description, those proposed told apart from those given,
-and each term of no concept, as describe split the names, with where it appears. It renders what
-the profile holds, and nothing of the workspace: the values in it are those the profile may hold,
-which the template escapes.
+and sentinels among them, those of no information, filled in no row, marked as such, semantic types,
+sensitivity, the values of their enumerations, the first few of those of nothing but UUIDs, and each
+of their sentinels -, with its keys, the primary marked, and whether it is given, a table of the
+references of its columns, one to one or many to one, their coverage and whether they are given, the
+reference candidates of each column ranked, a table of the references of others to it, of the same,
+and a diagram of the tables connected to it by their original names, those by reference candidates
+alone dashed, the column groups of its columns filled together, its column dependencies, each
+determinant marked where it is a reference, the harmonized names two of its columns share, and its
+entities, by the share of their rows each column is filled in, with their names and descriptions,
+where they are given; and the glossary, each concept with its abbreviations and description, those
+proposed told apart from those given, and each term of no concept, as describe split the names, with
+where it appears. It renders what the profile holds, and nothing of the workspace: the values in it
+are those the profile may hold, which the template escapes.
 """
 
 from collections.abc import Iterable
