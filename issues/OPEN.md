@@ -16,6 +16,12 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 
+## Report
+
+| No. | Status | Priority | Type | Issue |
+|---|---|---|---|---|
+| [54](54-a-column-of-no-information-in-the-report.md) | open | medium | feature | A column that holds nothing but nulls and sentinels looks in the report like any other column, so that a person reading a table has to work out from its shares of nulls and sentinels which of its columns say nothing at all. |
+
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |
