@@ -16,12 +16,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 
-## Report
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [56](56-a-column-of-one-value-in-the-report.md) | open | medium | feature | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
-
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

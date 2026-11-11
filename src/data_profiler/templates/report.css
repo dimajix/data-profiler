@@ -8,6 +8,7 @@
     --head: #f2f4f6;
     --sensitive: #fbeaea;
     --no-information: #ebebeb;
+    --one-value: #f4f1ea;
     --accent: #8a1c1c;
 }
 
@@ -85,9 +86,17 @@ th {
     background: var(--sensitive);
 }
 
-.no-information {
+.no-information,
+.one-value {
     color: var(--muted);
+}
+
+.no-information {
     background: var(--no-information);
+}
+
+.one-value {
+    background: var(--one-value);
 }
 
 .sensitivity {

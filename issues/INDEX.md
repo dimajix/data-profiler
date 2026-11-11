@@ -81,7 +81,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [49](49-the-reading-of-a-name-in-the-report.md) | done | The report shows the harmonized name of a table or column but not its reading, the concept each term of the name stands for, so that a person cannot see how a name was understood, and not at all where no harmonized name comes of it. |
 | [51](51-the-references-of-a-table-in-the-report.md) | done | The report writes the references of a table as running text, those to it without their key, cardinality or coverage, and nothing shows at a glance which tables a table is connected to. |
 | [54](54-a-column-of-no-information-in-the-report.md) | done | A column that holds nothing but nulls and sentinels looks in the report like any other column, so that a person reading a table has to work out from its shares of nulls and sentinels which of its columns say nothing at all. |
-| [56](56-a-column-of-one-value-in-the-report.md) | open | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
+| [56](56-a-column-of-one-value-in-the-report.md) | done | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
 
 ## Command line
 

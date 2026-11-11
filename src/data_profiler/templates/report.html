@@ -81,12 +81,16 @@
     </thead>
     {% for column in table.columns %}
     {% set statistics = column.statistics %}
+    {% set filled = table.filled(column.name) %}
     {#- Of no information: filled in no row, every row null or a sentinel; of a table of rows. #}
-    {% set no_information = table.rows and table.filled(column.name) == 0 %}
+    {% set no_information = table.rows and filled == 0 %}
+    {#- Of one value: filled in every row, by one value; of a table of more than one row. #}
+    {% set one_value = table.rows > 1 and filled == table.rows and statistics.distinct == 1 %}
     {#- One body for each column, so that its mark covers all of its rows. #}
     <tbody
       {%- if column.sensitive %} class="sensitive"
       {%- elif no_information %} class="no-information"
+      {%- elif one_value %} class="one-value"
       {%- endif %}>
       <tr>
         <td class="original">{{ column.name }}</td>
@@ -117,6 +121,8 @@
           </span>
           {% elif no_information %}
           no information
+          {% elif one_value %}
+          one value
           {% elif statistics.range %}
           {{ end(statistics.range.smallest) }} … {{ end(statistics.range.largest) }}
           {% else %}
