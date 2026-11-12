@@ -193,7 +193,8 @@ uv run data-profiler relate simulation --project examples/crm
 
 which queries the database and writes the references and reference candidates of every table
 into the profile, in place of those it had, once, at the end: a relate that fails leaves the profile
-as it was. A table scanned anew has no references until the tables are related again.
+as it was. A table scanned anew keeps its references, which may be outdated until the tables are
+related again.
 
 The names of the profile are split into their terms and read by
 

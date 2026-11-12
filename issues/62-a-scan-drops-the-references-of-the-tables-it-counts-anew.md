@@ -1,6 +1,6 @@
 # 62 — A scan drops the references of the tables it counts anew
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -51,3 +51,16 @@ no longer has, with tests of both; the principle in `docs/ARCHITECTURE.md`, its 
 
 2026-11-12: Opened on the maintainer's request, who prefers references possibly outdated to none;
 decided to keep both directions.
+
+2026-11-12: Built: `Profile.updated` keeps of the table it replaces, beside what describe filled,
+the references and reference candidates of the columns the table counted anew still has, and drops
+of every table, the one counted anew included, those to a column it no longer has - a reference of
+the table to itself as well. `_described` became `_filled`, as it fills in what the stages after
+scan filled. The principle in `docs/ARCHITECTURE.md` lost its exception, and its description of
+`scan`, `docs/PROFILE.md`, the README and the module docs of `scan` and `profile` say that what is
+kept may be outdated until `relate` runs again.
+
+2026-11-12: Decided with the maintainer: the references kept keep their order too, though the
+columns may since be in another, as every stage changes only the values it fills; only what a scan
+no longer finds - a table, a column - is dropped. The principle says so, and the attributes of the
+references that their order is that of the columns as `relate` found them.

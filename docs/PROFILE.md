@@ -51,8 +51,9 @@ Every attribute of a profile is filled by one step, as the
 | `describe`, describing the columns | the descriptions of the columns |
 
 A table `scan` counts anew keeps the terms and readings of its name and of the names of its columns,
-and the descriptions of its columns, but has no references, nor has any table a reference to the
-tables dropped, until `relate` runs again.
+the descriptions of its columns, and their references and reference candidates, which may be
+outdated until `relate` runs again; what refers to a column it no longer has, or to a table dropped,
+is dropped.
 
 **How `scan` updates a profile.** A scan writes the profile after every table. It updates the
 profile there is: the tables no longer selected are dropped, the others kept until they are counted
@@ -253,8 +254,8 @@ A table of the schema, under its original name, and what was found about it.
 | `columns` | list of [Column](#column) | required | Its columns, in the order of the table. |
 | `keys` | list of list of text | empty | Its keys: the columns, one or two, whose values together identify each of its rows, verified on the whole table, none of them a key of fewer columns; the fewer columns first, each in the order of the table. |
 | `primary_key` | [PrimaryKey](#primarykey) | absent | What identifies its rows in a data model, a key chosen among its keys or the columns given; None where it has none. |
-| `references` | list of [Reference](#reference) | empty | The references of its columns, one of each column at most, in the order of the columns. |
-| `reference_candidates` | list of [Reference](#reference) | empty | The references of its columns of which several keys may be the one referred to, none of them preferred: those of a column after each other, in the order they are ranked, the columns in their order. |
+| `references` | list of [Reference](#reference) | empty | The references of its columns, one of each column at most, in the order of the columns as relate found them. |
+| `reference_candidates` | list of [Reference](#reference) | empty | The references of its columns of which several keys may be the one referred to, none of them preferred: those of a column after each other, in the order they are ranked, the columns in their order as relate found them. |
 | `column_groups` | list of [ColumnGroup](#columngroup) | empty | The column groups of its columns filled together, in the order of their first columns; a column is in one group at most. |
 | `column_dependencies` | list of [ColumnDependency](#columndependency) | empty | The column dependencies of its columns, in the order of their determinants; a column is a determinant of one dependency at most. |
 | `discriminator` | [Discriminator](#discriminator) | absent | The column whose values tell the entities of its rows apart, with those entities; None where no column does, or the overrides give it none. |

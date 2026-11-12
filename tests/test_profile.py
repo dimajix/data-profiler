@@ -499,12 +499,51 @@ def test_a_reference_that_is_none_of_the_profile_is_refused(
         Profile.read(tmp_path)
 
 
-def test_a_table_counted_anew_has_none_of_the_references_of_the_one_it_replaces() -> None:
-    profile = _related(Reference("CUST_ID", "CUST", "CUST_ID", 1.0))
+def test_a_table_counted_anew_keeps_the_references_of_the_one_it_replaces() -> None:
+    references = (Reference("CUST_ID", "CUST", "CUST_ID", 1.0),)
+    candidates = (
+        Reference("REF_NO", "CUST", "CUST_ID", 1.0),
+        Reference("REF_NO", "ORD", "ORD_ID", 1.0),
+    )
+    profile = _related(*references, reference_candidates=candidates)
     (cust, ordered) = profile.tables
     described = replace(profile, tables=(cust, replace(ordered, terms=(Term("ord"),))))
-    (_, anew) = described.updated(replace(ordered, references=())).tables
-    assert (anew.terms, anew.references) == ((Term("ord"),), ()), "relate finds them again"
+    counted = replace(ordered, terms=(), references=(), reference_candidates=())
+    (_, anew) = described.updated(counted).tables
+    assert anew.terms == (Term("ord"),)
+    assert (anew.references, anew.reference_candidates) == (references, candidates), (
+        "kept until relate runs again"
+    )
+
+
+def test_the_references_of_a_column_a_table_counted_anew_no_longer_has_are_dropped() -> None:
+    profile = _related(
+        Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
+        reference_candidates=(
+            Reference("REF_NO", "CUST", "CUST_ID", 1.0),
+            Reference("REF_NO", "ORD", "ORD_ID", 1.0),
+        ),
+    )
+    (_, ordered) = profile.tables
+    (_, anew) = profile.updated(replace(ordered, columns=ordered.columns[:2])).tables
+    assert anew.references == (Reference("CUST_ID", "CUST", "CUST_ID", 1.0),), "of others kept"
+    assert anew.reference_candidates == ()
+
+
+def test_the_references_of_a_table_counted_anew_to_a_column_it_no_longer_has_are_dropped() -> None:
+    profile = _related(
+        Reference("CUST_ID", "CUST", "CUST_ID", 1.0),
+        reference_candidates=(
+            Reference("REF_NO", "CUST", "CUST_ID", 1.0),
+            Reference("REF_NO", "ORD", "ORD_ID", 1.0),
+        ),
+    )
+    (_, ordered) = profile.tables
+    (_, anew) = profile.updated(replace(ordered, columns=ordered.columns[1:])).tables
+    assert anew.references == (Reference("CUST_ID", "CUST", "CUST_ID", 1.0),)
+    assert anew.reference_candidates == (Reference("REF_NO", "CUST", "CUST_ID", 1.0),), (
+        "to other tables kept"
+    )
 
 
 def test_the_references_to_a_column_a_table_counted_anew_no_longer_has_are_dropped() -> None:
