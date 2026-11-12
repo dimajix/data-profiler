@@ -94,3 +94,12 @@ them as `text` reads them, as a detector sees them; `Source.grouped` gives each 
 its column, not its place; the module `values`, which holds counts alone, is `counts`. The filter of
 the values of a sample by `Dialect.is_filled` stays at its callers, as no part owns the column of a
 sample, and the tests make their dialect by its URL, as they did.
+
+2026-11-12: Step 1 done: the bounds of a column in the contract are widened to every sentinel found
+but a number that is not finite, `_is_of` is gone, so that those of times are widened as those of
+numbers and days are. A time of a zone is widened as its text orders, until the next step orders it
+as Trino does: leaving it out, as decided above, would have been a case of its own that the next
+step removes again. The maximum of a moment is still the day of its sentinel. With the maintainer,
+from the review: a number that is not finite, of the range or of the sentinels found, leaves out
+the bound it would be - `Infinity` the maximum, `-Infinity` the minimum, `NaN` both -, as its rows
+would break it; a range up to `Infinity` with a sentinel found made the export fail before.

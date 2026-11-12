@@ -26,8 +26,8 @@ nothing of the workspace.
 import math
 import re
 from collections.abc import Mapping
-from datetime import date
-from typing import Any, Final
+from decimal import Decimal
+from typing import Final
 
 from yaml import safe_dump
 
@@ -230,9 +230,8 @@ def _options(column: Column, logical: str | None) -> _Document:
     """The bounds of the values of `column` of the logical type `logical`, and their format.
 
     The lengths of its texts bound a string, its range a number or a time - none where it is
-    withheld -, each widened to the sentinels found, which they are counted without, those of the
-    range that are values of its type; a UUID every value of the table is of, and no sentinel, is
-    of the format `uuid`.
+    withheld -, each widened to the sentinels found, which they are counted without; a UUID every
+    value of the table is of, and no sentinel, is of the format `uuid`.
     """
     statistics = column.statistics
     found = [value.value for value in statistics.sentinels]
@@ -251,16 +250,32 @@ def _options(column: Column, logical: str | None) -> _Document:
 def _bounds(ends: Range, found: list[str], logical: str) -> _Document:
     """The minimum and maximum of `ends`, as `logical` writes them, widened to the sentinels found.
 
-    The sentinels that are values of the type widen them; an end withheld is none.
+    The sentinels found are of the form the database writes the values of the type in, as it found
+    them so, and compare with the ends as `_order` orders them. An end withheld is none, and so is
+    one that a number not finite would be, of the ends or the sentinels found: of `Infinity` there
+    is no maximum, of `-Infinity` no minimum, and of `NaN`, which compares with nothing, neither.
     """
-    # Numbers, or texts of times, which compare alike, as the type of the column is one of them.
-    widening: list[Any] = [_bound(text, logical) for text in found if _is_of(text, logical)]
+    if logical in _NUMBERS and any(
+        Decimal(text).is_nan() for text in (ends.smallest, ends.largest, *found) if text is not None
+    ):
+        return {}
     bounds: _Document = {}
-    if ends.smallest is not None:
-        bounds["minimum"] = min([_bound(ends.smallest, logical), *widening])
-    if ends.largest is not None:
-        bounds["maximum"] = max([_bound(ends.largest, logical), *widening])
+    for name, end, extreme in (("minimum", ends.smallest, min), ("maximum", ends.largest, max)):
+        if end is None:
+            continue
+        bound = _bound(extreme((end, *found), key=lambda text: _order(text, logical)), logical)
+        # A number that is not finite is written as its text, and is no bound.
+        if logical not in _NUMBERS or not isinstance(bound, str):
+            bounds[name] = bound
     return bounds
+
+
+def _order(text: str, logical: str) -> Decimal | str:
+    """`text`, a value of the logical type `logical`, as it orders: a number by its value.
+
+    Times, days and moments compare as their texts, which are of one form, the database's.
+    """
+    return Decimal(text) if logical in _NUMBERS else text
 
 
 def _escaped(text: str) -> str:
@@ -271,19 +286,6 @@ def _escaped(text: str) -> str:
 def _present(**fields: object) -> _Document:
     """`fields`, but those of no value, which a contract leaves out."""
     return {name: value for name, value in fields.items() if value is not None}
-
-
-def _is_of(text: str, logical: str) -> bool:
-    """Whether `text` is a value of the logical type `logical`: a number, a date, or neither."""
-    if logical in _NUMBERS:
-        return _bound(text, logical) is not text
-    if logical in ("date", "timestamp"):
-        try:
-            date.fromisoformat(text)
-        except ValueError:
-            return False
-        return True
-    return False
 
 
 def _bound(text: str | None, logical: str | None) -> object:

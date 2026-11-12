@@ -353,6 +353,44 @@ def test_the_rules_of_the_values_of_a_column_take_the_sentinels_found_as_values(
     assert "format" not in _property(contract, "ref").get("logicalTypeOptions", {})
 
 
+def test_the_range_of_a_column_is_widened_to_the_sentinels_found() -> None:
+    midnight = (Value("00:00:00.000", 4),)
+    hours = Range("08:00:00.000", "18:00:00.000")
+    times = _column("tm", "time(3)", statistics=Statistics(0, 9, range=hours, sentinels=midnight))
+    less = (Value("-1.0E0", 3),)
+    ratios = Statistics(0, 9, range=Range("5.0E-1", "1.5E0"), sentinels=less)
+    ratio = _column("rt", "double", statistics=ratios)
+    contract = _contract(_profile(times, ratio))
+    assert _property(contract, "tm")["logicalTypeOptions"] == {
+        "minimum": "00:00:00.000",
+        "maximum": "18:00:00.000",
+    }, "a time, as its rows of the sentinel hold it"
+    assert _property(contract, "rt")["logicalTypeOptions"] == {"minimum": -1.0, "maximum": 1.5}
+
+
+def test_a_number_not_finite_leaves_out_the_bound_it_would_be() -> None:
+    def ratio(name: str, ends: Range, *found: str) -> Column:
+        sentinels = tuple(Value(text, 1) for text in found)
+        return _column(name, "double", statistics=Statistics(0, 9, range=ends, sentinels=sentinels))
+
+    finite = Range("5.0E-1", "1.5E0")
+    columns = (
+        ratio("inf", finite, "Infinity", "-1.0E0"),
+        ratio("neg", finite, "-Infinity"),
+        ratio("nan", finite, "NaN", "-1.0E0"),
+        ratio("end", Range("5.0E-1", "Infinity"), "-1.0E0"),
+    )
+    contract = _contract(_profile(*columns))
+    options = {
+        name: _property(contract, name).get("logicalTypeOptions")
+        for name in ("inf", "neg", "nan", "end")
+    }
+    assert options["inf"] == {"minimum": -1.0}, "a sentinel `Infinity` has no maximum"
+    assert options["neg"] == {"maximum": 1.5}, "a sentinel `-Infinity` has no minimum"
+    assert options["nan"] is None, "`NaN` compares with nothing"
+    assert options["end"] == {"minimum": -1.0}, "nor has a range up to `Infinity`"
+
+
 def test_a_contract_holds_nothing_counted() -> None:
     contract = _contract(_profile(_column(), references=(Reference("ord_no", "x", "y", 0.5),)))
     text = json.dumps(contract)
