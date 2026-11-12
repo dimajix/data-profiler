@@ -30,6 +30,7 @@ from data_profiler.detect import (
     SemanticType,
     SemanticTypeError,
     Sensitivity,
+    all_types,
     cases,
     detect,
     is_list,
@@ -397,6 +398,13 @@ def test_a_semantic_type_is_found_by_its_name(account_number: SemanticType) -> N
 def test_a_type_of_a_project_is_recognised_by_its_pattern(account_number: SemanticType) -> None:
     assert account_number.detector.recognises("A0123456789")
     assert not account_number.detector.recognises("A012345678")
+
+
+def test_only_the_types_of_uuids_and_dates_are_of_no_enumeration(
+    account_number: SemanticType,
+) -> None:
+    none = [kind.name for kind in all_types([account_number]) if not kind.enumerable]
+    assert none == [DATE.name, UUID.name], "a column of a type of a project may be one"
 
 
 @pytest.mark.parametrize(

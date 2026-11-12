@@ -285,6 +285,30 @@ def test_only_uuids_are_unmistakable_by_their_type(kind: str, unmistakable: bool
         assert source.dialect.is_unmistakable(kind) == unmistakable
 
 
+@pytest.mark.parametrize(
+    ("kind", "enumerable"),
+    [
+        ("varchar(12)", True),
+        ("bigint", True),
+        ("decimal(4,2)", True),
+        ("boolean", True),
+        ("uuid", False),
+        ("date", False),
+        ("time(3)", False),
+        ("time(3) with time zone", False),
+        ("timestamp(3)", False),
+        ("timestamp(6) with time zone", False),
+        ("real", False),
+        ("double", False),
+    ],
+)
+def test_no_column_of_uuids_times_or_floating_numbers_is_an_enumeration(
+    kind: str, enumerable: bool
+) -> None:
+    with connect("trino://h/c/s", "u", "") as source:
+        assert source.dialect.is_enumerable(kind) == enumerable
+
+
 def test_a_column_without_sentinels_is_counted_as_it_is() -> None:
     with connect("trino://h/c/s", "u", "") as source:
         assert source.dialect.without("c", "array(integer)", ()) == '"c"'

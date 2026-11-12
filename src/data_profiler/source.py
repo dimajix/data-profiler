@@ -87,6 +87,11 @@ _DECIMAL: Final = re.compile(r"decimal\(\d+,\s*(\d+)\)")
 # of floating point or of time, which are unique by chance, nor booleans, binaries or structures.
 _IDENTIFYING: Final = (*_TEXTS, *_SURROGATE, "decimal", "date")
 
+# The types of Trino whose values no closed list holds, by how their names begin - `time` also those
+# of `timestamp` -: UUIDs, days, times and moments, and floating numbers. A column of them is no
+# enumeration, however few its values; one of decimals may be, as they are often codes.
+_NOT_ENUMERABLE: Final = ("uuid", "date", "time", "real", "double")
+
 # The types of Trino whose values are moments, by how their names begin, compared as their days.
 _MOMENTS: Final = ("timestamp",)
 
@@ -451,6 +456,10 @@ class Dialect(ABC):
     @abstractmethod
     def is_unmistakable(self, kind: str) -> bool:
         """Whether values of the type `kind` equal those of another column by no chance: UUIDs."""
+
+    @abstractmethod
+    def is_enumerable(self, kind: str) -> bool:
+        """Whether `kind` may be the type of an enumeration: not UUIDs, times, floating numbers."""
 
     @abstractmethod
     def is_same_family(self, kind: str, other: str) -> bool:
@@ -979,6 +988,10 @@ class _TrinoDialect(Dialect):
     def is_unmistakable(self, kind: str) -> bool:
         """Whether values of the type `kind` are equal to those of another column by no chance."""
         return kind == "uuid"
+
+    def is_enumerable(self, kind: str) -> bool:
+        """Whether `kind` may be the type of an enumeration: not UUIDs, times, floating numbers."""
+        return not kind.startswith(_NOT_ENUMERABLE)
 
     def is_same_family(self, kind: str, other: str) -> bool:
         """Whether values of `kind` and `other` are the same values where their texts are."""

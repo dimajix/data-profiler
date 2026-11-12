@@ -302,6 +302,15 @@ def test_a_profile_scanned_with_other_types_keeps_its_tables_until_they_are_coun
     assert (items.matches, items.values) == ((), ()), "nor those of the values of its lists"
 
 
+def test_a_column_of_lists_holds_the_values_of_its_lists_not_those_of_its_texts(
+    source: Source, tmp_path: Path
+) -> None:
+    column = _scanned(source, "prod", tmp_path).table("prod").column("sale_curr_cds")
+    assert column.items is not None
+    assert column.items.values, "the values of its lists, an enumeration"
+    assert column.values == (), "its texts, lists, are none, though few and repeated"
+
+
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
     source: Source, tmp_path: Path
 ) -> None:

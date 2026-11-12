@@ -13,7 +13,9 @@ is checked. The patterns use what Python and the regular expressions of the data
 classes, repetitions, groups and alternatives, and no other escapes than of a character.
 
 The types of the tool are the constants below; a project gives types of its own, each by its name,
-its sensitivity and a pattern alone, which a value is checked for beside those of the tool.
+its sensitivity and a pattern alone, which a value is checked for beside those of the tool. A type
+says whether a column of it may be an enumeration: not one of UUIDs or dates, whose values no closed
+list holds; a column of a type of a project may.
 
 A column of lists is no semantic type, as a type says what a value is, not what the values in it
 are: its texts are values of letters, digits, `-`, `+` and `_`, separated by a separator given -
@@ -208,11 +210,14 @@ class SemanticType:
         name: The name of the type in the profile.
         sensitivity: The rules the values of the type fall under.
         detector: The detector that recognises the type.
+        enumerable: Whether a column of the type may be an enumeration: False of a type whose
+            values no closed list holds, such as UUIDs and dates, as the next load brings a new one.
     """
 
     name: str
     sensitivity: Sensitivity
     detector: Detector
+    enumerable: bool = True
 
 
 EMAIL: Final = SemanticType(
@@ -254,6 +259,7 @@ DATE: Final = SemanticType(
         ),
         _date,
     ),
+    enumerable=False,
 )
 """A date, with or without a time of day and a time zone, written as text."""
 # 32 hexadecimal digits in groups of 8, 4, 4, 4 and 12; their version and variant are not checked,
@@ -262,6 +268,7 @@ UUID: Final = SemanticType(
     "uuid",
     Sensitivity.NONE,
     Detector(re.compile(r"[0-9A-Fa-f]{8}(-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}")),
+    enumerable=False,
 )
 """A UUID, written as text in the form of RFC 9562."""
 # Values of words, of a column of free text; a fifth of the values is enough, as a column of

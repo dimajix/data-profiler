@@ -3,7 +3,12 @@
 A column is an enumeration if the statistics counted at most `_LIMIT` distinct values in it, and
 not each of them in one row alone: the values of a key of a small table say nothing about what it
 is. A column of more values is never grouped by: grouped by a column of keys, a table of hundreds
-of millions of rows would fill the memory of the database with a group for each. The query groups
+of millions of rows would fill the memory of the database with a group for each. Nor is a column
+whose values no closed list holds, however few they are, as the next load brings a new one: one of
+a type the dialect takes for none - UUIDs, times, floating numbers -, or of a match of a semantic
+type that is none - UUIDs and dates written as text -, so that the matches of the table are
+recognised first. A column of lists is none either, as its texts are lists; the values of its lists
+may be, counted by the module `lists` on a source of a row of each. The query groups
 the table by each of the columns on its own, in one pass, and counts the rows of each value; null
 is no value of an enumeration, as the statistics count the nulls, and nor is a sentinel, which the
 statistics count each. The values are values of the database, as the text the dialect reads them
@@ -17,8 +22,8 @@ from dataclasses import replace
 from typing import Final
 
 from data_profiler.counts import counted
-from data_profiler.profile import Table, Value
-from data_profiler.source import Source
+from data_profiler.profile import Column, Table, Value
+from data_profiler.source import Dialect, Source
 from data_profiler.workspace import Enumeration
 
 _logger = logging.getLogger(__name__)
@@ -32,7 +37,8 @@ def values(source: Source, table: Table) -> list[Enumeration]:
 
     Args:
         source: The schema the table is in.
-        table: The table, with its columns and their statistics.
+        table: The table, with its columns, their statistics and matches, and its columns of lists
+            with their separators.
 
     Returns:
         The enumerations, in the order of the columns of the table.
@@ -41,7 +47,7 @@ def values(source: Source, table: Table) -> list[Enumeration]:
         SourceError: The database fails to count the values.
     """
     dialect = source.dialect
-    asked = {c.name: c for c in table.columns if 0 < c.statistics.distinct <= _LIMIT}
+    asked = {c.name: c for c in table.columns if _may_be_one(dialect, c)}
     kinds = {name: column.type for name, column in asked.items()}
     by_column = _count(source, table.name, kinds) if asked else {}
     enumerations = []
@@ -59,6 +65,16 @@ def values(source: Source, table: Table) -> list[Enumeration]:
         "Counted the values of %s: %d enumerations", source.name(table.name), len(enumerations)
     )
     return enumerations
+
+
+def _may_be_one(dialect: Dialect, column: Column) -> bool:
+    """Whether `column` may be an enumeration: of few values, no lists, and a type that may be."""
+    return (
+        0 < column.statistics.distinct <= _LIMIT
+        and column.list_separator is None
+        and dialect.is_enumerable(column.type)
+        and all(match.type.enumerable for match in column.matches)
+    )
 
 
 def _count(

@@ -109,3 +109,7 @@ no enumeration is refused.
 
 2026-11-12: Step 0 done: `scan` counts the enumerations of a table after its matches are verified,
 without a change of behaviour; a column of lists keeps the enumeration of its texts until step 1.
+
+2026-11-12: Step 1 done: `enumerations.values` asks no column of a type that
+`Dialect.is_enumerable` takes for none, of a match of a type that `SemanticType.enumerable` takes
+for none, or of lists; the values of the lists of a column are enumerated as before.
