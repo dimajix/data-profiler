@@ -1,9 +1,9 @@
 # 57 — Export as Open Data Contract
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Summary:** The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract.
 
 ## The problem
@@ -156,3 +156,129 @@ the documents; the documents say what the project gives for the contract.
 
 2026-11-12: Opened on the maintainer's request. Researched the standard (v3.2.0): required fields,
 splitting of contracts, relationships and quality library; nothing built yet.
+
+2026-11-12: The maintainer decided three of the questions. Question 3: the contract exported is a
+basis, an inventory of what was observed, which the experts then extend and rework into what is
+binding; so the observations are exported as rules, with the values observed - `required`,
+`unique`, `logicalTypeOptions` and `quality` filled from the profile. Question 4: a template is an
+exporter of its name (option 2), its files, where it has any, in `templates/<name>/`. Question 5:
+the result goes to `<environment>/export/<template>/`, the template is chosen by `--template`, and
+the command `report` is gone; whether `--template` defaults to `html` is still open. Questions 1,
+2 and 6 are still open.
+
+2026-11-12: The maintainer decided the rest. Question 1: one file per environment. Question 2: the
+fields of the contract are given per project, in `project.yml`; `version` is kept by hand, for now.
+Question 5: `--template` defaults to `html`. Question 6: no optional parts beyond those the profile
+fills - no `team`, `roles` or `slaProperties`. The status of a contract exported is `draft`. The
+rules are qualitative alone, none quantitative: as the number of rows and of values changes from
+one load to the next, no rule counts - no `rowCount`, no share of nulls, no coverage -, but a rule
+says what holds of every row: a column with no nulls, with no sentinels, unique, of the values of
+its enumeration. Proposed for the agreement, from the profile:
+
+- `required: true` where a column has no nulls; a `missingValues` rule of its sentinels -
+  those of the tool or those given - `mustBe: 0` where it has none of them either.
+- `unique: true` for a key of one column; a `duplicateValues` rule of the schema over its columns,
+  `mustBe: 0`, for a key of two.
+- `enum` of the values of an enumeration of no sensitivity.
+- A semantic type every value of the whole table matches - its share of the table 1 - as a tag,
+  and `logicalTypeOptions.pattern` of its detector; `format: uuid` for the type uuid. A type of a
+  smaller share is a tag alone.
+- `minLength` and `maxLength` only where all values are of one length, as a code is; no range and
+  no other lengths, which every load may extend.
+- The references as relationships, without their coverage; no reference candidates.
+- Column groups, column dependencies and entities left out, as nothing reads them from a contract
+  yet and the report shows them.
+
+2026-11-12: The maintainer decided, against the proposal above, that the lengths and the range go
+into the contract as well, as rules the experts judge and adjust: `minLength` and `maxLength` of
+every column of text, from its shortest and longest value, and `minimum` and `maximum` - the names
+ODCS gives them in `logicalTypeOptions`, of numbers as of dates and times - from its range. The
+profile holds both already, `statistics.lengths` and `statistics.range`, so that the scan needs no
+change. A range withheld - of a column of a sensitivity, or a value of a sensitive type - gives no
+`minimum` and `maximum`, as `disclosure` decides for the profile.
+
+2026-11-12: Step 1 agreed and done. The stage `report` is the stage `export`; it writes the report
+as `export/html/report.html` in the directory of the environment, `Environment.export(template)`
+naming the directory of a template, and `write_report` makes the directory it is given. The files
+of the template `html` moved to `templates/export/html/`, apart from the prompts of `describe` in
+`templates/prompts/`. The word *report* stays for the HTML document - the module
+`data_profiler.report`, `write_report`, `ReportError` -, so that "`report` is gone" in *Done when*
+means the stage: the command line, and the documents where they name the stage. The area `Report`
+of the issues is `Export`, in the field lines of the issues of it as well; their descriptions stay
+as they are.
+
+2026-11-12: Step 2 agreed and done. The module `data_profiler.export` holds the `Template`, a form
+the profile is exported in, by its name, with `write(profile, overrides, directory)`, and its
+`ExportError`, as `llm` holds the `LanguageModel` and its error; the concept has one name, the
+template, in the code as in the documents and the option, rather than an exporter beside it. The
+report is the template `Report`, of the name `html`: its class names what it writes, its name the
+format. `write_report` and `ReportError` are gone. The command line holds the templates by their
+names, as it makes the language model - `export` cannot, as `report` imports it -, and takes
+`--template`, of the report where none is given.
+
+2026-11-12: After the review of step 2, the maintainer decided three findings. `Environment.export`
+takes the name of a template, `name`, as `Project.environment` takes that of an environment, since
+a template in the code is a `Template` now; changed with step 2. Before the template `odcs`, a step
+of its own moves what every template would repeat into `Template.write`: laying the overrides over
+the profile, making the directory, writing each file whole and translating an `OSError` into an
+`ExportError`; a template gives its files alone, by an abstract method that takes the profile with
+the overrides laid over it, and the overrides. And the word *template* keeps one meaning: the Jinja2
+files of the prompts of `describe` and of the report, the comments that call them templates, and
+the package directory `templates/` are named otherwise, in this issue, by a step of its own.
+
+2026-11-12: The step of the findings above that renames the Jinja2 files agreed and done: the word
+*template* keeps the meaning of the stage `export`, and *prompt* that of the text the language
+model is asked. The Jinja2 files are called so, and the package directory `templates/` is `jinja/`,
+with the files of the prompts of `describe` in `jinja/prompts/` and those of the template `html` in
+`jinja/export/html/`, not in `templates/html/` as the considerations above say; a template that
+renders no Jinja2 file, as `odcs` is to build a dictionary, has none. The step of `Template.write`
+follows, then the fields of the contract and the template `odcs`.
+
+2026-11-12: The step of `Template.write` agreed and done. `Template.write` is concrete: it warns of
+what the overrides give that the profile does not take, lays them over it, makes the directory and
+writes each file whole, translating an `OSError` into an `ExportError`. A template gives its files
+alone, by the abstract `Template.files(profile, overrides)`, public, so that its content is tested
+without the file system: of the profile with the overrides laid over it, and the overrides, the
+content of each file by its name in the directory. `Report.files` gives `report.html`, rendered by
+the function of the module, now private, which lays nothing over. The fields of the contract and
+the template `odcs` follow.
+
+2026-11-12: The step of the fields of the contract agreed and done, to be committed with the
+template `odcs`, its first user. `project.yml`, of format 4.2, gives them in a block `contract`, a
+`Contract` of `project`: `id` and `version` required, as text, `name`, `domain` and `tenant`
+optional; `Project.contract` refuses a project that gives none, as `Project.llm` refuses one of no
+language model, so that only an export as a contract needs one. As the maintainer decided with it:
+`description.purpose` of the contract is the description of the database the overrides give, not a
+field of the project, and `usage` and `limitations` are left out; the command line makes the
+templates by invocation, by factories of the project and the environment, so that `odcs` takes the
+contract and the URL of the environment, its server, when it is made, and the report nothing.
+
+2026-11-12: The template `odcs` agreed and done, with the fields of the contract before it. The
+module `contract` holds `Contract`, the template `odcs`, which writes `contract.odcs.yaml` as the
+considerations and the decisions above say, with these decided with it: a table and a column are
+named by their original names, `name` and `physicalName`, their harmonized names their
+`businessName`, as harmonized names may collide or be none; a semantic type every value of the table
+matches is a rule `invalidValues` of its pattern, one of each type, as a column may match several,
+not `logicalTypeOptions.pattern`; the values of an enumeration are objects of a `value`, as ODCS
+3.2.0 asks. The dialect tells the logical type of ODCS of a type of its database and the type of its
+server, and `source` tells where a schema is reached, `locate`, and its dialect, `dialect`, of its
+URL without connecting, `connect` reading the URL by `locate` alike. The name of a template is of
+its class, so that the command line makes the templates by invocation, by factories of the project
+and the environment; what the project gives of the contract is a `ContractSettings`, as `Contract`
+names the template. A column of lists is written as one of its texts. The rule of the sentinels of a
+column holds those its logical type can hold - all of a string, the dates of a date -, as a rule of
+a number against `N/A` would say nothing. The contract of the example profile is checked against the
+JSON schema of ODCS 3.2.0, a copy of which lies in `tests/odcs/` with its license, by `jsonschema`,
+a dependency of development.
+
+2026-11-12: After the review of the template `odcs`: the rule of a pattern is of a column of texts
+alone, the pattern taking spaces at either end, as the database matched it trimmed; the rule of the
+sentinels holds all of them of a column of texts, else those its logical type can hold, so that a
+UUID has none; a column of lists has no relationship, as it refers by the values of its lists; and
+a whole number is written as an integer, so that a long decimal keeps its digits.
+
+2026-11-12: The maintainer decided that the rules of the values of a column take the sentinels
+found as values, as they are counted without them, so that the draft holds of the rows it was
+observed of and the experts see the sentinels to forbid them: the enumeration holds them, the
+pattern of a type takes them as alternatives, and the lengths and the range are widened to them,
+those of the range that are values of the type; a column of sentinels found is of no format `uuid`.

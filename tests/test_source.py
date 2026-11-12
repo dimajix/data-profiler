@@ -5,7 +5,16 @@ import re
 import pytest
 
 from data_profiler.profile import Profile
-from data_profiler.source import Lookup, Probe, Source, SourceError, connect
+from data_profiler.source import (
+    Location,
+    Lookup,
+    Probe,
+    Source,
+    SourceError,
+    connect,
+    dialect,
+    locate,
+)
 
 
 def test_the_tables_that_a_pattern_matches_whole_are_listed(source: Source) -> None:
@@ -78,8 +87,48 @@ def test_a_url_that_names_no_schema_of_trino_is_refused_without_repeating_it(
     url: str, problem: str
 ) -> None:
     with pytest.raises(SourceError, match=problem) as raised:
-        connect(url, "u", "")
+        locate(url)
     assert "secret" not in str(raised.value), "the URL, which may hold a password, is not repeated"
+
+
+def test_a_url_is_located_by_its_host_port_catalog_and_schema() -> None:
+    assert locate("trino://h:8443/c/s") == Location("h", 8443, "c", "s")
+    assert locate("trino://h/c/s").port == 443, "that of HTTPS, where the URL names none"
+
+
+def test_a_url_that_names_no_schema_is_refused_by_connect_and_dialect_as_by_locate() -> None:
+    with pytest.raises(SourceError, match="only a URL of Trino is read"):
+        connect("postgresql://h/c/s", "u", "")
+    with pytest.raises(SourceError, match="only a URL of Trino is read"):
+        dialect("postgresql://h/c/s")
+
+
+def test_the_dialect_of_a_url_is_known_without_connecting() -> None:
+    assert dialect("trino://nowhere.invalid/c/s").server_type == "trino"
+
+
+@pytest.mark.parametrize(
+    ("kind", "logical"),
+    [
+        ("varchar(14)", "string"),
+        ("char(2)", "string"),
+        ("uuid", "string"),
+        ("bigint", "integer"),
+        ("decimal(14,2)", "number"),
+        ("double", "number"),
+        ("boolean", "boolean"),
+        ("date", "date"),
+        ("timestamp(3) with time zone", "timestamp"),
+        ("time(3)", "time"),
+        ("array(varchar)", "array"),
+        ("map(varchar, bigint)", None),
+        ("json", None),
+    ],
+)
+def test_the_logical_type_of_a_type_of_trino_is_that_of_odcs(
+    kind: str, logical: str | None
+) -> None:
+    assert dialect("trino://h/c/s").logical_type(kind) == logical
 
 
 def test_a_schema_is_not_read_as_an_empty_user() -> None:

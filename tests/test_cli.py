@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 import sys
 from collections.abc import Callable
@@ -10,7 +11,7 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
-from yaml import safe_dump
+from yaml import safe_dump, safe_load
 
 from data_profiler.cli import main
 from data_profiler.detect import Sensitivity
@@ -88,16 +89,37 @@ def test_the_password_is_not_logged_when_the_scan_fails(
     assert "not-the-password" not in caplog.text
 
 
-def test_the_profile_of_an_environment_is_reported_with_the_overrides_laid_over(
+def test_the_profile_of_an_environment_is_exported_with_the_overrides_laid_over(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:
     shutil.copy(_EXAMPLE / "overrides.yml", project)
     (project / "simulation").mkdir()
     example_profile.write(project / "simulation" / "profile")
-    assert command_line(main, "report", "simulation", "--project", str(project)) == 0
-    page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
+    assert command_line(main, "export", "simulation", "--project", str(project)) == 0
+    page = (project / "simulation" / "export" / "html" / "report.html").read_text(encoding="utf-8")
     assert "<h1>crm.sales</h1>" in page
     assert "personal (marked)" in page, "the overrides of the project are laid over"
+
+
+def test_a_template_is_chosen_by_its_name(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "html")
+    assert command_line(main, *arguments) == 0
+    page = (project / "simulation" / "export" / "html" / "report.html").read_text(encoding="utf-8")
+    assert "<h1>crm.sales</h1>" in page
+
+
+def test_a_template_that_is_none_is_refused_before_anything_is_exported(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "pdf")
+    assert command_line(main, *arguments) == 2, "argparse refuses it"
+    assert not (project / "simulation" / "export").exists()
 
 
 class _Terminal(StringIO):
@@ -160,8 +182,8 @@ def test_the_overrides_of_the_directory_of_a_project_are_laid_over(
     shutil.copy(_EXAMPLE / "overrides.yml", project / "overrides" / "crm.yml")
     (project / "simulation").mkdir()
     example_profile.write(project / "simulation" / "profile")
-    assert command_line(main, "report", "simulation", "--project", str(project)) == 0
-    page = (project / "simulation" / "report.html").read_text(encoding="utf-8")
+    assert command_line(main, "export", "simulation", "--project", str(project)) == 0
+    page = (project / "simulation" / "export" / "html" / "report.html").read_text(encoding="utf-8")
     assert "personal (marked)" in page, "the overrides of the directory are laid over"
 
 
@@ -213,10 +235,38 @@ def test_the_profile_of_an_environment_is_described_without_a_language_model(
     assert profile.tables[0].columns[0].description is None, "dropped first, and none proposed"
 
 
-def test_the_profile_of_an_environment_is_reported_without_its_password(
+def test_the_profile_of_an_environment_is_exported_without_its_password(
     project: Path, example_profile: Profile, command_line: Callable[..., int]
 ) -> None:
     (project / ".env").unlink()
     (project / "simulation").mkdir()
     example_profile.write(project / "simulation" / "profile")
-    assert command_line(main, "report", "simulation", "--project", str(project)) == 0
+    assert command_line(main, "export", "simulation", "--project", str(project)) == 0
+
+
+def test_the_profile_of_an_environment_is_exported_as_its_contract(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    shutil.copy(_EXAMPLE / "overrides.yml", project)
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "odcs")
+    assert command_line(main, *arguments) == 0
+    written = project / "simulation" / "export" / "odcs" / "contract.odcs.yaml"
+    contract = safe_load(written.read_text(encoding="utf-8"))
+    assert contract["id"] == "c2040b47-cc3c-4484-b96c-cd37e412ad78"
+    assert contract["servers"][0]["server"] == "simulation"
+
+
+def test_a_project_that_gives_no_contract_is_not_exported_as_one(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    configuration = (project / "project.yml").read_text(encoding="utf-8")
+    without = re.sub(r"(?m)^contract:\n(  .*\n)+", "", configuration)
+    assert without != configuration, "the example project gives a contract"
+    (project / "project.yml").write_text(without, encoding="utf-8")
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "odcs")
+    assert command_line(main, *arguments) == 1
+    assert not (project / "simulation" / "export").exists()

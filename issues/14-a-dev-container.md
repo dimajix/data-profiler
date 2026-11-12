@@ -78,3 +78,7 @@ As decided with the maintainer:
   As the maintainer asked then, Ollama runs from its image for AMD GPUs, `0.40.13-rocm`, of 1.45 GB
   against 3.39 GB of the one with the libraries for NVIDIA, as Ollama falls back to the CPU with
   either; that image is for amd64 alone, so that the simulation environment keeps the other.
+
+- **2026-11-12** — The stage `report` is now the stage `export`
+  ([57](57-export-as-open-data-contract.md)); where this issue names `report`, the command is
+  `export`.

@@ -25,7 +25,7 @@ open="$dir/OPEN.md"
 awk -v index_out="$index.tmp" -v open_out="$open.tmp" '
 BEGIN {
     # The areas, in the order of their sections.
-    areas = split("Profile|Scan|Relate|Detection|Describe|Report|Command line|Simulation|" \
+    areas = split("Profile|Scan|Relate|Detection|Describe|Export|Command line|Simulation|" \
         "Architecture|Tooling and process", area, "|")
     for (i = 1; i <= areas; i++) known_area[area[i]] = 1
     split("open|in progress|done|rejected", list, "|"); for (i in list) known_status[list[i]] = 1

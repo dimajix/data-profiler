@@ -1,11 +1,19 @@
 # The example project: the tables of the example CRM, profiled in the simulation environment.
-format: "4.1"
+format: "4.2"
 # The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
 # The character that separates the values of a list in a text, the same in all tables of the CRM.
 list_separator: ";"
 # The language model of Ollama the names are described by.
 llm: qwen3.5:2b
+# What the project gives of its data contract, which the database does not tell: its identifier,
+# the same from one export to the next, and its version, kept by hand, as text.
+contract:
+  id: c2040b47-cc3c-4484-b96c-cd37e412ad78
+  version: "1.0.0"
+  name: CRM sales
+  domain: sales
+  tenant: wholesale
 # The environments, each by the URL of its schema, its user and its password; its results are kept
 # in a directory named after it, here `simulation/`.
 environments:

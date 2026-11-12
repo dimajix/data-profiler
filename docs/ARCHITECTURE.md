@@ -35,10 +35,10 @@ environment.
     results, which never leaves the machine; the samples and the enumerations of tables as
     Parquet.
 *   **`data_profiler.project`** - the project: its configuration `project.yml` - the tables to
-    profile, the semantic types of its own, the language model, and the environments, each by its
-    URL, its user and its password, the password given by a variable -, its variables in `.env`,
-    which complete those of the process, its overrides in `overrides.yml` and `overrides/`, and the
-    directories of the results of each environment.
+    profile, the semantic types of its own, the language model, what it gives of its data contract,
+    and the environments, each by its URL, its user and its password, the password given by a
+    variable -, its variables in `.env`, which complete those of the process, its overrides in
+    `overrides.yml` and `overrides/`, and the directories of the results of each environment.
 *   **`data_profiler.documents`** - documents: the YAML files a person reads and writes, those of
     the profile and the configuration of a project among them, each the fields of one class with
     the version of its format, of a major and a minor part, so that a document of an older minor
@@ -55,7 +55,9 @@ environment.
     reached by HTTPS as a user with a password, both given apart from the URL; certificates and
     proxies come from the variables of the process. A source `unnested` reads one of its tables as
     a row of each value of the lists of a column, so that what counts a column counts those values
-    alike.
+    alike. Where a schema is reached and its dialect, `locate` and `dialect` tell of a URL without
+    connecting, for the data contract, which names its server and the logical types of its columns
+    by the dialect.
 *   **`data_profiler.values`** - values of the database, as the tool takes them: a count as a
     number, any value as text, as the profile holds it.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
@@ -112,13 +114,20 @@ environment.
     into their terms, by a step of its own without the language model, and read - by the one
     candidate of each term, else by the language model -; and the glossary's concepts and the
     columns' descriptions, proposed by the language model, asked by prompts rendered from Jinja2
-    templates in `data_profiler/templates/prompts/`.
+    files in `data_profiler/jinja/prompts/`.
 *   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
     proposes, and the answers written to the overrides.
-*   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
-    its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
+*   **`data_profiler.export`** - the stage `export`: the `Template`, a form the profile is
+    exported in, the overrides laid over it, into a directory of its own; a template gives its
+    files, and `Template.write` lays the overrides over the profile for it and writes them.
+*   **`data_profiler.report`** - the report, `Report`, the template `html` of the stage `export`:
+    the profile rendered as one HTML document, its styles inside and no script, from the Jinja2
+    files in `data_profiler/jinja/export/html/`.
+*   **`data_profiler.contract`** - the data contract, `Contract`, the template `odcs` of the stage
+    `export`: the profile as one document of the Open Data Contract Standard, an inventory of what
+    was observed, written as rules that experts make binding.
 *   **`data_profiler.diagram`** - the layout of a table and the tables connected to it, in pixels,
-    which the template of `report` draws.
+    which the report draws.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
     environment of a project through `commands`.
 *   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
@@ -134,12 +143,14 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
-`disclosure`, `values` and `workspace`, `report` the profile and `overrides`, which it lays over it,
-and `glossary` and `diagram` for its names and diagrams, and `adopt` reads the profile and writes
-through `overrides`; `cli` runs the stages, gives the overrides to each but `adopt`, which reads
-them anew for each concept, and the language model, made by `llm` as the project names it, to
-`describe`, unless it is to ask none. The semantic types of a project and its separator of lists
-reach `scan` from `project`, and every stage after it from the profile.
+`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which `Template.write`
+lays over it for every template - `report` with `glossary` and `diagram` for its names and diagrams,
+`contract` with `glossary` for its business names and `source` for its server and its types -, and
+`adopt` reads the profile and writes through `overrides`; `cli` runs the stages, gives the overrides
+to each but `adopt`, which reads them anew for each concept, and the language model, made by `llm`
+as the project names it, to `describe`, unless it is to ask none, and to `export` the template
+given, made of the project and the environment. The semantic types of a project and its separator of
+lists reach `scan` from `project`, and every stage after it from the profile.
 
 ## The domain
 
@@ -149,17 +160,23 @@ reach `scan` from `project`, and every stage after it from the profile.
     of each environment; described in [PROJECT.md](PROJECT.md).
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL, a user and a password of its own; its
-    results, a profile, a workspace and a report, are kept in a directory of its own, named after
-    it.
-*   **Stage** - one of `scan`, `relate`, `describe`, `adopt` and `report`: a step of the work that
+    results, a profile, a workspace and what each template exports, are kept in a directory of its
+    own, named after it.
+*   **Stage** - one of `scan`, `relate`, `describe`, `adopt` and `export`: a step of the work that
     can be run on its own, from what the stages before it left. `adopt` alone writes the overrides,
     as a person answers, and never the profile.
+*   **Template** - a form in which `export` writes the profile, with the overrides laid over it,
+    into a directory of the environment named after it, `export/<template>/`, chosen by its name,
+    `--template`: `html`, the report, one HTML document a person reads, where none is given, and
+    `odcs`, the data contract, one document of the Open Data Contract Standard that catalogs and
+    tools read, of what the project gives of it and of the server of the environment.
 *   **Run** - the counting of the selected tables of an environment, which may take several
     scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
     interrupted -, and it finishes once every selected table is counted. It is told apart by when
     it started, which each table it counted names.
-*   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - the SQL of
-    one kind of database.
+*   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - one kind of
+    database: its SQL, and what the types of its columns are, which the data contract names by the
+    types of ODCS.
 *   **Profile** - the documents describing the tables of one schema of a database: its tables and
     columns, what was found about them, the glossary, and the semantic types of its project; a
     directory of a document of the schema and a document of each table, so that a person reads a
@@ -354,12 +371,23 @@ reach `scan` from `project`, and every stage after it from the profile.
     field, else to the first that names the concept, a new concept to `overrides/glossary.yml`,
     keeping the comments and the order of the file. The result is the overrides; it is the one stage
     that writes them, and it does so only as a person answers.
-5.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
-    each table hold, its keys, its references and reference candidates and the references to it,
-    with a diagram of the tables connected to it, its column groups and column dependencies, the
-    harmonized names and readings of the tables and columns, the descriptions of the columns, the
-    entities of a table by the share of their rows each column is filled in, with the names and
-    descriptions given of them, and the concepts proposed told apart from those given.
+5.  `export` writes the profile, with the overrides laid over it, in the template given, into its
+    directory `export/<template>/` of the environment; the template `html`, where none is given,
+    renders it as its report: what the database and each table hold, its keys, its references and
+    reference candidates and the references to it, with a diagram of the tables connected to it, its
+    column groups and column dependencies, the harmonized names and readings of the tables and
+    columns, the descriptions of the columns, the entities of a table by the share of their rows
+    each column is filled in, with the names and descriptions given of them, and the concepts
+    proposed told apart from those given. The template `odcs` writes it as a data contract of ODCS,
+    a draft of what the project gives of it - its identifier, version, name, domain and tenant -,
+    the description of the database given as its purpose, and the server of the environment: an
+    inventory of what was observed, which experts are to make binding, each table and column under
+    its original name, its harmonized name as its business name, with its types, and what holds of
+    every row of the profile as a rule - a column of no nulls is required, and of no sentinels where
+    none were found, a key is unique, the values of an enumeration and the lengths and the range of
+    the values are their bounds, a semantic type every value matches gives its pattern, each taking
+    the sentinels found as values -, the references as relationships; nothing counted, no number of
+    rows, no share, no coverage.
 
 ## Principles
 
@@ -404,7 +432,7 @@ The design repeats a few decisions; new code follows them.
     collision.
 *   **The stages share nothing but the profile and the workspace**, besides the overrides, which a
     person keeps and `adopt` writes only as a person answers. Each stage can be run again on its
-    own: `describe` with another model without querying the database, `report` without either.
+    own: `describe` with another model without querying the database, `export` without either.
 
 ## The repository
 

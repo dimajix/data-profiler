@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Epic:** [02](02-first-version-epic.md)
 **Summary:** What the tool found can only be read as YAML: there is no report a person reads.
 

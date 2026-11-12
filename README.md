@@ -33,7 +33,8 @@ It works in five stages, each of which can be run again on its own:
   same concept reads the same in every table, whether written as its word or an abbreviation.
 - **adopt** asks a person at the terminal about each concept `describe` proposed, and takes what is
   agreed to into the overrides of the project, which hold for all its environments.
-- **report** renders the result as HTML.
+- **export** renders the result as an HTML report, or as a data contract of the Open Data Contract
+  Standard (ODCS), the basis of a contract experts make binding.
 
 The result is a profile, a directory of YAML files - one for the schema and one for each table -
 that holds no values of the columns found sensitive - personal or payment card data - and can be
@@ -203,13 +204,21 @@ which asks about each thing a concept adds, without the database, and writes eac
 a report by
 
 ```bash
-uv run data-profiler report simulation --project examples/crm
+uv run data-profiler export simulation --project examples/crm
 ```
 
-which lays the overrides of the project over it and writes `examples/crm/simulation/report.html`:
-one file, which a browser shows and prints on its own, without the database. Its harmonized names
-are composed from the readings, so that a profile not described has none but those the overrides
-give.
+which lays the overrides of the project over it and writes, in the template `html` - the one
+`--template` gives where it is not given -, `examples/crm/simulation/export/html/report.html`: one
+file, which a browser shows and prints on its own, without the database. Its harmonized names are
+composed from the readings, so that a profile not described has none but those the overrides give.
+The profile is exported as a data contract of ODCS by
+
+```bash
+uv run data-profiler export simulation --project examples/crm --template odcs
+```
+
+which writes `examples/crm/simulation/export/odcs/contract.odcs.yaml`, of what the project gives of
+the contract in `project.yml`, as [docs/PROJECT.md](docs/PROJECT.md) says.
 
 ### Running Tests
 

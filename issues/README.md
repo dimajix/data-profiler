@@ -46,7 +46,7 @@ lines, each on a line of its own:
   - **Relate** - the stage `relate`: the references between the tables.
   - **Detection** - semantic types, their sensitivity, the detectors.
   - **Describe** - the stage `describe`: the glossary, the names, the language model.
-  - **Report** - the stage `report`.
+  - **Export** - the stage `export`, and what its templates write: the report.
   - **Command line** - `cli`: arguments, `.env`, the log, what users see of an error.
   - **Simulation** - the simulation environment and the test data generator.
   - **Architecture** - decisions across parts: their cuts and principles.

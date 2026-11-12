@@ -17,13 +17,13 @@ keys, `determining_none` to the column dependencies, and `discriminator` to the 
 refusing a primary key or a discriminator that cannot be one, before the module `disclosure` decides
 what of its values the profile holds, so that the profile holds no values of a column marked
 sensitive. `relate` takes the references given, by `Overrides.references`, refused before it queries
-anything. The stages that read the profile - `describe` and `report` - lay the overrides over it
+anything. The stages that read the profile - `describe` and `export` - lay the overrides over it
 whole, by `Overrides.laid_over`: the concepts given before those proposed, the references given
 refused as `relate` refuses them, then each table laid over as `scan` lays it, then read, named and
 described as given, by `TableOverride.described_laid_over`, then disclosed again, so that a mark
 given after a scan withholds the values without a scan again; `Overrides.warn_unused` warns of what
 is given that the profile does not take. `describe` shows the language model the description given
-of the database, `Overrides.description`, and `report` tells the concepts given apart from those
+of the database, `Overrides.description`, and `export` tells the concepts given apart from those
 proposed by `Overrides.glossary`. `adopt` writes to the overrides what a person takes over of the
 concepts proposed: `Overrides.adoptable` says what a concept proposed adds, and `Overrides.amend`
 sets it in the file it belongs to.

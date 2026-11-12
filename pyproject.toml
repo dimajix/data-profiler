@@ -25,11 +25,13 @@ data-profiler = "data_profiler.cli:main"
 
 [dependency-groups]
 dev = [
+    "jsonschema>=4.26.0",
     "mypy>=2.4.1",
     "pyarrow-stubs>=20.0.0.20260819",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
     "simulation",
+    "types-jsonschema>=4.26.0.20261006",
     "types-pyyaml>=6.0.12.20260906",
     "types-requests>=2.33.0.20261006",
 ]

@@ -3,11 +3,12 @@
 A project is a directory. Its configuration, `project.yml`, is a document that names the tables to
 profile, for the whole project, the semantic types of its own its columns are checked for beside
 those of the tool, the separator of the values of a list in a text, the same in all tables, the
-language model its names are described by, and the environments the database is profiled in - dev,
-test, prod -, each by the URL of its schema, and the user and the password it is reached as; beside
-it, the overrides - `overrides.yml`, the files of the directory `overrides/`, or both - give by hand
-what the profiles of all environments take as given. Each environment keeps its results in a
-directory of its own, named after it: its profile, its workspace and its report.
+language model its names are described by, what it gives of its data contract, and the environments
+the database is profiled in - dev, test, prod -, each by the URL of its schema, and the user and the
+password it is reached as; beside it, the overrides - `overrides.yml`, the files of the directory
+`overrides/`, or both - give by hand what the profiles of all environments take as given. Each
+environment keeps its results in a directory of its own, named after it: its profile, its workspace
+and what each template exports.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
@@ -68,11 +69,30 @@ class _Settings:
     password: str
 
 
+@dataclass(frozen=True)
+class ContractSettings:
+    """What a project gives of its data contract, which the database does not tell.
+
+    Attributes:
+        id: The identifier of the contract, stable from one export to the next, such as a UUID.
+        version: The version of the contract, kept by hand, as text: `"1.0.0"`.
+        name: The name of the contract, or None where it is not given.
+        domain: The domain of the business its data belong to, or None where it is not given.
+        tenant: The tenant its data belong to, or None where it is not given.
+    """
+
+    id: str
+    version: str
+    name: str | None = None
+    domain: str | None = None
+    tenant: str | None = None
+
+
 class Environment:
     """An environment of a project: the schema it profiles, and the directory of its results.
 
     Its URL, user and password are resolved when they are asked for, so that a stage that does not
-    reach the database, such as `report`, needs none of them.
+    reach the database, such as `export`, needs none of them.
 
     Attributes:
         name: The name of the environment, such as `dev` or `prod`.
@@ -126,10 +146,9 @@ class Environment:
         """The directory of the workspace of the environment."""
         return self.directory / "workspace"
 
-    @property
-    def report(self) -> Path:
-        """The file of the report of the environment."""
-        return self.directory / "report.html"
+    def export(self, name: str) -> Path:
+        """The directory of what the template of the name `name` exports of the environment."""
+        return self.directory / "export" / name
 
     def _resolved(self, setting: str, value: str) -> str:
         """`value` of `setting`, or the variable it names."""
@@ -162,6 +181,9 @@ class _Configuration:
         list_separator: The character that separates the values of a list in a text, the same in
             all tables of the project - one character, no letter, digit, `-`, `+` or `_` -, or None
             where it names none, so that no column is taken for one of lists.
+        contract: What the project gives of its data contract, which the database does not tell,
+            or None where it gives none, so that the profile cannot be exported by the template
+            `odcs`.
     """
 
     tables: str | tuple[str, ...]
@@ -171,9 +193,10 @@ class _Configuration:
     # and checks them the same way.
     types: SemanticTypes = ()
     list_separator: ListSeparator | None = None
+    contract: ContractSettings | None = None
 
 
-FORMAT: Final = Format(_Configuration, Version(4, 1))
+FORMAT: Final = Format(_Configuration, Version(4, 2))
 """The format of the configuration of a project, its version raised as `documents` says."""
 
 
@@ -194,6 +217,7 @@ class Project:
         types: tuple[SemanticType, ...],
         list_separator: str | None,
         llm: str | None,
+        contract: ContractSettings | None,
         environments: Mapping[str, _Settings],
         variables: Mapping[str, str],
     ) -> None:
@@ -203,6 +227,7 @@ class Project:
         self.list_separator = list_separator
         self._file = file
         self._llm = llm
+        self._contract = contract
         self._environments = environments
         self._variables = variables
 
@@ -263,6 +288,7 @@ class Project:
             configuration.types,
             configuration.list_separator,
             configuration.llm,
+            configuration.contract,
             configuration.environments,
             variables,
         )
@@ -279,6 +305,17 @@ class Project:
                 f"{self._file} names no language model, llm, to describe the names by"
             )
         return self._llm
+
+    @property
+    def contract(self) -> ContractSettings:
+        """What the project gives of its data contract, which the database does not tell.
+
+        Raises:
+            ProjectError: The configuration gives no contract.
+        """
+        if self._contract is None:
+            raise ProjectError(f"{self._file} gives no contract, to export the profile as one")
+        return self._contract
 
     @property
     def ollama(self) -> str:
