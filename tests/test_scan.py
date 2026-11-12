@@ -302,6 +302,37 @@ def test_a_profile_scanned_with_other_types_keeps_its_tables_until_they_are_coun
     assert (items.matches, items.values) == ((), ()), "nor those of the values of its lists"
 
 
+def test_a_column_of_lists_holds_the_values_of_its_lists_not_those_of_its_texts(
+    source: Source, tmp_path: Path
+) -> None:
+    column = _scanned(source, "prod", tmp_path).table("prod").column("sale_curr_cds")
+    assert column.items is not None
+    assert column.items.values, "the values of its lists, an enumeration"
+    assert column.values == (), "its texts, lists, are none, though few and repeated"
+
+
+def test_a_column_of_few_dates_written_as_text_is_no_enumeration(
+    source: Source, tmp_path: Path
+) -> None:
+    column = _scanned(source, "cust_addr", tmp_path).table("cust_addr").column("chk_dt")
+    assert [match.type for match in column.matches] == [DATE], "recognised before it is counted"
+    assert column.values == (), "of a semantic type whose values no closed list holds"
+
+
+def test_the_enumerations_given_are_taken_and_held_as_given(source: Source, tmp_path: Path) -> None:
+    columns = {
+        "prod_cd": ColumnOverride(enumeration=True),
+        "sale_curr_cds": ColumnOverride(enumeration=False),
+    }
+    overrides = Overrides(tables={"prod": TableOverride(columns=columns)})
+    prod = _scanned(source, "prod", tmp_path, overrides=overrides).table("prod")
+    codes, currencies = prod.column("prod_cd"), prod.column("sale_curr_cds")
+    assert len(codes.values) == 350, "an enumeration, though each value is in one row alone"
+    assert currencies.items is not None
+    assert currencies.items.values == (), "the values of its lists are none"
+    assert (codes.enumeration, currencies.enumeration) == (True, False), "held as given"
+
+
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
     source: Source, tmp_path: Path
 ) -> None:
@@ -372,6 +403,25 @@ def test_a_run_resumed_counts_a_table_anew_whose_sentinels_the_overrides_give_ot
     assert table.rows != -1, "counted anew"
     (column,) = [column for column in table.columns if column.name == "dlvr_pst_cd"]
     assert (column.sentinels, column.statistics.sentinels) == ((), ())
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_enumerations_the_overrides_give_otherwise(
+    source: Source, tmp_path: Path
+) -> None:
+    _failing_at(tmp_path, "prod")
+    with pytest.raises(WorkspaceError):
+        _scanned(source, "ord|prod", tmp_path)
+    failed = Profile.read(tmp_path / "profile")
+    (ord,) = failed.tables
+    # Its rows told apart from those a scan counts, to see that it is counted again.
+    failed.updated(replace(ord, rows=-1)).write(tmp_path / "profile")
+    (tmp_path / "workspace" / "samples" / "prod.parquet").rmdir()
+    given = TableOverride(columns={"ord_sts_cd": ColumnOverride(enumeration=False)})
+    resumed = _scanned(source, "ord|prod", tmp_path, overrides=Overrides(tables={"ord": given}))
+    table, _ = resumed.tables
+    assert table.rows != -1, "counted anew"
+    column = table.column("ord_sts_cd")
+    assert (column.enumeration, column.values) == (False, ())
 
 
 def test_a_run_resumed_counts_a_table_anew_whose_lists_are_of_another_separator(

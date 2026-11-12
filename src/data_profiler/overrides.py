@@ -11,10 +11,12 @@ stages take it.
 `agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels` go
 to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
 have, a primary key that cannot be one, and sentinels the table was not counted with; its
-`list_separator`, in place of that of the project, to the columns of lists, `primary_key` to the
-keys, `determining_none` to the column dependencies, and `discriminator` to the entities; and
-`TableOverride.laid_over` marks its columns and drops the dependencies of a column determining none,
-refusing a primary key or a discriminator that cannot be one, before the module `disclosure` decides
+`list_separator`, in place of that of the project, to the columns of lists, `enumerations` to the
+enumerations of its columns and of the values of their lists, `primary_key` to the keys,
+`determining_none` to the column dependencies, and `discriminator` to the entities; and
+`TableOverride.laid_over` marks its columns, gives them the enumerations given, so that the profile
+holds them as `scan` counted them, and drops the dependencies of a column determining none, refusing
+a primary key or a discriminator that cannot be one, before the module `disclosure` decides
 what of its values the profile holds, so that the profile holds no values of a column marked
 sensitive. `relate` takes the references given, by `Overrides.references`, refused before it queries
 anything. The stages that read the profile - `describe` and `export` - lay the overrides over it
@@ -92,6 +94,10 @@ class ColumnOverride:
         sensitivity: The sensitivity of the column, or None where it is not given.
         sentinels: The values that stand for no value in the column, in place of those of the
             tool, none where empty; None where they are not given.
+        enumeration: True where the column is an enumeration - of the values of its lists, of a
+            column of lists -, of at most as many values as the tool counts of one, whatever its
+            type and its semantic types, False where it is none, whatever is found; None where it
+            is not given.
         reading: The word of the concept each term of its name stands for, in their order, or
             None where it is not given.
         name: Its harmonized name, in snake_case, in place of the one composed from its reading,
@@ -106,6 +112,7 @@ class ColumnOverride:
 
     sensitivity: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
+    enumeration: bool | None = None
     reading: tuple[str, ...] | None = None
     name: str | None = None
     description: str | None = None
@@ -190,6 +197,15 @@ class TableOverride:
         }
 
     @property
+    def enumerations(self) -> dict[str, bool]:
+        """Whether each column is an enumeration, as given, by its name, of those it is given of."""
+        return {
+            name: column.enumeration
+            for name, column in self.columns.items()
+            if column.enumeration is not None
+        }
+
+    @property
     def determining_none(self) -> frozenset[str]:
         """The columns given as determining no other column, by their names."""
         return frozenset(
@@ -202,24 +218,33 @@ class TableOverride:
         return self.discriminator if isinstance(self.discriminator, DiscriminatorOverride) else None
 
     def laid_over(self, table: Table) -> Table:
-        """`table`, its columns marked as given, without the dependencies of those given as none.
+        """`table` with its columns marked, enumerated and determining as given.
 
         Args:
             table: The table.
 
         Returns:
             The table, its columns marked with the sensitivity given of each, and only so, their
-            values as they are, for the module `disclosure` to decide on; without the column
-            dependencies of which a determinant is given as determining no other column.
+            values as they are, for the module `disclosure` to decide on, and with the enumeration
+            given of each, and only so; without the column dependencies of which a determinant is
+            given as determining no other column.
 
         Raises:
             OverridesError: A column is named that the table does not have, or a primary key is
                 given of no columns or of a column twice, or a discriminator of a column they mark
-                of a sensitivity, or of entities of no values, or of a value twice.
+                of a sensitivity or give as no enumeration, or of entities of no values, or of a
+                value twice.
         """
         self._refuse_missing(table)
         self._refuse_primary_key(table)
-        columns = (replace(column, marked=self._marked(column.name)) for column in table.columns)
+        columns = (
+            replace(
+                column,
+                marked=self._given(column.name).sensitivity,
+                enumeration=self._given(column.name).enumeration,
+            )
+            for column in table.columns
+        )
         none = self.determining_none
         dependencies = (
             found for found in table.column_dependencies if none.isdisjoint(found.determinants)
@@ -274,7 +299,7 @@ class TableOverride:
             )
         columns = []
         for column in table.columns:
-            override = self.columns.get(column.name, ColumnOverride())
+            override = self._given(column.name)
             columns.append(
                 replace(
                     column,
@@ -309,10 +334,10 @@ class TableOverride:
             the sentinels given of it, the table has the primary key given, or one chosen where none
             is given, and was discriminated as given: its discriminator counted with the values
             given of its entities, none where False is given, and one found or none where nothing is
-            given; False where it would mark its columns otherwise, or the table holds a column
-            dependency of a column given as determining none, a column was counted with others, the
-            table has another primary key, was discriminated otherwise, or lacks a
-            column that is named.
+            given; False where it would mark its columns otherwise or give them other enumerations,
+            or the table holds a column dependency of a column given as determining none, a column
+            was counted with other sentinels, the table has another primary key, was discriminated
+            otherwise, or lacks a column that is named.
 
         Raises:
             OverridesError: The primary key or the discriminator given is refused, as
@@ -456,8 +481,9 @@ class TableOverride:
         overrides are of all environments.
 
         Raises:
-            OverridesError: The overrides mark its column of a sensitivity, or an entity is given
-                of no values, or a value is given of two entities.
+            OverridesError: The overrides mark its column of a sensitivity or give it as no
+                enumeration, or an entity is given of no values, or a value is given of two
+                entities.
         """
         given = self._discriminator
         if given is None:
@@ -466,6 +492,8 @@ class TableOverride:
         where = f"the overrides give the discriminator of {table.name} as {column.name}"
         if column.marked is not None and column.sensitive:
             raise OverridesError(f"{where}, a column they mark of a sensitivity")
+        if column.enumeration is False:
+            raise OverridesError(f"{where}, a column they give as no enumeration")
         empty = [name for name, entity in given.entities.items() if not entity.values]
         if empty:
             raise OverridesError(f"{where}, and entities of no values: {', '.join(empty)}")
@@ -492,10 +520,9 @@ class TableOverride:
             )
         return replace(discriminator, entities=tuple(entities))
 
-    def _marked(self, name: str) -> Sensitivity | None:
-        """The sensitivity given of the column `name`, or None where none is."""
-        given = self.columns.get(name)
-        return None if given is None else given.sensitivity
+    def _given(self, name: str) -> ColumnOverride:
+        """What is given of the column `name`, nothing where it is not named."""
+        return self.columns.get(name, ColumnOverride())
 
 
 @dataclass(frozen=True)
@@ -679,8 +706,8 @@ class Overrides:
             place of those proposed, and of it and its tables in place of what they hold, the
             names and descriptions they give of the entities of a discriminator as given, its
             columns marked with the sensitivity they give, and only so, and without the values of
-            those marked sensitive, and its tables without the column dependencies of a column
-            they give as determining none.
+            those marked sensitive, with the enumeration they give of each, and only so, and its
+            tables without the column dependencies of a column they give as determining none.
 
         Raises:
             OverridesError: The overrides name a table or column the profile does not have, or
@@ -781,5 +808,5 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     return concepts
 
 
-FORMAT: Final = Format(Overrides, Version(7, 6))
+FORMAT: Final = Format(Overrides, Version(7, 7))
 """The format of the overrides, its version raised as `documents` says."""
