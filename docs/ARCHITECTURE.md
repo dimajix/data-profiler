@@ -112,14 +112,14 @@ environment.
     into their terms, by a step of its own without the language model, and read - by the one
     candidate of each term, else by the language model -; and the glossary's concepts and the
     columns' descriptions, proposed by the language model, asked by prompts rendered from Jinja2
-    templates in `data_profiler/templates/prompts/`.
+    files in `data_profiler/jinja/prompts/`.
 *   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
     proposes, and the answers written to the overrides.
 *   **`data_profiler.export`** - the stage `export`: the `Template`, a form the profile is
     exported in, the overrides laid over it, into a directory of its own.
 *   **`data_profiler.report`** - the report, `Report`, the template `html` of the stage `export`:
     the profile rendered as one HTML document, its styles inside and no script, from the Jinja2
-    files in `data_profiler/templates/export/html/`.
+    files in `data_profiler/jinja/export/html/`.
 *   **`data_profiler.diagram`** - the layout of a table and the tables connected to it, in pixels,
     which the report draws.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an

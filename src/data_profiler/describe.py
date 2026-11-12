@@ -35,12 +35,12 @@ split and read by the candidates of their terms alone, but no concept is propose
 and no column described, while what a model filled before is kept; the profile is written once, at
 the end, as nothing is asked that a run interrupted would lose.
 
-The questions to the model are Jinja2 templates in `data_profiler/templates/prompts/`, one of each,
-holding as much of it as they can - its text, its conditions and its loops -, and what they share,
-how a column is shown, a macro of its own. The code gives a template the objects it shows, and the
-values of a sample only as the module `disclosure` lets them be shown, never the sample itself, and
-renders it in a sandbox that refuses attributes of an underscore, so that a template changed shows
-no value withheld.
+The prompts to the model are rendered from Jinja2 files in `data_profiler/jinja/prompts/`, one of
+each question, holding as much of it as they can - its text, its conditions and its loops -, and
+what they share, how a column is shown, a macro of its own. The code gives a file the objects it
+shows, and the values of a sample only as the module `disclosure` lets them be shown, never the
+sample itself, and renders it in a sandbox that refuses attributes of an underscore, so that a file
+changed shows no value withheld.
 """
 
 import logging
@@ -100,11 +100,11 @@ _DESCRIPTION: Final = TypeAdapter(_Description)
 # words may be chosen, the form of each question says.
 _CHOICES: Final = TypeAdapter(dict[str, str])
 
-# The prompts, each a template of its own: rendered as text, nothing escaped, as a prompt is no
-# HTML, and no name left undefined; in a sandbox, which refuses attributes of an underscore, so that
-# no template reaches a sample past `_Asking._values`.
+# The Jinja2 files of the prompts, one of each question: rendered as text, nothing escaped, as a
+# prompt is no HTML, and no name left undefined; in a sandbox, which refuses attributes of an
+# underscore, so that no file reaches a sample past `_Asking._values`.
 _PROMPTS: Final = SandboxedEnvironment(
-    loader=PackageLoader("data_profiler", "templates/prompts"),
+    loader=PackageLoader("data_profiler", "jinja/prompts"),
     autoescape=False,
     undefined=StrictUndefined,
     trim_blocks=True,
@@ -409,7 +409,7 @@ class _Asking:
         return reading
 
     def _prompt(self, name: str, **shown: object) -> str:
-        """The prompt of the template `name`, of what is `shown`, the database and the samples."""
+        """The prompt of the Jinja2 file `name`, of what is `shown`, the database and samples."""
         return _PROMPTS.get_template(name).render(
             **shown,
             # Of the overrides, as the profile read holds none, nor the profile laid over another.

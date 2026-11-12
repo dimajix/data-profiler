@@ -225,3 +225,11 @@ the profile, making the directory, writing each file whole and translating an `O
 the overrides laid over it, and the overrides. And the word *template* keeps one meaning: the Jinja2
 files of the prompts of `describe` and of the report, the comments that call them templates, and
 the package directory `templates/` are named otherwise, in this issue, by a step of its own.
+
+2026-11-12: The step of the findings above that renames the Jinja2 files agreed and done: the word
+*template* keeps the meaning of the stage `export`, and *prompt* that of the text the language
+model is asked. The Jinja2 files are called so, and the package directory `templates/` is `jinja/`,
+with the files of the prompts of `describe` in `jinja/prompts/` and those of the template `html` in
+`jinja/export/html/`, not in `templates/html/` as the considerations above say; a template that
+renders no Jinja2 file, as `odcs` is to build a dictionary, has none. The step of `Template.write`
+follows, then the fields of the contract and the template `odcs`.

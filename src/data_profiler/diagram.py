@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from typing import Final
 
 # The tables shown on one side of a diagram, before the number of the others: the tables of the
-# report list every reference. They are cut here, not by the template as the values of a column are,
-# as the width of a side depends on what the number says.
+# report list every reference. They are cut here, not by `report.html` as the values of a column
+# are, as the width of a side depends on what the number says.
 _BOXES: Final = 20
 
 # The measures of a diagram, in pixels. A name is in a font of fixed width, 12 pixels high, whose

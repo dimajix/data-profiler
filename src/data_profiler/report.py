@@ -46,7 +46,7 @@ _PLACES: Final = 8
 _UUIDS: Final = 5
 
 _JINJA: Final = Environment(
-    loader=PackageLoader("data_profiler", "templates/export/html"),
+    loader=PackageLoader("data_profiler", "jinja/export/html"),
     autoescape=True,
     undefined=StrictUndefined,
     trim_blocks=True,
