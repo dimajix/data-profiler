@@ -49,7 +49,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 5)
+VERSION: Final = Version(14, 6)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -322,6 +322,10 @@ class Column:
         sentinels: The sentinels given by hand, by an override, as values, in place of those of
             the tool, that the column was counted with: of them those its type can hold, as
             `scan` refuses the others; None where none are given.
+        enumeration: Whether the column is an enumeration, given by hand, by an override - of the
+            values of its lists, of a column of lists -, in a profile written as `scan` counted
+            it: True where it is one, of at most as many values as the tool counts of one,
+            whatever is found, False where it is none; None where it is not given.
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
@@ -340,6 +344,7 @@ class Column:
     values: tuple[Value, ...] = ()
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
+    enumeration: bool | None = None
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
     description: str | None = None

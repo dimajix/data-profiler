@@ -4,15 +4,15 @@ Each table is counted by the module `statistics`, by one query, its columns with
 overrides of the project give of them, or else those of the tool, and a sample of it is taken by the
 module `sampling`, into the workspace. The semantic types of its columns, those of the tool and
 those of the project, are recognised in the sample, and verified on the whole table, by the module
-`matching`; the values of its enumerations are counted after them, by the module `enumerations`,
-into the workspace as well; its keys are indicated by the statistics and the sample, and verified on
-the whole table, by the module `keys`; the columns filled together are found in the sample, by the
-module `grouping`, and the columns whose values follow from another are found in the sample and
-verified on the whole table, by the module `dependencies`, of no determinant the overrides give as
-determining none. Its columns of lists are found in the sample, by the module `lists`, of the
-separator the overrides give of the table, else that of the project, which counts the values of
-their lists as well. The overrides of the project mark its columns as they give, and which values
-of the database go into the profile - the ranges and enumerations of the columns of no
+`matching`; the values of its enumerations are counted after them, by the module `enumerations`, as
+the overrides give them, into the workspace as well; its keys are indicated by the statistics and
+the sample, and verified on the whole table, by the module `keys`; the columns filled together are
+found in the sample, by the module `grouping`, and the columns whose values follow from another are
+found in the sample and verified on the whole table, by the module `dependencies`, of no determinant
+the overrides give as determining none. Its columns of lists are found in the sample, by the module
+`lists`, of the separator the overrides give of the table, else that of the project, which counts
+the values of their lists as well. The overrides of the project mark its columns as they give, and
+which values of the database go into the profile - the ranges and enumerations of the columns of no
 sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
 enumerations the profile holds, of the values of columns and of the lists of a column, the module
 `entities` finds the discriminator whose values tell the entities of the rows apart, by queries of
@@ -85,8 +85,8 @@ def scan(
         list_separator: The separator of the values of a list in a text, of the project, or None
             where it gives none.
         overrides: The overrides of the project, which mark the columns of the tables and give
-            their sentinels, primary keys, columns determining none, discriminators and
-            separators of lists.
+            their sentinels and enumerations, primary keys, columns determining none,
+            discriminators and separators of lists.
         directory: The directory of the profile, updated where there is one.
 
     Raises:
@@ -128,9 +128,9 @@ def scan(
         workspace.write_sample(name, sample)
         listing = listed(dialect, table, sample, separator)
         verified = verify(source, recognise(dialect, listing, sample, types))
-        enumerations = values(source, verified)
+        enumerations = values(source, verified, given[name].enumerations)
         workspace.write_enumerations(name, enumerations)
-        itemized = itemize(source, verified, sample, types)
+        itemized = itemize(source, verified, sample, types, given[name].enumerations)
         keyed = identify(source, itemized, sample, given[name].primary_key)
         grouped = group(dialect, keyed, sample)
         found = determine(source, grouped, sample, given[name].determining_none)

@@ -13,12 +13,13 @@ The values of the lists of a column are counted as the values of a column are, b
 count those, of a source that reads the table as a row of each value, `Source.unnested`: their
 statistics by `statistics`, their enumeration by `enumerations`, their semantic types recognised by
 `matching` in the texts of the sample split at the separator, and verified on that source, with the
-sentinels given of the column, else those of the tool. They are the items of the column; what of
-their values the profile holds, the module `disclosure` decides, as of the column.
+sentinels given of the column, else those of the tool; whether they are an enumeration, an override
+of the column gives, as of a column. They are the items of the column; what of their values the
+profile holds, the module `disclosure` decides, as of the column.
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
 from data_profiler.detect import SemanticType, is_list
@@ -85,7 +86,13 @@ def is_listed_with(table: Table, separator: str | None) -> bool:
     return all(column.list_separator in (None, separator) for column in table.columns)
 
 
-def itemize(source: Source, table: Table, sample: Sample, types: Sequence[SemanticType]) -> Table:
+def itemize(
+    source: Source,
+    table: Table,
+    sample: Sample,
+    types: Sequence[SemanticType],
+    enumerations: Mapping[str, bool],
+) -> Table:
     """`table`, each of its columns of lists with the values of its lists counted, its items.
 
     Args:
@@ -93,6 +100,8 @@ def itemize(source: Source, table: Table, sample: Sample, types: Sequence[Semant
         table: The table, its columns of lists with their separators.
         sample: The sample of the table, with the values of each of its columns.
         types: The semantic types of the project, recognised beside those of the tool.
+        enumerations: Whether the values of the lists of each column are an enumeration, given by
+            hand, by the name of the column, of those it is given of.
 
     Returns:
         The table, each column of lists with its items, every other as it is.
@@ -104,7 +113,9 @@ def itemize(source: Source, table: Table, sample: Sample, types: Sequence[Semant
     columns = tuple(
         column
         if column.list_separator is None
-        else _itemized(source, table.name, column, column.list_separator, sample, types)
+        else _itemized(
+            source, table.name, column, column.list_separator, sample, types, enumerations
+        )
         for column in table.columns
     )
     listed = sum(1 for column in columns if column.items is not None)
@@ -119,6 +130,7 @@ def _itemized(
     separator: str,
     sample: Sample,
     types: Sequence[SemanticType],
+    enumerations: Mapping[str, bool],
 ) -> Column:
     """`column` of lists of `separator`, of `table`, with the values of its lists, its items."""
     unnested = source.unnested(table, column.name, separator)
@@ -132,5 +144,5 @@ def _itemized(
     ]
     recognised = recognise(source.dialect, counted, Sample({column.name: split}), types)
     found = verify(unnested, recognised)
-    (item,) = valued(found, values(unnested, found)).columns
+    (item,) = valued(found, values(unnested, found, enumerations)).columns
     return replace(column, items=item.findings)

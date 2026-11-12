@@ -33,8 +33,8 @@ its sentinels are no values of it, and are there whatever its sensitivity.
 of the database, its tables and its entities, are laid over the profile by the stages that read it,
 and never written to it; their fields are none in a profile written. A description given of a column
 is laid over the same way, in place of the one proposed, which the profile keeps. What `scan` takes
-of them - the marks, the sentinels, the primary keys and the discriminators - it writes as what the
-table was counted with.
+of them - the marks, the sentinels, the enumerations, the primary keys and the discriminators - it
+writes as what the table was counted with.
 
 ## Which stage fills what
 
@@ -43,7 +43,7 @@ Every attribute of a profile is filled by one step, as the
 
 | Step | Fills |
 |---|---|
-| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, separator of lists and the values of its lists, values, mark and sentinels of each column, the last two as the overrides give them |
+| `scan` | the run and the semantic types of the profile; the rows, run, keys, primary key, column groups, column dependencies and discriminator of each table; the type, statistics, matches, separator of lists and the values of its lists, values, mark, sentinels and enumeration of each column, the last three as the overrides give them |
 | `relate` | the references and reference candidates of each table |
 | `describe`, splitting the names | the terms of the names of the tables and columns |
 | `describe`, proposing concepts | the glossary |
@@ -87,7 +87,7 @@ data are generated - written by hand, so that it holds no glossary, terms or des
 # numbers are numbered from one, sharing their values, but those of the products; contacts and
 # addresses have keys of UUIDs as well, of the type `uuid` and as text, which orders refer to.
 # It is loaded into the simulation environment by `uv run simulation load simulation/profiles/crm`.
-format: '14.5'
+format: '14.6'
 catalog: crm
 schema: sales
 ```
@@ -98,7 +98,7 @@ dependency:
 
 <!-- begin file: simulation/profiles/crm/tables/ord.yml -->
 ```yaml
-format: '14.5'
+format: '14.6'
 name: ord
 rows: 20000
 columns:
@@ -188,7 +188,7 @@ description names, each with its value; a list of classes as a list of maps.
 <!-- begin reference: profile.yml -->
 ### `profile.yml`
 
-The document begins with `format: "14.5"`, its version.
+The document begins with `format: "14.6"`, its version.
 
 What `profile.yml` holds: the profile but its tables, whose matches name its types.
 
@@ -241,7 +241,7 @@ type of the tool.
 <!-- begin reference: tables/<table>.yml -->
 ### `tables/<table>.yml`
 
-The document begins with `format: "14.5"`, its version.
+The document begins with `format: "14.6"`, its version.
 
 A table of the schema, under its original name, and what was found about it.
 
@@ -278,6 +278,7 @@ A column of a table, under its original name and type, and what was found about 
 | `values` | list of [Value](#value) | empty | The values of the column, if it is an enumeration of no sensitivity, the most frequent first; none else. |
 | `marked` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column given by hand, by an override, or None where none is given. |
 | `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with: of them those its type can hold, as `scan` refuses the others; None where none are given. |
+| `enumeration` | boolean | absent | Whether the column is an enumeration, given by hand, by an override - of the values of its lists, of a column of lists -, in a profile written as `scan` counted it: True where it is one, of at most as many values as the tool counts of one, whatever is found, False where it is none; None where it is not given. |
 | `terms` | list of [Term](#term) | absent | The terms of its name, in their order, or None where it is not split yet. |
 | `reading` | list of text | absent | The reading of its name: the word of the concept each of its terms stands for, at its place, the digits of a term of digits; None where it is not read. |
 | `description` | text | absent | What the column holds, in English, for a person who knows the business but not the database; None where it is not described. |

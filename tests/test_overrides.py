@@ -120,6 +120,17 @@ def test_a_table_agrees_with_the_overrides_where_counted_with_the_sentinels_give
     assert not TableOverride().agrees_with(counted), "counted with others than of the tool"
 
 
+def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_enumerations_given() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(enumeration=False)})
+    assert given.enumerations == {"frst_nm": False}
+    (table,) = _PROFILE.tables
+    laid = given.laid_over(table)
+    assert [column.enumeration for column in laid.columns] == [False, None], "as given, only so"
+    assert not given.agrees_with(table), "counted with no enumeration given"
+    assert given.agrees_with(laid)
+    assert not TableOverride().agrees_with(laid), "counted with an enumeration no longer given"
+
+
 def test_sentinels_given_of_a_column_counted_without_them_are_refused_naming_them() -> None:
     given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("", "-1"))})
     (table,) = _PROFILE.tables
@@ -451,11 +462,22 @@ def test_a_table_discriminated_as_given_is_refused_where_its_discriminator_canno
             ),
             "discriminator of cntct as frst_nm, a column they mark of a sensitivity",
         ),
+        (
+            replace(_entities(), columns={"cntct_typ_cd": ColumnOverride(enumeration=False)}),
+            "discriminator of cntct as cntct_typ_cd, a column they give as no enumeration",
+        ),
         (_entities(phone=("TEL",), fax=("FAX", "TEL")), "a value of it twice among its entities"),
         (_entities(phone=(), fax=(), mail=("EML",)), "and entities of no values: phone, fax"),
         (_entities(Phone=("TEL",)), "names of cntct other than in snake_case: Phone"),
     ],
-    ids=["a column missing", "a column sensitive", "a value twice", "no values", "a name"],
+    ids=[
+        "a column missing",
+        "a column sensitive",
+        "no enumeration",
+        "a value twice",
+        "no values",
+        "a name",
+    ],
 )
 def test_a_discriminator_given_that_cannot_be_one_is_refused(
     given: TableOverride, problem: str

@@ -158,9 +158,9 @@ environments:
   of the simulation in it.
 - **`overrides.yml`** and the files `*.yml` of **`overrides/`**, where there are any, give by hand
   what the profiles are to take as given - concepts of the glossary, readings, names and
-  descriptions, the sensitivity and the sentinels of columns, primary keys, references and
-  discriminators -, which each stage takes as given; the files are merged, a field given in two of
-  them refused.
+  descriptions, the sensitivity and the sentinels of columns and whether they are enumerations,
+  primary keys, references and discriminators -, which each stage takes as given; the files are
+  merged, a field given in two of them refused.
 
 Every field of `project.yml` and of the files of the overrides, a recipe of each task, and how each
 override is taken are described in [docs/PROJECT.md](docs/PROJECT.md); what the profile holds in

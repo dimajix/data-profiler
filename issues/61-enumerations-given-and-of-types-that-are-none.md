@@ -1,6 +1,6 @@
 # 61 — Enumerations given, and columns of types that are none
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -117,3 +117,12 @@ for none, or of lists; the values of the lists of a column are enumerated as bef
 2026-11-12: The test of step 1 through `scan` added, on the maintainer's request: the example
 profile of the simulation has a column of few dates written as text, `cust_addr.chk_dt`, which
 `scan` recognises as dates before it counts the enumerations, and so takes for none.
+
+2026-11-12: Step 2 done, and with it the issue: `ColumnOverride.enumeration` gives whether a
+column is an enumeration - of a column of lists, the values of its lists -, taken by
+`enumerations.values` and `lists.itemize` through `TableOverride.enumerations`, and held by
+`Column.enumeration` as `TableOverride.laid_over` gives it, so that a scan resumed counts a table
+given otherwise again. True lifts the conditions of the type, the matches and the values each in
+one row alone, not the limit: a column given so of more values is warned of, and none. A
+discriminator given of a column given as no enumeration is refused. The formats of the profile and
+of the overrides are raised to 14.6 and 7.7.
