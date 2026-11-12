@@ -10,10 +10,10 @@
 # - The code is laid out by the formatter, and the linter and the type checker stay silent, as
 #   "Checks" in docs/CODING-GUIDELINES.md names them: each runs whenever code or its configuration
 #   is part of a commit, on the working tree, so that changes that are not staged count too.
-# - The generated parts of the documents in docs/ are up to date: `scripts/generate.py --check`
-#   runs whenever code, a document or a file a document holds is part of a commit, on the working
-#   tree. It checks rather than writes them, as writing would add to the commit what is not staged
-#   of a document.
+# - The generated parts of the README and the documents in docs/ are up to date:
+#   `scripts/generate.py --check` runs whenever code, a document or a file a document holds is part
+#   of a commit, on the working tree. It checks rather than writes them, as writing would add to the
+#   commit what is not staged of a document.
 #
 # `git commit --no-verify` skips all of them.
 set -eu
@@ -38,6 +38,6 @@ if ! git diff --cached --quiet -- '*.py' '*pyproject.toml' uv.lock; then
     uv run --locked --quiet mypy
 fi
 
-if ! git diff --cached --quiet -- '*.py' docs/ examples/ simulation/profiles/; then
+if ! git diff --cached --quiet -- '*.py' README.md docs/ examples/ simulation/profiles/; then
     uv run --locked --quiet scripts/generate.py --check
 fi

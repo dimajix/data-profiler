@@ -57,23 +57,40 @@ def test_the_sentinels_given_of_a_column_are_counted_in_place_of_those_of_the_to
 
 
 class _Counted(Source):
-    """A schema of one table `t` of one column `b` of binaries, which counts one row of it."""
+    """A schema of one table `t` of one column `b` of the type `kind`, which counts one row of it.
 
-    def __init__(self) -> None:
+    It answers each statement that counts by `row`, and keeps them.
+    """
+
+    def __init__(self, kind: str, row: tuple[object, ...]) -> None:
         with connect("trino://h/c/s", "u", "") as trino:
             super().__init__("c", "s", trino.dialect)
+        self.statements: list[str] = []
+        self._kind = kind
+        self._row = row
 
     def query(self, statement: str, step: str) -> list[tuple[object, ...]]:
         if "information_schema" in statement:
-            return [("b", "varbinary")]
-        # The rows, and of `b` its nulls and its distinct values.
-        return [(1, 0, 1)]
+            return [("b", self._kind)]
+        self.statements.append(statement)
+        return [self._row]
 
     def close(self) -> None:
         pass
 
 
 def test_a_column_of_no_text_is_counted_without_the_sentinels_given_of_it() -> None:
-    (column,) = count(_Counted(), "t", {"b": ("",)}).columns
+    # The rows, and of `b` its nulls and its distinct values.
+    (column,) = count(_Counted("varbinary", (1, 0, 1)), "t", {"b": ("",)}).columns
     assert column.sentinels is None, "counted with none"
     assert column.statistics.sentinels == ()
+
+
+def test_a_column_is_counted_with_those_of_the_sentinels_given_its_type_can_hold() -> None:
+    # The rows, and of `b` its nulls, its distinct values, the rows of `-1`, its range.
+    source = _Counted("bigint", (1, 0, 1, 0, "7", "7"))
+    (column,) = count(source, "t", {"b": ("N/A", "-1")}).columns
+    (statement,) = source.statements
+    assert "'-1'" in statement
+    assert "'N/A'" not in statement, "a number cannot be one"
+    assert column.sentinels == ("N/A", "-1"), "the sentinels given"

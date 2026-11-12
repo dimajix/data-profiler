@@ -1,15 +1,15 @@
 """The statistics of a table, counted by one query built from the building blocks of the dialect.
 
 The query asks for the rows of the table, and for each column its nulls, the rows of each of its
-sentinels and the approximate number of its distinct values, for a column whose values have an
-order its smallest and its largest value, and for a column of texts the lengths of its shortest and
-of its longest value. The sentinels of a column are those of the tool, or those given of it by
-hand, each counted apart, so that a person sees which a column has; what is counted of its values
-leaves them aside, but its nulls. A column whose values the database writes as no text - an array,
-a map, a binary - has no sentinels. The row the query returns is read along the same list of
-expressions it was built from, so that its form is known in this module alone. The range of a
-column is of values of the database; whether it goes into the profile, the module `disclosure`
-decides.
+sentinels and the approximate number of its distinct values, for a column whose values have an order
+its smallest and its largest value, and for a column of texts the lengths of its shortest and of its
+longest value. The sentinels of a column are those of the tool, or those given of it by hand, of
+them those its type can hold, as the dialect tells, each counted apart, so that a person sees which
+a column has; what is counted of its values leaves them aside, but its nulls. A column whose values
+the database writes as no text - an array, a map, a binary - has no sentinels. The row the query
+returns is read along the same list of expressions it was built from, so that its form is known in
+this module alone. The range of a column is of values of the database; whether it goes into the
+profile, the module `disclosure` decides.
 """
 
 from collections.abc import Collection, Iterable, Mapping
@@ -51,9 +51,8 @@ def count(
     for name, kind in source.columns(table).items():
         if columns is not None and name not in columns:
             continue
-        has_text = dialect.has_text(kind)
-        counted_with = given.get(name) if has_text else None
-        texts = sentinels(counted_with) if has_text else frozenset()
+        counted_with = given.get(name) if dialect.has_text(kind) else None
+        texts = dialect.held(kind, sentinels(counted_with))
         values = dialect.column(name)
         kept = dialect.without(name, kind, texts)
         of_counts = [dialect.nulls(values), dialect.distinct(kept)]

@@ -175,8 +175,8 @@ lists reach `scan` from `project`, and every stage after it from the profile.
     interrupted -, and it finishes once every selected table is counted. It is told apart by when
     it started, which each table it counted names.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - one kind of
-    database: its SQL, and what the types of its columns are, which the data contract names by the
-    types of ODCS.
+    database: its SQL, and what the types of its columns are - which sentinels a column of a type
+    can hold, and the types of ODCS the data contract names them by.
 *   **Profile** - the documents describing the tables of one schema of a database: its tables and
     columns, what was found about them, the glossary, and the semantic types of its project; a
     directory of a document of the schema and a document of each table, so that a person reads a
@@ -192,7 +192,9 @@ lists reach `scan` from `project`, and every stage after it from the profile.
     apart and named in the profile with its rows, whatever the sensitivity of its column, so that
     a person can check them: the sentinels of the tool are fixed texts, and those given are of the
     overrides. The tool brings its sentinels, of the columns whose values the database writes as
-    text; an override gives those of a column in their place.
+    text; an override gives those of a column in their place. Of them, a column has those its type
+    can hold, as the dialect tells: all in a text, the days in a date, none of the tool's in a
+    number.
 *   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
     separator of lists the project gives, the same in all tables of the database, or an override of
     a table in its place; the tool guesses none. Nearly every text is a list, of one value or more,

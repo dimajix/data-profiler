@@ -1,6 +1,6 @@
 # 58 — The configuration of a project in its examples, and the sentinels a type can hold
 
-**Status:** open
+**Status:** done
 **Type:** refactoring
 **Priority:** low
 **Area:** Command line
@@ -110,3 +110,32 @@ writes the rule of `dialect.held(column.type, sentinels(column.sentinels))`, wit
 `N/A` in a `bigint`; the profile stays as it was, as it leaves out the sentinels of no rows. The
 name `held` is to be checked, as `Dialect.sentinels` names the expression that counts them. The
 summary of this issue no longer names the first finding.
+
+2026-11-12: Step 1, the documents - the second to fourth findings. The example project keeps no
+semantic type of its own, as the simulation makes values of the types of the tool alone; the
+sentence of PROJECT.md says it shows each field but `types`, and points to the recipe of one. The
+row of `project.yml` in the directory table names the separator of lists. The README holds
+`examples/crm/project.yml` between the markers of a generated file, which `scripts/generate.py`
+now writes in the README as well as in the documents of `docs/` - its `write` and `check` take the
+documents rather than their directory -, and the pre-commit hook checks when the README is part of
+a commit; the list below it names `list_separator` and `contract`. That no test fails where `main`
+leaves the README out is as it was for `docs/`: the documents are named only in `main`.
+
+2026-11-12: Step 2, the fifth finding: `Dialect.held(kind, texts)` gives, of the sentinels `texts`,
+those a column of the type `kind` can hold - the texts the database casts a value of the type to, as
+`Dialect.sentinels` compares them; the name stays, beside `sentinels`, which writes the expression
+that counts them. Trino holds all of them in a text and in JSON, whose strings it casts to their
+texts, none in a type it casts to no text, and in the others those of the form it writes them in, as
+the simulation environment showed: whole numbers, decimals of the scale of their type, floating
+numbers as `1.5E0` or `0E0`, days - of a date or a moment -, times of their fractions and zones,
+intervals of years and months as `-1-2` and of days to seconds as `-2`, `2:03` or `0
+23:00:00.000000`, `true` and `false`, UUIDs in lower case; a form is of no length and no precision,
+so that it keeps a text where in doubt. `statistics` counts `dialect.held(kind,
+sentinels(counted_with))` - `has_text` still decides whether the profile names the sentinels given,
+as it did - and `Contract._missing` writes the rule of `dialect.held(column.type,
+sentinels(column.sentinels))`; `_is_of` stays for the bounds alone. A scan of the example in the
+simulation environment writes the same statistics as before, and its contract is the same. What
+changes is where the old filter of the contract and the scan differed: a rule of a column of JSON
+now names the sentinels of the tool, which the scan counted in it, and a sentinel given that the
+scan never finds - `-1` in a `double`, which Trino writes `-1.0E0` - is neither counted nor written
+into a rule; it is left aside, not refused, which PROJECT.md now says.

@@ -13,7 +13,7 @@ A project is a directory - `examples/crm/` is one, for the simulation environmen
 
 | File | What it holds | Committed |
 |---|---|---|
-| `project.yml` | the configuration: the tables, the semantic types of the project, the language model, what it gives of its data contract, the environments | yes |
+| `project.yml` | the configuration: the tables, the semantic types of the project, the separator of lists, the language model, what it gives of its data contract, the environments | yes |
 | `.env` | the variables of the project: the passwords, the users where they differ from one person to the next, what reaches the database | never |
 | `overrides.yml` | what is given by hand, the same for all environments; optional | yes |
 | `overrides/` | more files of what is given by hand, `*.yml`, merged with `overrides.yml`; optional | yes |
@@ -296,7 +296,9 @@ tables:
 
 The values that stand for no value in a column are counted apart and left aside, as nulls are. The
 tool brings sentinels of its own, of the columns whose values the database writes as text; those
-given take their place, and `sentinels: []` gives none.
+given take their place, and `sentinels: []` gives none. Of them, a column has those its type can
+hold, in the form the database writes its values: `-1.0E0` in a `double`, `0.50` in a
+`decimal(12,2)`, a UUID in lower case; `-1` in a `double` is counted in no row.
 
 ```yaml overrides.yml
 tables:
@@ -495,7 +497,9 @@ version - the tool converts none. When each part is raised is said in the module
 ## The example project
 
 `examples/crm/` profiles the simulation environment, as the README says. Its files show each field
-of the configuration and each kind of override:
+of the configuration but `types`, the semantic types of the project, of which the simulation makes
+no values - the [recipe of one](#recognise-a-semantic-type-of-the-project) shows them -, and each
+kind of override:
 
 <!-- begin file: examples/crm/project.yml -->
 ```yaml

@@ -1,9 +1,11 @@
 """Tests of the source, against the simulation environment, which has to run."""
 
 import re
+from collections.abc import Collection
 
 import pytest
 
+from data_profiler.detect import SENTINELS
 from data_profiler.profile import Profile
 from data_profiler.source import (
     Location,
@@ -294,6 +296,80 @@ def test_a_column_without_sentinels_is_counted_as_it_is() -> None:
 def test_only_the_types_the_database_casts_to_a_text_have_text(kind: str, written: bool) -> None:
     with connect("trino://h/c/s", "u", "") as source:
         assert source.dialect.has_text(kind) == written
+
+
+_DAYS = {"0001-01-01", "1900-01-01", "9999-12-31"}
+_NIL = "00000000-0000-0000-0000-000000000000"
+
+
+@pytest.mark.parametrize(
+    ("kind", "texts", "held"),
+    [
+        ("varchar(40)", SENTINELS, SENTINELS),
+        ("char(3)", SENTINELS, SENTINELS),
+        ("json", SENTINELS, SENTINELS),
+        ("array(integer)", {"", "-1"}, set()),
+        ("varbinary", {"", "-1"}, set()),
+        ("bigint", SENTINELS | {"-1", "0", "1.0", "1.0E0"}, {"-1", "0"}),
+        ("decimal(12,0)", {"-1", "-1.00"}, {"-1"}),
+        ("decimal(12,2)", {"-1", "-1.00", "0.5", "0.50"}, {"-1.00", "0.50"}),
+        (
+            "double",
+            SENTINELS | {"-1", "-1.0E0", "1.5E-10", "NaN", "-Infinity"},
+            {"-1.0E0", "1.5E-10", "NaN", "-Infinity"},
+        ),
+        ("real", {"0", "0E0", "-1.234568E7"}, {"0E0", "-1.234568E7"}),
+        ("date", SENTINELS, _DAYS),
+        ("timestamp(3)", SENTINELS, _DAYS),
+        ("timestamp(3) with time zone", SENTINELS, _DAYS),
+        ("time(3)", SENTINELS | {"00:00:00.000", "00:00"}, {"00:00:00.000"}),
+        ("time(3) with time zone", {"00:00:00.000+00:00"}, {"00:00:00.000+00:00"}),
+        (
+            "interval day to second",
+            SENTINELS | {"-2", "0.5", "2:03", "1 02", "0 23:00:00.000000"},
+            {"-2", "0.5", "2:03", "1 02", "0 23:00:00.000000"},
+        ),
+        ("interval year to month", SENTINELS | {"3", "-1-2"}, {"3", "-1-2"}),
+        ("boolean", SENTINELS | {"false", "False", "0"}, {"false"}),
+        ("uuid", SENTINELS | {_NIL, _NIL.upper()}, {_NIL}),
+    ],
+)
+def test_a_type_holds_the_sentinels_of_the_texts_the_database_casts_its_values_to(
+    kind: str, texts: Collection[str], held: Collection[str]
+) -> None:
+    assert dialect("trino://h/c/s").held(kind, texts) == held
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    [
+        ("bigint", "CAST(-12 AS bigint)"),
+        ("decimal(12,0)", "CAST(-12 AS decimal(12,0))"),
+        ("decimal(12,2)", "CAST(-0.5 AS decimal(12,2))"),
+        ("double", "CAST(-1.5 AS double)"),
+        ("double", "nan()"),
+        ("real", "CAST(0 AS real)"),
+        ("date", "DATE '0001-01-01'"),
+        ("timestamp(3) with time zone", "CAST(TIMESTAMP '9999-12-31 23:59:59.999 UTC' AS date)"),
+        ("time(3)", "TIME '12:34:56.789'"),
+        ("time(3) with time zone", "TIME '12:34:56.789 +01:00'"),
+        ("interval day to second", "INTERVAL '-2' DAY"),
+        ("interval day to second", "CAST(INTERVAL '-2' DAY AS interval day to second)"),
+        ("interval day to second", "INTERVAL '02:03' HOUR TO MINUTE"),
+        ("interval year to month", "INTERVAL '-1-2' YEAR TO MONTH"),
+        ("boolean", "false"),
+        ("uuid", f"UUID '{_NIL}'"),
+    ],
+)
+def test_a_type_holds_the_texts_the_database_casts_its_values_to(
+    source: Source, kind: str, value: str
+) -> None:
+    # The statement is the test's own: a value of each type is had of no table of the simulation;
+    # a moment is compared as its day, which `value` is of it.
+    statement = f"SELECT trim(CAST({value} AS varchar))"
+    ((text,),) = source.query(statement, f"writing {kind}")
+    assert isinstance(text, str)
+    assert source.dialect.held(kind, {text}) == {text}
 
 
 @pytest.mark.parametrize(

@@ -330,7 +330,9 @@ class TableOverride:
         """Refuses what is given of `table` that it was not counted with, once it is counted.
 
         Right after `statistics.count`, a column is counted otherwise than given only where its
-        values are no text, which `count` counts without sentinels, whatever is given.
+        values are no text, which `count` counts without sentinels, whatever is given. Of the
+        sentinels given of a column of text, `count` counts those its type can hold, and leaves
+        the others aside, which are not refused.
 
         Args:
             table: The table, as `statistics.count` counted it.

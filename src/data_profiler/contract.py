@@ -165,26 +165,22 @@ class Contract(Template):
         options = _options(column, logical)
         if options:
             document["logicalTypeOptions"] = options
-        quality = [*self._missing(column, logical), *self._invalid(column)]
+        quality = [*self._missing(column), *self._invalid(column)]
         if quality:
             document["quality"] = quality
         return document
 
-    def _missing(self, column: Column, logical: str | None) -> list[_Document]:
+    def _missing(self, column: Column) -> list[_Document]:
         """The rule that `column` holds no sentinels, where it holds no nulls and none were found.
 
-        Its sentinels are those given of it, else those of the tool, of a column whose values the
-        database writes as text, and of them those its type can hold: all of a column of texts,
-        else those that are values of its logical type `logical` - a rule of a number or a UUID
-        against `N/A`, which it cannot hold, would say nothing.
+        Its sentinels are those given of it, else those of the tool, of them those its type can
+        hold, as the dialect tells - a rule of a number or a UUID against `N/A`, which it cannot
+        hold, would say nothing.
         """
         statistics = column.statistics
-        if statistics.nulls or statistics.sentinels or not self._dialect.has_text(column.type):
+        if statistics.nulls or statistics.sentinels:
             return []
-        texts = self._dialect.is_text(column.type)
-        missing = sorted(
-            text for text in sentinels(column.sentinels) if texts or _is_of(text, logical)
-        )
+        missing = sorted(self._dialect.held(column.type, sentinels(column.sentinels)))
         if not missing:
             return []
         return [{"metric": "missingValues", "arguments": {"missingValues": missing}, "mustBe": 0}]
@@ -258,12 +254,12 @@ def _bounds(ends: Range, found: list[str], logical: str) -> _Document:
     The sentinels that are values of the type widen them; an end withheld is none.
     """
     # Numbers, or texts of times, which compare alike, as the type of the column is one of them.
-    held: list[Any] = [_bound(text, logical) for text in found if _is_of(text, logical)]
+    widening: list[Any] = [_bound(text, logical) for text in found if _is_of(text, logical)]
     bounds: _Document = {}
     if ends.smallest is not None:
-        bounds["minimum"] = min([_bound(ends.smallest, logical), *held])
+        bounds["minimum"] = min([_bound(ends.smallest, logical), *widening])
     if ends.largest is not None:
-        bounds["maximum"] = max([_bound(ends.largest, logical), *held])
+        bounds["maximum"] = max([_bound(ends.largest, logical), *widening])
     return bounds
 
 
@@ -277,7 +273,7 @@ def _present(**fields: object) -> _Document:
     return {name: value for name, value in fields.items() if value is not None}
 
 
-def _is_of(text: str, logical: str | None) -> bool:
+def _is_of(text: str, logical: str) -> bool:
     """Whether `text` is a value of the logical type `logical`: a number, a date, or neither."""
     if logical in _NUMBERS:
         return _bound(text, logical) is not text
