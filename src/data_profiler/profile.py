@@ -178,7 +178,7 @@ class Lengths:
 
 @dataclass(frozen=True)
 class Range:
-    """The smallest and the largest value of a column, as text.
+    """The smallest and the largest value of a column, as text, as the database writes them.
 
     Attributes:
         smallest: The smallest value, or None where it is withheld, as of a sensitive type.
@@ -191,7 +191,7 @@ class Range:
 
 @dataclass(frozen=True)
 class Value:
-    """A value of an enumeration, or a sentinel, as text, with the rows that hold it.
+    """A value of an enumeration, or a sentinel, as the database writes it, with its rows.
 
     Attributes:
         value: The value.

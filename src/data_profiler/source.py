@@ -37,7 +37,7 @@ from trino.dbapi import Connection
 from trino.exceptions import Error as TrinoError
 from trino.exceptions import HttpError
 
-from data_profiler.values import counted
+from data_profiler.counts import counted
 
 _logger = logging.getLogger(__name__)
 
@@ -67,9 +67,11 @@ _ORDERED: Final = (
     "uuid",
 )
 
-# The types of Trino whose values it casts to a text, by how their names begin: those of others,
-# such as an array, a map, a row or a binary, would make the cast fail the query it is in.
-_HAVE_TEXT: Final = (*_ORDERED, "json")
+# The types of Trino of JSON, and those whose values it casts to a text, by how their names begin:
+# those of others, such as an array, a map, a row or a binary, would make the cast fail the query it
+# is in.
+_JSON: Final = ("json",)
+_HAVE_TEXT: Final = (*_ORDERED, *_JSON)
 
 # The types of Trino of the keys a database generates, by how their names begin: whole numbers and
 # UUIDs - and decimals of no fraction, as which Trino reads the keys of some databases.
@@ -193,7 +195,8 @@ class Dialect(ABC):
     Its building blocks take the names of tables and columns as they are, and quote them; those that
     count or measure values take an expression of the values of a column, as `column` or `without`
     writes it. Those of the sentinels take a column and its type, as they compare the values of the
-    column itself, a moment as its day, with those of the sentinels a column of its type can hold.
+    column itself, a moment as its day, with those of the sentinels a column of its type can hold;
+    `is_filled` compares a value read, of a sample or an enumeration, alike.
     """
 
     server_type: ClassVar[str]
@@ -270,13 +273,22 @@ class Dialect(ABC):
         """The expression of the values of `column`."""
 
     @abstractmethod
+    def text(self, values: str, kind: str) -> str:
+        """The expression of `values`, of the type `kind`, as text, as the database writes them.
+
+        Every value the tool reads of the database it reads by this, so that a value is held,
+        shown and compared in one form, that of the sentinels, of all its digits: of a type the
+        database writes no text of, such as an array, a map, a row or a binary, the expression is
+        `values` as they are.
+        """
+
+    @abstractmethod
     def sentinels(self, column: str, kind: str, texts: Collection[str]) -> str:
         """The expression counting the values of `column`, of the type `kind`, one of `texts`.
 
         A value is compared as text, its spaces at either end cut, and a moment as the text of its
-        day, as `detect` compares the values of a sample; `texts` are of those `held` of `kind`,
-        one at least. Texts, days and moments are written alike by the database and by
-        Python; truth values and floating numbers are not, `true` and `True`, `0.0E0` and `0.0`.
+        day, as `is_filled` compares a value read; `texts` are of those `held` of `kind`, one at
+        least.
         """
 
     @abstractmethod
@@ -285,6 +297,19 @@ class Dialect(ABC):
 
         A value is compared as `sentinels` compares it; where `texts` are none, the expression is
         that of `column`, of any type.
+        """
+
+    @abstractmethod
+    def is_filled(self, kind: str, value: object, texts: Collection[str]) -> bool:
+        """Whether `value`, of the type `kind`, is neither null nor one of the sentinels `texts`.
+
+        A value is compared as `sentinels` compares it in the database, so that a value read, as
+        `text` reads it, is a sentinel where the database counts it as one.
+
+        Args:
+            kind: The type of the column of the value.
+            value: The value, as `text` reads it; None is a null.
+            texts: The sentinels of the column.
         """
 
     @abstractmethod
@@ -334,12 +359,13 @@ class Dialect(ABC):
         """The expression of the length of the longest of `values`."""
 
     @abstractmethod
-    def matching(self, values: str, pattern: str) -> str:
-        """The expression counting those of `values` that `pattern` matches whole.
+    def matching(self, values: str, kind: str, pattern: str) -> str:
+        """The expression counting those of `values`, of the type `kind`, `pattern` matches whole.
 
-        Each value is matched as text, its spaces at either end cut; `values` are of a type the
-        database casts to a text, not an array, a map, a row or a binary, which fail the query.
-        `pattern` is a regular expression of what Python and the database share.
+        Each value is matched as `text` reads it, its spaces at either end cut, so as a detector
+        sees the values of a sample; `kind` is a type the database casts to a text, not an array,
+        a map, a row or a binary, which fail the query. `pattern` is a regular expression of what
+        Python and the database share.
         """
 
     @abstractmethod
@@ -499,21 +525,22 @@ class Source(ABC):
         return found
 
     def grouped(
-        self, table: str, columns: Sequence[str], expressions: Sequence[str], step: str
-    ) -> list[tuple[int, object, tuple[object, ...]]]:
+        self, table: str, columns: Mapping[str, str], expressions: Sequence[str], step: str
+    ) -> list[tuple[str, object, tuple[object, ...]]]:
         """The groups of `table` by each of `columns` alone, each with `expressions` of its rows.
 
         The table is read once for all the columns, by one statement `Dialect.grouped` writes.
 
         Args:
             table: The table, of the schema of the source.
-            columns: The columns to group by, each on its own.
+            columns: The columns to group by, each on its own, with their types, by their names.
             expressions: The expressions of the rows of each group, as the dialect writes them.
             step: What the statement does, for the message of a failure.
 
         Returns:
-            Each group: the place of its column among `columns`, its value of the column - None
-            of the rows the column is null in -, and the values of `expressions` of its rows.
+            Each group: the name of its column, its value of the column, as `Dialect.text` reads
+            it - None of the rows the column is null in -, and the values of `expressions` of its
+            rows.
 
         Raises:
             SourceError: The database fails at `step`.
@@ -521,16 +548,20 @@ class Source(ABC):
                 make sure of.
         """
         dialect = self.dialect
-        grouping = [*map(dialect.column, columns), *map(dialect.grouping, columns)]
-        statement = dialect.grouped([*grouping, *expressions], table, columns)
+        names = list(columns)
+        grouping = [
+            *(dialect.text(dialect.column(name), kind) for name, kind in columns.items()),
+            *map(dialect.grouping, names),
+        ]
+        statement = dialect.grouped([*grouping, *expressions], table, names)
         groups = []
         for row in self.query(statement, step):
             # The row belongs to the one column whose grouping is 0; the others are null in it.
-            groupings = row[len(columns) : 2 * len(columns)]
+            groupings = row[len(names) : 2 * len(names)]
             if groupings.count(0) != 1:
                 raise TypeError(f"the query grouped a row of {table} by other than one column")
             index = groupings.index(0)
-            groups.append((index, row[index], row[2 * len(columns) :]))
+            groups.append((names[index], row[index], row[2 * len(names) :]))
         return groups
 
     def __enter__(self) -> Self:
@@ -762,6 +793,10 @@ class _TrinoDialect(Dialect):
         """The expression of the values of `column`."""
         return _identifier(column)
 
+    def text(self, values: str, kind: str) -> str:
+        """The expression of `values`, of the type `kind`, as the text Trino casts them to."""
+        return _text(values, kind)
+
     def sentinels(self, column: str, kind: str, texts: Collection[str]) -> str:
         """The expression counting the values of `column` that are one of `texts`, as text."""
         return f"count_if({_among(column, kind, texts)})"
@@ -772,6 +807,16 @@ class _TrinoDialect(Dialect):
         if not texts:
             return values
         return f"CASE WHEN {_among(column, kind, texts)} THEN NULL ELSE {values} END"
+
+    def is_filled(self, kind: str, value: object, texts: Collection[str]) -> bool:
+        """Whether `value`, of `kind`, is neither null nor one of `texts`, as `_among` compares."""
+        if value is None:
+            return False
+        text = str(value).strip()
+        # Trino writes a moment as its day, a space, and its time of day - and Python, as a sample
+        # of an earlier version of the tool holds it.
+        day = text.partition(" ")[0] if kind.startswith(_MOMENTS) else text
+        return day not in texts
 
     def grouping(self, column: str) -> str:
         """The expression that is 0 in the rows grouped by `column`, and 1 in the others."""
@@ -816,10 +861,9 @@ class _TrinoDialect(Dialect):
         """The expression of the length of the longest of `values`."""
         return f"max(length({values}))"
 
-    def matching(self, values: str, pattern: str) -> str:
-        """The expression counting those of `values` that `pattern` matches whole."""
-        # A value that cannot be cast, such as a JSON array, is no text, and matches nothing.
-        text = f"trim(try_cast({values} AS varchar))"
+    def matching(self, values: str, kind: str, pattern: str) -> str:
+        """The expression counting those of `values`, of `kind`, that `pattern` matches whole."""
+        text = f"trim({_text(values, kind)})"
         return f"count_if(regexp_like({text}, {_literal(f'^(?:{pattern})$')}))"
 
     def is_text(self, kind: str) -> bool:
@@ -917,12 +961,29 @@ def _form(kind: str) -> str | None:
     return next((form for kinds, form in _FORMS if kind.startswith(kinds)), None)
 
 
+def _text(values: str, kind: str) -> str:
+    """The expression of `values`, of the type `kind`, as the text Trino casts them to.
+
+    A JSON scalar is the text it holds, of no quotes; an array or an object, which Trino casts to
+    no text, and `null`, is written as JSON. A value of a type of no text is as it is.
+    """
+    if not kind.startswith(_HAVE_TEXT):
+        return values
+    if kind.startswith(_JSON):
+        return f"coalesce(try_cast({values} AS varchar), json_format({values}))"
+    return f"CAST({values} AS varchar)"
+
+
 def _among(column: str, kind: str, texts: Collection[str]) -> str:
-    """The condition that a value of `column`, of the type `kind`, is one of `texts`, as text."""
+    """The condition that a value of `column`, of the type `kind`, is one of `texts`, as text.
+
+    A value is compared as `_text` reads it, its spaces at either end cut, a moment as its day.
+    """
     values = _identifier(column)
-    day = f"CAST({values} AS date)" if kind.startswith(_MOMENTS) else values
+    if kind.startswith(_MOMENTS):
+        values, kind = f"CAST({values} AS date)", "date"
     listed = ", ".join(_literal(text) for text in sorted(texts))
-    return f"trim(try_cast({day} AS varchar)) IN ({listed})"
+    return f"trim({_text(values, kind)}) IN ({listed})"
 
 
 def _identifier(name: str) -> str:

@@ -23,13 +23,15 @@ nearly every text a list, of one value or more, and one of more at least.
 A value is of a semantic type, which has a sensitivity, or a sentinel: a value that stands for no
 value, such as an empty text or `9999-12-31`, of no type, and left aside as a null is. The
 sentinels of a column are texts: those of the tool, `SENTINELS`, unless others are given of it by
-hand. A value is compared with them as text, a moment as the text of its day.
+hand. How a value is compared with them, a moment as the text of its day, the dialect tells, which
+compares them in the database: the values a detector sees are those that are neither null nor
+sentinels.
 """
 
 import re
-from collections.abc import Callable, Collection, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from re import PatternError
 from typing import Final
@@ -432,54 +434,19 @@ def sentinels(given: Sequence[str] | None) -> frozenset[str]:
     return SENTINELS if given is None else frozenset(given)
 
 
-def is_sentinel(value: object, texts: Collection[str]) -> bool:
-    """Whether `value` is one of the sentinels `texts`, compared as text.
-
-    A value is compared as text, its spaces at either end cut, and a moment as the text of its day,
-    so that `9999-12-31` is a sentinel of a moment at any time of that day, in any time zone, as
-    the dialect compares it.
-
-    Args:
-        value: A value of a column, as the database gives it.
-        texts: The sentinels of the column.
-
-    Returns:
-        Whether the value, as it is compared, is one of `texts`.
-    """
-    day = value.date() if isinstance(value, datetime) else value
-    return str(day).strip() in texts
-
-
-def is_filled(value: object, texts: Collection[str]) -> bool:
-    """Whether `value` is a value: neither null nor one of the sentinels `texts`.
-
-    Args:
-        value: A value of a column, as the database gives it; None is a null.
-        texts: The sentinels of the column.
-
-    Returns:
-        Whether the value is neither None nor, compared as `is_sentinel` compares it, one of
-        `texts`.
-    """
-    return value is not None and not is_sentinel(value, texts)
-
-
-def detect(
-    values: Sequence[object], types: Sequence[SemanticType], without: Collection[str]
-) -> dict[SemanticType, float]:
+def detect(values: Sequence[object], types: Sequence[SemanticType]) -> dict[SemanticType, float]:
     """The share of `values` each semantic type is recognised in, of the types they are a match of.
 
     Args:
-        values: The values of a column, as a sample holds them; None is a null, and not counted.
+        values: The values of a column, as a sample holds them, but its nulls and sentinels.
         types: The semantic types of the project, checked beside those of the tool.
-        without: The sentinels of the column, which are not counted either.
 
     Returns:
-        The share of the values that are neither null nor sentinels each type is recognised in,
-        from 0 to 1, by type, of the types whose share reaches the threshold of their detector;
-        every other type is left out, and so is every type where no value is left.
+        The share of the values each type is recognised in, from 0 to 1, by type, of the types
+        whose share reaches the threshold of their detector; every other type is left out, and so
+        is every type where there are no values.
     """
-    texts = _texts(values, without)
+    texts = _texts(values)
     shares = {kind: kind.detector.share(texts) for kind in all_types(types)}
     return {kind: share for kind, share in shares.items() if share >= kind.detector.threshold}
 
@@ -493,17 +460,16 @@ def is_list_separator(text: str) -> bool:
     return len(text) == 1 and not re.fullmatch(_LIST_VALUE, text)
 
 
-def is_list(values: Sequence[object], separator: str, without: Collection[str]) -> bool:
+def is_list(values: Sequence[object], separator: str) -> bool:
     """Whether `values` of a column are lists of values separated by `separator`.
 
     Args:
-        values: The values of a column, as a sample holds them; None is a null, and not counted.
+        values: The values of a column, as a sample holds them, but its nulls and sentinels.
         separator: The separator of the values of a list, as `is_list_separator` takes it.
-        without: The sentinels of the column, which are not counted either.
 
     Returns:
-        Whether nearly every value that is neither null nor sentinel is a list, of one value or
-        more, and one of them a list of more than one.
+        Whether nearly every value is a list, of one value or more, and one of them a list of more
+        than one.
     """
     escaped = re.escape(separator)
     detector = Detector(
@@ -511,10 +477,10 @@ def is_list(values: Sequence[object], separator: str, without: Collection[str]) 
         column=lambda _, lists: any(separator in text for text in lists),
         threshold=_NEARLY_EVERY,
     )
-    share = detector.share(_texts(values, without))
+    share = detector.share(_texts(values))
     return share >= detector.threshold
 
 
-def _texts(values: Sequence[object], without: Collection[str]) -> list[str]:
-    """The texts of `values` that are neither null nor of `without`, as a detector sees them."""
-    return [str(value).strip() for value in values if is_filled(value, without)]
+def _texts(values: Sequence[object]) -> list[str]:
+    """`values` as a detector sees them: as text, their spaces at either end cut."""
+    return [str(value).strip() for value in values]

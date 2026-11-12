@@ -54,13 +54,13 @@ from jinja2 import PackageLoader, StrictUndefined
 from jinja2.sandbox import SandboxedEnvironment
 from pydantic import TypeAdapter, ValidationError
 
-from data_profiler.detect import SemanticType, is_filled
+from data_profiler.detect import SemanticType
 from data_profiler.disclosure import disclose_texts
 from data_profiler.glossary import Glossary, Vocabulary, agrees, snake_case, unknown, written_as
 from data_profiler.llm import LanguageModel
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Column, Concept, Profile, Table
-from data_profiler.values import as_text
+from data_profiler.source import Dialect
 from data_profiler.workspace import Sample, Workspace
 
 _logger = logging.getLogger(__name__)
@@ -119,6 +119,7 @@ def describe(
     llm: LanguageModel | None,
     workspace: Workspace,
     directory: Path,
+    dialect: Dialect,
 ) -> None:
     """Describes `profile` into `directory`: concepts proposed, names read, columns described.
 
@@ -134,6 +135,8 @@ def describe(
             columns, or None to ask none.
         workspace: Where the samples of the tables are, whose values the model is shown.
         directory: The directory of the profile.
+        dialect: The dialect of the database of the profile, which tells the sentinels of a
+            sample.
 
     Raises:
         OverridesError: The overrides name what the profile does not have, as
@@ -148,7 +151,7 @@ def describe(
         _logger.info("Describing without a language model: no concept proposed or column described")
         profile = _names_kept(profile, overrides)
     else:
-        asking = _Asking(overrides, llm, workspace, directory, profile.types)
+        asking = _Asking(overrides, llm, workspace, dialect, directory, profile.types)
         profile = asking.described(asking.names_read(asking.proposed(profile)))
     profile.write(directory)
     columns = [column for table in profile.tables for column in table.columns]
@@ -256,13 +259,15 @@ class _Asking:
         overrides: Overrides,
         llm: LanguageModel,
         workspace: Workspace,
+        dialect: Dialect,
         directory: Path,
         types: Sequence[SemanticType],
     ) -> None:
-        """Takes the overrides, the model, the samples, where to write, and the types of values."""
+        """Takes the overrides, the model, the samples, their dialect, where to write, and types."""
         self._overrides = overrides
         self._llm = llm
         self._workspace = workspace
+        self._dialect = dialect
         self._directory = directory
         self._types = types
         self._samples: dict[str, Sample] = {}
@@ -429,7 +434,9 @@ class _Asking:
         found = self._samples[table.name].columns.get(column.name, ())
         # Each distinct value once, and judged only until enough are shown.
         texts = dict.fromkeys(
-            as_text(value) for value in found if is_filled(value, column.left_aside)
+            str(value)
+            for value in found
+            if self._dialect.is_filled(column.type, value, column.left_aside)
         )
         return list(islice(disclose_texts(column, texts, self._types), _VALUES))
 

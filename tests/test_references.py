@@ -380,7 +380,7 @@ def test_the_sentinels_of_a_column_are_left_aside_as_nulls_where_it_is_probed() 
     statistics = Statistics(0, 4000, range=Range("100001", "104999"), sentinels=(Value("0", 9),))
     source = _Answering()
     find(source, _ordering(Column("cust_id", "bigint", statistics)), {})
-    assert "CASE WHEN trim(try_cast(\"cust_id\" AS varchar)) IN ('0') THEN NULL" in source.sent[0]
+    assert "CASE WHEN trim(CAST(\"cust_id\" AS varchar)) IN ('0') THEN NULL" in source.sent[0]
 
 
 def test_the_references_and_candidates_a_profile_had_are_replaced() -> None:

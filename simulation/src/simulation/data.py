@@ -68,7 +68,6 @@ from data_profiler.detect import (
     ZERO_ONE,
     SemanticType,
     cases,
-    is_filled,
     is_list,
 )
 from data_profiler.profile import (
@@ -377,7 +376,8 @@ def _following(
         SimulationError: The column has sentinels, other nulls than the rows the determinant is not
             filled in, or more distinct values than it.
     """
-    filled = [is_filled(value, determinant.left_aside) for value in values]
+    made = {_sentinel(table, determinant, text) for text in determinant.left_aside}
+    filled = [value is not None and value not in made for value in values]
     statistics = column.statistics
     places: dict[object, int] = {}
     for value, taken in zip(values, filled, strict=True):
@@ -715,7 +715,7 @@ def _lists(where: str, column: Column, values: list[object], random: Random) -> 
         raise SimulationError(
             f"{where}: {len(texts)} lists cannot hold the {len(values)} values of its items"
         )
-    if not is_list(texts, separator, ()):
+    if not is_list(texts, separator):
         raise SimulationError(f"{where}: lists of the values of its items are no lists of values")
     return texts
 

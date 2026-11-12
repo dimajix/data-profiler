@@ -394,7 +394,7 @@ What was found of the values of the lists of a column: statistics, types and enu
 
 #### Value
 
-A value of an enumeration, or a sentinel, as text, with the rows that hold it.
+A value of an enumeration, or a sentinel, as the database writes it, with its rows.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
@@ -424,7 +424,7 @@ The range of the lengths of the values of a text column.
 
 #### Range
 
-The smallest and the largest value of a column, as text.
+The smallest and the largest value of a column, as text, as the database writes them.
 
 | Field | Type | Default | Description |
 |---|---|---|---|

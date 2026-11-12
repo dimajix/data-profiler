@@ -32,7 +32,6 @@ from data_profiler.glossary import Glossary, Vocabulary, occurrences
 from data_profiler.overrides import Overrides, OverridesError
 from data_profiler.profile import Column, Concept, Profile, ProfileError, Statistics, Table, Term
 from data_profiler.project import Project, ProjectError
-from data_profiler.values import as_text
 from data_profiler.workspace import Sample, Workspace, WorkspaceError
 
 _logger = logging.getLogger(__name__)
@@ -177,7 +176,7 @@ def _brief(found: tuple[Table, Column], samples: dict[str, Sample]) -> str:
     """The type of a column, what it was recognised as, and a few of its values, in parentheses."""
     table, column = found
     values = samples[table.name].columns.get(column.name, [])
-    shown = list(dict.fromkeys(as_text(value) for value in values if value is not None))[:3]
+    shown = list(dict.fromkeys(str(value) for value in values if value is not None))[:3]
     parts = [column.type, *(f"recognised as {match.type.name}" for match in column.matches)]
     if shown:
         parts.append("values: " + ", ".join(shown))
@@ -205,7 +204,7 @@ def _facts(table: Table, column: Column, values: Sequence[object]) -> str:
     neighbours = [
         c.name for c in table.columns[max(0, index - _NEIGHBOURS) : index + 4] if c != column
     ]
-    shown = list(dict.fromkeys(as_text(value) for value in values if value is not None))[:_SAMPLES]
+    shown = list(dict.fromkeys(str(value) for value in values if value is not None))[:_SAMPLES]
     lines = [
         f"- type: {column.type}",
         f"- rows of the table: {table.rows}, of them null: {statistics.nulls}",

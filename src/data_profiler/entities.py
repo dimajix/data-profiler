@@ -41,10 +41,10 @@ from dataclasses import replace
 from itertools import combinations
 from typing import Final
 
+from data_profiler.counts import counted
 from data_profiler.overrides import DiscriminatorOverride, GivenDiscriminator
 from data_profiler.profile import Column, Discriminator, Entity, Table
 from data_profiler.source import Source
-from data_profiler.values import as_text, counted
 
 _logger = logging.getLogger(__name__)
 
@@ -169,7 +169,7 @@ def _count_on(
 ) -> dict[str, dict[str, _Counts]]:
     """Of each of `candidates`, the counts of its values the profile holds, by one query."""
     dialect = source.dialect
-    names = [column.name for column in candidates]
+    columns = {column.name: column.type for column in candidates}
     expressions = [
         dialect.rows(),
         *(
@@ -178,16 +178,16 @@ def _count_on(
         ),
     ]
     held = {column.name: {value.value for value in column.values} for column in candidates}
-    by_column: dict[str, dict[str, _Counts]] = {name: {} for name in names}
+    by_column: dict[str, dict[str, _Counts]] = {name: {} for name in columns}
     step = f"counting the entities of {source.name(table.name)}"
-    for index, value, (rows, *nulls) in source.grouped(table.name, names, expressions, step):
-        text = None if value is None else as_text(value)
-        if text not in held[names[index]]:
+    for name, value, (rows, *nulls) in source.grouped(table.name, columns, expressions, step):
+        text = None if value is None else str(value)
+        if text not in held[name]:
             continue
-        where = f"{table.name}.{names[index]}"
+        where = f"{table.name}.{name}"
         present = counted(rows, where)
         filled = tuple(present - counted(empty, where) for empty in nulls)
-        by_column[names[index]][text] = (present, filled)
+        by_column[name][text] = (present, filled)
     return by_column
 
 

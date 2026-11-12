@@ -6,19 +6,19 @@ is. A column of more values is never grouped by: grouped by a column of keys, a 
 of millions of rows would fill the memory of the database with a group for each. The query groups
 the table by each of the columns on its own, in one pass, and counts the rows of each value; null
 is no value of an enumeration, as the statistics count the nulls, and nor is a sentinel, which the
-statistics count each. The values are values of the database; they go into the workspace, never
-into the log, and into the profile only as the module `disclosure` lets them.
+statistics count each. The values are values of the database, as the text the dialect reads them
+as; they go into the workspace, never into the log, and into the profile only as the module
+`disclosure` lets them.
 """
 
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Final
 
-from data_profiler.detect import is_sentinel
+from data_profiler.counts import counted
 from data_profiler.profile import Table, Value
 from data_profiler.source import Source
-from data_profiler.values import as_text, counted
 from data_profiler.workspace import Enumeration
 
 _logger = logging.getLogger(__name__)
@@ -40,12 +40,17 @@ def values(source: Source, table: Table) -> list[Enumeration]:
     Raises:
         SourceError: The database fails to count the values.
     """
+    dialect = source.dialect
     asked = {c.name: c for c in table.columns if 0 < c.statistics.distinct <= _LIMIT}
-    by_column = _count(source, table.name, list(asked)) if asked else {}
+    kinds = {name: column.type for name, column in asked.items()}
+    by_column = _count(source, table.name, kinds) if asked else {}
     enumerations = []
     for name, found in by_column.items():
+        column = asked[name]
         kept = [
-            (value, rows) for value, rows in found if not is_sentinel(value, asked[name].left_aside)
+            (value, rows)
+            for value, rows in found
+            if dialect.is_filled(column.type, value, column.left_aside)
         ]
         if any(rows > 1 for _, rows in kept):
             ordered = tuple(sorted(kept, key=lambda v: v[1], reverse=True))
@@ -56,13 +61,15 @@ def values(source: Source, table: Table) -> list[Enumeration]:
     return enumerations
 
 
-def _count(source: Source, table: str, names: list[str]) -> dict[str, list[tuple[object, int]]]:
-    """The values of each of the columns `names` of `table` but null, with the rows of each."""
+def _count(
+    source: Source, table: str, columns: Mapping[str, str]
+) -> dict[str, list[tuple[object, int]]]:
+    """The values of each of `columns`, by their types, of `table` but null, with their rows."""
     step = f"counting the values of {source.name(table)}"
-    by_column: dict[str, list[tuple[object, int]]] = {name: [] for name in names}
-    for index, value, (rows,) in source.grouped(table, names, [source.dialect.rows()], step):
+    by_column: dict[str, list[tuple[object, int]]] = {name: [] for name in columns}
+    for name, value, (rows,) in source.grouped(table, columns, [source.dialect.rows()], step):
         if value is not None:
-            by_column[names[index]].append((value, counted(rows, f"{table}.{names[index]}")))
+            by_column[name].append((value, counted(rows, f"{table}.{name}")))
     return by_column
 
 
@@ -80,7 +87,7 @@ def valued(table: Table, enumerations: Sequence[Enumeration]) -> Table:
     columns = (
         replace(
             column,
-            values=tuple(Value(as_text(value), rows) for value, rows in found[column.name]),
+            values=tuple(Value(str(value), rows) for value, rows in found[column.name]),
         )
         if column.name in found
         else column

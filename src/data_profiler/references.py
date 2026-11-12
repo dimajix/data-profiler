@@ -51,12 +51,12 @@ from decimal import Decimal, InvalidOperation
 from itertools import batched, groupby
 from typing import Final
 
+from data_profiler.counts import counted
 from data_profiler.detect import UUID
 from data_profiler.glossary import terms
 from data_profiler.overrides import GivenReferences
 from data_profiler.profile import DIGITS, Column, Profile, Range, Reference, Table
 from data_profiler.source import PER_QUERY, PROBES_PER_QUERY, Dialect, Lookup, Probe, Source
-from data_profiler.values import counted
 
 _logger = logging.getLogger(__name__)
 

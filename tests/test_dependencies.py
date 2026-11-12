@@ -10,7 +10,6 @@ from collections.abc import Mapping, Sequence
 from random import Random
 
 from data_profiler.dependencies import determine
-from data_profiler.detect import is_filled
 from data_profiler.profile import Column, ColumnDependency, Statistics, Table, Value
 from data_profiler.source import Source, connect
 from data_profiler.workspace import Sample
@@ -42,7 +41,7 @@ class _Whole(Source):
         values = zip(*(self._rows[column.name] for _, column in named), strict=True)
         # The sentinels left aside where the expression holds those `Dialect.without` writes.
         aside = first.left_aside if "THEN NULL ELSE" in expression else frozenset()
-        filled = (found for found in values if is_filled(found[0], aside))
+        filled = (found for found in values if self.dialect.is_filled(first.type, found[0], aside))
         return len(set(filled)) if others else len({found[0] for found in filled})
 
     def close(self) -> None:

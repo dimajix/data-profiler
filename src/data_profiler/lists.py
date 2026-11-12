@@ -2,11 +2,11 @@
 
 The separator of the values of a list is configured, not guessed: the project gives one, the same in
 all its tables, and an override of a table one in its place. A column of text is one of lists where
-the module `detect` takes the values of the sample, its nulls and sentinels aside, for lists of
-values separated by it; a column of texts of one value each is none, though each is a list of one,
-and a column of no text is none, though a decimal written as text, `12.50`, would be a list of a
-dot. No query is needed. The texts of a column of lists are no values of a discriminator; the values
-of its lists are, as the module `entities` says.
+the module `detect` takes the values of the sample, its nulls and sentinels aside, as the dialect
+tells them, for lists of values separated by it; a column of texts of one value each is none, though
+each is a list of one, and a column of no text is none, though a decimal written as text, `12.50`,
+would be a list of a dot. No query is needed. The texts of a column of lists are no values of a
+discriminator; the values of its lists are, as the module `entities` says.
 
 The values of the lists of a column are counted as the values of a column are, by the modules that
 count those, of a source that reads the table as a row of each value, `Source.unnested`: their
@@ -24,17 +24,18 @@ from data_profiler.detect import SemanticType, is_list
 from data_profiler.enumerations import valued, values
 from data_profiler.matching import recognise, verify
 from data_profiler.profile import Column, Table
-from data_profiler.source import Source
+from data_profiler.source import Dialect, Source
 from data_profiler.statistics import count
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
 
 
-def listed(table: Table, sample: Sample, separator: str | None) -> Table:
+def listed(dialect: Dialect, table: Table, sample: Sample, separator: str | None) -> Table:
     """`table`, each column whose sample holds lists of values separated by `separator` with it.
 
     Args:
+        dialect: The dialect of the database, which tells the sentinels of a sample.
         table: The table, with its columns and their statistics.
         sample: The sample of the table, with the values of each of its columns.
         separator: The separator of the values of a list, or None where none is given, so that no
@@ -50,7 +51,14 @@ def listed(table: Table, sample: Sample, separator: str | None) -> Table:
             if separator is not None
             # Only a column of text has lengths.
             and column.statistics.lengths is not None
-            and is_list(sample.columns[column.name], separator, column.left_aside)
+            and is_list(
+                [
+                    value
+                    for value in sample.columns[column.name]
+                    if dialect.is_filled(column.type, value, column.left_aside)
+                ],
+                separator,
+            )
             else None,
         )
         for column in table.columns
@@ -121,6 +129,7 @@ def _itemized(
         if text is not None
         for value in str(text).strip().split(separator)
     ]
-    found = verify(unnested, recognise(counted, Sample({column.name: split}), types))
+    recognised = recognise(source.dialect, counted, Sample({column.name: split}), types)
+    found = verify(unnested, recognised)
     (item,) = valued(found, values(unnested, found)).columns
     return replace(column, items=item.findings)

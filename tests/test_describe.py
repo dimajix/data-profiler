@@ -30,7 +30,7 @@ from data_profiler.profile import (
     Value,
 )
 from data_profiler.scan import scan
-from data_profiler.source import Source
+from data_profiler.source import Source, dialect
 from data_profiler.workspace import Sample, Workspace
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
@@ -101,7 +101,8 @@ def _described(
         sample = (samples or {}).get(table.name, Sample({c.name: [] for c in table.columns}))
         workspace.write_sample(table.name, sample)
     directory = tmp_path / "profile"
-    describe(profile, overrides or Overrides(), llm or _Answers(), workspace, directory)
+    given = overrides or Overrides()
+    describe(profile, given, llm or _Answers(), workspace, directory, dialect("trino://h/c/s"))
     return Profile.read(directory)
 
 
@@ -193,7 +194,7 @@ def test_without_a_model_the_names_are_split_and_read_by_their_candidates_alone(
     columns = (replace(nm, description="Filled before."), chosen, xy_cd, st_nm)
     profile = replace(_profile(glossary=glossary), tables=(replace(table, columns=columns),))
     workspace = Workspace.open(tmp_path / "workspace", profile.catalog, profile.schema)
-    describe(profile, Overrides(), None, workspace, tmp_path / "profile")
+    describe(profile, Overrides(), None, workspace, tmp_path / "profile", dialect("trino://h/c/s"))
     described = Profile.read(tmp_path / "profile")
     (table,) = described.tables
     assert [column.reading for column in table.columns] == [
@@ -716,7 +717,12 @@ def test_a_scan_keeps_the_terms_and_readings_describe_filled(
     scan(source, pattern, workspace, (), None, Overrides(), directory)
     concepts = {"customer": Concept(("cust",)), "identifier": Concept(("id",))}
     describe(
-        Profile.read(directory), Overrides(glossary=concepts), _Answers(), workspace, directory
+        Profile.read(directory),
+        Overrides(glossary=concepts),
+        _Answers(),
+        workspace,
+        directory,
+        source.dialect,
     )
     described = Profile.read(directory)
     scan(source, pattern, workspace, (), None, Overrides(), directory)

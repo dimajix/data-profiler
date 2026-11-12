@@ -38,9 +38,8 @@ from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Final
 
-from data_profiler.detect import is_filled
 from data_profiler.profile import DIGITS, Column, ColumnDependency, Table
-from data_profiler.source import Source
+from data_profiler.source import Dialect, Source
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
@@ -161,7 +160,7 @@ def _found(
         column.name: determinant
         for column in table.columns
         if column.name not in determining_none and dialect.identifies(column.type)
-        for determinant in [_determinant(column, sample)]
+        for determinant in [_determinant(dialect, column, sample)]
         if determinant is not None
     }
     following = [column for column in table.columns if dialect.is_ordered(column.type)]
@@ -195,7 +194,7 @@ def _found(
     return found
 
 
-def _determinant(column: Column, sample: Sample) -> _Determinant | None:
+def _determinant(dialect: Dialect, column: Column, sample: Sample) -> _Determinant | None:
     """`column` as a determinant of the others of `sample`; None where it takes no part.
 
     It takes part where it is filled in `_FEWEST` rows at least, a share `_REPEATED` of them of a
@@ -203,7 +202,7 @@ def _determinant(column: Column, sample: Sample) -> _Determinant | None:
     """
     rows: dict[object, list[int]] = {}
     for index, value in enumerate(sample.columns[column.name]):
-        if is_filled(value, column.left_aside):
+        if dialect.is_filled(column.type, value, column.left_aside):
             rows.setdefault(value, []).append(index)
     filled = sum(len(found) for found in rows.values())
     repeating = sorted((tuple(found) for found in rows.values() if len(found) > 1), key=len)

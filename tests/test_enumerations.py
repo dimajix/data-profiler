@@ -35,3 +35,8 @@ def test_the_values_of_an_enumeration_are_counted_on_the_whole_table(
             assert sum(counts) == rest, f"{where}: every row but its nulls and sentinels"
             assert counts == sorted(counts, reverse=True), f"{where}: the most frequent first"
             assert None not in [value for value, _ in enumeration.values], where
+
+
+def test_the_values_of_an_enumeration_are_the_texts_the_database_writes(source: Source) -> None:
+    enumerations = {found.column: found for found in values(source, count(source, "cust", {}))}
+    assert {value for value, _ in enumerations["actv_flg"].values} == {"true", "false"}

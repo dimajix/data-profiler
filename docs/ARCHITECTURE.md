@@ -58,8 +58,7 @@ environment.
     alike. Where a schema is reached and its dialect, `locate` and `dialect` tell of a URL without
     connecting, for the data contract, which names its server and the logical types of its columns
     by the dialect.
-*   **`data_profiler.values`** - values of the database, as the tool takes them: a count as a
-    number, any value as text, as the profile holds it.
+*   **`data_profiler.counts`** - counts of the database, as the tool takes them: as numbers.
 *   **`data_profiler.statistics`** - the statistics of a table, counted by one query that it builds
     from the building blocks of the dialect, and whose row it reads back.
 *   **`data_profiler.enumerations`** - the enumerations of a table, their values counted by one
@@ -141,16 +140,17 @@ environment.
 
 The stages read and write the profile: `scan` uses `source`, `statistics`, `enumerations`,
 `sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
-`disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
+`disclosure`, `counts` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
-`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which `Template.write`
-lays over it for every template - `report` with `glossary` and `diagram` for its names and diagrams,
-`contract` with `glossary` for its business names and `source` for its server and its types -, and
-`adopt` reads the profile and writes through `overrides`; `cli` runs the stages, gives the overrides
-to each but `adopt`, which reads them anew for each concept, and the language model, made by `llm`
-as the project names it, to `describe`, unless it is to ask none, and to `export` the template
-given, made of the project and the environment. The semantic types of a project and its separator of
-lists reach `scan` from `project`, and every stage after it from the profile.
+`disclosure`, `workspace` and `source` for the sentinels of a sample, `export` the profile and
+`overrides`, which `Template.write` lays over it for every template - `report` with `glossary` and
+`diagram` for its names and diagrams, `contract` with `glossary` for its business names and `source`
+for its server and its types -, and `adopt` reads the profile and writes through `overrides`; `cli`
+runs the stages, gives the overrides to each but `adopt`, which reads them anew for each concept,
+and the language model, made by `llm` as the project names it, to `describe`, unless it is to ask
+none, and to `export` the template given, made of the project and the environment. The semantic
+types of a project and its separator of lists reach `scan` from `project`, and every stage after it
+from the profile.
 
 ## The domain
 
@@ -194,7 +194,8 @@ lists reach `scan` from `project`, and every stage after it from the profile.
     overrides. The tool brings its sentinels, of the columns whose values the database writes as
     text; an override gives those of a column in their place. Of them, a column has those its type
     can hold, as the dialect tells: all in a text, the days in a date, none of the tool's in a
-    number.
+    number. A value is compared with them as the dialect compares it, in a query and in a sample
+    alike: as text, its spaces at either end cut, a moment as its day.
 *   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
     separator of lists the project gives, the same in all tables of the database, or an override of
     a table in its place; the tool guesses none. Nearly every text is a list, of one value or more,
@@ -413,6 +414,13 @@ The design repeats a few decisions; new code follows them.
     database is a new dialect, not a change across the code. What the tables hold is counted or
     sampled by queries that the part that reads their rows builds from the building blocks of the
     dialect: metadata belongs to the source, counting and sampling to the parts that do them.
+*   **A value has one form, that of the database.** Every value the tool reads of the database -
+    the ends of a range, the values of an enumeration, of a discriminator and of a sample - it
+    reads as the text the dialect casts it to, as the sentinels are compared, of all its digits:
+    `-1.0E0`, not `-1.0`; `12:34:56.123456789`, not a time Python has rounded to six. So a value is
+    held, shown and compared with the sentinels in one form, which a person can give a sentinel in.
+    A value of a type the database writes no text of - an array, a map, a row, a binary - is read
+    as it is.
 *   **Every attribute of the profile is filled by one step.** A step, `scan`, `relate` or a step of
     `describe`, replaces in a profile there is the attributes it fills alone, and keeps all others,
     so that a stage run again loses nothing another found: a scan keeps the terms and readings of

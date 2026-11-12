@@ -177,7 +177,7 @@ def _describe(project: Project, environment: Environment, *, anew: bool, without
     overrides = Overrides.read(project.overrides)
     llm = None if without_llm else Ollama(project.ollama, project.llm)
     workspace = Workspace.open(environment.workspace, profile.catalog, profile.schema)
-    describe(profile, overrides, llm, workspace, environment.profile)
+    describe(profile, overrides, llm, workspace, environment.profile, dialect(environment.url))
     _logger.info("Wrote the profile of %s to %s", environment.name, environment.profile)
 
 

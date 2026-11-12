@@ -145,7 +145,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         select = source.dialect.select([source.dialect.longest(values)], 't"x')
         sampled = source.dialect.sampled([values], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
-        matching = source.dialect.matching(values, "it's")
+        matching = source.dialect.matching(values, "varchar(3)", "it's")
         ranged = [source.dialect.smallest(values), source.dialect.largest(values)]
         without = source.dialect.without('c"y', "varchar(3)", {"it's"})
         moments = source.dialect.sentinels('c"y', "timestamp(3)", {"9999-12-31", ""})
@@ -165,7 +165,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert sampled.startswith('SELECT "c""y" FROM "t""x" TABLESAMPLE')
     assert grouped.startswith('SELECT grouping("c""y") FROM "t""x" GROUP BY')
     assert grouped.endswith('(("c""y"))')
-    assert 'try_cast("c""y" AS varchar)' in matching
+    assert 'CAST("c""y" AS varchar)' in matching
     assert "'^(?:it''s)$'" in matching
     assert ranged == ['min("c""y")', 'max("c""y")']
     assert without.endswith('ELSE "c""y" END')
@@ -370,6 +370,113 @@ def test_a_type_holds_the_texts_the_database_casts_its_values_to(
     ((text,),) = source.query(statement, f"writing {kind}")
     assert isinstance(text, str)
     assert source.dialect.held(kind, {text}) == {text}
+
+
+@pytest.mark.parametrize(
+    ("kind", "value", "text"),
+    [
+        ("double", "CAST(-1 AS double)", "-1.0E0"),
+        ("boolean", "true", "true"),
+        ("char(4)", "CAST('ab' AS char(4))", "ab"),
+        ("time(9)", "TIME '12:34:56.123456789'", "12:34:56.123456789"),
+        (
+            "timestamp(9)",
+            "TIMESTAMP '2024-01-31 12:34:56.123456789'",
+            "2024-01-31 12:34:56.123456789",
+        ),
+        (
+            "timestamp(3) with time zone",
+            "TIMESTAMP '2024-01-31 12:00:00.000 Europe/Berlin'",
+            "2024-01-31 12:00:00.000 Europe/Berlin",
+        ),
+        ("json", "JSON '\"N/A\"'", "N/A"),
+        ("json", "JSON '[1,2]'", "[1,2]"),
+    ],
+)
+def test_a_value_is_read_as_the_text_the_database_writes_it_as_of_all_its_digits(
+    source: Source, kind: str, value: str, text: str
+) -> None:
+    # The statement is the test's own: a value of each type is had of no table of the simulation.
+    statement = f"SELECT {source.dialect.text(value, kind)}"
+    assert source.query(statement, f"reading {kind}") == [(text,)]
+
+
+def test_a_value_of_a_type_the_database_writes_no_text_of_is_read_as_it_is(source: Source) -> None:
+    statement = f"SELECT {source.dialect.text('ARRAY[1, 2]', 'array(integer)')}"
+    assert source.query(statement, "reading an array") == [([1, 2],)]
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    [
+        *(("varchar(40)", text) for text in ("", " ", "NULL", "null", " N/A ", "n/a", "-")),
+        *(("varchar(40)", text) for text in ("0001-01-01", "1900-01-01", "31.12.9999")),
+        ("date", "9999-12-31"),
+        ("timestamp(3)", "9999-12-31 23:59:59.999"),
+        ("timestamp(3) with time zone", "9999-12-31 00:00:00.000 UTC"),
+        ("json", "-"),
+    ],
+)
+def test_a_value_read_is_a_sentinel_as_the_database_compares_it(kind: str, value: str) -> None:
+    assert not dialect("trino://h/c/s").is_filled(kind, value, SENTINELS)
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    [
+        ("varchar(40)", "10115"),
+        *(("varchar(40)", text) for text in ("0", "00000", "Null", "--", "9999-12-31 00:00:00")),
+        ("bigint", "0"),
+        ("date", "2024-01-31"),
+        ("timestamp(3)", "2024-01-31 00:00:00.000"),
+        ("array(integer)", [1, 2]),
+    ],
+)
+def test_a_value_read_that_is_no_sentinel_is_filled(kind: str, value: object) -> None:
+    assert dialect("trino://h/c/s").is_filled(kind, value, SENTINELS)
+
+
+@pytest.mark.parametrize(
+    ("kind", "value"),
+    [
+        ("varchar(10)", "' N/A '"),
+        ("varchar(20)", "'9999-12-31 00:00'"),
+        ("char(4)", "CAST('-' AS char(4))"),
+        ("double", "CAST(-1 AS double)"),
+        ("timestamp(3)", "TIMESTAMP '9999-12-31 12:00:00.000'"),
+        ("timestamp(3) with time zone", "TIMESTAMP '9999-12-31 23:00:00.000 -05:00'"),
+        ("json", "JSON 'null'"),
+        ("json", "JSON '\"N/A\"'"),
+        ("json", "JSON '{\"a\": 1}'"),
+    ],
+)
+def test_a_value_read_is_a_sentinel_where_the_database_counts_it_as_one(
+    source: Source, kind: str, value: str
+) -> None:
+    trino = source.dialect
+    texts = trino.held(kind, SENTINELS | {"-1.0E0"})
+    # The statement is the test's own: a value of each type is had of no table of the simulation.
+    read, counting = trino.text('"v"', kind), trino.sentinels("v", kind, texts)
+    statement = f'SELECT max({read}), {counting} FROM (SELECT {value} AS "v")'
+    ((text, counted),) = source.query(statement, f"comparing {kind}")
+    assert trino.is_filled(kind, text, texts) == (counted == 0), text
+
+
+@pytest.mark.parametrize(
+    ("value", "pattern"),
+    [("JSON '\"abc\"'", "abc"), ("JSON '{\"a\": 1}'", "[{].*[}]"), ("JSON 'null'", "null")],
+)
+def test_a_pattern_matches_a_value_as_it_is_read(source: Source, value: str, pattern: str) -> None:
+    # The statement is the test's own: a value of JSON is had of no table of the simulation.
+    matching = source.dialect.matching('"v"', "json", pattern)
+    statement = f'SELECT {matching} FROM (SELECT {value} AS "v")'
+    assert source.query(statement, "matching JSON") == [(1,)]
+
+
+def test_a_null_is_not_filled_and_of_a_column_of_no_sentinels_any_other_value_is() -> None:
+    trino = dialect("trino://h/c/s")
+    assert not trino.is_filled("varchar(40)", None, frozenset())
+    assert trino.is_filled("varchar(40)", "", frozenset())
 
 
 @pytest.mark.parametrize(

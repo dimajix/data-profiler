@@ -18,7 +18,7 @@ from data_profiler.detect import (
 )
 from data_profiler.matching import recognise, verify
 from data_profiler.profile import Column, Match, Statistics, Table, Value
-from data_profiler.source import Source
+from data_profiler.source import Source, dialect
 from data_profiler.statistics import count
 from data_profiler.workspace import Sample
 
@@ -30,7 +30,8 @@ def _matches(
     statistics = Statistics(0, len(values), sentinels=sentinels)
     column = Column(name="value", type="varchar(40)", statistics=statistics)
     table = Table(name="table", rows=len(values), columns=(column,))
-    (matched,) = recognise(table, Sample(columns={"value": values}), types).columns
+    sample = Sample(columns={"value": values})
+    (matched,) = recognise(dialect("trino://h/c/s"), table, sample, types).columns
     return matched.matches
 
 
@@ -133,7 +134,7 @@ def test_the_pattern_of_names_takes_their_characters_as_written(
     source: Source, kind: SemanticType, names: list[str], unescaped: str
 ) -> None:
     values = ", ".join(f"""('{name.replace("'", "''")}')""" for name in [*names, unescaped])
-    matching = source.dialect.matching("name", kind.detector.pattern.pattern)
+    matching = source.dialect.matching("name", "varchar", kind.detector.pattern.pattern)
     statement = f"SELECT {matching} FROM (VALUES {values}) AS names (name)"
     assert source.query(statement, "matching names") == [(len(names),)], (
         f"each name, but not {unescaped}, which the characters of a name read as a pattern match"

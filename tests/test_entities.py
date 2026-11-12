@@ -48,15 +48,15 @@ class _Counted(Source):
         return _Counted({**self._given, column: self._lists[column]})
 
     def grouped(
-        self, table: str, columns: Sequence[str], expressions: Sequence[str], step: str
-    ) -> list[tuple[int, object, tuple[object, ...]]]:
+        self, table: str, columns: Mapping[str, str], expressions: Sequence[str], step: str
+    ) -> list[tuple[str, object, tuple[object, ...]]]:
         # Of each value of each column grouped by, the rows and the nulls of each column of the
         # table, the candidates first, filled in every row.
-        groups: list[tuple[int, object, tuple[object, ...]]] = []
-        for index, name in enumerate(columns):
+        groups: list[tuple[str, object, tuple[object, ...]]] = []
+        for name in columns:
             for value, (count, filled) in self._given[name].items():
                 nulls = [0] * len(self._given) + [count - rows_filled for rows_filled in filled]
-                groups.append((index, value, (count, *nulls)))
+                groups.append((name, value, (count, *nulls)))
         return groups
 
     def query(self, statement: str, step: str) -> list[tuple[object, ...]]:

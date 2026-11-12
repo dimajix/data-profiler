@@ -1,5 +1,7 @@
 """Tests of the samples of tables, against the simulation environment, which has to run."""
 
+import re
+
 from data_profiler.sampling import take
 from data_profiler.source import Source
 from data_profiler.statistics import count
@@ -19,3 +21,17 @@ def test_a_small_table_is_taken_whole(source: Source) -> None:
     sample = take(source, table)
     keys = sample.columns["prod_id"]
     assert len(keys) == len(set(keys)) == table.rows, "every row once"
+
+
+def test_a_sample_holds_the_values_as_the_texts_the_database_writes_of_all_their_digits(
+    source: Source,
+) -> None:
+    sample = take(source, count(source, "cust", {}))
+    moments = [value for value in sample.columns["upd_ts"] if value is not None]
+    assert moments, "a sample of moments"
+    for value in moments:
+        assert isinstance(value, str)
+        assert re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}", value
+        )
+    assert set(sample.columns["actv_flg"]) <= {"true", "false"}

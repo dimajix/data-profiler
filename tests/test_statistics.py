@@ -1,5 +1,7 @@
 """Tests of the statistics of a table, against the simulation environment, which has to run."""
 
+import re
+
 import pytest
 
 from data_profiler.profile import Lengths, Range, Value
@@ -21,6 +23,19 @@ def test_the_range_of_a_column_whose_values_have_an_order_is_counted_as_text(
     assert counted["actv_flg"].range == Range("false", "true")
     for name in ("cust_id", "cust_nm", "crt_dt", "upd_ts", "crdt_lmt_amt"):
         assert counted[name].range is not None, name
+
+
+def test_the_range_of_a_column_is_of_the_texts_the_database_writes_of_all_their_digits(
+    source: Source,
+) -> None:
+    counted = {column.name: column.statistics for column in count(source, "cust", {}).columns}
+    moments = counted["upd_ts"].range
+    assert moments is not None
+    for end in (moments.smallest, moments.largest):
+        assert end is not None
+        assert re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}", end
+        ), "a moment of the precision of its type, `timestamp(3)`"
 
 
 def test_a_table_that_does_not_exist_is_not_counted(source: Source) -> None:

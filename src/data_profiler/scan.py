@@ -106,6 +106,7 @@ def scan(
     given = overrides.selected(names)
     profile = profile.restricted(names)
     profile.write(directory)
+    dialect = source.dialect
     for name in names:
         separator = given[name].list_separator or list_separator
         kept = profile.counted(name)
@@ -126,10 +127,12 @@ def scan(
         workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        verified = verify(source, recognise(listed(table, sample, separator), sample, types))
+        listing = listed(dialect, table, sample, separator)
+        verified = verify(source, recognise(dialect, listing, sample, types))
         itemized = itemize(source, verified, sample, types)
         keyed = identify(source, itemized, sample, given[name].primary_key)
-        found = determine(source, group(keyed, sample), sample, given[name].determining_none)
+        grouped = group(dialect, keyed, sample)
+        found = determine(source, grouped, sample, given[name].determining_none)
         marked = given[name].laid_over(valued(found, enumerations))
         disclosed = disclose(marked, types)
         profile = profile.updated(discriminate(source, disclosed, given[name].discriminator))

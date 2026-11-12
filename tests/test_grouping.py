@@ -2,6 +2,7 @@
 
 from data_profiler.grouping import group
 from data_profiler.profile import Column, ColumnGroup, Statistics, Table, Value
+from data_profiler.source import dialect
 from data_profiler.workspace import Sample
 
 # The rows of each sample of these tests.
@@ -26,7 +27,7 @@ def _groups(
             for name in columns
         ),
     )
-    return group(table, Sample(columns=columns)).column_groups
+    return group(dialect("trino://h/c/s"), table, Sample(columns=columns)).column_groups
 
 
 def test_columns_filled_in_the_same_rows_are_a_group() -> None:

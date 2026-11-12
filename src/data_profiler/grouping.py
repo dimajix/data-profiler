@@ -19,8 +19,8 @@ from itertools import combinations
 from statistics import fmean
 from typing import Final
 
-from data_profiler.detect import is_filled
 from data_profiler.profile import DIGITS, ColumnGroup, Table
+from data_profiler.source import Dialect
 from data_profiler.workspace import Sample
 
 _logger = logging.getLogger(__name__)
@@ -32,10 +32,11 @@ _MOST: Final = 0.9
 _DISTANCE: Final = 0.1
 
 
-def group(table: Table, sample: Sample) -> Table:
+def group(dialect: Dialect, table: Table, sample: Sample) -> Table:
     """`table` with the column groups of its columns filled together in `sample`.
 
     Args:
+        dialect: The dialect of the database, which tells the sentinels of a sample.
         table: The table, its columns with their statistics, which name their sentinels.
         sample: The sample of the table, with the values of each of its columns.
 
@@ -48,7 +49,9 @@ def group(table: Table, sample: Sample) -> Table:
     for column in table.columns:
         values = sample.columns[column.name]
         rows = frozenset(
-            index for index, value in enumerate(values) if is_filled(value, column.left_aside)
+            index
+            for index, value in enumerate(values)
+            if dialect.is_filled(column.type, value, column.left_aside)
         )
         if _FEWEST <= len(rows) <= _MOST * len(values):
             names.append(column.name)

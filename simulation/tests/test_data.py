@@ -23,7 +23,6 @@ from data_profiler.detect import (
     IBAN,
     PHONE,
     POSTAL_CODE,
-    SENTINELS,
     TRUE_FALSE,
     UUID,
     YES_NO,
@@ -654,7 +653,7 @@ def test_a_column_of_lists_holds_lists_of_the_values_of_its_items_of_its_lengths
         items=Findings(Statistics(0, 40, Lengths(1, 2))),
     )
     values = [str(value) for (value,) in rows(_table(column, count=500), _profile(), 0)]
-    assert is_list(values, ";", SENTINELS), "lists, some of several numbers"
+    assert is_list(values, ";"), "lists, some of several numbers"
     assert all(re.fullmatch(r"[0-9]{1,2}(;[0-9]{1,2})*", value) for value in values)
     assert (min(map(len, values)), max(map(len, values))) == (1, 23)
     assert len({item for value in values for item in value.split(";")}) == 40, "its items"

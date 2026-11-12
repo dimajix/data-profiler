@@ -8,17 +8,17 @@ them those its type can hold, as the dialect tells, each counted apart, so that 
 a column has; what is counted of its values leaves them aside, but its nulls. A column whose values
 the database writes as no text - an array, a map, a binary - has no sentinels. The row the query
 returns is read along the same list of expressions it was built from, so that its form is known in
-this module alone. The range of a column is of values of the database; whether it goes into the
-profile, the module `disclosure` decides.
+this module alone. The range of a column is of values of the database, as the text the dialect reads
+them as; whether it goes into the profile, the module `disclosure` decides.
 """
 
 from collections.abc import Collection, Iterable, Mapping
 from itertools import chain
 
+from data_profiler.counts import counted
 from data_profiler.detect import sentinels
 from data_profiler.profile import Column, Lengths, Range, Statistics, Table, Value
 from data_profiler.source import Source
-from data_profiler.values import as_text, counted
 
 
 def count(
@@ -59,7 +59,9 @@ def count(
         listed = sorted(texts)
         of_sentinels = [dialect.sentinels(name, kind, {text}) for text in listed]
         of_range = (
-            [dialect.smallest(kept), dialect.largest(kept)] if dialect.is_ordered(kind) else []
+            [dialect.text(dialect.smallest(kept), kind), dialect.text(dialect.largest(kept), kind)]
+            if dialect.is_ordered(kind)
+            else []
         )
         of_lengths = (
             [dialect.shortest(kept), dialect.longest(kept)] if dialect.is_text(kind) else []
@@ -106,7 +108,7 @@ def _statistics(
         lengths=None
         if shortest is None
         else Lengths(counted(shortest, where), counted(longest, where)),
-        range=None if smallest is None else Range(as_text(smallest), as_text(largest)),
+        range=None if smallest is None else Range(str(smallest), str(largest)),
         sentinels=tuple(sentinels),
     )
 

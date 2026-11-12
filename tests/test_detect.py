@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Sequence
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 import pytest
 
@@ -32,7 +32,6 @@ from data_profiler.detect import (
     Sensitivity,
     cases,
     detect,
-    is_filled,
     is_list,
     is_list_separator,
     is_sensitive,
@@ -197,77 +196,32 @@ def test_every_semantic_type_has_its_sensitivity(
     assert kind.sensitivity == sensitivity
 
 
-def test_the_share_of_the_values_of_each_type_is_detected_nulls_aside() -> None:
-    values = ["10115", "01067", None, "anna@example.de", "otto@example.de", None]
-    assert detect(values, (), SENTINELS) == {POSTAL_CODE: 0.5, EMAIL: 0.5}
+def test_the_share_of_the_values_of_each_type_is_detected() -> None:
+    values = ["10115", "01067", "anna@example.de", "otto@example.de"]
+    assert detect(values, ()) == {POSTAL_CODE: 0.5, EMAIL: 0.5}
 
 
 def test_a_type_recognised_in_less_than_the_threshold_of_its_detector_is_not_detected() -> None:
-    assert detect(["10115", "anna", "otto"], (), SENTINELS) == {}, "a third is less than half"
+    assert detect(["10115", "anna", "otto"], ()) == {}, "a third is less than half"
 
 
 def test_values_of_any_type_are_detected_as_text() -> None:
-    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)], (), SENTINELS) == {DATE: 1.0}
-    assert detect([10115, 99998], (), SENTINELS) == {POSTAL_CODE: 1.0}
+    assert detect([date(2024, 1, 31), datetime(2024, 1, 31, 12, 0)], ()) == {DATE: 1.0}
+    assert detect([10115, 99998], ()) == {POSTAL_CODE: 1.0}
 
 
 def test_values_are_detected_without_the_spaces_at_their_ends() -> None:
-    assert detect([" 10115", "10115   "], (), SENTINELS) == {POSTAL_CODE: 1.0}
+    assert detect([" 10115", "10115   "], ()) == {POSTAL_CODE: 1.0}
 
 
-def test_the_sentinels_of_a_column_are_not_counted_as_its_nulls_are_not() -> None:
-    values = ["10115", "", " ", "N/A", "NULL", "-", "01067", None]
-    assert detect(values, (), SENTINELS) == {POSTAL_CODE: 1.0}
-    assert detect(values, (), frozenset()) == {}, "counted where the column has none"
-
-
-def _is_left_aside(value: object, sentinels: frozenset[str] = SENTINELS) -> bool:
-    """Whether `value` is left aside, beside a postal code, as a sentinel of `sentinels`."""
-    return detect(["10115", value], (), sentinels) == {POSTAL_CODE: 1.0}
-
-
-@pytest.mark.parametrize(
-    "value",
-    [
-        *("", " ", "NULL", "null", "N/A", "n/a", "-"),
-        *("0001-01-01", "1900-01-01", "9999-12-31", "31.12.9999", date(9999, 12, 31)),
-        datetime(9999, 12, 31, 23, 59, 59),
-        datetime(9999, 12, 31, tzinfo=UTC),
-    ],
-)
-def test_a_value_that_stands_for_no_value_is_a_sentinel_of_the_tool(value: object) -> None:
-    assert _is_left_aside(value)
-
-
-@pytest.mark.parametrize(
-    "value",
-    ["0", "00", "00000", "Null", "--", "2024-01-31", "9999-12-31 00:00:00", date(2024, 1, 31)],
-)
-def test_a_value_is_no_sentinel_of_the_tool(value: object) -> None:
-    assert not _is_left_aside(value)
-
-
-def test_the_sentinels_given_of_a_column_are_those_left_aside() -> None:
-    given = sentinels(["", "00000"])
-    assert given == {"", "00000"}
-    assert _is_left_aside("00000", given)
-    assert not _is_left_aside("N/A", given), "in place of those of the tool"
+def test_the_sentinels_of_a_column_are_those_given_else_those_of_the_tool() -> None:
+    assert sentinels(["", "00000"]) == {"", "00000"}
     assert sentinels(None) is SENTINELS, "those of the tool where none are given"
     assert sentinels([]) == frozenset(), "none where they are none"
 
 
-def test_a_value_is_filled_where_it_is_neither_null_nor_a_sentinel() -> None:
-    assert is_filled("10115", SENTINELS)
-    assert is_filled(0, SENTINELS), "a zero is a value"
-    assert not is_filled(None, SENTINELS)
-    assert not is_filled(" N/A ", SENTINELS)
-    assert not is_filled(datetime(9999, 12, 31, 12), SENTINELS)
-    assert is_filled("", frozenset()), "where the column has no sentinels"
-
-
-@pytest.mark.parametrize("values", [[], [None, None]], ids=["no values", "only nulls"])
-def test_no_type_is_detected_without_values(values: list[object]) -> None:
-    assert detect(values, (), SENTINELS) == {}
+def test_no_type_is_detected_without_values() -> None:
+    assert detect([], ()) == {}
 
 
 # Recognises digits, of a column of at most two distinct values.
@@ -304,14 +258,13 @@ def test_a_condition_of_the_column_is_given_the_texts_its_detector_recognises() 
 
 def test_a_type_whose_condition_of_the_column_fails_is_not_detected() -> None:
     pair = SemanticType("pair", Sensitivity.NONE, _PAIR)
-    assert detect(["4", "7"], (pair,), SENTINELS) == {pair: 1.0}
-    assert detect(["4", "7", "9"], (pair,), SENTINELS) == {}
+    assert detect(["4", "7"], (pair,)) == {pair: 1.0}
+    assert detect(["4", "7", "9"], (pair,)) == {}
 
 
 # A column of comments, many of them short, and columns of several words each that are no free text.
 _COMMENTS = [
     *["ok"] * 7,
-    *["-"] * 2,
     "Kunde bittet um Rückruf am Montag",
     "Lieferung kam beschädigt an, Ersatz wurde verschickt.",
     "Zahlung ist noch offen",
@@ -326,36 +279,36 @@ _NOT_FREE_TEXT = {
 
 
 def test_a_column_of_free_text_is_detected_though_most_values_are_short_and_repeated() -> None:
-    assert detect(_COMMENTS, (), SENTINELS) == {FREE_TEXT: 0.3}, "its sentinels aside"
+    assert detect(_COMMENTS, ()) == {FREE_TEXT: 0.3}
 
 
 @pytest.mark.parametrize(("kind", "values"), list(_NOT_FREE_TEXT.items()), ids=list(_NOT_FREE_TEXT))
 def test_a_column_of_several_words_that_is_no_free_text_is_not_detected(
     kind: str, values: list[str]
 ) -> None:
-    assert FREE_TEXT not in detect(values, (), SENTINELS), f"{kind} are no free text"
+    assert FREE_TEXT not in detect(values, ()), f"{kind} are no free text"
 
 
 def test_a_column_of_booleans_is_one_of_true_and_false() -> None:
-    assert detect([True, False, None, True], (), SENTINELS) == {TRUE_FALSE: 1.0}
+    assert detect(["true", "false", "true"], ()) == {TRUE_FALSE: 1.0}
 
 
 def test_a_column_of_zeros_and_ones_is_one_of_a_pair() -> None:
-    assert detect([0, 1, 1, None], (), SENTINELS) == {ZERO_ONE: 1.0}
+    assert detect([0, 1, 1], ()) == {ZERO_ONE: 1.0}
 
 
 def test_a_column_of_counts_mostly_zeros_and_ones_is_no_pair() -> None:
-    assert detect([0, 1, 1, 0, 2], (), SENTINELS) == {}, "every value is of a pair, not most"
+    assert detect([0, 1, 1, 0, 2], ()) == {}, "every value is of a pair, not most"
 
 
 def test_a_column_of_codes_of_capitals_most_of_them_codes_of_currencies_is_none() -> None:
     codes = ["ALL", "TOP", "ALL", "TOP", "MID", "ALL", "TOP", "LOW"]
-    assert detect(codes, (), SENTINELS) == {}, "three quarters of the values, not nearly every"
+    assert detect(codes, ()) == {}, "three quarters of the values, not nearly every"
 
 
 def test_a_column_of_flags_of_yes_and_no_is_no_column_of_codes_of_countries() -> None:
     flags = ["YES", "NO", "NO", "YES", "NO", "NO", "NO", "NO"]
-    assert detect(flags, (), SENTINELS) == {YES_NO: 1.0}, "`NO` is Norway, but not nearly every"
+    assert detect(flags, ()) == {YES_NO: 1.0}, "`NO` is Norway, but not nearly every"
 
 
 @pytest.mark.parametrize(
@@ -378,16 +331,16 @@ def test_a_column_of_flags_of_yes_and_no_is_no_column_of_codes_of_countries() ->
 def test_a_column_of_codes_or_numbers_is_one_of_nearly_every_value(
     kind: SemanticType, of_it: str, other: str
 ) -> None:
-    assert detect([of_it] * 19 + [other], (), SENTINELS) == {kind: 0.95}
-    assert detect([of_it] * 18 + [other] * 2, (), SENTINELS) == {}, "nine values of ten are not"
+    assert detect([of_it] * 19 + [other], ()) == {kind: 0.95}
+    assert detect([of_it] * 18 + [other] * 2, ()) == {}, "nine values of ten are not"
 
 
 def test_a_column_of_values_of_countries_and_currencies_alike_is_a_match_of_both() -> None:
-    assert detect(["276", "756", "040"], (), SENTINELS) == {
+    assert detect(["276", "756", "040"], ()) == {
         COUNTRY_NUMBER: 1.0,
         CURRENCY_NUMBER: 1.0,
     }, "Germany and its mark, Switzerland and its franc, Austria and its schilling"
-    assert detect(["CHE", "BTN"], (), SENTINELS) == {COUNTRY_ALPHA_3: 1.0, CURRENCY_CODE: 1.0}
+    assert detect(["CHE", "BTN"], ()) == {COUNTRY_ALPHA_3: 1.0, CURRENCY_CODE: 1.0}
 
 
 @pytest.mark.parametrize(
@@ -425,7 +378,7 @@ def test_a_type_of_a_project_is_detected_beside_those_of_the_tool(
     account_number: SemanticType,
 ) -> None:
     values = ["A0123456789", "10115"]
-    assert detect(values, (account_number,), SENTINELS) == {POSTAL_CODE: 0.5, account_number: 0.5}
+    assert detect(values, (account_number,)) == {POSTAL_CODE: 0.5, account_number: 0.5}
 
 
 def test_a_text_of_a_type_of_a_project_of_a_sensitivity_is_sensitive(
@@ -510,13 +463,9 @@ def test_a_separator_of_lists_is_one_character_that_no_value_of_a_list_holds(
 def test_texts_are_lists_where_each_is_one_and_one_holds_several_values(
     texts: list[str], listed: bool
 ) -> None:
-    assert is_list(texts, ";", SENTINELS) is listed
-
-
-def test_the_nulls_and_sentinels_of_a_column_of_lists_are_left_aside() -> None:
-    assert is_list(["1;2", None, "", "N/A", "3"], ";", SENTINELS)
+    assert is_list(texts, ";") is listed
 
 
 def test_a_column_of_lists_is_one_of_nearly_every_text_a_list() -> None:
-    assert is_list(["1;2"] * 19 + ["a b"], ";", SENTINELS)
-    assert not is_list(["1;2"] * 18 + ["a b"] * 2, ";", SENTINELS), "nine texts of ten are not"
+    assert is_list(["1;2"] * 19 + ["a b"], ";")
+    assert not is_list(["1;2"] * 18 + ["a b"] * 2, ";"), "nine texts of ten are not"
