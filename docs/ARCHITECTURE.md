@@ -307,32 +307,32 @@ from the profile.
 1.  `scan` connects to the schema of an environment of a project as its user, the password taken
     from a variable, and selects the tables the project names, by a list or a regular expression.
     For each table it counts the statistics of all columns in one query, the approximate distinct
-    counts included, the sentinels of each column counted apart and left aside; it counts the values
-    of every column whose distinct count is at most the threshold of an enumeration; and it takes a
+    counts included, the sentinels of each column counted apart and left aside; and it takes a
     sample into the workspace. The columns of lists are found in the sample, and the values of their
     lists counted, enumerated and matched as those of a column are. The detectors check the values
     of the sample, its sentinels aside; the semantic types they find are verified on the whole table
-    by the patterns of the detectors in SQL. Its keys are indicated by the statistics and the
-    sample, and verified on the whole table, and the primary key chosen among them, unless the
-    overrides give it. The columns filled together in the sample are named as column groups, and the
-    columns whose values follow from another in the sample, verified on the whole table, as column
-    dependencies. Of the enumerations of no sensitivity - of the values of columns, and of those of
-    the lists of a column of lists -, the one whose values tell entities of the rows apart is the
-    discriminator, its entities counted by one more query, and one of each candidate of lists. The
-    overrides of the project give the sentinels of a column in place of those of the tool, mark the
-    columns the detectors miss, and give the primary key of a table, the columns that determine no
-    other, its separator of lists, and its discriminator and entities of it, or none. The result is
-    the profile, with the ranges and the values of enumerations of the columns of no sensitivity,
-    written after every table: a scan that fails keeps the tables before it, and the next scan
-    resumes its run, skipping the tables it counted, unless the overrides now give their columns,
-    their primary keys or their discriminators otherwise, or their lists are of another separator.
-    It updates the profile there is: the tables no longer selected are dropped, the others kept
-    until they are counted anew, and what the other stages filled is kept - the glossary, the terms
-    and readings of the names that stay, and the descriptions of the columns, but the references of
-    a table counted anew and those to the tables dropped, until `relate` runs again; a profile
-    scanned with other semantic types keeps its tables without their matches, values, ranges and
-    discriminators, until they are counted anew. A profile that cannot be read, or one of another
-    schema, is refused and never overwritten: it may be the work of hours.
+    by the patterns of the detectors in SQL. Then it counts the values of every column whose
+    distinct count is at most the threshold of an enumeration. Its keys are indicated by the
+    statistics and the sample, and verified on the whole table, and the primary key chosen among
+    them, unless the overrides give it. The columns filled together in the sample are named as
+    column groups, and the columns whose values follow from another in the sample, verified on the
+    whole table, as column dependencies. Of the enumerations of no sensitivity - of the values of
+    columns, and of those of the lists of a column of lists -, the one whose values tell entities of
+    the rows apart is the discriminator, its entities counted by one more query, and one of each
+    candidate of lists. The overrides of the project give the sentinels of a column in place of
+    those of the tool, mark the columns the detectors miss, and give the primary key of a table, the
+    columns that determine no other, its separator of lists, and its discriminator and entities of
+    it, or none. The result is the profile, with the ranges and the values of enumerations of the
+    columns of no sensitivity, written after every table: a scan that fails keeps the tables before
+    it, and the next scan resumes its run, skipping the tables it counted, unless the overrides now
+    give their columns, their primary keys or their discriminators otherwise, or their lists are of
+    another separator. It updates the profile there is: the tables no longer selected are dropped,
+    the others kept until they are counted anew, and what the other stages filled is kept - the
+    glossary, the terms and readings of the names that stay, and the descriptions of the columns,
+    but the references of a table counted anew and those to the tables dropped, until `relate` runs
+    again; a profile scanned with other semantic types keeps its tables without their matches,
+    values, ranges and discriminators, until they are counted anew. A profile that cannot be read,
+    or one of another schema, is refused and never overwritten: it may be the work of hours.
 2.  `relate` relates the tables of the profile to the keys of one column of each other, of another
     table or of the same, querying the database of the environment. It indicates the references by
     the profile alone: of columns whose type, distinct values, lengths, matches and range agree with

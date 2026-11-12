@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [61](61-enumerations-given-and-of-types-that-are-none.md) | open | medium | feature | Whether a column is an enumeration is decided by the count of its distinct values alone, so that a column of UUIDs, of dates, times or moments, or of floating numbers is taken for one where it has few values, and nothing can be given by hand to make a column an enumeration or none, where the tool decides otherwise. |
+| [61](61-enumerations-given-and-of-types-that-are-none.md) | in progress | medium | feature | Whether a column is an enumeration is decided by the count of its distinct values alone, so that a column of UUIDs, of dates, times or moments, or of floating numbers is taken for one where it has few values, and nothing can be given by hand to make a column an enumeration or none, where the tool decides otherwise. |
 
 ## Architecture
 

@@ -1,21 +1,22 @@
 """The stage scan: what the selected tables of a source hold.
 
 Each table is counted by the module `statistics`, by one query, its columns with the sentinels the
-overrides of the project give of them, or else those of the tool; the values of its enumerations are
-counted by the module `enumerations`, and a sample of it is taken by the module `sampling`, both
-into the workspace. The semantic types of its columns, those of the tool and those of the project,
-are recognised in the sample, and verified on the whole table, by the module `matching`; its keys
-are indicated by the statistics and the sample, and verified on the whole table, by the module
-`keys`; the columns filled together are found in the sample, by the module `grouping`, and the
-columns whose values follow from another are found in the sample and verified on the whole table, by
-the module `dependencies`, of no determinant the overrides give as determining none. Its columns of
-lists are found in the sample, by the module `lists`, of the separator the overrides give of the
-table, else that of the project, which counts the values of their lists as well. The overrides of
-the project mark its columns as they give, and which values of the database go into the profile -
-the ranges and enumerations of the columns of no sensitivity -, the module `disclosure` decides, by
-the same types and those marks. Of the enumerations the profile holds, of the values of columns and
-of the lists of a column, the module `entities` finds the discriminator whose values tell the
-entities of the rows apart, by queries of its own, or takes the one the overrides give.
+overrides of the project give of them, or else those of the tool, and a sample of it is taken by the
+module `sampling`, into the workspace. The semantic types of its columns, those of the tool and
+those of the project, are recognised in the sample, and verified on the whole table, by the module
+`matching`; the values of its enumerations are counted after them, by the module `enumerations`,
+into the workspace as well; its keys are indicated by the statistics and the sample, and verified on
+the whole table, by the module `keys`; the columns filled together are found in the sample, by the
+module `grouping`, and the columns whose values follow from another are found in the sample and
+verified on the whole table, by the module `dependencies`, of no determinant the overrides give as
+determining none. Its columns of lists are found in the sample, by the module `lists`, of the
+separator the overrides give of the table, else that of the project, which counts the values of
+their lists as well. The overrides of the project mark its columns as they give, and which values
+of the database go into the profile - the ranges and enumerations of the columns of no
+sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
+enumerations the profile holds, of the values of columns and of the lists of a column, the module
+`entities` finds the discriminator whose values tell the entities of the rows apart, by queries of
+its own, or takes the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
@@ -123,12 +124,12 @@ def scan(
         table = count(source, name, given[name].sentinels)
         given[name].refuse_uncounted(table)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
-        enumerations = values(source, table)
-        workspace.write_enumerations(name, enumerations)
         sample = take(source, table)
         workspace.write_sample(name, sample)
         listing = listed(dialect, table, sample, separator)
         verified = verify(source, recognise(dialect, listing, sample, types))
+        enumerations = values(source, verified)
+        workspace.write_enumerations(name, enumerations)
         itemized = itemize(source, verified, sample, types)
         keyed = identify(source, itemized, sample, given[name].primary_key)
         grouped = group(dialect, keyed, sample)

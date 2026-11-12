@@ -1,6 +1,6 @@
 # 61 — Enumerations given, and columns of types that are none
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -85,3 +85,27 @@ so.
 2026-11-12: Opened on the maintainer's request: an enumeration given by override, true as well as
 false, and no enumeration of UUIDs, dates, times, moments and floating numbers, by the database type
 or the semantic type recognised.
+
+2026-11-12: Decided with the maintainer: `enumeration: true` lifts the other conditions alone, the
+limit still holds, and a column given so of more distinct values is warned of; the override of a
+column of lists speaks of the values of its lists. The reordering of `lists` named above is not
+needed: `lists` already counts the enumeration of the values of a list after their matches are
+verified. And a column of lists does have an enumeration of its own texts, against what the
+description says: `scan` counts the values of every column of few, its lists among them, before
+it finds the columns of lists.
+
+2026-11-12: The plan, agreed with the maintainer, in three steps. Step 0 counts the enumerations
+of a table after its matches are verified, without a change of behaviour. Step 1 leaves out the
+types that are none: `Dialect.is_enumerable` of the database type, false of `uuid`, `date`,
+`time`, `timestamp`, `real` and `double`, and `SemanticType.enumerable`, false of `uuid` and
+`date`, where any match of such a type leaves the column out, as any match of a sensitive type
+makes it sensitive; `decimal` stays one, as its values are often codes, and the types of a project
+too, as nobody needs a field of `project.yml` for it yet. A column of lists has no enumeration of
+its texts any more, only that of the values of its lists. Step 2 gives the override,
+`ColumnOverride.enumeration`, held by `Column.enumeration` as given, which
+`TableOverride.laid_over` sets as it sets the marks, so that `agrees_with` tells a table counted
+otherwise; it counts once `scan` counts the table again, and a discriminator of a column given as
+no enumeration is refused.
+
+2026-11-12: Step 0 done: `scan` counts the enumerations of a table after its matches are verified,
+without a change of behaviour; a column of lists keeps the enumeration of its texts until step 1.
