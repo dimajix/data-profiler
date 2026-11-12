@@ -2,13 +2,11 @@
 
 import re
 from dataclasses import replace
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, UUID, Sensitivity
-from data_profiler.export import ExportError
 from data_profiler.glossary import terms
 from data_profiler.overrides import (
     ColumnOverride,
@@ -36,7 +34,7 @@ from data_profiler.profile import (
     Term,
     Value,
 )
-from data_profiler.report import Report, render
+from data_profiler.report import Report
 
 
 def _read[Named: (Table, Column)](named: Named, *words: str) -> Named:
@@ -140,9 +138,15 @@ def _overrides(
     return Overrides(glossary=glossary or {}, tables={"cust": given})
 
 
+def _report(profile: Profile, overrides: Overrides) -> str:
+    """The report of `profile`, with `overrides` laid over it, as `Template.write` lays them."""
+    (content,) = Report().files(overrides.laid_over(profile), overrides).values()
+    return content.decode("utf-8")
+
+
 def _page(overrides: Overrides | None = None, profile: Profile = _PROFILE) -> str:
     """The report of `profile`, with `overrides` laid over it, its white space each one space."""
-    return " ".join(render(profile, overrides or _overrides()).split())
+    return " ".join(_report(profile, overrides or _overrides()).split())
 
 
 def _with_first(**changes: Any) -> Profile:
@@ -639,15 +643,9 @@ def test_a_term_of_digits_is_read_as_itself() -> None:
     assert '<span class="original">2</span> → 2</span>' in _page(profile=profile)
 
 
-def test_an_abbreviation_given_that_no_name_has_is_warned_of(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+def test_a_concept_given_that_no_name_has_is_shown_in_the_glossary() -> None:
     page = _page(_overrides(glossary={"order": Concept(("ord",))}))
     assert "<td> order </td>" in page
-    assert caplog.messages == [
-        "The overrides give abbreviations, in lower case as terms are, that no name of the profile"
-        " has: ord"
-    ]
 
 
 def test_a_report_shows_what_the_database_and_a_table_hold_where_it_is_given() -> None:
@@ -692,27 +690,11 @@ def test_a_report_shows_the_harmonized_names_two_columns_share() -> None:
 
 
 def test_a_report_holds_its_styles_whole_and_no_script() -> None:
-    page = render(_PROFILE, Overrides())
+    page = _report(_PROFILE, Overrides())
     assert '"Segoe UI"' in page, "the style sheet is not escaped"
     assert "<link" not in page
     assert "<script" not in page
 
 
-def test_a_report_is_written_into_its_directory_made_where_it_does_not_exist(
-    tmp_path: Path,
-) -> None:
-    directory = tmp_path / "export" / "html"
-    Report().write(_PROFILE, Overrides(), directory)
-    assert (directory / "report.html").read_text(encoding="utf-8") == render(_PROFILE, Overrides())
-
-
-def test_a_report_whose_directory_cannot_be_made_is_refused(tmp_path: Path) -> None:
-    (tmp_path / "export").write_text("a file, not a directory", encoding="utf-8")
-    with pytest.raises(ExportError, match="cannot be written"):
-        Report().write(_PROFILE, Overrides(), tmp_path / "export" / "html")
-
-
-def test_a_report_that_cannot_be_written_is_refused(tmp_path: Path) -> None:
-    (tmp_path / "report.html").mkdir()
-    with pytest.raises(ExportError, match="cannot be written"):
-        Report().write(_PROFILE, Overrides(), tmp_path)
+def test_a_report_is_the_file_report_html_of_its_directory() -> None:
+    assert list(Report().files(_PROFILE, Overrides())) == ["report.html"]

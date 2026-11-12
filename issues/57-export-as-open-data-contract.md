@@ -233,3 +233,12 @@ with the files of the prompts of `describe` in `jinja/prompts/` and those of the
 `jinja/export/html/`, not in `templates/html/` as the considerations above say; a template that
 renders no Jinja2 file, as `odcs` is to build a dictionary, has none. The step of `Template.write`
 follows, then the fields of the contract and the template `odcs`.
+
+2026-11-12: The step of `Template.write` agreed and done. `Template.write` is concrete: it warns of
+what the overrides give that the profile does not take, lays them over it, makes the directory and
+writes each file whole, translating an `OSError` into an `ExportError`. A template gives its files
+alone, by the abstract `Template.files(profile, overrides)`, public, so that its content is tested
+without the file system: of the profile with the overrides laid over it, and the overrides, the
+content of each file by its name in the directory. `Report.files` gives `report.html`, rendered by
+the function of the module, now private, which lays nothing over. The fields of the contract and
+the template `odcs` follow.

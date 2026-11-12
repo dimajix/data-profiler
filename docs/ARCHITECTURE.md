@@ -116,7 +116,8 @@ environment.
 *   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
     proposes, and the answers written to the overrides.
 *   **`data_profiler.export`** - the stage `export`: the `Template`, a form the profile is
-    exported in, the overrides laid over it, into a directory of its own.
+    exported in, the overrides laid over it, into a directory of its own; a template gives its
+    files, and `Template.write` lays the overrides over the profile for it and writes them.
 *   **`data_profiler.report`** - the report, `Report`, the template `html` of the stage `export`:
     the profile rendered as one HTML document, its styles inside and no script, from the Jinja2
     files in `data_profiler/jinja/export/html/`.
@@ -137,11 +138,11 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
-`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which each of its
-templates lays over it - `report` with `glossary` and `diagram` for its names and diagrams -, and
-`adopt` reads the profile and writes through `overrides`; `cli` runs the stages, gives the overrides
-to each but `adopt`, which reads them anew for each concept, and the language model, made by `llm`
-as the project names it, to `describe`, unless it is to ask none, and the template given to
+`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which `Template.write`
+lays over it for every template - `report` with `glossary` and `diagram` for its names and diagrams
+-, and `adopt` reads the profile and writes through `overrides`; `cli` runs the stages, gives the
+overrides to each but `adopt`, which reads them anew for each concept, and the language model, made
+by `llm` as the project names it, to `describe`, unless it is to ask none, and the template given to
 `export`. The semantic types of a project and its separator of lists reach `scan` from `project`,
 and every stage after it from the profile.
 

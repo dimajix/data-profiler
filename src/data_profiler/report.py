@@ -1,17 +1,17 @@
 """The report: a profile rendered as one HTML document, the template `html` of the stage export.
 
 The document holds its styles inside, and no script, so that a browser shows it on its own and it
-can be sent and printed as it is; `Report`, the template, writes it as `report.html` into its
-directory. It shows the profile with the overrides of the project laid over it: what the database
-holds, where it is given; each table, with the reading of its name, what it holds, where it is
-given, and with its columns - their original names, harmonized names, composed from their readings
-or given, readings, each term with the word of its concept, descriptions, types, statistics, the
-shares of their nulls and sentinels among them, those of no information, filled in no row, and those
-of one value, filled in every row by one, marked as such, semantic types, sensitivity, the values of
-their enumerations, the first few of those of nothing but UUIDs, and each of their sentinels -, with
-its keys, the primary marked, and whether it is given, a table of the references of its columns, one
-to one or many to one, their coverage and whether they are given, the reference candidates of each
-column ranked, a table of the references of others to it, of the same, and a diagram of the tables
+can be sent and printed as it is; `Report`, the template, gives it as its file `report.html`. It
+shows the profile with the overrides of the project laid over it: what the database holds, where it
+is given; each table, with the reading of its name, what it holds, where it is given, and with its
+columns - their original names, harmonized names, composed from their readings or given, readings,
+each term with the word of its concept, descriptions, types, statistics, the shares of their nulls
+and sentinels among them, those of no information, filled in no row, and those of one value, filled
+in every row by one, marked as such, semantic types, sensitivity, the values of their enumerations,
+the first few of those of nothing but UUIDs, and each of their sentinels -, with its keys, the
+primary marked, and whether it is given, a table of the references of its columns, one to one or
+many to one, their coverage and whether they are given, the reference candidates of each column
+ranked, a table of the references of others to it, of the same, and a diagram of the tables
 connected to it by their original names, those by reference candidates alone dashed, the column
 groups of its columns filled together, its column dependencies, each determinant marked where it is
 a reference, the harmonized names two of its columns share, and its entities, by the share of their
@@ -22,16 +22,14 @@ what the profile holds, and nothing of the workspace: the values in it are those
 hold, which Jinja2 escapes.
 """
 
-from collections.abc import Iterable
-from pathlib import Path
+from collections.abc import Iterable, Mapping
 from typing import Final
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from data_profiler.detect import UUID
 from data_profiler.diagram import Diagram, lay_out
-from data_profiler.export import ExportError, Template
-from data_profiler.files import write_whole
+from data_profiler.export import Template
 from data_profiler.glossary import Glossary, agrees, unknown
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Findings, Profile, Reference, Table
@@ -54,22 +52,13 @@ _JINJA: Final = Environment(
 )
 
 
-def render(profile: Profile, overrides: Overrides) -> str:
-    """The report of `profile`, with `overrides` laid over it: one HTML document, its styles inside.
+def _render(profile: Profile, overrides: Overrides) -> str:
+    """The report of `profile`, the overrides laid over it: one HTML document, its styles inside.
 
     Args:
-        profile: The profile, as it was read.
-        overrides: The overrides of the project.
-
-    Returns:
-        The document.
-
-    Raises:
-        OverridesError: The overrides name what the profile does not have, as
-            `Overrides.laid_over` says.
+        profile: The profile, the overrides laid over it already.
+        overrides: The overrides of the project, of which the concepts given are told apart.
     """
-    overrides.warn_unused(profile)
-    profile = overrides.laid_over(profile)
     glossary = Glossary(profile.glossary)
     columns = [column for table in profile.tables for column in table.columns]
     return _JINJA.get_template("report.html").render(
@@ -143,27 +132,15 @@ class Report(Template):
         """Makes the template `html`."""
         super().__init__("html")
 
-    def write(self, profile: Profile, overrides: Overrides, directory: Path) -> None:
-        """Writes the report of `profile`, `overrides` laid over it, whole or not at all.
+    def files(self, profile: Profile, overrides: Overrides) -> Mapping[str, bytes]:
+        """The report, `report.html`, of `profile`, the overrides laid over it.
 
         Args:
-            profile: The profile, as it was read.
-            overrides: The overrides of the project.
-            directory: The directory of the template, made where it does not exist; the report is
-                its file `report.html`.
+            profile: The profile, the overrides laid over it already.
+            overrides: The overrides of the project, of which the report tells the concepts given
+                apart from those proposed.
 
-        Raises:
-            OverridesError: The overrides name what the profile does not have, as
-                `Overrides.laid_over` says.
-            ExportError: The directory or the file cannot be written.
+        Returns:
+            The report, in UTF-8, by the name of its file.
         """
-        content = render(profile, overrides).encode("utf-8")
-        try:
-            directory.mkdir(parents=True, exist_ok=True)
-        except OSError as error:
-            raise ExportError(f"{directory} cannot be written: {error.strerror}") from error
-        path = directory / _FILE
-        try:
-            write_whole(path, content)
-        except OSError as error:
-            raise ExportError(f"{path} cannot be written: {error.strerror}") from error
+        return {_FILE: _render(profile, overrides).encode("utf-8")}
