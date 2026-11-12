@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Summary:** A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another.
 
 ## The problem

@@ -17,7 +17,7 @@ A project is a directory - `examples/crm/` is one, for the simulation environmen
 | `.env` | the variables of the project: the passwords, the users where they differ from one person to the next, what reaches the database | never |
 | `overrides.yml` | what is given by hand, the same for all environments; optional | yes |
 | `overrides/` | more files of what is given by hand, `*.yml`, merged with `overrides.yml`; optional | yes |
-| `<environment>/` | the results of an environment, in a directory named after it: `profile/`, `workspace/` and `report.html` | the profile and the report may be; the workspace keeps itself out |
+| `<environment>/` | the results of an environment, in a directory named after it: `profile/`, `workspace/` and `export/`, what each template exports, the report in `export/html/` | the profile and the report may be; the workspace keeps itself out |
 
 Every command names the environment it runs on, and the project by `--project`, else the current
 directory: `uv run data-profiler scan simulation --project examples/crm`.
@@ -48,7 +48,7 @@ of it. The password is given only so, never written out, so that `project.yml` c
 shared. The variables are those of the process, completed by the `.env` of the project, which does
 not override what the process sets - a `no_proxy` the shell sets, for one, has to name the database
 itself. They are resolved when an environment is used, so that an environment runs without the
-variables of the others, and `report` without its own. The `.env` holds what reaches the database
+variables of the others, and `export` without its own. The `.env` holds what reaches the database
 as well: `REQUESTS_CA_BUNDLE`, the certificate of a CA of one's own, and `NO_PROXY`, for a database
 no proxy reaches.
 
@@ -88,10 +88,10 @@ given whole in one file.
 | the discriminator of a table, or none | `scan`, which counts the entities by it | once `scan` counts the table again |
 | the names and descriptions of entities | the stages that read the profile | where the discriminator was counted with the values given |
 | the reference of a column, or none | `relate`, which does not search it but measures it - of a column of lists, by the values of its lists -, and warns where its coverage is below what a reference is found at | once `relate` relates the tables again |
-| concepts of the glossary | `describe`, which splits and reads the names by them, and `report` | at the next `describe`; the language model is asked of no term of a concept given |
-| the reading of a name | `describe` and `report` | once `describe` has split the name, as a reading agrees with the terms of its name |
-| the harmonized name of a table or column | `report` | at once; it comes before the name composed from the reading, and so resolves a collision of two names |
-| the description of the database, a table or a column | `describe`, which shows the first two to the language model with every question of them and asks for no column described, and `report` | at once |
+| concepts of the glossary | `describe`, which splits and reads the names by them, and `export` | at the next `describe`; the language model is asked of no term of a concept given |
+| the reading of a name | `describe` and `export` | once `describe` has split the name, as a reading agrees with the terms of its name |
+| the harmonized name of a table or column | `export` | at once; it comes before the name composed from the reading, and so resolves a collision of two names |
+| the description of the database, a table or a column | `describe`, which shows the first two to the language model with every question of them and asks for no column described, and `export` | at once |
 
 A scan resumed counts again the tables the overrides now give otherwise: the marks or the sentinels
 of their columns, a column that determines none, their primary keys or their discriminators, and

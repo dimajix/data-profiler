@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Summary:** A column that holds nothing but nulls and sentinels looks in the report like any other column, so that a person reading a table has to work out from its shares of nulls and sentinels which of its columns say nothing at all.
 
 ## The problem

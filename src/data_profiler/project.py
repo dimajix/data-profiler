@@ -7,7 +7,7 @@ language model its names are described by, and the environments the database is 
 test, prod -, each by the URL of its schema, and the user and the password it is reached as; beside
 it, the overrides - `overrides.yml`, the files of the directory `overrides/`, or both - give by hand
 what the profiles of all environments take as given. Each environment keeps its results in a
-directory of its own, named after it: its profile, its workspace and its report.
+directory of its own, named after it: its profile, its workspace and what each template exports.
 
 A value of the configuration that is `${NAME}` is taken from the variable `NAME`; the password is
 given only so, never written out, so that the configuration can be committed and shared. The
@@ -72,7 +72,7 @@ class Environment:
     """An environment of a project: the schema it profiles, and the directory of its results.
 
     Its URL, user and password are resolved when they are asked for, so that a stage that does not
-    reach the database, such as `report`, needs none of them.
+    reach the database, such as `export`, needs none of them.
 
     Attributes:
         name: The name of the environment, such as `dev` or `prod`.
@@ -126,10 +126,9 @@ class Environment:
         """The directory of the workspace of the environment."""
         return self.directory / "workspace"
 
-    @property
-    def report(self) -> Path:
-        """The file of the report of the environment."""
-        return self.directory / "report.html"
+    def export(self, template: str) -> Path:
+        """The directory of what the template `template` exports of the environment."""
+        return self.directory / "export" / template
 
     def _resolved(self, setting: str, value: str) -> str:
         """`value` of `setting`, or the variable it names."""

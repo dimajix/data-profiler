@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** low
-**Area:** Report
+**Area:** Export
 **Summary:** The report writes the references of a table as running text, those to it without their key, cardinality or coverage, and nothing shows at a glance which tables a table is connected to.
 
 ## The problem

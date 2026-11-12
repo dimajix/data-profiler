@@ -87,7 +87,7 @@ def test_an_environment_is_resolved_from_the_variables_it_names(tmp_path: Path) 
 
 def test_an_environment_needs_its_variables_only_when_they_are_asked_for(tmp_path: Path) -> None:
     environment = _project(tmp_path).environment("prod")
-    assert environment.report == tmp_path / "prod" / "report.html"
+    assert environment.export("html") == tmp_path / "prod" / "export" / "html"
     with pytest.raises(ProjectError, match="the url of the environment prod is the variable"):
         assert environment.url
 
@@ -190,7 +190,7 @@ def test_an_environment_keeps_its_results_in_its_directory(tmp_path: Path) -> No
     environment = _project(tmp_path, DEV_PASSWORD="secret").environment("dev")
     assert environment.profile == tmp_path / "dev" / "profile"
     assert environment.workspace == tmp_path / "dev" / "workspace"
-    assert environment.report == tmp_path / "dev" / "report.html"
+    assert environment.export("html") == tmp_path / "dev" / "export" / "html"
 
 
 def test_the_password_of_an_environment_is_not_shown(tmp_path: Path) -> None:

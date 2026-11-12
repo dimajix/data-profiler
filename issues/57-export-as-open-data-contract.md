@@ -1,9 +1,9 @@
 # 57 — Export as Open Data Contract
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Summary:** The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract.
 
 ## The problem
@@ -196,3 +196,13 @@ ODCS gives them in `logicalTypeOptions`, of numbers as of dates and times - from
 profile holds both already, `statistics.lengths` and `statistics.range`, so that the scan needs no
 change. A range withheld - of a column of a sensitivity, or a value of a sensitive type - gives no
 `minimum` and `maximum`, as `disclosure` decides for the profile.
+
+2026-11-12: Step 1 agreed and done. The stage `report` is the stage `export`; it writes the report
+as `export/html/report.html` in the directory of the environment, `Environment.export(template)`
+naming the directory of a template, and `write_report` makes the directory it is given. The files
+of the template `html` moved to `templates/export/html/`, apart from the prompts of `describe` in
+`templates/prompts/`. The word *report* stays for the HTML document - the module
+`data_profiler.report`, `write_report`, `ReportError` -, so that "`report` is gone" in *Done when*
+means the stage: the command line, and the documents where they name the stage. The area `Report`
+of the issues is `Export`, in the field lines of the issues of it as well; their descriptions stay
+as they are.

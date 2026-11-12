@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** low
-**Area:** Report
+**Area:** Export
 **Summary:** The report shows the harmonized name of a table or column but not its reading, the concept each term of the name stands for, so that a person cannot see how a name was understood, and not at all where no harmonized name comes of it.
 
 ## The problem

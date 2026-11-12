@@ -73,3 +73,7 @@ Not in the first version: PDF, the relationships between tables, other databases
   [24](24-terms-written-together.md) and before [10](10-the-stage-describe.md), as the maintainer
   decided: the names are split and read by steps of `describe` without a language model, before
   it proposes names and descriptions.
+
+- **2026-11-12** — The stage `report` is now the stage `export`, which writes the report into
+  `export/html/` of the environment ([57](57-export-as-open-data-contract.md)); where this issue
+  names `report`, the command is `export`.

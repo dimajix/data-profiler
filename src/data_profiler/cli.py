@@ -7,7 +7,7 @@ database, the overrides taken as given, `describe` the names of its profile, by 
 profile and of the overrides and by the language model of the project, into its profile - with
 `--anew`, dropping first what the language model filled, with `--without-llm`, asking none -,
 `adopt` the concepts its profile proposes into the overrides, asking a person at the terminal about
-each, and `report` its profile, the overrides laid over it, into its report, the last three without
+each, and `export` its profile, the overrides laid over it, as its report, the last three without
 the database. The project completes the variables of the process by its `.env`, so that
 certificates and proxies set there reach the connection to the database.
 `data_profiler.commands.run` configures the log and ends the program when the stage fails.
@@ -65,7 +65,7 @@ def main() -> None:
             lambda _: _adopt,
             "take the concepts proposed into the overrides, asking of each",
         ),
-        "report": (lambda _: _report, "render the profile of an environment of a project as HTML"),
+        "export": (lambda _: _export, "export the profile of an environment of a project as HTML"),
     }
     for name, (made, summary) in stages.items():
         command = commands.add_parser(name, help=summary)
@@ -165,8 +165,9 @@ def _adopt(project: Project, environment: Environment) -> None:
     _logger.info("Went through the concepts of the profile of %s", environment.name)
 
 
-def _report(project: Project, environment: Environment) -> None:
-    """Renders the profile of `environment` of `project` as its report."""
+def _export(project: Project, environment: Environment) -> None:
+    """Exports the profile of `environment` of `project` as its report."""
     overrides = Overrides.read(project.overrides)
-    write_report(Profile.read(environment.profile), overrides, environment.report)
-    _logger.info("Wrote the report of %s to %s", environment.name, environment.report)
+    directory = environment.export("html")
+    write_report(Profile.read(environment.profile), overrides, directory)
+    _logger.info("Wrote the report of %s to %s", environment.name, directory)

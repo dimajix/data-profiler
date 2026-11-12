@@ -1,24 +1,25 @@
-"""The stage report: a profile rendered as one HTML document, which a browser shows on its own.
+"""The report: a profile rendered as one HTML document, the template `html` of the stage export.
 
-The document holds its styles inside, and no script, so that it can be sent and printed as it is. It
-shows the profile with the overrides of the project laid over it: what the database holds, where it
-is given; each table, with the reading of its name, what it holds, where it is given, and with its
-columns - their original names, harmonized names, composed from their readings or given, readings,
-each term with the word of its concept, descriptions, types, statistics, the shares of their nulls
-and sentinels among them, those of no information, filled in no row, and those of one value, filled
-in every row by one, marked as such, semantic types, sensitivity, the values of their enumerations,
-the first few of those of nothing but UUIDs, and each of their sentinels -, with its keys, the
-primary marked, and whether it is given, a table of the references of its columns, one to one or
-many to one, their coverage and whether they are given, the reference candidates of each column
-ranked, a table of the references of others to it, of the same, and a diagram of the tables
-connected to it by their original names, those by reference candidates alone dashed, the column
-groups of its columns filled together, its column dependencies, each determinant marked where it is
-a reference, the harmonized names two of its columns share, and its entities, by the share of their
-rows each column is filled in, with their names and descriptions, where they are given; and the
-glossary, each concept with its abbreviations and description, those proposed told apart from those
-given, and each term of no concept, as describe split the names, with where it appears. It renders
-what the profile holds, and nothing of the workspace: the values in it are those the profile may
-hold, which the template escapes.
+The document holds its styles inside, and no script, so that a browser shows it on its own and it
+can be sent and printed as it is; it is written as `report.html` in the directory of what the
+template exports. It shows the profile with the overrides of the project laid over it: what the
+database holds, where it is given; each table, with the reading of its name, what it holds, where it
+is given, and with its columns - their original names, harmonized names, composed from their
+readings or given, readings, each term with the word of its concept, descriptions, types,
+statistics, the shares of their nulls and sentinels among them, those of no information, filled in
+no row, and those of one value, filled in every row by one, marked as such, semantic types,
+sensitivity, the values of their enumerations, the first few of those of nothing but UUIDs, and each
+of their sentinels -, with its keys, the primary marked, and whether it is given, a table of the
+references of its columns, one to one or many to one, their coverage and whether they are given, the
+reference candidates of each column ranked, a table of the references of others to it, of the same,
+and a diagram of the tables connected to it by their original names, those by reference candidates
+alone dashed, the column groups of its columns filled together, its column dependencies, each
+determinant marked where it is a reference, the harmonized names two of its columns share, and its
+entities, by the share of their rows each column is filled in, with their names and descriptions,
+where they are given; and the glossary, each concept with its abbreviations and description, those
+proposed told apart from those given, and each term of no concept, as describe split the names, with
+where it appears. It renders what the profile holds, and nothing of the workspace: the values in it
+are those the profile may hold, which the template escapes.
 """
 
 from collections.abc import Iterable
@@ -34,6 +35,9 @@ from data_profiler.glossary import Glossary, agrees, unknown
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Findings, Profile, Reference, Table
 
+# The file of the report, in the directory of what the template exports.
+_FILE: Final = "report.html"
+
 # The places a term of no concept is shown with, before the number of the others.
 _PLACES: Final = 8
 
@@ -41,7 +45,7 @@ _PLACES: Final = 8
 _UUIDS: Final = 5
 
 _TEMPLATES: Final = Environment(
-    loader=PackageLoader("data_profiler", "templates"),
+    loader=PackageLoader("data_profiler", "templates/export/html"),
     autoescape=True,
     undefined=StrictUndefined,
     trim_blocks=True,
@@ -50,7 +54,7 @@ _TEMPLATES: Final = Environment(
 
 
 class ReportError(Exception):
-    """A report that cannot be written: its file, and what is wrong."""
+    """A report that cannot be written: its file or directory, and what is wrong."""
 
 
 def render(profile: Profile, overrides: Overrides) -> str:
@@ -135,20 +139,26 @@ def _connected(references: Iterable[str], candidates: Iterable[str]) -> dict[str
     return connected | {name: True for name in candidates if name not in connected}
 
 
-def write_report(profile: Profile, overrides: Overrides, path: Path) -> None:
-    """Writes the report of `profile`, `overrides` laid over it, to `path`, whole or not at all.
+def write_report(profile: Profile, overrides: Overrides, directory: Path) -> None:
+    """Writes the report of `profile`, `overrides` laid over it, whole or not at all.
 
     Args:
         profile: The profile, as it was read.
         overrides: The overrides of the project.
-        path: The file of the report.
+        directory: The directory of the report, made where it does not exist; the report is its
+            file `report.html`.
 
     Raises:
         OverridesError: The overrides name what the profile does not have, as
             `Overrides.laid_over` says.
-        ReportError: The file cannot be written.
+        ReportError: The directory or the file cannot be written.
     """
     content = render(profile, overrides).encode("utf-8")
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise ReportError(f"{directory} cannot be written: {error.strerror}") from error
+    path = directory / _FILE
     try:
         write_whole(path, content)
     except OSError as error:

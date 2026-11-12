@@ -72,7 +72,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [52](52-the-reference-of-a-column-shown-to-the-model.md) | done | The question for the description of a column does not show the language model the reference of the column to a key of another table, though the profile holds it. |
 | [53](53-a-term-that-begins-with-digits.md) | done | A name is cut inside `3rd`, into `3` and `rd`, and a concept of `3rd` is never found. |
 
-## Report
+## Export
 
 | No. | Status | Issue |
 |---|---|---|
@@ -82,7 +82,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [51](51-the-references-of-a-table-in-the-report.md) | done | The report writes the references of a table as running text, those to it without their key, cardinality or coverage, and nothing shows at a glance which tables a table is connected to. |
 | [54](54-a-column-of-no-information-in-the-report.md) | done | A column that holds nothing but nulls and sentinels looks in the report like any other column, so that a person reading a table has to work out from its shares of nulls and sentinels which of its columns say nothing at all. |
 | [56](56-a-column-of-one-value-in-the-report.md) | done | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
-| [57](57-export-as-open-data-contract.md) | open | The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract. |
+| [57](57-export-as-open-data-contract.md) | in progress | The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract. |
 
 ## Command line
 

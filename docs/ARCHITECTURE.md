@@ -115,10 +115,11 @@ environment.
     templates in `data_profiler/templates/prompts/`.
 *   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
     proposes, and the answers written to the overrides.
-*   **`data_profiler.report`** - the stage `report`: the profile rendered as one HTML document,
-    its styles inside and no script, from a Jinja2 template in `data_profiler/templates/`.
+*   **`data_profiler.report`** - the report, the template `html` of the stage `export`: the
+    profile rendered as one HTML document, its styles inside and no script, from the Jinja2 files
+    in `data_profiler/templates/export/html/`.
 *   **`data_profiler.diagram`** - the layout of a table and the tables connected to it, in pixels,
-    which the template of `report` draws.
+    which the report draws.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
     environment of a project through `commands`.
 *   **`data_profiler.commands`** - the frame every command line of the project, the simulation's
@@ -134,12 +135,12 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
-`disclosure`, `values` and `workspace`, `report` the profile and `overrides`, which it lays over it,
-and `glossary` and `diagram` for its names and diagrams, and `adopt` reads the profile and writes
-through `overrides`; `cli` runs the stages, gives the overrides to each but `adopt`, which reads
-them anew for each concept, and the language model, made by `llm` as the project names it, to
-`describe`, unless it is to ask none. The semantic types of a project and its separator of lists
-reach `scan` from `project`, and every stage after it from the profile.
+`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which it lays over it,
+and `report`, which takes `glossary` and `diagram` for its names and diagrams, and `adopt` reads
+the profile and writes through `overrides`; `cli` runs the stages, gives the overrides to each but
+`adopt`, which reads them anew for each concept, and the language model, made by `llm` as the
+project names it, to `describe`, unless it is to ask none. The semantic types of a project and its
+separator of lists reach `scan` from `project`, and every stage after it from the profile.
 
 ## The domain
 
@@ -149,11 +150,14 @@ reach `scan` from `project`, and every stage after it from the profile.
     of each environment; described in [PROJECT.md](PROJECT.md).
 *   **Environment** - one of the places the database of a project is found - dev, test, prod, or
     the simulation environment -, each a schema with a URL, a user and a password of its own; its
-    results, a profile, a workspace and a report, are kept in a directory of its own, named after
-    it.
-*   **Stage** - one of `scan`, `relate`, `describe`, `adopt` and `report`: a step of the work that
+    results, a profile, a workspace and what each template exports, are kept in a directory of its
+    own, named after it.
+*   **Stage** - one of `scan`, `relate`, `describe`, `adopt` and `export`: a step of the work that
     can be run on its own, from what the stages before it left. `adopt` alone writes the overrides,
     as a person answers, and never the profile.
+*   **Template** - a form in which `export` writes the profile, with the overrides laid over it,
+    into a directory of the environment named after it, `export/<template>/`: `html`, the report,
+    one HTML document a person reads.
 *   **Run** - the counting of the selected tables of an environment, which may take several
     scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
     interrupted -, and it finishes once every selected table is counted. It is told apart by when
@@ -354,12 +358,13 @@ reach `scan` from `project`, and every stage after it from the profile.
     field, else to the first that names the concept, a new concept to `overrides/glossary.yml`,
     keeping the comments and the order of the file. The result is the overrides; it is the one stage
     that writes them, and it does so only as a person answers.
-5.  `report` renders the profile, with the overrides laid over it, as HTML: what the database and
-    each table hold, its keys, its references and reference candidates and the references to it,
-    with a diagram of the tables connected to it, its column groups and column dependencies, the
-    harmonized names and readings of the tables and columns, the descriptions of the columns, the
-    entities of a table by the share of their rows each column is filled in, with the names and
-    descriptions given of them, and the concepts proposed told apart from those given.
+5.  `export` renders the profile, with the overrides laid over it, as its report, in HTML, into
+    the directory `export/html/` of the environment: what the database and each table hold, its
+    keys, its references and reference candidates and the references to it, with a diagram of the
+    tables connected to it, its column groups and column dependencies, the harmonized names and
+    readings of the tables and columns, the descriptions of the columns, the entities of a table by
+    the share of their rows each column is filled in, with the names and descriptions given of
+    them, and the concepts proposed told apart from those given.
 
 ## Principles
 
@@ -404,7 +409,7 @@ The design repeats a few decisions; new code follows them.
     collision.
 *   **The stages share nothing but the profile and the workspace**, besides the overrides, which a
     person keeps and `adopt` writes only as a person answers. Each stage can be run again on its
-    own: `describe` with another model without querying the database, `report` without either.
+    own: `describe` with another model without querying the database, `export` without either.
 
 ## The repository
 

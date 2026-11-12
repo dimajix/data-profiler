@@ -3,7 +3,7 @@
 **Status:** done
 **Type:** feature
 **Priority:** medium
-**Area:** Report
+**Area:** Export
 **Summary:** The line that separates the columns in a table of the report runs between a column and its values instead of below them, and a column of nothing but UUIDs lists all of its values, up to 500, where five say all there is to see.
 
 ## The problem
