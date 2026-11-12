@@ -1,6 +1,6 @@
 # 57 — Export as Open Data Contract
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Export
@@ -242,3 +242,43 @@ without the file system: of the profile with the overrides laid over it, and the
 content of each file by its name in the directory. `Report.files` gives `report.html`, rendered by
 the function of the module, now private, which lays nothing over. The fields of the contract and
 the template `odcs` follow.
+
+2026-11-12: The step of the fields of the contract agreed and done, to be committed with the
+template `odcs`, its first user. `project.yml`, of format 4.2, gives them in a block `contract`, a
+`Contract` of `project`: `id` and `version` required, as text, `name`, `domain` and `tenant`
+optional; `Project.contract` refuses a project that gives none, as `Project.llm` refuses one of no
+language model, so that only an export as a contract needs one. As the maintainer decided with it:
+`description.purpose` of the contract is the description of the database the overrides give, not a
+field of the project, and `usage` and `limitations` are left out; the command line makes the
+templates by invocation, by factories of the project and the environment, so that `odcs` takes the
+contract and the URL of the environment, its server, when it is made, and the report nothing.
+
+2026-11-12: The template `odcs` agreed and done, with the fields of the contract before it. The
+module `contract` holds `Contract`, the template `odcs`, which writes `contract.odcs.yaml` as the
+considerations and the decisions above say, with these decided with it: a table and a column are
+named by their original names, `name` and `physicalName`, their harmonized names their
+`businessName`, as harmonized names may collide or be none; a semantic type every value of the table
+matches is a rule `invalidValues` of its pattern, one of each type, as a column may match several,
+not `logicalTypeOptions.pattern`; the values of an enumeration are objects of a `value`, as ODCS
+3.2.0 asks. The dialect tells the logical type of ODCS of a type of its database and the type of its
+server, and `source` tells where a schema is reached, `locate`, and its dialect, `dialect`, of its
+URL without connecting, `connect` reading the URL by `locate` alike. The name of a template is of
+its class, so that the command line makes the templates by invocation, by factories of the project
+and the environment; what the project gives of the contract is a `ContractSettings`, as `Contract`
+names the template. A column of lists is written as one of its texts. The rule of the sentinels of a
+column holds those its logical type can hold - all of a string, the dates of a date -, as a rule of
+a number against `N/A` would say nothing. The contract of the example profile is checked against the
+JSON schema of ODCS 3.2.0, a copy of which lies in `tests/odcs/` with its license, by `jsonschema`,
+a dependency of development.
+
+2026-11-12: After the review of the template `odcs`: the rule of a pattern is of a column of texts
+alone, the pattern taking spaces at either end, as the database matched it trimmed; the rule of the
+sentinels holds all of them of a column of texts, else those its logical type can hold, so that a
+UUID has none; a column of lists has no relationship, as it refers by the values of its lists; and
+a whole number is written as an integer, so that a long decimal keeps its digits.
+
+2026-11-12: The maintainer decided that the rules of the values of a column take the sentinels
+found as values, as they are counted without them, so that the draft holds of the rows it was
+observed of and the experts see the sentinels to forbid them: the enumeration holds them, the
+pattern of a type takes them as alternatives, and the lengths and the range are widened to them,
+those of the range that are values of the type; a column of sentinels found is of no format `uuid`.

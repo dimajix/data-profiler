@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 import sys
 from collections.abc import Callable
@@ -10,7 +11,7 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
-from yaml import safe_dump
+from yaml import safe_dump, safe_load
 
 from data_profiler.cli import main
 from data_profiler.detect import Sensitivity
@@ -241,3 +242,31 @@ def test_the_profile_of_an_environment_is_exported_without_its_password(
     (project / "simulation").mkdir()
     example_profile.write(project / "simulation" / "profile")
     assert command_line(main, "export", "simulation", "--project", str(project)) == 0
+
+
+def test_the_profile_of_an_environment_is_exported_as_its_contract(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    shutil.copy(_EXAMPLE / "overrides.yml", project)
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "odcs")
+    assert command_line(main, *arguments) == 0
+    written = project / "simulation" / "export" / "odcs" / "contract.odcs.yaml"
+    contract = safe_load(written.read_text(encoding="utf-8"))
+    assert contract["id"] == "c2040b47-cc3c-4484-b96c-cd37e412ad78"
+    assert contract["servers"][0]["server"] == "simulation"
+
+
+def test_a_project_that_gives_no_contract_is_not_exported_as_one(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    configuration = (project / "project.yml").read_text(encoding="utf-8")
+    without = re.sub(r"(?m)^contract:\n(  .*\n)+", "", configuration)
+    assert without != configuration, "the example project gives a contract"
+    (project / "project.yml").write_text(without, encoding="utf-8")
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "odcs")
+    assert command_line(main, *arguments) == 1
+    assert not (project / "simulation" / "export").exists()

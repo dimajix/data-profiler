@@ -13,8 +13,9 @@ from data_profiler.profile import Concept, Profile
 class _Given(Template):
     """A template of the files given, which keeps the profiles and overrides it is given."""
 
+    name = "given"
+
     def __init__(self, files: Mapping[str, bytes]) -> None:
-        super().__init__("given")
         self.given: list[tuple[Profile, Overrides]] = []
         self._files = files
 

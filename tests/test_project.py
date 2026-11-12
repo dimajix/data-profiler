@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from data_profiler.detect import SemanticType
-from data_profiler.project import Project, ProjectError
+from data_profiler.project import ContractSettings, Project, ProjectError
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm"
 
@@ -142,6 +142,34 @@ def test_the_language_model_of_a_project_is_named_by_its_configuration(tmp_path:
     assert _project(tmp_path, _CONFIGURATION + "llm: qwen3.5:2b\n").llm == "qwen3.5:2b"
     with pytest.raises(ProjectError, match="names no language model, llm, to describe"):
         _ = _project(tmp_path).llm
+
+
+def test_the_contract_of_a_project_is_given_by_its_configuration(tmp_path: Path) -> None:
+    configuration = _CONFIGURATION + "contract: {id: crm, version: '1.0.0', domain: sales}\n"
+    assert _project(tmp_path, configuration).contract == ContractSettings(
+        id="crm", version="1.0.0", domain="sales"
+    )
+
+
+def test_a_project_without_a_contract_is_read_and_refuses_only_to_give_one(tmp_path: Path) -> None:
+    project = _project(tmp_path)
+    with pytest.raises(ProjectError, match="gives no contract, to export the profile as one"):
+        _ = project.contract
+
+
+@pytest.mark.parametrize(
+    ("contract", "refused"),
+    [
+        ("{version: '1.0.0'}", "id"),
+        ("{id: crm}", "version"),
+        ("{id: crm, version: 1.0}", "version"),
+    ],
+)
+def test_a_contract_without_its_identifier_or_its_version_as_text_is_refused(
+    tmp_path: Path, contract: str, refused: str
+) -> None:
+    with pytest.raises(ProjectError, match=rf"contract\.{refused}"):
+        _project(tmp_path, _CONFIGURATION + f"contract: {contract}\n")
 
 
 def test_ollama_answers_where_the_variable_says_else_on_this_machine(tmp_path: Path) -> None:
@@ -293,6 +321,7 @@ def test_the_example_project_profiles_the_simulation_environment() -> None:
     assert environment.directory == _EXAMPLE / "simulation"
     assert project.tables.fullmatch("cust_addr")
     assert project.llm == "qwen3.5:2b"
+    assert project.contract.version == "1.0.0"
 
 
 def test_the_separator_of_lists_of_a_project_is_read_and_none_where_it_names_none(

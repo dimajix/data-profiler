@@ -14,6 +14,10 @@ A source `unnested` reads one of its tables as a row of each value of the lists 
 columns, in place of each of its rows, its dialect writing that table as a statement of its own
 wherever a statement reads it, so that what counts the values of a column counts the values of the
 lists alike; it sends its queries by the source it is made of.
+
+Where a schema is reached, `locate` tells of its URL, and its dialect `dialect`, without connecting,
+as `connect` reads the URL alike: the data contract names the server and the logical types of the
+columns of a profile by them, which the dialect tells of the types of its database.
 """
 
 import logging
@@ -24,7 +28,7 @@ from dataclasses import dataclass
 from itertools import batched
 from re import Pattern
 from types import TracebackType
-from typing import Final, Self
+from typing import ClassVar, Final, Self
 from urllib.parse import urlsplit
 
 from trino import dbapi
@@ -81,6 +85,20 @@ _IDENTIFYING: Final = (*_TEXTS, *_SURROGATE, "decimal", "date")
 # The types of Trino whose values are moments, by how their names begin, compared as their days.
 _MOMENTS: Final = ("timestamp",)
 
+# The logical types of a data contract of ODCS of the types of Trino, by how their names begin, the
+# first that fits: `timestamp` before `time`, which its name begins with as well.
+_LOGICAL: Final = (
+    (_TEXTS, "string"),
+    (("uuid",), "string"),
+    (_WHOLE, "integer"),
+    (("real", "double", "decimal"), "number"),
+    (("boolean",), "boolean"),
+    (("date",), "date"),
+    (_MOMENTS, "timestamp"),
+    (("time",), "time"),
+    (("array",), "array"),
+)
+
 # The standard error of the distinct values Trino counts: half a percent, against its default of
 # 2.3, so that keys and enumerations can be told by them, for about 64 KB of memory per column.
 _DISTINCT_ERROR: Final = 0.005
@@ -103,6 +121,23 @@ for a database that plans otherwise.
 
 class SourceError(Exception):
     """A failure of the database: the database by its endpoint, and what was done."""
+
+
+@dataclass(frozen=True)
+class Location:
+    """Where a schema of the database is reached, as its URL gives it.
+
+    Attributes:
+        host: The host of the database.
+        port: The port it answers on.
+        catalog: The catalog of the schema.
+        schema: The schema.
+    """
+
+    host: str
+    port: int
+    catalog: str
+    schema: str
 
 
 @dataclass(frozen=True)
@@ -136,13 +171,16 @@ class Lookup:
 
 
 class Dialect(ABC):
-    """The SQL of one kind of database: the statements and expressions the tool sends.
+    """One kind of database: the statements and expressions of SQL the tool sends, and its types.
 
     Its building blocks take the names of tables and columns as they are, and quote them; those that
     count or measure values take an expression of the values of a column, as `column` or `without`
     writes it. Those of the sentinels take a column and its type, as they compare the values of the
     column itself, a moment as its day.
     """
+
+    server_type: ClassVar[str]
+    """The type of the server of the database in a data contract of ODCS, such as `trino`."""
 
     @abstractmethod
     def tables(self, catalog: str, schema: str) -> str:
@@ -316,6 +354,10 @@ class Dialect(ABC):
         """Whether values of the types `kind` and `other` are the same where their texts are."""
 
     @abstractmethod
+    def logical_type(self, kind: str) -> str | None:
+        """The logical type of ODCS of the values of the type `kind`, or None where it has none."""
+
+    @abstractmethod
     def unnested(
         self, table: str, columns: Sequence[str], column: str, separator: str
     ) -> "Dialect":
@@ -480,22 +522,19 @@ class Source(ABC):
         self.close()
 
 
-def connect(url: str, user: str, password: str) -> Source:
-    """Connects to the schema `url` names, as `user`.
+def locate(url: str) -> Location:
+    """Where the schema `url` names is reached.
 
     Args:
         url: The schema, as `trino://host:port/catalog/schema`; the port is 443 if none is given.
-            Trino is reached by HTTPS.
-        user: The user the schema is read as.
-        password: The password of the user.
 
     Returns:
-        The source; the database is reached first when a statement is sent to it.
+        Its host, port, catalog and schema.
 
     Raises:
         SourceError: The URL is not of Trino, holds a user, a password, a query or a fragment, or
-            lacks the host, the catalog or the schema, or the user is empty. The message never
-            repeats the URL, which may hold a password.
+            lacks the host, the catalog or the schema. The message never repeats the URL, which
+            may hold a password.
     """
     parts = urlsplit(url)
     if parts.scheme != "trino":
@@ -514,19 +553,48 @@ def connect(url: str, user: str, password: str) -> Source:
     path = parts.path.strip("/").split("/")
     if not parts.hostname or len(path) != 2 or not all(path):
         raise SourceError(f"the URL lacks host, catalog or schema: {_FORM}")
+    catalog, schema = path
+    return Location(parts.hostname, port, catalog, schema)
+
+
+def dialect(url: str) -> Dialect:
+    """The dialect of the database `url` names, without connecting to it.
+
+    Raises:
+        SourceError: The URL is none of a schema, as `locate` says.
+    """
+    locate(url)
+    return _TrinoDialect()
+
+
+def connect(url: str, user: str, password: str) -> Source:
+    """Connects to the schema `url` names, as `user`.
+
+    Args:
+        url: The schema, as `trino://host:port/catalog/schema`; the port is 443 if none is given.
+            Trino is reached by HTTPS.
+        user: The user the schema is read as.
+        password: The password of the user.
+
+    Returns:
+        The source; the database is reached first when a statement is sent to it.
+
+    Raises:
+        SourceError: The URL is none of a schema, as `locate` says, or the user is empty.
+    """
+    location = locate(url)
     if not user:
         raise SourceError("the user to read the schema as is empty")
-    catalog, schema = path
     connection: Connection = dbapi.connect(  # type: ignore[no-untyped-call]  # no annotations
-        host=parts.hostname,
-        port=port,
+        host=location.host,
+        port=location.port,
         http_scheme="https",
         user=user,
         auth=BasicAuthentication(user, password),
-        catalog=catalog,
-        schema=schema,
+        catalog=location.catalog,
+        schema=location.schema,
     )
-    return _TrinoSource(connection, catalog, schema)
+    return _TrinoSource(connection, location.catalog, location.schema)
 
 
 class _TrinoSource(Source):
@@ -587,6 +655,8 @@ class _Unnested(Source):
 
 class _TrinoDialect(Dialect):
     """The SQL of Trino and Starburst."""
+
+    server_type = "trino"
 
     def __init__(self, relations: Mapping[str, str] | None = None) -> None:
         """Takes what a statement reads tables as, by their names, where not as themselves."""
@@ -754,6 +824,10 @@ class _TrinoDialect(Dialect):
     def is_same_family(self, kind: str, other: str) -> bool:
         """Whether values of `kind` and `other` are the same values where their texts are."""
         return _family(kind) == _family(other)
+
+    def logical_type(self, kind: str) -> str | None:
+        """The logical type of ODCS of `kind`: of texts, numbers, booleans, times and arrays."""
+        return next((logical for kinds, logical in _LOGICAL if kind.startswith(kinds)), None)
 
     def unnested(
         self, table: str, columns: Sequence[str], column: str, separator: str

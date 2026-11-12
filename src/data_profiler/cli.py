@@ -7,11 +7,12 @@ database, the overrides taken as given, `describe` the names of its profile, by 
 profile and of the overrides and by the language model of the project, into its profile - with
 `--anew`, dropping first what the language model filled, with `--without-llm`, asking none -,
 `adopt` the concepts its profile proposes into the overrides, asking a person at the terminal about
-each, and `export` its profile, the overrides laid over it, in a template - `--template`, the
-report, `html`, where none is given -, the last three without the database. The project completes
-the variables of the process by its `.env`, so that certificates and proxies set there reach the
-connection to the database. `data_profiler.commands.run` configures the log and ends the program
-when the stage fails.
+each, and `export` its profile, the overrides laid over it, in a template - `--template`: the
+report, `html`, where none is given, or the data contract, `odcs`, of what the project gives of it
+and of the URL of the environment, its server -, the last three without the database. The project
+completes the variables of the process by its `.env`, so that certificates and proxies set there
+reach the connection to the database. `data_profiler.commands.run` configures the log and ends the
+program when the stage fails.
 """
 
 import logging
@@ -25,6 +26,7 @@ from typing import Final
 
 from data_profiler.adopt import AdoptError, adopt
 from data_profiler.commands import run
+from data_profiler.contract import Contract
 from data_profiler.describe import describe, forgotten
 from data_profiler.export import ExportError, Template
 from data_profiler.llm import LanguageModelError, Ollama
@@ -34,18 +36,24 @@ from data_profiler.project import Environment, Project, ProjectError
 from data_profiler.relate import relate
 from data_profiler.report import Report
 from data_profiler.scan import scan
-from data_profiler.source import SourceError, connect
+from data_profiler.source import SourceError, connect, dialect, locate
 from data_profiler.workspace import Workspace, WorkspaceError
 
 _logger = logging.getLogger(__name__)
 
-# The template the profile is exported in where none is given: the report. The templates are made
-# once, here, unlike the language model, which a stage makes as the project names it: argparse
-# needs their names before it reads the arguments, for the choices and the default of --template.
-_REPORT: Final = Report()
+type _Making = Callable[[Project, Environment], Template]
+"""How a template is made for an environment of a project, which it may take what it needs of."""
 
-# The templates the profile is exported in, by their names.
-_TEMPLATES: Final[dict[str, Template]] = {template.name: template for template in (_REPORT,)}
+# The templates the profile is exported in, by their names, each made as the stage is run, as the
+# language model is: a contract of what the project gives of it and of the server of the
+# environment. Their names are those of their classes, which argparse needs before it reads the
+# arguments, for the choices of --template.
+_TEMPLATES: Final[dict[str, _Making]] = {
+    Report.name: lambda _project, _environment: Report(),
+    Contract.name: lambda project, environment: Contract(
+        project.contract, environment.name, locate(environment.url), dialect(environment.url)
+    ),
+}
 
 # The errors whose message may be shown.
 _SHOWN: Final = (
@@ -100,8 +108,8 @@ def main() -> None:
     commands.choices["export"].add_argument(
         "--template",
         choices=_TEMPLATES,
-        default=_REPORT.name,
-        help=f"the template to export the profile in (default: {_REPORT.name})",
+        default=Report.name,
+        help=f"the template to export the profile in (default: {Report.name})",
     )
     arguments = parser.parse_args()
     stage: _Stage = arguments.made(arguments)
@@ -183,11 +191,12 @@ def _adopt(project: Project, environment: Environment) -> None:
 
 def _exporting(options: Namespace) -> _Stage:
     """The stage export, with its option `--template`."""
-    return partial(_export, template=_TEMPLATES[options.template])
+    return partial(_export, making=_TEMPLATES[options.template])
 
 
-def _export(project: Project, environment: Environment, *, template: Template) -> None:
-    """Exports the profile of `environment` of `project` in `template`."""
+def _export(project: Project, environment: Environment, *, making: _Making) -> None:
+    """Exports the profile of `environment` of `project` in the template `making` makes."""
+    template = making(project, environment)
     overrides = Overrides.read(project.overrides)
     directory = environment.export(template.name)
     template.write(Profile.read(environment.profile), overrides, directory)

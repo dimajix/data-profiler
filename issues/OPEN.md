@@ -16,12 +16,6 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 |---|---|---|---|---|
 | [04](04-can-a-small-model-name-columns.md) | in progress | high | question | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. Part of epic [02](02-first-version-epic.md). |
 
-## Export
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [57](57-export-as-open-data-contract.md) | in progress | medium | feature | The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract. |
-
 ## Architecture
 
 | No. | Status | Priority | Type | Issue |

@@ -128,9 +128,7 @@ def _connected(references: Iterable[str], candidates: Iterable[str]) -> dict[str
 class Report(Template):
     """The report: the profile as one HTML document, `report.html`, the template `html`."""
 
-    def __init__(self) -> None:
-        """Makes the template `html`."""
-        super().__init__("html")
+    name = "html"
 
     def files(self, profile: Profile, overrides: Overrides) -> Mapping[str, bytes]:
         """The report, `report.html`, of `profile`, the overrides laid over it.

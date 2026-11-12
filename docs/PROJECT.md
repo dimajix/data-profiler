@@ -13,11 +13,11 @@ A project is a directory - `examples/crm/` is one, for the simulation environmen
 
 | File | What it holds | Committed |
 |---|---|---|
-| `project.yml` | the configuration: the tables, the semantic types of the project, the language model, the environments | yes |
+| `project.yml` | the configuration: the tables, the semantic types of the project, the language model, what it gives of its data contract, the environments | yes |
 | `.env` | the variables of the project: the passwords, the users where they differ from one person to the next, what reaches the database | never |
 | `overrides.yml` | what is given by hand, the same for all environments; optional | yes |
 | `overrides/` | more files of what is given by hand, `*.yml`, merged with `overrides.yml`; optional | yes |
-| `<environment>/` | the results of an environment, in a directory named after it: `profile/`, `workspace/` and `export/`, what each template exports, the report in `export/html/` | the profile and the report may be; the workspace keeps itself out |
+| `<environment>/` | the results of an environment, in a directory named after it: `profile/`, `workspace/` and `export/`, what each template exports, the report in `export/html/` and the data contract in `export/odcs/` | the profile and the report may be; the workspace keeps itself out |
 
 Every command names the environment it runs on, and the project by `--project`, else the current
 directory: `uv run data-profiler scan simulation --project examples/crm`.
@@ -42,6 +42,10 @@ directory: `uv run data-profiler scan simulation --project examples/crm`.
     enumeration. The values of its lists, not its texts, are a candidate of a discriminator, a row
     counted with each value of its list; and it is sensitive where the values of its lists are of a
     sensitive type. The tool guesses no separator: a project without one has no columns of lists.
+*   **`contract`** gives what the database does not tell of the data contract the profile is
+    exported as, by the template `odcs`: its identifier, the same from one export to the next, its
+    version, kept by hand, and its name, domain and tenant, where they are given. A project without
+    one cannot be exported by the template `odcs`.
 
 **Variables.** A value `${NAME}` is taken from the variable `NAME`, as the whole value, never a part
 of it. The password is given only so, never written out, so that `project.yml` can be committed and
@@ -238,6 +242,26 @@ A table of another system, of other lists, is given its own:
 tables:
   prod:
     list_separator: "|"
+```
+
+### Give the data contract of the project
+
+The identifier stays the same from one export to the next, so that a catalog knows the contract
+again; the version is raised by hand, and written as text, as `1.0` would be read as a number:
+
+```yaml project.yml
+tables: .*
+environments:
+  dev:
+    url: trino://starburst.example.com:443/crm/sales
+    user: ${CRM_USER}
+    password: ${CRM_PASSWORD}
+contract:
+  id: 53581432-6c55-4ba2-a65f-72344a91553a
+  version: "1.2.0"
+  name: CRM sales
+  domain: sales
+  tenant: wholesale
 ```
 
 ### Describe the database and a table
@@ -476,13 +500,21 @@ of the configuration and each kind of override:
 <!-- begin file: examples/crm/project.yml -->
 ```yaml
 # The example project: the tables of the example CRM, profiled in the simulation environment.
-format: "4.1"
+format: "4.2"
 # The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
 # The character that separates the values of a list in a text, the same in all tables of the CRM.
 list_separator: ";"
 # The language model of Ollama the names are described by.
 llm: qwen3.5:2b
+# What the project gives of its data contract, which the database does not tell: its identifier,
+# the same from one export to the next, and its version, kept by hand, as text.
+contract:
+  id: c2040b47-cc3c-4484-b96c-cd37e412ad78
+  version: "1.0.0"
+  name: CRM sales
+  domain: sales
+  tenant: wholesale
 # The environments, each by the URL of its schema, its user and its password; its results are kept
 # in a directory named after it, here `simulation/`.
 environments:
@@ -598,7 +630,7 @@ its description names, each with its value.
 <!-- begin reference: project.yml -->
 ### `project.yml`
 
-The document begins with `format: "4.1"`, its version.
+The document begins with `format: "4.2"`, its version.
 
 The configuration of a project, as its file holds it.
 
@@ -609,6 +641,7 @@ The configuration of a project, as its file holds it.
 | `llm` | text | absent | The language model of Ollama that `describe` asks, as Ollama names it, or None where the project names none, so that `describe` runs only with `--without-llm`. |
 | `types` | map of [Definition](#definition) | empty | The semantic types of the project, beside those of the tool, by their names. |
 | `list_separator` | text | absent | The character that separates the values of a list in a text, the same in all tables of the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it names none, so that no column is taken for one of lists. |
+| `contract` | [ContractSettings](#contractsettings) | absent | What the project gives of its data contract, which the database does not tell, or None where it gives none, so that the profile cannot be exported by the template `odcs`. |
 
 #### Settings
 
@@ -631,6 +664,18 @@ type of the tool.
 |---|---|---|---|
 | `pattern` | text | required | The regular expression every value of the type matches whole. It is read by Python and by the database alike, so that it uses what both share: classes, repetitions, groups and alternatives, and no other escapes than of a character. |
 | `sensitivity` | `none`, `personal` or `payment-card` | required | The rules the values of the type fall under. |
+
+#### ContractSettings
+
+What a project gives of its data contract, which the database does not tell.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `id` | text | required | The identifier of the contract, stable from one export to the next, such as a UUID. |
+| `version` | text | required | The version of the contract, kept by hand, as text: `"1.0.0"`. |
+| `name` | text | absent | The name of the contract, or None where it is not given. |
+| `domain` | text | absent | The domain of the business its data belong to, or None where it is not given. |
+| `tenant` | text | absent | The tenant its data belong to, or None where it is not given. |
 <!-- end reference: project.yml -->
 
 <!-- begin reference: overrides.yml -->

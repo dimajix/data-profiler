@@ -1,18 +1,19 @@
 """The templates of the stage export: the forms the profile is exported in, overrides laid over.
 
 A `Template` is one form of the profile, written into a directory of the environment of its own,
-named after it: the report, `html`, first. A template gives its files alone, of the profile with
-the overrides laid over it; `Template.write` does for each what all share - it warns of what the
-overrides give that the profile does not take, lays them over it, makes the directory and writes
-each file whole or not at all. The stage reads the profile and the overrides alone, never the
-database or the workspace, so that it holds what the profile may hold. Which templates there are,
-the command line says; a template is chosen by its name.
+named after it: the report, `html`, and the data contract, `odcs`. A template gives its files alone,
+of the profile with the overrides laid over it; `Template.write` does for each what all share - it
+warns of what the overrides give that the profile does not take, lays them over it, makes the
+directory and writes each file whole or not at all. The stage reads the profile and the overrides
+alone, never the database or the workspace, so that it holds what the profile may hold. Which
+templates there are, and what each is made of, the command line says; a template is chosen by its
+name, which is of its class.
 """
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Final
+from typing import ClassVar
 
 from data_profiler.files import write_whole
 from data_profiler.overrides import Overrides
@@ -27,12 +28,11 @@ class Template(ABC):
     """A form the profile is exported in, the overrides laid over it, into a directory of its own.
 
     Attributes:
-        name: The name of the template, as `--template` gives it; it names its directory.
+        name: The name of the template, as `--template` gives it; it names its directory. It is of
+            the class, so that the command line knows it before it makes the template.
     """
 
-    def __init__(self, name: str) -> None:
-        """Takes the name of the template."""
-        self.name: Final = name
+    name: ClassVar[str]
 
     def write(self, profile: Profile, overrides: Overrides, directory: Path) -> None:
         """Writes the files of `profile`, `overrides` laid over it, into `directory`.
