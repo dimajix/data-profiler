@@ -113,3 +113,7 @@ without a change of behaviour; a column of lists keeps the enumeration of its te
 2026-11-12: Step 1 done: `enumerations.values` asks no column of a type that
 `Dialect.is_enumerable` takes for none, of a match of a type that `SemanticType.enumerable` takes
 for none, or of lists; the values of the lists of a column are enumerated as before.
+
+2026-11-12: The test of step 1 through `scan` added, on the maintainer's request: the example
+profile of the simulation has a column of few dates written as text, `cust_addr.chk_dt`, which
+`scan` recognises as dates before it counts the enumerations, and so takes for none.

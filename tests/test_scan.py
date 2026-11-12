@@ -311,6 +311,14 @@ def test_a_column_of_lists_holds_the_values_of_its_lists_not_those_of_its_texts(
     assert column.values == (), "its texts, lists, are none, though few and repeated"
 
 
+def test_a_column_of_few_dates_written_as_text_is_no_enumeration(
+    source: Source, tmp_path: Path
+) -> None:
+    column = _scanned(source, "cust_addr", tmp_path).table("cust_addr").column("chk_dt")
+    assert [match.type for match in column.matches] == [DATE], "recognised before it is counted"
+    assert column.values == (), "of a semantic type whose values no closed list holds"
+
+
 def test_a_profile_that_cannot_be_read_is_refused_not_overwritten(
     source: Source, tmp_path: Path
 ) -> None:

@@ -39,6 +39,10 @@ columns:
   matches: [{type: country-name, sample: 1.0, table: 1.0}]
 - {name: vld_frm_dt, type: date, statistics: {nulls: 0, distinct: 2700}}
 - {name: vld_to_dt, type: date, statistics: {nulls: 5100, distinct: 900}}
+- name: chk_dt
+  type: varchar(10)
+  statistics: {nulls: 0, distinct: 6, lengths: {shortest: 10, longest: 10}}
+  matches: [{type: date, sample: 1.0, table: 1.0}]
 keys: [[addr_id], [addr_guid]]
 primary_key: {columns: [addr_id]}
 references:
