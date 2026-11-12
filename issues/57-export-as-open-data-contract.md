@@ -156,3 +156,43 @@ the documents; the documents say what the project gives for the contract.
 
 2026-11-12: Opened on the maintainer's request. Researched the standard (v3.2.0): required fields,
 splitting of contracts, relationships and quality library; nothing built yet.
+
+2026-11-12: The maintainer decided three of the questions. Question 3: the contract exported is a
+basis, an inventory of what was observed, which the experts then extend and rework into what is
+binding; so the observations are exported as rules, with the values observed - `required`,
+`unique`, `logicalTypeOptions` and `quality` filled from the profile. Question 4: a template is an
+exporter of its name (option 2), its files, where it has any, in `templates/<name>/`. Question 5:
+the result goes to `<environment>/export/<template>/`, the template is chosen by `--template`, and
+the command `report` is gone; whether `--template` defaults to `html` is still open. Questions 1,
+2 and 6 are still open.
+
+2026-11-12: The maintainer decided the rest. Question 1: one file per environment. Question 2: the
+fields of the contract are given per project, in `project.yml`; `version` is kept by hand, for now.
+Question 5: `--template` defaults to `html`. Question 6: no optional parts beyond those the profile
+fills - no `team`, `roles` or `slaProperties`. The status of a contract exported is `draft`. The
+rules are qualitative alone, none quantitative: as the number of rows and of values changes from
+one load to the next, no rule counts - no `rowCount`, no share of nulls, no coverage -, but a rule
+says what holds of every row: a column with no nulls, with no sentinels, unique, of the values of
+its enumeration. Proposed for the agreement, from the profile:
+
+- `required: true` where a column has no nulls; a `missingValues` rule of its sentinels -
+  those of the tool or those given - `mustBe: 0` where it has none of them either.
+- `unique: true` for a key of one column; a `duplicateValues` rule of the schema over its columns,
+  `mustBe: 0`, for a key of two.
+- `enum` of the values of an enumeration of no sensitivity.
+- A semantic type every value of the whole table matches - its share of the table 1 - as a tag,
+  and `logicalTypeOptions.pattern` of its detector; `format: uuid` for the type uuid. A type of a
+  smaller share is a tag alone.
+- `minLength` and `maxLength` only where all values are of one length, as a code is; no range and
+  no other lengths, which every load may extend.
+- The references as relationships, without their coverage; no reference candidates.
+- Column groups, column dependencies and entities left out, as nothing reads them from a contract
+  yet and the report shows them.
+
+2026-11-12: The maintainer decided, against the proposal above, that the lengths and the range go
+into the contract as well, as rules the experts judge and adjust: `minLength` and `maxLength` of
+every column of text, from its shortest and longest value, and `minimum` and `maximum` - the names
+ODCS gives them in `logicalTypeOptions`, of numbers as of dates and times - from its range. The
+profile holds both already, `statistics.lengths` and `statistics.range`, so that the scan needs no
+change. A range withheld - of a column of a sensitivity, or a value of a sensitive type - gives no
+`minimum` and `maximum`, as `disclosure` decides for the profile.
