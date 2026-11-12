@@ -59,7 +59,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [04](04-can-a-small-model-name-columns.md) | in progress | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
+| [04](04-can-a-small-model-name-columns.md) | done | Nobody knows yet whether a language model of 1 to 2 billion parameters, running locally, names columns well enough from prepared facts - and the stage describe rests on it. |
 | [09](09-the-glossary.md) | done | The original names are not split into their terms, so nothing can give a term one word for the whole database and compose harmonized names from it. |
 | [10](10-the-stage-describe.md) | done | Nobody proposes words for the terms or names and descriptions for the columns: the language model is not asked. |
 | [24](24-terms-written-together.md) | done | Terms written together without a separator, `LFADR` in `KD_LFADR_PLZ`, stay one term, so that the glossary needs a word for every combination of terms, and the same term reads differently where it is written together. |
@@ -105,7 +105,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 
 | No. | Status | Issue |
 |---|---|---|
-| [02](02-first-version-epic.md) | open | The tool does not exist yet: nothing scans a database, proposes names for its columns or reports what was found. |
+| [02](02-first-version-epic.md) | done | The tool does not exist yet: nothing scans a database, proposes names for its columns or reports what was found. |
 | [33](33-major-and-minor-versions-of-the-formats.md) | done | The version of a format is raised with every change to its fields, and a document of another version is refused, so that a field added as optional makes every profile be scanned again and every `overrides.yml` and `project.yml` be edited by hand, though the document the version before wrote is read as it was. |
 | [38](38-a-data-model-derived-from-the-profile-epic.md) | open | The profile describes the tables as they are, but nothing derives from it a data model that fits the processes of the business: the tables renamed, split into the entities they hold, with their keys and the references between them. |
 
@@ -114,4 +114,4 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | No. | Status | Issue |
 |---|---|---|
 | [01](01-initial-project-setup.md) | done | The repository is still the generic project template: its documents, checks and issue areas say nothing yet about this project, its language or its tools. |
-| [14](14-a-dev-container.md) | in progress | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
+| [14](14-a-dev-container.md) | done | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |

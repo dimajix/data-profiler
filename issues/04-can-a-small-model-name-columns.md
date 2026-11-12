@@ -1,6 +1,6 @@
 # 04 — Can a small local model name columns?
 
-**Status:** in progress
+**Status:** done
 **Type:** question
 **Priority:** high
 **Area:** Describe
@@ -80,3 +80,8 @@ whether terms first and columns second works, and what the prompt has to contain
   the random codes of the simulation, so that only the real database can judge them. Each model took
   40 to 50 seconds for all, on the Ollama of the machine of the agents, which says little of the
   Intel CPU of the dev container. The run on the real database is the maintainer's.
+
+- **2026-11-12** — Tried by the maintainer on the real database, in the dev container of
+  [14](14-a-dev-container.md): `qwen3.5:2b` names the columns well enough. The decision for
+  [10](10-the-stage-describe.md) stands as it was built there: `qwen3.5:2b` as the model, the terms
+  first and the columns second. Done.

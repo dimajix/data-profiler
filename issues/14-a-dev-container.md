@@ -1,6 +1,6 @@
 # 14 — A dev container
 
-**Status:** in progress
+**Status:** done
 **Type:** feature
 **Priority:** high
 **Area:** Tooling and process
@@ -82,3 +82,6 @@ As decided with the maintainer:
 - **2026-11-12** — The stage `report` is now the stage `export`
   ([57](57-export-as-open-data-contract.md)); where this issue names `report`, the command is
   `export`.
+
+- **2026-11-12** — Tried by the maintainer on the machine that reaches the real database: the
+  container works. Done.

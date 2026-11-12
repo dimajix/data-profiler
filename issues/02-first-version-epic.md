@@ -1,6 +1,6 @@
 # 02 — First version: scan, describe and an HTML report
 
-**Status:** open
+**Status:** done
 **Type:** epic
 **Priority:** high
 **Area:** Architecture
@@ -77,3 +77,7 @@ Not in the first version: PDF, the relationships between tables, other databases
 - **2026-11-12** — The stage `report` is now the stage `export`, which writes the report into
   `export/html/` of the environment ([57](57-export-as-open-data-contract.md)); where this issue
   names `report`, the command is `export`.
+
+- **2026-11-12** — Closed by the maintainer, as the last issue of the order,
+  [04](04-can-a-small-model-name-columns.md), is done: `qwen3.5:2b` names the columns of the real
+  database well enough. Done.
