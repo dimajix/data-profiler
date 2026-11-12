@@ -368,6 +368,49 @@ def test_the_range_of_a_column_is_widened_to_the_sentinels_found() -> None:
     assert _property(contract, "rt")["logicalTypeOptions"] == {"minimum": -1.0, "maximum": 1.5}
 
 
+def test_the_range_of_moments_is_widened_to_every_moment_of_the_days_of_their_sentinels() -> None:
+    days = (Value("9999-12-31", 3), Value("1900-01-01", 2))
+    ends = Range("2024-01-01 08:00:00.000", "2024-12-31 18:00:00.000")
+    moment = _column("at", "timestamp(3)", statistics=Statistics(0, 9, range=ends, sentinels=days))
+    zoned = Range("2024-01-01 08:00:00.000 UTC", "2024-12-31 18:00:00.000 Europe/Berlin")
+    statistics = Statistics(0, 9, range=zoned, sentinels=days)
+    of_zone = _column("tz", "timestamp(3) with time zone", statistics=statistics)
+    contract = _contract(_profile(moment, of_zone))
+    assert _property(contract, "at")["logicalTypeOptions"] == {
+        "minimum": "1900-01-01 00:00:00.000",
+        "maximum": "9999-12-31 23:59:59.999",
+    }
+    assert _property(contract, "tz")["logicalTypeOptions"] == {
+        "minimum": "1900-01-01 00:00:00.000 +14:00",
+        "maximum": "9999-12-31 23:59:59.999 -14:00",
+    }, "the day of each moment in its own zone: it begins first at +14:00, and ends last at -14:00"
+
+
+def test_the_range_of_moments_of_a_zone_is_widened_as_the_database_orders_them() -> None:
+    # The smallest is 11:00 on January 3rd in UTC; the day of the sentinel begins at +14:00 at 10:00
+    # on January 2nd, before it, though its text is the larger.
+    day = (Value("2024-01-03", 2),)
+    ends = Range("2024-01-02 23:00:00.000 -12:00", "2024-12-31 18:00:00.000 UTC")
+    statistics = Statistics(0, 9, range=ends, sentinels=day)
+    moments = _column("ts", "timestamp(3) with time zone", statistics=statistics)
+    assert _property(_contract(_profile(moments)), "ts")["logicalTypeOptions"] == {
+        "minimum": "2024-01-03 00:00:00.000 +14:00",
+        "maximum": "2024-12-31 18:00:00.000 UTC",
+    }
+
+
+def test_the_range_of_times_of_a_zone_is_widened_as_the_database_orders_them() -> None:
+    # 09:00 at -05:00 is 14:00 in UTC, after the largest of the range, though its text is smaller.
+    later = (Value("09:00:00.000-05:00", 2),)
+    ends = Range("10:00:00.000+00:00", "12:00:00.000+00:00")
+    statistics = Statistics(0, 9, range=ends, sentinels=later)
+    times = _column("tm", "time(3) with time zone", statistics=statistics)
+    assert _property(_contract(_profile(times)), "tm")["logicalTypeOptions"] == {
+        "minimum": "10:00:00.000+00:00",
+        "maximum": "09:00:00.000-05:00",
+    }
+
+
 def test_a_number_not_finite_leaves_out_the_bound_it_would_be() -> None:
     def ratio(name: str, ends: Range, *found: str) -> Column:
         sentinels = tuple(Value(text, 1) for text in found)

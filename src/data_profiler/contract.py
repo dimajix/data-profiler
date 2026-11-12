@@ -162,13 +162,62 @@ class Contract(Template):
         if column.values:
             values = [*column.values, *column.statistics.sentinels]
             document["enum"] = [{"value": _bound(value.value, logical)} for value in values]
-        options = _options(column, logical)
+        options = self._options(column, logical)
         if options:
             document["logicalTypeOptions"] = options
         quality = [*self._missing(column), *self._invalid(column)]
         if quality:
             document["quality"] = quality
         return document
+
+    def _options(self, column: Column, logical: str | None) -> _Document:
+        """The bounds of the values of `column` of the logical type `logical`, and their format.
+
+        The lengths of its texts bound a string, its range a number or a time - none where it is
+        withheld -, each widened to the sentinels found, which they are counted without; a UUID
+        every value of the table is of, and no sentinel, is of the format `uuid`.
+        """
+        statistics = column.statistics
+        found = [value.value for value in statistics.sentinels]
+        options: _Document = {}
+        if not found and any(match.type == UUID and match.table == 1 for match in column.matches):
+            options["format"] = "uuid"
+        if statistics.lengths is not None and logical == "string":
+            lengths = [statistics.lengths.shortest, statistics.lengths.longest, *map(len, found)]
+            options["minLength"] = min(lengths)
+            options["maxLength"] = max(lengths)
+        if statistics.range is not None and logical in _RANGED:
+            options |= self._bounds(column, statistics.range, logical)
+        return options
+
+    def _bounds(self, column: Column, ends: Range, logical: str) -> _Document:
+        """The minimum and maximum of `ends`, as `logical` writes them, widened to the sentinels.
+
+        Each sentinel found of `column` widens them to the values it stands for, as the dialect
+        tells its extent - of a day, every moment of it -, compared with the ends as the database
+        orders them. An end withheld is none, and so is one that a number not finite would be, of
+        the ends or the sentinels found: of `Infinity` there is no maximum, of `-Infinity` no
+        minimum, and of `NaN`, which compares with nothing, neither.
+        """
+        kind = column.type
+        found = [
+            text
+            for value in column.statistics.sentinels
+            for text in self._dialect.extent(kind, value.value)
+        ]
+        texts = [text for text in (ends.smallest, ends.largest, *found) if text is not None]
+        keys = {text: self._dialect.order(kind, text) for text in texts}
+        if any(isinstance(key, Decimal) and key.is_nan() for key in keys.values()):
+            return {}
+        bounds: _Document = {}
+        for name, end, extreme in (("minimum", ends.smallest, min), ("maximum", ends.largest, max)):
+            if end is None:
+                continue
+            bound = _bound(extreme((end, *found), key=keys.__getitem__), logical)
+            # A number that is not finite is written as its text, and is no bound.
+            if logical not in _NUMBERS or not isinstance(bound, str):
+                bounds[name] = bound
+        return bounds
 
     def _missing(self, column: Column) -> list[_Document]:
         """The rule that `column` holds no sentinels, where it holds no nulls and none were found.
@@ -224,58 +273,6 @@ def _keyed(table: Table, column: Column) -> _Document:
     if reference is not None and column.items is None:
         document["relationships"] = [{"to": f"{reference.table}.{reference.key}"}]
     return document
-
-
-def _options(column: Column, logical: str | None) -> _Document:
-    """The bounds of the values of `column` of the logical type `logical`, and their format.
-
-    The lengths of its texts bound a string, its range a number or a time - none where it is
-    withheld -, each widened to the sentinels found, which they are counted without; a UUID every
-    value of the table is of, and no sentinel, is of the format `uuid`.
-    """
-    statistics = column.statistics
-    found = [value.value for value in statistics.sentinels]
-    options: _Document = {}
-    if not found and any(match.type == UUID and match.table == 1 for match in column.matches):
-        options["format"] = "uuid"
-    if statistics.lengths is not None and logical == "string":
-        lengths = [statistics.lengths.shortest, statistics.lengths.longest, *map(len, found)]
-        options["minLength"] = min(lengths)
-        options["maxLength"] = max(lengths)
-    if statistics.range is not None and logical in _RANGED:
-        options |= _bounds(statistics.range, found, logical)
-    return options
-
-
-def _bounds(ends: Range, found: list[str], logical: str) -> _Document:
-    """The minimum and maximum of `ends`, as `logical` writes them, widened to the sentinels found.
-
-    The sentinels found are of the form the database writes the values of the type in, as it found
-    them so, and compare with the ends as `_order` orders them. An end withheld is none, and so is
-    one that a number not finite would be, of the ends or the sentinels found: of `Infinity` there
-    is no maximum, of `-Infinity` no minimum, and of `NaN`, which compares with nothing, neither.
-    """
-    if logical in _NUMBERS and any(
-        Decimal(text).is_nan() for text in (ends.smallest, ends.largest, *found) if text is not None
-    ):
-        return {}
-    bounds: _Document = {}
-    for name, end, extreme in (("minimum", ends.smallest, min), ("maximum", ends.largest, max)):
-        if end is None:
-            continue
-        bound = _bound(extreme((end, *found), key=lambda text: _order(text, logical)), logical)
-        # A number that is not finite is written as its text, and is no bound.
-        if logical not in _NUMBERS or not isinstance(bound, str):
-            bounds[name] = bound
-    return bounds
-
-
-def _order(text: str, logical: str) -> Decimal | str:
-    """`text`, a value of the logical type `logical`, as it orders: a number by its value.
-
-    Times, days and moments compare as their texts, which are of one form, the database's.
-    """
-    return Decimal(text) if logical in _NUMBERS else text
 
 
 def _escaped(text: str) -> str:

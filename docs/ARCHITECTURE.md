@@ -176,7 +176,8 @@ from the profile.
     it started, which each table it counted names.
 *   **Source** - a schema of the database the tool reads, by its URL; **Dialect** - one kind of
     database: its SQL, and what the types of its columns are - which sentinels a column of a type
-    can hold, and the types of ODCS the data contract names them by.
+    can hold and which values each stands for, a moment's day all its moments, how the values of a
+    type order, and the types of ODCS the data contract names them by.
 *   **Profile** - the documents describing the tables of one schema of a database: its tables and
     columns, what was found about them, the glossary, and the semantic types of its project; a
     directory of a document of the schema and a document of each table, so that a person reads a

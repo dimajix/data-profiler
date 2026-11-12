@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Collection
+from datetime import date
 
 import pytest
 
@@ -471,6 +472,83 @@ def test_a_pattern_matches_a_value_as_it_is_read(source: Source, value: str, pat
     matching = source.dialect.matching('"v"', "json", pattern)
     statement = f'SELECT {matching} FROM (SELECT {value} AS "v")'
     assert source.query(statement, "matching JSON") == [(1,)]
+
+
+@pytest.mark.parametrize(
+    ("kind", "text", "extent"),
+    [
+        ("timestamp(3)", "9999-12-31", ("9999-12-31 00:00:00.000", "9999-12-31 23:59:59.999")),
+        ("timestamp(0)", "0001-01-01", ("0001-01-01 00:00:00", "0001-01-01 23:59:59")),
+        (
+            "timestamp(6) with time zone",
+            "1900-01-01",
+            ("1900-01-01 00:00:00.000000 +14:00", "1900-01-01 23:59:59.999999 -14:00"),
+        ),
+        ("date", "9999-12-31", ("9999-12-31", "9999-12-31")),
+        ("varchar(10)", "N/A", ("N/A", "N/A")),
+    ],
+)
+def test_a_sentinel_of_a_moment_stands_for_its_day_and_any_other_for_itself(
+    kind: str, text: str, extent: tuple[str, str]
+) -> None:
+    assert dialect("trino://h/c/s").extent(kind, text) == extent
+
+
+def test_the_extent_of_a_day_is_refused_of_a_type_of_moments_of_no_precision() -> None:
+    with pytest.raises(ValueError, match="of moments of no precision"):
+        dialect("trino://h/c/s").extent("timestamp", "9999-12-31")
+
+
+@pytest.mark.parametrize("kind", ["timestamp(3)", "timestamp(0)", "timestamp(6) with time zone"])
+def test_the_extent_of_a_day_is_of_moments_of_that_day_of_the_precision_of_the_type(
+    source: Source, kind: str
+) -> None:
+    first, last = source.dialect.extent(kind, "9999-12-31")
+    # The statement is the test's own: a value of each type is had of no table of the simulation.
+    read = [f"CAST(CAST('{text}' AS {kind}) AS varchar)" for text in (first, last)]
+    days = [f"CAST(CAST('{text}' AS {kind}) AS date)" for text in (first, last)]
+    statement = f"SELECT {', '.join([*read, *days])}"
+    found = source.query(statement, f"reading the extent of {kind}")
+    assert found == [(first, last, date(9999, 12, 31), date(9999, 12, 31))], (
+        "written as the database writes them, of the day in its own zone"
+    )
+
+
+@pytest.mark.parametrize(
+    ("kind", "smaller", "larger"),
+    [
+        ("double", "-1.0E0", "5.0E-1"),
+        ("decimal(12,2)", "9.50", "10.00"),
+        ("time(3) with time zone", "23:00:00.000-05:00", "05:00:00.000+00:00"),
+        ("time(3) with time zone", "00:00:00.000+00:00", "00:30:00.000+01:00"),
+        ("time(3)", "09:00:00.000", "10:00:00.000"),
+        ("date", "1900-01-01", "2024-01-31"),
+        ("timestamp(3)", "2024-01-01 23:00:00.000", "2024-01-02 00:00:00.000"),
+        (
+            "timestamp(3) with time zone",
+            "2024-01-02 00:00:00.000 +14:00",
+            "2024-01-01 23:00:00.000 -14:00",
+        ),
+        (
+            "timestamp(3) with time zone",
+            "2024-01-01 09:00:00.000 +05:00",
+            "2024-01-01 08:00:00.000 UTC",
+        ),
+        (
+            "timestamp(3) with time zone",
+            "2024-07-01 09:00:00.000 Europe/Berlin",
+            "2024-07-01 08:00:00.000 UTC",
+        ),
+    ],
+)
+def test_values_are_in_the_order_of_the_database(
+    source: Source, kind: str, smaller: str, larger: str
+) -> None:
+    trino = source.dialect
+    assert sorted([larger, smaller], key=lambda text: trino.order(kind, text)) == [smaller, larger]
+    # The statement is the test's own: a value of each type is had of no table of the simulation.
+    statement = f"SELECT CAST('{smaller}' AS {kind}) < CAST('{larger}' AS {kind})"
+    assert source.query(statement, f"ordering {kind}") == [(True,)]
 
 
 def test_a_null_is_not_filled_and_of_a_column_of_no_sentinels_any_other_value_is() -> None:

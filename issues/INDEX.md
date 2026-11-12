@@ -84,7 +84,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [54](54-a-column-of-no-information-in-the-report.md) | done | A column that holds nothing but nulls and sentinels looks in the report like any other column, so that a person reading a table has to work out from its shares of nulls and sentinels which of its columns say nothing at all. |
 | [56](56-a-column-of-one-value-in-the-report.md) | done | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
 | [57](57-export-as-open-data-contract.md) | done | The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract. |
-| [60](60-the-range-of-times-in-the-contract-is-not-widened-to-their-sentinels.md) | in progress | The data contract widens the range of a column to the sentinels found in it, which the range is counted without, but not that of a column of the logical type `time`, so that its rule of minimum and maximum fails on rows it was observed of. |
+| [60](60-the-range-of-times-in-the-contract-is-not-widened-to-their-sentinels.md) | done | The data contract widens the range of a column to the sentinels found in it, which the range is counted without, but not that of a column of the logical type `time`, so that its rule of minimum and maximum fails on rows it was observed of. |
 
 ## Command line
 

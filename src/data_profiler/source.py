@@ -25,11 +25,14 @@ import re
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
+from decimal import Decimal
 from itertools import batched
 from re import Pattern
 from types import TracebackType
 from typing import ClassVar, Final, Self
 from urllib.parse import urlsplit
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from trino import dbapi
 from trino.auth import BasicAuthentication
@@ -47,19 +50,19 @@ _PORT: Final = 443
 # The form of a URL of Trino, for the messages of a URL that has another.
 _FORM: Final = "trino://host:port/catalog/schema"
 
-# The types of Trino whose values are texts, and those of whole numbers, by how their names begin.
+# The types of Trino whose values are texts, those of whole numbers, of numbers of fractions, and of
+# numbers, by how their names begin.
 _TEXTS: Final = ("varchar", "char")
 _WHOLE: Final = ("tinyint", "smallint", "integer", "bigint")
+_FRACTIONAL: Final = ("real", "double", "decimal")
+_NUMBERS: Final = (*_WHOLE, *_FRACTIONAL)
 
 # The types of Trino whose values have an order, by how their names begin - `time` also those of
 # `timestamp` -: those of others, such as `json` or `map`, would make `min` and `max` fail the
 # query they are in; a range of binaries would say nothing.
 _ORDERED: Final = (
     *_TEXTS,
-    *_WHOLE,
-    "real",
-    "double",
-    "decimal",
+    *_NUMBERS,
     "date",
     "time",
     "interval",
@@ -87,6 +90,29 @@ _IDENTIFYING: Final = (*_TEXTS, *_SURROGATE, "decimal", "date")
 # The types of Trino whose values are moments, by how their names begin, compared as their days.
 _MOMENTS: Final = ("timestamp",)
 
+# The precision of a type of moments, the digits of the fractions of a second of its values.
+_PRECISION: Final = re.compile(r"timestamp\(([0-9]+)\)")
+
+# The end of the name of a type of Trino of times or moments of a zone, and the offsets of the zones
+# furthest from UTC, of which a day begins first and ends last.
+_ZONED: Final = " with time zone"
+_FIRST_ZONE: Final = "+14:00"
+_LAST_ZONE: Final = "-14:00"
+
+# A time, as Trino writes it: of its hours, minutes and seconds, and, of a zone, the sign, hours and
+# minutes of its offset.
+_TIME: Final = r"([0-9]{2}):([0-9]{2}):([0-9]{2}(?:\.[0-9]+)?)(?:([+-])([0-9]{2}):([0-9]{2}))?"
+_SECONDS_OF_DAY: Final = 24 * 60 * 60
+
+# A moment of a zone, as Trino writes it - or as Python wrote it, of no space before an offset, in a
+# profile of an earlier version -: of its day, its time, the fraction of its second, and its zone,
+# an offset or the name of a region; and the moment its instants are counted from.
+_ZONED_MOMENT: Final = re.compile(
+    r"([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(\.[0-9]+)?"
+    r" ?([+-][0-9]{2}:[0-9]{2}|[A-Za-z][A-Za-z0-9_/+-]*)"
+)
+_EPOCH: Final = datetime(1970, 1, 1, tzinfo=UTC)
+
 # The forms of the texts Trino casts the values of a type to, by how the names of the types begin,
 # the first that fits - `timestamp` before `time` -, a moment as the text of its day, as the
 # sentinels are compared: floating numbers as `1.5E0` or `0E0`, times of their fractions and zones,
@@ -97,7 +123,7 @@ _MOMENTS: Final = ("timestamp",)
 _FORMS: Final = (
     (("real", "double"), r"-?[0-9](?:\.[0-9]+)?E-?[0-9]+|NaN|-?Infinity"),
     (("date", *_MOMENTS), r"[+-]?[0-9]{4,}-[0-9]{2}-[0-9]{2}"),
-    (("time",), r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:[+-][0-9]{2}:[0-9]{2})?"),
+    (("time",), _TIME),
     (("interval year",), r"-?[0-9]+(?:-[0-9]+)?"),
     (("interval",), r"-?[0-9]+(?: [0-9]+)?(?::[0-9]+)*(?:\.[0-9]+)?"),
     (("boolean",), r"true|false"),
@@ -110,7 +136,7 @@ _LOGICAL: Final = (
     (_TEXTS, "string"),
     (("uuid",), "string"),
     (_WHOLE, "integer"),
-    (("real", "double", "decimal"), "number"),
+    (_FRACTIONAL, "number"),
     (("boolean",), "boolean"),
     (("date",), "date"),
     (_MOMENTS, "timestamp"),
@@ -386,6 +412,32 @@ class Dialect(ABC):
 
         Those are the texts the database casts a value of the type to, as `sentinels` compares
         them: all of a column of texts, and none of one whose values it writes as no text.
+        """
+
+    @abstractmethod
+    def extent(self, kind: str, text: str) -> tuple[str, str]:
+        """The smallest and the largest value of `kind` the sentinel `text` stands for, as compared.
+
+        A sentinel of a moment is a day, as `sentinels` compares a moment, and stands for every
+        moment of it, in any zone: the first and the last, as the database writes them, of the
+        precision of the type. Any other sentinel stands for itself.
+
+        Raises:
+            ValueError: `kind` is a type of moments of no precision, which the database names of
+                each.
+        """
+
+    @abstractmethod
+    def order(self, kind: str, text: str) -> Decimal | str:
+        """The key a value of `kind`, as `text` reads it, orders by, as the database orders them.
+
+        Of the types whose values have an order and a text the database writes them in - not
+        intervals, whose texts order otherwise. A number that is not finite is a key that is not
+        either, `NaN` one that compares with nothing.
+
+        Raises:
+            ValueError: `text` is not of the form the database writes a value of `kind` in, or of
+                a zone Python does not know.
         """
 
     @abstractmethod
@@ -887,6 +939,35 @@ class _TrinoDialect(Dialect):
             return frozenset(texts)
         return frozenset(text for text in texts if re.fullmatch(form, text))
 
+    def extent(self, kind: str, text: str) -> tuple[str, str]:
+        """The values `text` stands for, as Trino writes them: a moment's day, else itself."""
+        if not kind.startswith(_MOMENTS):
+            return text, text
+        precision = _PRECISION.match(kind)
+        if precision is None:
+            raise ValueError(f"the type {kind} is of moments of no precision")
+        digits = int(precision.group(1))
+        zeros, nines = (f".{figure * digits}" if digits else "" for figure in "09")
+        first, last = f"{text} 00:00:00{zeros}", f"{text} 23:59:59{nines}"
+        if kind.endswith(_ZONED):
+            return f"{first} {_FIRST_ZONE}", f"{last} {_LAST_ZONE}"
+        return first, last
+
+    def order(self, kind: str, text: str) -> Decimal | str:
+        """The key a value of `kind`, as `text`, orders by in Trino.
+
+        A number by its value; a moment of a zone by its instant, in seconds from 1970 in UTC; a
+        time of a zone by its time of day in UTC, from midnight; any other value by its text, as
+        texts, days, and times and moments of no zone, of one precision, order.
+        """
+        if kind.startswith(_NUMBERS):
+            return Decimal(text)
+        if not kind.endswith(_ZONED):
+            return text
+        if kind.startswith(_MOMENTS):
+            return _instant(text)
+        return _time_of_day_in_utc(text)
+
     def identifies(self, kind: str) -> bool:
         """Whether the values of the type `kind` may identify rows: texts, exact numbers, days."""
         return kind.startswith(_IDENTIFYING)
@@ -972,6 +1053,49 @@ def _text(values: str, kind: str) -> str:
     if kind.startswith(_JSON):
         return f"coalesce(try_cast({values} AS varchar), json_format({values}))"
     return f"CAST({values} AS varchar)"
+
+
+def _instant(text: str) -> Decimal:
+    """The instant of the moment of a zone `text`, as Trino writes it, in seconds from 1970 in UTC.
+
+    Raises:
+        ValueError: `text` is no moment of a zone as Trino writes one, or of a zone Python does not
+            know.
+    """
+    found = _ZONED_MOMENT.fullmatch(text)
+    if found is None:
+        raise ValueError("a value of a type of moments of a zone is not of the form Trino writes")
+    *fields, fraction, zone = found.groups()
+    year, month, day, hours, minutes, seconds = map(int, fields)
+    moment = datetime(year, month, day, hours, minutes, seconds, tzinfo=_zone(zone))
+    return Decimal((moment - _EPOCH) // timedelta(seconds=1)) + Decimal(fraction or 0)
+
+
+def _time_of_day_in_utc(text: str) -> Decimal:
+    """The time of day in UTC of the time of a zone `text`, as Trino writes it, in seconds.
+
+    Raises:
+        ValueError: `text` is no time of a zone as Trino writes one.
+    """
+    found = re.fullmatch(_TIME, text)
+    if found is None or found.group(4) is None:
+        raise ValueError("a value of a type of times of a zone is not of the form Trino writes")
+    hours, minutes, seconds, sign, offset_hours, offset_minutes = found.groups()
+    local = (int(hours) * 60 + int(minutes)) * 60 + Decimal(seconds)
+    offset = (int(offset_hours) * 60 + int(offset_minutes)) * 60 * (-1 if sign == "-" else 1)
+    return (local - offset + _SECONDS_OF_DAY) % _SECONDS_OF_DAY
+
+
+def _zone(text: str) -> tzinfo:
+    """The zone `text`, as Trino writes it: an offset, such as `+05:00`, or the name of a region."""
+    if text[0] in "+-":
+        hours, minutes = text[1:].split(":")
+        offset = timedelta(hours=int(hours), minutes=int(minutes))
+        return timezone(-offset if text[0] == "-" else offset)
+    try:
+        return ZoneInfo(text)
+    except ZoneInfoNotFoundError as error:
+        raise ValueError("a moment is of a zone Python does not know") from error
 
 
 def _among(column: str, kind: str, texts: Collection[str]) -> str:

@@ -1,6 +1,6 @@
 # 60 — The range of times in the contract is not widened to their sentinels
 
-**Status:** in progress
+**Status:** done
 **Type:** bug
 **Priority:** low
 **Area:** Export
@@ -103,3 +103,15 @@ step removes again. The maximum of a moment is still the day of its sentinel. Wi
 from the review: a number that is not finite, of the range or of the sentinels found, leaves out
 the bound it would be - `Infinity` the maximum, `-Infinity` the minimum, `NaN` both -, as its rows
 would break it; a range up to `Infinity` with a sentinel found made the export fail before.
+
+2026-11-12: Step 2 done, and with it the issue: the dialect tells the values a sentinel stands for,
+`Dialect.extent` - of a moment, the first and the last moment of its day, of the precision of the
+type, of a zoned one at `+14:00` and `-14:00` -, and the key a value orders by, `Dialect.order` -
+a number by its value, a moment of a zone by its instant, a time of a zone by its time of day in
+UTC, modulo a day -, so that the
+contract widens the bounds to every value a sentinel found stands for, in the order of the
+database, with no case of a type of its own. Chosen with the maintainer over `Dialect.moments`,
+which would have left the contract a case of moments and the order of Trino. The review found that
+the texts of moments of a zone order otherwise than their instants, so that a sentinel day next to
+an end of the range was compared wrongly: the instant of such a moment is told by its zone, an
+offset or the name of a region, which Python's `zoneinfo` knows, of the years 1 to 9999.
