@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from data_profiler.detect import CURRENCY_CODE, EMAIL, PHONE, UUID, Sensitivity
+from data_profiler.export import ExportError
 from data_profiler.glossary import terms
 from data_profiler.overrides import (
     ColumnOverride,
@@ -35,7 +36,7 @@ from data_profiler.profile import (
     Term,
     Value,
 )
-from data_profiler.report import ReportError, render, write_report
+from data_profiler.report import Report, render
 
 
 def _read[Named: (Table, Column)](named: Named, *words: str) -> Named:
@@ -701,17 +702,17 @@ def test_a_report_is_written_into_its_directory_made_where_it_does_not_exist(
     tmp_path: Path,
 ) -> None:
     directory = tmp_path / "export" / "html"
-    write_report(_PROFILE, Overrides(), directory)
+    Report().write(_PROFILE, Overrides(), directory)
     assert (directory / "report.html").read_text(encoding="utf-8") == render(_PROFILE, Overrides())
 
 
 def test_a_report_whose_directory_cannot_be_made_is_refused(tmp_path: Path) -> None:
     (tmp_path / "export").write_text("a file, not a directory", encoding="utf-8")
-    with pytest.raises(ReportError, match="cannot be written"):
-        write_report(_PROFILE, Overrides(), tmp_path / "export" / "html")
+    with pytest.raises(ExportError, match="cannot be written"):
+        Report().write(_PROFILE, Overrides(), tmp_path / "export" / "html")
 
 
 def test_a_report_that_cannot_be_written_is_refused(tmp_path: Path) -> None:
     (tmp_path / "report.html").mkdir()
-    with pytest.raises(ReportError, match="cannot be written"):
-        write_report(_PROFILE, Overrides(), tmp_path)
+    with pytest.raises(ExportError, match="cannot be written"):
+        Report().write(_PROFILE, Overrides(), tmp_path)

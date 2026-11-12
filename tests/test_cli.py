@@ -100,6 +100,27 @@ def test_the_profile_of_an_environment_is_exported_with_the_overrides_laid_over(
     assert "personal (marked)" in page, "the overrides of the project are laid over"
 
 
+def test_a_template_is_chosen_by_its_name(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "html")
+    assert command_line(main, *arguments) == 0
+    page = (project / "simulation" / "export" / "html" / "report.html").read_text(encoding="utf-8")
+    assert "<h1>crm.sales</h1>" in page
+
+
+def test_a_template_that_is_none_is_refused_before_anything_is_exported(
+    project: Path, example_profile: Profile, command_line: Callable[..., int]
+) -> None:
+    (project / "simulation").mkdir()
+    example_profile.write(project / "simulation" / "profile")
+    arguments = ("export", "simulation", "--project", str(project), "--template", "pdf")
+    assert command_line(main, *arguments) == 2, "argparse refuses it"
+    assert not (project / "simulation" / "export").exists()
+
+
 class _Terminal(StringIO):
     def isatty(self) -> bool:
         return True

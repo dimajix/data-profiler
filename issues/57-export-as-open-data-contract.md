@@ -206,3 +206,22 @@ of the template `html` moved to `templates/export/html/`, apart from the prompts
 means the stage: the command line, and the documents where they name the stage. The area `Report`
 of the issues is `Export`, in the field lines of the issues of it as well; their descriptions stay
 as they are.
+
+2026-11-12: Step 2 agreed and done. The module `data_profiler.export` holds the `Template`, a form
+the profile is exported in, by its name, with `write(profile, overrides, directory)`, and its
+`ExportError`, as `llm` holds the `LanguageModel` and its error; the concept has one name, the
+template, in the code as in the documents and the option, rather than an exporter beside it. The
+report is the template `Report`, of the name `html`: its class names what it writes, its name the
+format. `write_report` and `ReportError` are gone. The command line holds the templates by their
+names, as it makes the language model - `export` cannot, as `report` imports it -, and takes
+`--template`, of the report where none is given.
+
+2026-11-12: After the review of step 2, the maintainer decided three findings. `Environment.export`
+takes the name of a template, `name`, as `Project.environment` takes that of an environment, since
+a template in the code is a `Template` now; changed with step 2. Before the template `odcs`, a step
+of its own moves what every template would repeat into `Template.write`: laying the overrides over
+the profile, making the directory, writing each file whole and translating an `OSError` into an
+`ExportError`; a template gives its files alone, by an abstract method that takes the profile with
+the overrides laid over it, and the overrides. And the word *template* keeps one meaning: the Jinja2
+files of the prompts of `describe` and of the report, the comments that call them templates, and
+the package directory `templates/` are named otherwise, in this issue, by a step of its own.

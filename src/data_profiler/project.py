@@ -126,9 +126,9 @@ class Environment:
         """The directory of the workspace of the environment."""
         return self.directory / "workspace"
 
-    def export(self, template: str) -> Path:
-        """The directory of what the template `template` exports of the environment."""
-        return self.directory / "export" / template
+    def export(self, name: str) -> Path:
+        """The directory of what the template of the name `name` exports of the environment."""
+        return self.directory / "export" / name
 
     def _resolved(self, setting: str, value: str) -> str:
         """`value` of `setting`, or the variable it names."""

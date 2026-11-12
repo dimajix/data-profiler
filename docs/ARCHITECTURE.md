@@ -115,9 +115,11 @@ environment.
     templates in `data_profiler/templates/prompts/`.
 *   **`data_profiler.adopt`** - the stage `adopt`: a person asked about each concept a profile
     proposes, and the answers written to the overrides.
-*   **`data_profiler.report`** - the report, the template `html` of the stage `export`: the
-    profile rendered as one HTML document, its styles inside and no script, from the Jinja2 files
-    in `data_profiler/templates/export/html/`.
+*   **`data_profiler.export`** - the stage `export`: the `Template`, a form the profile is
+    exported in, the overrides laid over it, into a directory of its own.
+*   **`data_profiler.report`** - the report, `Report`, the template `html` of the stage `export`:
+    the profile rendered as one HTML document, its styles inside and no script, from the Jinja2
+    files in `data_profiler/templates/export/html/`.
 *   **`data_profiler.diagram`** - the layout of a table and the tables connected to it, in pixels,
     which the report draws.
 *   **`data_profiler.cli`** - the command line: it reads the arguments, and runs the stages on an
@@ -135,12 +137,13 @@ The stages read and write the profile: `scan` uses `source`, `statistics`, `enum
 `sampling`, `lists`, `matching`, `keys`, `grouping`, `dependencies`, `entities`, `overrides`,
 `disclosure`, `values` and `workspace`, `relate` uses `source`, `overrides` and `references`, which
 takes the terms of names from `glossary`, `describe` uses `glossary`, `overrides`, `llm`,
-`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which it lays over it,
-and `report`, which takes `glossary` and `diagram` for its names and diagrams, and `adopt` reads
-the profile and writes through `overrides`; `cli` runs the stages, gives the overrides to each but
-`adopt`, which reads them anew for each concept, and the language model, made by `llm` as the
-project names it, to `describe`, unless it is to ask none. The semantic types of a project and its
-separator of lists reach `scan` from `project`, and every stage after it from the profile.
+`disclosure`, `values` and `workspace`, `export` the profile and `overrides`, which each of its
+templates lays over it - `report` with `glossary` and `diagram` for its names and diagrams -, and
+`adopt` reads the profile and writes through `overrides`; `cli` runs the stages, gives the overrides
+to each but `adopt`, which reads them anew for each concept, and the language model, made by `llm`
+as the project names it, to `describe`, unless it is to ask none, and the template given to
+`export`. The semantic types of a project and its separator of lists reach `scan` from `project`,
+and every stage after it from the profile.
 
 ## The domain
 
@@ -156,8 +159,8 @@ separator of lists reach `scan` from `project`, and every stage after it from th
     can be run on its own, from what the stages before it left. `adopt` alone writes the overrides,
     as a person answers, and never the profile.
 *   **Template** - a form in which `export` writes the profile, with the overrides laid over it,
-    into a directory of the environment named after it, `export/<template>/`: `html`, the report,
-    one HTML document a person reads.
+    into a directory of the environment named after it, `export/<template>/`, chosen by its name,
+    `--template`: `html`, the report, one HTML document a person reads, where none is given.
 *   **Run** - the counting of the selected tables of an environment, which may take several
     scans: a scan begins it, the next resumes it where it did not finish - failing at a table, or
     interrupted -, and it finishes once every selected table is counted. It is told apart by when
@@ -358,13 +361,14 @@ separator of lists reach `scan` from `project`, and every stage after it from th
     field, else to the first that names the concept, a new concept to `overrides/glossary.yml`,
     keeping the comments and the order of the file. The result is the overrides; it is the one stage
     that writes them, and it does so only as a person answers.
-5.  `export` renders the profile, with the overrides laid over it, as its report, in HTML, into
-    the directory `export/html/` of the environment: what the database and each table hold, its
-    keys, its references and reference candidates and the references to it, with a diagram of the
-    tables connected to it, its column groups and column dependencies, the harmonized names and
-    readings of the tables and columns, the descriptions of the columns, the entities of a table by
-    the share of their rows each column is filled in, with the names and descriptions given of
-    them, and the concepts proposed told apart from those given.
+5.  `export` writes the profile, with the overrides laid over it, in the template given, into its
+    directory `export/<template>/` of the environment; the template `html`, where none is given,
+    renders it as its report: what the database and each table hold, its keys, its references and
+    reference candidates and the references to it, with a diagram of the tables connected to it, its
+    column groups and column dependencies, the harmonized names and readings of the tables and
+    columns, the descriptions of the columns, the entities of a table by the share of their rows
+    each column is filled in, with the names and descriptions given of them, and the concepts
+    proposed told apart from those given.
 
 ## Principles
 

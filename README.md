@@ -206,10 +206,10 @@ a report by
 uv run data-profiler export simulation --project examples/crm
 ```
 
-which lays the overrides of the project over it and writes
-`examples/crm/simulation/export/html/report.html`: one file, which a browser shows and prints on its
-own, without the database. Its harmonized names are composed from the readings, so that a profile
-not described has none but those the overrides give.
+which lays the overrides of the project over it and writes, in the template `html` - the one
+`--template` gives where it is not given -, `examples/crm/simulation/export/html/report.html`: one
+file, which a browser shows and prints on its own, without the database. Its harmonized names are
+composed from the readings, so that a profile not described has none but those the overrides give.
 
 ### Running Tests
 
