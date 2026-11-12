@@ -230,7 +230,7 @@ def test_documents_whose_generated_parts_are_stale_fail_the_check_naming_each(
     (tmp_path / "stale.md").write_text(_STALE, encoding="utf-8")
     (tmp_path / "plain.md").write_text("# Written by hand\n", encoding="utf-8")
     with pytest.raises(GenerateError, match=r"stale\.md are not up to date"):
-        check(tmp_path)
+        check([tmp_path / "plain.md", tmp_path / "stale.md"])
 
 
 def test_documents_written_anew_pass_the_check_and_keep_what_is_written_by_hand(
@@ -238,16 +238,17 @@ def test_documents_written_anew_pass_the_check_and_keep_what_is_written_by_hand(
 ) -> None:
     path = tmp_path / "stale.md"
     path.write_text(_STALE, encoding="utf-8")
-    write(tmp_path)
-    check(tmp_path)
+    write([path])
+    check([path])
     assert path.read_text(encoding="utf-8").startswith("# Written by hand\n\n<!-- begin")
     assert "### `project.yml`" in path.read_text(encoding="utf-8")
 
 
 def test_a_document_of_a_generated_part_that_cannot_be_written_is_named(tmp_path: Path) -> None:
-    (tmp_path / "broken.md").write_text("<!-- begin file: missing.yml -->\n", encoding="utf-8")
+    path = tmp_path / "broken.md"
+    path.write_text("<!-- begin file: missing.yml -->\n", encoding="utf-8")
     with pytest.raises(GenerateError, match=r"broken\.md: a marker"):
-        write(tmp_path)
+        write([path])
 
 
 def test_the_generated_parts_of_the_documents_are_up_to_date(

@@ -13,7 +13,7 @@ A project is a directory - `examples/crm/` is one, for the simulation environmen
 
 | File | What it holds | Committed |
 |---|---|---|
-| `project.yml` | the configuration: the tables, the semantic types of the project, the language model, what it gives of its data contract, the environments | yes |
+| `project.yml` | the configuration: the tables, the semantic types of the project, the separator of lists, the language model, what it gives of its data contract, the environments | yes |
 | `.env` | the variables of the project: the passwords, the users where they differ from one person to the next, what reaches the database | never |
 | `overrides.yml` | what is given by hand, the same for all environments; optional | yes |
 | `overrides/` | more files of what is given by hand, `*.yml`, merged with `overrides.yml`; optional | yes |
@@ -495,7 +495,9 @@ version - the tool converts none. When each part is raised is said in the module
 ## The example project
 
 `examples/crm/` profiles the simulation environment, as the README says. Its files show each field
-of the configuration and each kind of override:
+of the configuration but `types`, the semantic types of the project, of which the simulation makes
+no values - the [recipe of one](#recognise-a-semantic-type-of-the-project) shows them -, and each
+kind of override:
 
 <!-- begin file: examples/crm/project.yml -->
 ```yaml

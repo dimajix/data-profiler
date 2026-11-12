@@ -118,19 +118,39 @@ The tool works on a project: a directory with its configuration `project.yml`, i
 each of its environments - dev, test, prod - in a directory named after the environment.
 `examples/crm/` is a project for the simulation environment:
 
+<!-- begin file: examples/crm/project.yml -->
 ```yaml
-format: "4.0"
+# The example project: the tables of the example CRM, profiled in the simulation environment.
+format: "4.2"
+# The tables to profile: a regular expression matched whole, or a list of their names.
 tables: .*
+# The character that separates the values of a list in a text, the same in all tables of the CRM.
+list_separator: ";"
+# The language model of Ollama the names are described by.
 llm: qwen3.5:2b
+# What the project gives of its data contract, which the database does not tell: its identifier,
+# the same from one export to the next, and its version, kept by hand, as text.
+contract:
+  id: c2040b47-cc3c-4484-b96c-cd37e412ad78
+  version: "1.0.0"
+  name: CRM sales
+  domain: sales
+  tenant: wholesale
+# The environments, each by the URL of its schema, its user and its password; its results are kept
+# in a directory named after it, here `simulation/`.
 environments:
   simulation:
     url: trino://localhost:8443/crm/sales
     user: profiler
+    # The password is given only by a variable, of the process or of the `.env` of the project.
     password: ${SIMULATION_PASSWORD}
 ```
+<!-- end file: examples/crm/project.yml -->
 
-- **`tables`** selects the tables of the whole project, **`llm`** names the language model of
-  Ollama that `describe` asks, and **`environments`** names each environment by the URL of its
+- **`tables`** selects the tables of the whole project, **`list_separator`** gives the character
+  that separates the values of a list in a text, **`llm`** names the language model of Ollama that
+  `describe` asks, **`contract`** gives what the database does not tell of the data contract that
+  `export --template odcs` writes, and **`environments`** names each environment by the URL of its
   schema and the user and the password it is reached as. A value `${NAME}` is taken from the
   variable `NAME`; the password is given only so, so that `project.yml` can be committed and shared.
 - **`.env`** holds the variables, and is never committed. For the example, copy

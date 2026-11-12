@@ -1,4 +1,4 @@
-"""Generate: the parts of the documents in `docs/` that are written from the code and other files.
+"""Generate: the parts of the documents that are written from the code and other files.
 
     uv run scripts/generate.py [--debug] [--check]
 
@@ -14,10 +14,10 @@ what they name:
 *   `<!-- begin file: examples/crm/overrides.yml -->` and `<!-- end file: … -->` - a file of the
     repository, in a code block of YAML, as it is.
 
-Everything outside the markers is written by hand, and left as it is; a marker without its partner
-fails the run. With `--check` nothing is written: the run fails where a document is not what it
-would write. `data_profiler.commands.run` configures the log and ends the program when the run
-fails.
+The documents are the README and those in `docs/`. Everything outside the markers is written by
+hand, and left as it is; a marker without its partner fails the run. With `--check` nothing is
+written: the run fails where a document is not what it would write. `data_profiler.commands.run`
+configures the log and ends the program when the run fails.
 """
 
 import dataclasses
@@ -26,7 +26,7 @@ import logging
 import re
 import typing
 from argparse import ArgumentParser
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import MISSING, Field
 from datetime import datetime
 from enum import Enum
@@ -149,17 +149,17 @@ def generated(text: str) -> str:
     return _PART.sub(part, text)
 
 
-def write(directory: Path) -> None:
-    """Writes the generated parts of the documents in `directory` anew, those that differ.
+def write(documents: Iterable[Path]) -> None:
+    """Writes the generated parts of `documents` anew, of those that differ.
 
     Args:
-        directory: The directory of the documents, Markdown files.
+        documents: The documents, Markdown files.
 
     Raises:
         GenerateError: A document cannot be read or written, or its generated parts cannot be
             written, as `generated` says; the message names the document.
     """
-    for path, written in _stale(directory).items():
+    for path, written in _stale(documents).items():
         try:
             path.write_text(written, encoding="utf-8")
         except OSError as error:
@@ -167,17 +167,17 @@ def write(directory: Path) -> None:
         _logger.info("%s written", path)
 
 
-def check(directory: Path) -> None:
-    """Checks that the generated parts of the documents in `directory` are what would be written.
+def check(documents: Iterable[Path]) -> None:
+    """Checks that the generated parts of `documents` are what would be written.
 
     Args:
-        directory: The directory of the documents, Markdown files.
+        documents: The documents, Markdown files.
 
     Raises:
         GenerateError: A document is not what would be written, naming each, or cannot be read, or
             its generated parts cannot be written, as `generated` says.
     """
-    stale = [str(path) for path in _stale(directory)]
+    stale = [str(path) for path in _stale(documents)]
     if stale:
         raise GenerateError(
             f"the generated parts of {', '.join(stale)} are not up to date; they are written by"
@@ -186,19 +186,20 @@ def check(directory: Path) -> None:
 
 
 def main() -> None:
-    """Writes the generated parts of the documents in `docs/` anew, or checks them by `--check`."""
+    """Writes the generated parts of the README and `docs/` anew, or checks them by `--check`."""
     parser = ArgumentParser(prog="generate", description="The generated parts of the documents.")
     parser.add_argument("--debug", action="store_true", help="log at debug level")
     parser.add_argument("--check", action="store_true", help="write nothing, fail where not equal")
     arguments = parser.parse_args()
     act = check if arguments.check else write
-    run(lambda: act(_TOP / "docs"), arguments.debug, (GenerateError,))
+    documents = [_TOP / "README.md", *sorted((_TOP / "docs").glob("*.md"))]
+    run(lambda: act(documents), arguments.debug, (GenerateError,))
 
 
-def _stale(directory: Path) -> dict[Path, str]:
-    """The documents in `directory` whose generated parts differ, each as it would be written."""
+def _stale(documents: Iterable[Path]) -> dict[Path, str]:
+    """Those of `documents` whose generated parts differ, each as it would be written."""
     stale = {}
-    for path in sorted(directory.glob("*.md")):
+    for path in documents:
         try:
             text = path.read_text(encoding="utf-8")
             written = generated(text)

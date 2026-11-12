@@ -1,6 +1,6 @@
 # 58 — The configuration of a project in its examples, and the sentinels a type can hold
 
-**Status:** open
+**Status:** in progress
 **Type:** refactoring
 **Priority:** low
 **Area:** Command line
@@ -110,3 +110,13 @@ writes the rule of `dialect.held(column.type, sentinels(column.sentinels))`, wit
 `N/A` in a `bigint`; the profile stays as it was, as it leaves out the sentinels of no rows. The
 name `held` is to be checked, as `Dialect.sentinels` names the expression that counts them. The
 summary of this issue no longer names the first finding.
+
+2026-11-12: Step 1, the documents - the second to fourth findings. The example project keeps no
+semantic type of its own, as the simulation makes values of the types of the tool alone; the
+sentence of PROJECT.md says it shows each field but `types`, and points to the recipe of one. The
+row of `project.yml` in the directory table names the separator of lists. The README holds
+`examples/crm/project.yml` between the markers of a generated file, which `scripts/generate.py`
+now writes in the README as well as in the documents of `docs/` - its `write` and `check` take the
+documents rather than their directory -, and the pre-commit hook checks when the README is part of
+a commit; the list below it names `list_separator` and `contract`. That no test fails where `main`
+leaves the README out is as it was for `docs/`: the documents are named only in `main`.

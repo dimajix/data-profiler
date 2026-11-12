@@ -91,7 +91,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [13](13-projects-and-environments.md) | done | Nothing keeps the configuration of a database together with the results of profiling it, so every run is given the URL, the tables and the paths anew, and the same database in dev, test and prod cannot be profiled side by side. |
 | [17](17-the-user-apart-from-the-url.md) | done | The user of an environment is part of its URL, so that it cannot be taken from a variable while the host, the catalog and the schema stay in the configuration the team shares. |
 | [45](45-a-stage-interrupted-ends-in-a-traceback.md) | done | A command stopped by Ctrl-C ends in the traceback of Python on standard error, though users are to see of a failure its message alone and the traceback goes to the log at `debug`. |
-| [58](58-the-configuration-of-a-project-its-class-and-its-examples.md) | open | The example project, the README and PROJECT.md show the configuration of a project otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format -, and which sentinels a column of a type can hold is decided in two places apart from the dialect, which knows the types. |
+| [58](58-the-configuration-of-a-project-its-class-and-its-examples.md) | in progress | The example project, the README and PROJECT.md show the configuration of a project otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format -, and which sentinels a column of a type can hold is decided in two places apart from the dialect, which knows the types. |
 
 ## Simulation
 
