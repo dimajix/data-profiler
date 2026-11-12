@@ -33,4 +33,4 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [58](58-the-configuration-of-a-project-its-class-and-its-examples.md) | open | low | refactoring | `Project` takes each field of its configuration as a constructor parameter of its own only to keep it, and the example project, the README and PROJECT.md show the configuration otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format. |
+| [58](58-the-configuration-of-a-project-its-class-and-its-examples.md) | open | low | refactoring | The example project, the README and PROJECT.md show the configuration of a project otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format -, and which sentinels a column of a type can hold is decided in two places apart from the dialect, which knows the types. |
