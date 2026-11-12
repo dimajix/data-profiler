@@ -28,9 +28,3 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
 | [14](14-a-dev-container.md) | in progress | high | feature | The tool cannot be run on the machine that reaches the real database in a prepared environment: it has to be set up there by hand, on Windows, with its proxy, its certificates and a local language model. |
-
-## Low priority
-
-| No. | Status | Priority | Type | Issue |
-|---|---|---|---|---|
-| [58](58-the-configuration-of-a-project-its-class-and-its-examples.md) | in progress | low | refactoring | The example project, the README and PROJECT.md show the configuration of a project otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format -, and which sentinels a column of a type can hold is decided in two places apart from the dialect, which knows the types. |

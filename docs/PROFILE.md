@@ -277,7 +277,7 @@ A column of a table, under its original name and type, and what was found about 
 | `items` | [Findings](#findings) | absent | The values of its lists, counted as those of a column are, or None where its texts are no lists. |
 | `values` | list of [Value](#value) | empty | The values of the column, if it is an enumeration of no sensitivity, the most frequent first; none else. |
 | `marked` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column given by hand, by an override, or None where none is given. |
-| `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with; None where none are given, and where the column has no text, which is counted without sentinels, whatever is given. |
+| `sentinels` | list of text | absent | The sentinels given by hand, by an override, as values, in place of those of the tool, that the column was counted with, of them those its type can hold; None where none are given, and where the column has no text, which is counted without sentinels, whatever is given. |
 | `terms` | list of [Term](#term) | absent | The terms of its name, in their order, or None where it is not split yet. |
 | `reading` | list of text | absent | The reading of its name: the word of the concept each of its terms stands for, at its place, the digits of a term of digits; None where it is not read. |
 | `description` | text | absent | What the column holds, in English, for a person who knows the business but not the database; None where it is not described. |

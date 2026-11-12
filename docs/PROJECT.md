@@ -296,7 +296,9 @@ tables:
 
 The values that stand for no value in a column are counted apart and left aside, as nulls are. The
 tool brings sentinels of its own, of the columns whose values the database writes as text; those
-given take their place, and `sentinels: []` gives none.
+given take their place, and `sentinels: []` gives none. Of them, a column has those its type can
+hold, in the form the database writes its values: `-1.0E0` in a `double`, `0.50` in a
+`decimal(12,2)`, a UUID in lower case; `-1` in a `double` is counted in no row.
 
 ```yaml overrides.yml
 tables:

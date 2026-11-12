@@ -19,6 +19,7 @@ from data_profiler.detect import (
     CURRENCY_NUMBER,
     IBAN,
     POSTAL_CODE,
+    SENTINELS,
     TRUE_FALSE,
     UUID,
     Sensitivity,
@@ -184,16 +185,23 @@ def test_a_column_of_nulls_or_of_sentinels_found_is_neither_required_nor_without
 
 
 def test_a_rule_of_sentinels_holds_those_that_are_values_of_the_type_of_its_column() -> None:
+    nil = "00000000-0000-0000-0000-000000000000"
     number = _column("nr", "bigint")
     key = _column("ref", "uuid")
     day = _column("dt", "date")
     moment = _column("at", "timestamp(3)")
-    contract = _contract(_profile(number, key, day, moment))
+    nothing = _column("no", "uuid", sentinels=(nil, "N/A"))
+    document = _column("doc", "json")
+    contract = _contract(_profile(number, key, day, moment, nothing, document))
     assert "quality" not in _property(contract, "nr"), "a number holds none of the tool's"
     assert "quality" not in _property(contract, "ref"), "nor does a UUID"
     for name in ("dt", "at"):
         (missing,) = _property(contract, name)["quality"]
         assert missing["arguments"]["missingValues"] == ["0001-01-01", "1900-01-01", "9999-12-31"]
+    (missing,) = _property(contract, "no")["quality"]
+    assert missing["arguments"]["missingValues"] == [nil], "a UUID given that it can hold"
+    (missing,) = _property(contract, "doc")["quality"]
+    assert missing["arguments"]["missingValues"] == sorted(SENTINELS), "JSON, all as texts"
 
 
 def test_a_column_the_database_writes_as_no_text_has_no_rule_of_sentinels() -> None:

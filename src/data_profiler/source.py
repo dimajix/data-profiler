@@ -85,6 +85,23 @@ _IDENTIFYING: Final = (*_TEXTS, *_SURROGATE, "decimal", "date")
 # The types of Trino whose values are moments, by how their names begin, compared as their days.
 _MOMENTS: Final = ("timestamp",)
 
+# The forms of the texts Trino casts the values of a type to, by how the names of the types begin,
+# the first that fits - `timestamp` before `time` -, a moment as the text of its day, as the
+# sentinels are compared: floating numbers as `1.5E0` or `0E0`, times of their fractions and zones,
+# intervals of years and months as `-1-2`, of days to seconds in many forms, `-2`, `2:03`, `1 02`,
+# `0 23:00:00.000000`. Whole numbers and decimals, of the scale of their type, are told by `_form`;
+# texts and JSON are any text. A form is of no length and no precision - the scale of a decimal
+# aside, which changes how its numbers are written -, so that it keeps a text where in doubt.
+_FORMS: Final = (
+    (("real", "double"), r"-?[0-9](?:\.[0-9]+)?E-?[0-9]+|NaN|-?Infinity"),
+    (("date", *_MOMENTS), r"[+-]?[0-9]{4,}-[0-9]{2}-[0-9]{2}"),
+    (("time",), r"[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?(?:[+-][0-9]{2}:[0-9]{2})?"),
+    (("interval year",), r"-?[0-9]+(?:-[0-9]+)?"),
+    (("interval",), r"-?[0-9]+(?: [0-9]+)?(?::[0-9]+)*(?:\.[0-9]+)?"),
+    (("boolean",), r"true|false"),
+    (("uuid",), r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),
+)
+
 # The logical types of a data contract of ODCS of the types of Trino, by how their names begin, the
 # first that fits: `timestamp` before `time`, which its name begins with as well.
 _LOGICAL: Final = (
@@ -176,7 +193,7 @@ class Dialect(ABC):
     Its building blocks take the names of tables and columns as they are, and quote them; those that
     count or measure values take an expression of the values of a column, as `column` or `without`
     writes it. Those of the sentinels take a column and its type, as they compare the values of the
-    column itself, a moment as its day.
+    column itself, a moment as its day, with those of the sentinels a column of its type can hold.
     """
 
     server_type: ClassVar[str]
@@ -257,8 +274,8 @@ class Dialect(ABC):
         """The expression counting the values of `column`, of the type `kind`, one of `texts`.
 
         A value is compared as text, its spaces at either end cut, and a moment as the text of its
-        day, as `detect` compares the values of a sample; `kind` is a type that `has_text`, and
-        `texts` are one at least. Texts, days and moments are written alike by the database and by
+        day, as `detect` compares the values of a sample; `texts` are of those `held` of `kind`,
+        one at least. Texts, days and moments are written alike by the database and by
         Python; truth values and floating numbers are not, `true` and `True`, `0.0E0` and `0.0`.
         """
 
@@ -336,6 +353,14 @@ class Dialect(ABC):
     @abstractmethod
     def has_text(self, kind: str) -> bool:
         """Whether the database writes the values of a column of the type `kind` as text."""
+
+    @abstractmethod
+    def held(self, kind: str, texts: Collection[str]) -> frozenset[str]:
+        """Of the sentinels `texts`, those a column of the type `kind` can hold.
+
+        Those are the texts the database casts a value of the type to, as `sentinels` compares
+        them: all of a column of texts, and none of one whose values it writes as no text.
+        """
 
     @abstractmethod
     def identifies(self, kind: str) -> bool:
@@ -809,6 +834,15 @@ class _TrinoDialect(Dialect):
         """Whether Trino casts the values of the type `kind` to a text: all but a few."""
         return kind.startswith(_HAVE_TEXT)
 
+    def held(self, kind: str, texts: Collection[str]) -> frozenset[str]:
+        """Of the sentinels `texts`, those of the form of the texts Trino casts `kind` to."""
+        if not self.has_text(kind):
+            return frozenset()
+        form = _form(kind)
+        if form is None:
+            return frozenset(texts)
+        return frozenset(text for text in texts if re.fullmatch(form, text))
+
     def identifies(self, kind: str) -> bool:
         """Whether the values of the type `kind` may identify rows: texts, exact numbers, days."""
         return kind.startswith(_IDENTIFYING)
@@ -871,6 +905,16 @@ def _family(kind: str) -> str:
     if decimal is not None:
         return f"decimal of scale {decimal.group(1)}"
     return kind
+
+
+def _form(kind: str) -> str | None:
+    """The form of the texts Trino casts the values of `kind` to; None where they are any text."""
+    if _is_whole(kind):
+        return r"-?[0-9]+"
+    decimal = _DECIMAL.fullmatch(kind)
+    if decimal is not None:
+        return rf"-?[0-9]+\.[0-9]{{{decimal.group(1)}}}"
+    return next((form for kinds, form in _FORMS if kind.startswith(kinds)), None)
 
 
 def _among(column: str, kind: str, texts: Collection[str]) -> str:
