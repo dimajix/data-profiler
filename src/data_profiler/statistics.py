@@ -6,7 +6,7 @@ its smallest and its largest value, and for a column of texts the lengths of its
 longest value. The sentinels of a column are those of the tool, or those given of it by hand, of
 them those its type can hold, as the dialect tells, each counted apart, so that a person sees which
 a column has; what is counted of its values leaves them aside, but its nulls. A column whose values
-the database writes as no text - an array, a map, a binary - has no sentinels. The row the query
+the database writes as no text - an array, a map, a binary - can hold none. The row the query
 returns is read along the same list of expressions it was built from, so that its form is known in
 this module alone. The range of a column is of values of the database, as the text the dialect reads
 them as; whether it goes into the profile, the module `disclosure` decides.
@@ -38,8 +38,8 @@ def count(
             the tool; a column not named has those of the tool.
 
     Returns:
-        The table, its rows counted, its columns in their order, each with the sentinels given of
-        it where it has text, and none given where it has none.
+        The table, its rows counted, its columns in their order, each with those of the sentinels
+        given of it that its type can hold, for `refuse_uncounted` to refuse the others.
 
     Raises:
         SourceError: The schema has no such table, or the database fails to count it.
@@ -51,8 +51,9 @@ def count(
     for name, kind in source.columns(table).items():
         if columns is not None and name not in columns:
             continue
-        counted_with = given.get(name) if dialect.has_text(kind) else None
-        texts = dialect.held(kind, sentinels(counted_with))
+        given_of = given.get(name)
+        texts = dialect.held(kind, sentinels(given_of))
+        counted_with = None if given_of is None else tuple(t for t in given_of if t in texts)
         values = dialect.column(name)
         kept = dialect.without(name, kind, texts)
         of_counts = [dialect.nulls(values), dialect.distinct(kept)]

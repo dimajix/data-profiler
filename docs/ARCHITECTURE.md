@@ -195,8 +195,9 @@ from the profile.
     overrides. The tool brings its sentinels, of the columns whose values the database writes as
     text; an override gives those of a column in their place. Of them, a column has those its type
     can hold, as the dialect tells: all in a text, the days in a date, none of the tool's in a
-    number. A value is compared with them as the dialect compares it, in a query and in a sample
-    alike: as text, its spaces at either end cut, a moment as its day.
+    number; one given that it cannot hold is refused. A value is compared with them as the dialect
+    compares it, in a query and in a sample alike: as text, its spaces at either end cut, a moment
+    as its day.
 *   **Column of lists** - a column whose texts are lists of values, `12;47;3`, separated by the
     separator of lists the project gives, the same in all tables of the database, or an override of
     a table in its place; the tool guesses none. Nearly every text is a list, of one value or more,

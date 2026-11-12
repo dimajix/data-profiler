@@ -120,13 +120,18 @@ def test_a_table_agrees_with_the_overrides_where_counted_with_the_sentinels_give
     assert not TableOverride().agrees_with(counted), "counted with others than of the tool"
 
 
-def test_sentinels_given_of_a_column_counted_without_them_are_refused() -> None:
-    given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("",))})
+def test_sentinels_given_of_a_column_counted_without_them_are_refused_naming_them() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("", "-1"))})
     (table,) = _PROFILE.tables
-    with pytest.raises(OverridesError, match="columns of cntct whose values are no text: frst_nm"):
-        given.refuse_uncounted(table)
     frst_nm, other = table.columns
-    given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("",)), other)))
+    with pytest.raises(OverridesError, match="cannot hold") as refused:
+        given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("",)), other)))
+    assert str(refused.value).endswith(f'otherwise: frst_nm ({frst_nm.type}): "-1"')
+    with pytest.raises(OverridesError, match=r'frst_nm \(.*\): "", "-1"$'):
+        given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=()), other)))
+    given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("", "-1")), other)))
+    empty = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=())})
+    empty.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=()), other)))
     with pytest.raises(OverridesError, match="columns of cntct it does not have: lst_nm"):
         _marked("lst_nm").tables["cntct"].refuse_uncounted(table)
 

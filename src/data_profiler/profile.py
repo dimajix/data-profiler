@@ -320,9 +320,8 @@ class Column:
         marked: The sensitivity of the column given by hand, by an override, or None where none
             is given.
         sentinels: The sentinels given by hand, by an override, as values, in place of those of
-            the tool, that the column was counted with, of them those its type can hold; None
-            where none are given, and where the column has no text, which is counted without
-            sentinels, whatever is given.
+            the tool, that the column was counted with: of them those its type can hold, as
+            `scan` refuses the others; None where none are given.
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.

@@ -94,11 +94,13 @@ class _Counted(Source):
         pass
 
 
-def test_a_column_of_no_text_is_counted_without_the_sentinels_given_of_it() -> None:
+def test_a_column_of_no_text_is_counted_with_none_of_the_sentinels_given_of_it() -> None:
     # The rows, and of `b` its nulls and its distinct values.
     (column,) = count(_Counted("varbinary", (1, 0, 1)), "t", {"b": ("",)}).columns
-    assert column.sentinels is None, "counted with none"
+    assert column.sentinels == (), "counted with none of them"
     assert column.statistics.sentinels == ()
+    (column,) = count(_Counted("varbinary", (1, 0, 1)), "t", {}).columns
+    assert column.sentinels is None, "none given"
 
 
 def test_a_column_is_counted_with_those_of_the_sentinels_given_its_type_can_hold() -> None:
@@ -108,4 +110,4 @@ def test_a_column_is_counted_with_those_of_the_sentinels_given_its_type_can_hold
     (statement,) = source.statements
     assert "'-1'" in statement
     assert "'N/A'" not in statement, "a number cannot be one"
-    assert column.sentinels == ("N/A", "-1"), "the sentinels given"
+    assert column.sentinels == ("-1",), "the sentinels given it can hold"

@@ -121,9 +121,9 @@ is one of it.
 be what it gives, is refused, naming it:
 
 *   `scan` refuses a table the project does not select before it counts anything; once it has
-    counted a table, a column the table does not have, sentinels of a column whose values the
-    database writes as no text, a primary key of no columns or of one twice, and a discriminator of
-    a column the overrides mark of a sensitivity, of entities of no values, or of a value twice.
+    counted a table, a column the table does not have, sentinels of a column that its type cannot
+    hold, a primary key of no columns or of one twice, and a discriminator of a column the
+    overrides mark of a sensitivity, of entities of no values, or of a value twice.
     The tables before it stay in the profile, as after any failure of a scan. It does not check the
     concepts, readings and names, which it does not use.
 *   `relate` refuses a table or column the profile does not have, and a reference to one or of a
@@ -296,9 +296,10 @@ tables:
 
 The values that stand for no value in a column are counted apart and left aside, as nulls are. The
 tool brings sentinels of its own, of the columns whose values the database writes as text; those
-given take their place, and `sentinels: []` gives none. Of them, a column has those its type can
-hold, in the form the database writes its values: `-1.0E0` in a `double`, `0.50` in a
-`decimal(12,2)`, a UUID in lower case; `-1` in a `double` is counted in no row.
+given take their place, and `sentinels: []` gives none. A sentinel given is in the form the
+database writes the values of the column: `-1.0E0` in a `double`, `0.50` in a `decimal(12,2)`, a
+UUID in lower case; one its type cannot hold - `-1` in a `double`, any of a column of no text - is
+refused.
 
 ```yaml overrides.yml
 tables:

@@ -329,26 +329,22 @@ class TableOverride:
     def refuse_uncounted(self, table: Table) -> None:
         """Refuses what is given of `table` that it was not counted with, once it is counted.
 
-        Right after `statistics.count`, a column is counted otherwise than given only where its
-        values are no text, which `count` counts without sentinels, whatever is given. Of the
-        sentinels given of a column of text, `count` counts those its type can hold, and leaves
-        the others aside, which are not refused.
+        Of the sentinels given of a column, `statistics.count` counts those its type can hold, in
+        the form the database writes its values - none, where it writes them as no text -, so
+        that right after it a column is counted otherwise than given only where a sentinel is
+        given that it cannot hold: such as `-1` of a `double`, which Trino writes `-1.0E0`.
 
         Args:
             table: The table, as `statistics.count` counted it.
 
         Raises:
             OverridesError: A column is named that the table does not have, a primary key is given
-                of no columns or of a column twice, or sentinels are given of a column of no text.
+                of no columns or of a column twice, or sentinels are given of a column that its
+                type cannot hold.
         """
         self._refuse_missing(table)
         self._refuse_primary_key(table)
-        refused = self._counted_otherwise(table)
-        if refused:
-            raise OverridesError(
-                f"the overrides give sentinels of columns of {table.name} whose values are no"
-                f" text: {', '.join(refused)}"
-            )
+        self._refuse_uncounted_sentinels(table)
 
     def references(self, table: Table, profile: Profile) -> GivenReferences:
         """The references given of the columns of `table`, of `profile`, of those given.
@@ -403,9 +399,36 @@ class TableOverride:
             )
 
     def _counted_otherwise(self, table: Table) -> list[str]:
-        """The columns of `table` counted with other sentinels than given, sorted by their names."""
+        """The columns of `table` counted with other sentinels than given, sorted by their names.
+
+        A column counted with sentinels no longer given is one, as is a column counted without
+        some of those given, which `_refuse_uncounted_sentinels` refuses.
+        """
         given = self.sentinels
         return sorted(c.name for c in table.columns if c.sentinels != given.get(c.name))
+
+    def _refuse_uncounted_sentinels(self, table: Table) -> None:
+        """Refuses the sentinels given of the columns of `table` that they were not counted with.
+
+        The columns are named sorted by their names, each with its type and those sentinels,
+        quoted, as an empty text would not show otherwise.
+
+        Raises:
+            OverridesError: Sentinels are given of a column that it was not counted with.
+        """
+        given = self.sentinels
+        refused = []
+        for column in sorted(table.columns, key=lambda column: column.name):
+            counted_with = column.sentinels or ()
+            texts = [text for text in given.get(column.name, ()) if text not in counted_with]
+            if texts:
+                quoted = ", ".join(f'"{text}"' for text in texts)
+                refused.append(f"{column.name} ({column.type}): {quoted}")
+        if refused:
+            raise OverridesError(
+                f"the overrides give sentinels of columns of {table.name} that their types cannot"
+                f" hold, as the database writes their values otherwise: {'; '.join(refused)}"
+            )
 
     def _refuse_primary_key(self, table: Table) -> None:
         """Refuses the primary key given of `table` where it is of no columns or of one twice.

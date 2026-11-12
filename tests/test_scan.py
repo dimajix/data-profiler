@@ -196,6 +196,15 @@ def test_a_column_without_sentinels_counts_what_the_tool_takes_for_them_as_value
     assert column.matches == (), "its empty texts are values, of no type"
 
 
+def test_sentinels_given_that_the_type_of_their_column_cannot_hold_are_refused(
+    source: Source, tmp_path: Path
+) -> None:
+    # The database writes a `decimal(12,2)` of its two digits: `-1.00`.
+    given = TableOverride(columns={"crdt_lmt_amt": ColumnOverride(sentinels=("-1.00", "-1"))})
+    with pytest.raises(OverridesError, match=r'crdt_lmt_amt \(decimal\(12,2\)\): "-1"$'):
+        _scanned(source, "cust", tmp_path, overrides=Overrides(tables={"cust": given}))
+
+
 def test_overrides_of_a_table_not_selected_are_refused_before_anything_is_counted(
     source: Source, tmp_path: Path
 ) -> None:

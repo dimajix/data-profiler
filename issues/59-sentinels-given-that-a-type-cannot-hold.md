@@ -1,6 +1,6 @@
 # 59 — Sentinels given that the type of their column cannot hold
 
-**Status:** open
+**Status:** done
 **Type:** bug
 **Priority:** low
 **Area:** Scan
@@ -66,3 +66,11 @@ the sentinels, whether the column has no text or a type that writes its values o
 2026-11-12: Opened on the maintainer's request, from a design finding of the review of step 2 of
 [58](58-the-configuration-of-a-project-its-class-and-its-examples.md), which recorded the silent
 leaving aside as its outcome, but not as an option weighed.
+
+2026-11-12: Done, as the issue preferred, chosen with the maintainer over a warning: `count`
+decides by `Dialect.held` alone and records, of the sentinels given of a column, those its type can
+hold, and `refuse_uncounted` refuses every other one given, naming each column, its type and the
+sentinels, quoted - a column of no text is the case of holding none. The sentinels given are named
+although they may be values of the database, as they are values of the overrides, which the
+profile shows too. `sentinels: []` of a column of no text is no longer refused, as it gives nothing
+it cannot be.

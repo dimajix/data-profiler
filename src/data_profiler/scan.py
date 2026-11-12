@@ -95,7 +95,7 @@ def scan(
             column dependencies, or to count the rows of its entities.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
-            does not have, or give sentinels of a column whose values are no text, or a primary
+            does not have, or give sentinels of a column that its type cannot hold, or a primary
             key or a discriminator that cannot be one, as `TableOverride.laid_over` says.
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
