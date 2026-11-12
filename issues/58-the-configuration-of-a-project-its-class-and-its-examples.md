@@ -1,10 +1,10 @@
-# 58 — The configuration of a project: its class and its examples
+# 58 — The configuration of a project in its examples, and the sentinels a type can hold
 
 **Status:** open
 **Type:** refactoring
 **Priority:** low
 **Area:** Command line
-**Summary:** `Project` takes each field of its configuration as a constructor parameter of its own only to keep it, and the example project, the README and PROJECT.md show the configuration otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format.
+**Summary:** The example project, the README and PROJECT.md show the configuration of a project otherwise than it is - without the semantic types, the separator of lists or the contract, and of an older format -, and which sentinels a column of a type can hold is decided in two places apart from the dialect, which knows the types.
 
 ## The problem
 
@@ -82,3 +82,31 @@ recorded here.
 
 2026-11-12: Opened on the maintainer's request, from the findings of the reviews of
 [57](57-export-as-open-data-contract.md) that were reported but not acted on.
+
+2026-11-12: The first finding struck, as the maintainer decided. That `Project` takes the fields of
+its `_Configuration` one by one is no exception but the pattern of the code: `Profile.read` builds
+`Profile` of the fields of `_Head`, the document of `profile.yml`, as well, while `Overrides` and
+`Table` are their documents themselves. A class of the domain that is more than its document - a
+profile of several files, a project of its directory and variables - takes the fields of the
+document; `Project` alone holding its `_Configuration` would be a third way beside the two, and
+changing both would make `Profile`, which is built in many places, worse for little.
+
+2026-11-12: The fifth finding decided, with the maintainer: the sentinels themselves are the tool's
+or given, apart from the database, but which of them a column of a type can hold depends on the
+types of the database, which the dialect knows - `has_text`, and how it compares them in
+`Dialect.sentinels` and `Dialect.without` -, and so does the filter `_is_of` of `Contract`, which
+keeps of them those of the logical type of a column. The dialect gets a method of it, taking the
+sentinels as an argument, so that they stay of `detect` and no boolean switches a function:
+
+```python
+def held(self, kind: str, texts: Collection[str]) -> frozenset[str]:
+    """Of the sentinels `texts`, those a column of the type `kind` can hold."""
+```
+
+Trino holds all of them in a text, the numbers in a number, the days in a date or a moment, and
+none in another type. `statistics` counts `dialect.held(kind, sentinels(given))`, and `Contract`
+writes the rule of `dialect.held(column.type, sentinels(column.sentinels))`, without its check of
+`has_text` and without `_is_of`. A scan no longer counts the sentinels a column cannot hold, such as
+`N/A` in a `bigint`; the profile stays as it was, as it leaves out the sentinels of no rows. The
+name `held` is to be checked, as `Dialect.sentinels` names the expression that counts them. The
+summary of this issue no longer names the first finding.
