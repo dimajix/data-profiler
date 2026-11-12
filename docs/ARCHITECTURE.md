@@ -336,8 +336,8 @@ from the profile.
     otherwise, or their lists are of another separator. It updates the profile there is: the tables
     no longer selected are dropped, the others kept until they are counted anew, and what the other
     stages filled is kept - the glossary, the terms and readings of the names that stay, and the
-    descriptions of the columns, but the references of a table counted anew and those to the tables
-    dropped, until `relate` runs again; a profile scanned with other semantic types keeps its tables
+    descriptions of the columns that stay and their references to those that stay, which may be
+    outdated until `relate` runs again; a profile scanned with other semantic types keeps its tables
     without their matches, values, ranges and discriminators, until they are counted anew. A profile
     that cannot be read, or one of another schema, is refused and never overwritten: it may be the
     work of hours.
@@ -434,10 +434,13 @@ The design repeats a few decisions; new code follows them.
 *   **Every attribute of the profile is filled by one step.** A step, `scan`, `relate` or a step of
     `describe`, replaces in a profile there is the attributes it fills alone, and keeps all others,
     so that a stage run again loses nothing another found: a scan keeps the terms and readings of
-    the names and the descriptions of the columns, and splitting the names again keeps a reading
-    while its terms stay. The references are the exception: they are of the values of two tables, so
-    that a table a scan counts anew has none, until `relate` runs again. Which step fills which
-    attribute is said once, in [PROFILE.md](PROFILE.md#which-stage-fills-what).
+    the names, the descriptions of the columns and the references between the tables, and splitting
+    the names again keeps a reading while its terms stay. What is kept is kept as it is, its values
+    and its order, though it may be outdated - a reference is of the values of two tables, which a
+    scan may count anew - until the step that fills it runs again. Only what a scan no longer finds
+    is dropped: a table no longer selected, a column a table no longer has, and with them what is
+    of them or refers to them. Which step fills which attribute is said once, in
+    [PROFILE.md](PROFILE.md#which-stage-fills-what).
 *   **Detectors decide, the language model names.** What a column is, is found by deterministic
     detectors that can be tested; the language model proposes the concepts of terms and the
     descriptions of columns from what they found, and nothing else. It is shown the values of a

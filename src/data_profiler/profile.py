@@ -20,8 +20,9 @@ in `docs/PROFILE.md`.
 A profile is begun by the stage scan, and written by the stages after it as well. Which profile a
 scan starts from is decided here, by `Profile.updating`: the one there is, its run resumed where it
 did not finish, else in a new run; each table names the run that counted it, so that a run resumed
-can skip it. A table counted anew keeps the terms and the readings of its name and of the names of
-its columns, and the descriptions of its columns, which describe filled.
+can skip it. A table counted anew keeps what the stages after scan filled: the terms and the
+readings of its name and of the names of its columns, the descriptions of its columns, and their
+references and reference candidates.
 """
 
 import logging
@@ -582,10 +583,10 @@ class Table:
         primary_key: What identifies its rows in a data model, a key chosen among its keys or the
             columns given; None where it has none.
         references: The references of its columns, one of each column at most, in the order of
-            the columns.
+            the columns as relate found them.
         reference_candidates: The references of its columns of which several keys may be the one
             referred to, none of them preferred: those of a column after each other, in the order
-            they are ranked, the columns in their order.
+            they are ranked, the columns in their order as relate found them.
         column_groups: The column groups of its columns filled together, in the order of their
             first columns; a column is in one group at most.
         column_dependencies: The column dependencies of its columns, in the order of their
@@ -974,21 +975,24 @@ class Profile:
         Returns:
             The profile, `table` in place of its table of the same name, or beside its tables,
             sorted by their names, and named counted by the run of the profile; with the terms and
-            readings of its table of the same name and of its columns of the same names, and the
-            descriptions of those columns. The other tables keep their references to it, but those
+            readings of its table of the same name and of its columns of the same names, the
+            descriptions of those columns, and their references and reference candidates, which may
+            be outdated until relate runs again. The tables keep their references to it, but those
             to a column it no longer has.
         """
-        counted = replace(table, run=None if self.run is None else self.run.started)
-        for kept in self.tables:
-            if kept.name == table.name:
-                counted = _described(counted, kept)
         names = {column.name for column in table.columns}
-        others = (
-            _referring(kept, lambda found: found.table != table.name or found.key in names)
-            for kept in self.tables
-            if kept.name != table.name
+        counted = replace(table, run=None if self.run is None else self.run.started)
+        for replaced in self.tables:
+            if replaced.name == table.name:
+                counted = _referring(
+                    _filled(counted, replaced), lambda found: found.column in names
+                )
+        tables = (counted, *(other for other in self.tables if other.name != table.name))
+        referring = (
+            _referring(each, lambda found: found.table != table.name or found.key in names)
+            for each in tables
         )
-        return replace(self, tables=_sorted((*others, counted)))
+        return replace(self, tables=_sorted(referring))
 
     def counted(self, name: str) -> Table | None:
         """The table `name`, where the run of the profile counted it.
@@ -1079,16 +1083,28 @@ def _referring(table: Table, kept: Callable[[Reference], bool]) -> Table:
     )
 
 
-def _described(table: Table, kept: Table) -> Table:
-    """`table`, with what describe filled of `kept`, of its name and of its columns of a name."""
-    described = {column.name: column for column in kept.columns}
+def _filled(table: Table, replaced: Table) -> Table:
+    """`table`, with what the stages after scan filled of `replaced`, of its name and its columns.
+
+    These are the terms and readings of its name and of those of its columns `replaced` has of the
+    same name, the descriptions of those columns, and the references and reference candidates of
+    `replaced`, of whatever column.
+    """
+    described = {column.name: column for column in replaced.columns}
     columns = (
         replace(column, terms=old.terms, reading=old.reading, description=old.description)
         if (old := described.get(column.name)) is not None
         else column
         for column in table.columns
     )
-    return replace(table, columns=tuple(columns), terms=kept.terms, reading=kept.reading)
+    return replace(
+        table,
+        columns=tuple(columns),
+        terms=replaced.terms,
+        reading=replaced.reading,
+        references=replaced.references,
+        reference_candidates=replaced.reference_candidates,
+    )
 
 
 def _sorted(tables: Iterable[Table]) -> tuple[Table, ...]:
