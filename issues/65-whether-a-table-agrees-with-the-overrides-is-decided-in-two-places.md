@@ -1,6 +1,6 @@
 # 65 — Whether a table agrees with the overrides is decided in two places
 
-**Status:** open
+**Status:** done
 **Type:** refactoring
 **Priority:** low
 **Area:** Scan
@@ -59,3 +59,10 @@ the overrides; and the doc comments say so.
 
 2026-11-13: Opened on the maintainer's request, from a finding of the work on
 [63](63-a-separator-of-lists-given-of-a-column.md).
+
+2026-11-13: Done as preferred, as the maintainer agreed: `TableOverride.agrees_with(table, project)`
+takes the separator of lists of the project, decides that of the table by `separator`, and judges
+the columns given none by the private function `_listed_with` of `overrides`, beside
+`_keyed_as_given` and `_as_given`, which judge the other overrides alike; `lists.is_listed_with`
+is gone, its test moved to those of `agrees_with`. No default of `project`, so that a caller that
+forgets it is refused by mypy rather than counting the tables of lists anew unseen.
