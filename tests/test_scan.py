@@ -475,7 +475,7 @@ def test_a_scan_tells_the_entities_apart_by_the_discriminator_the_overrides_give
         ("M",),
         ("KX",),
     ]
-    assert given.agrees_with(table)
+    assert given.agrees_with(table, ";")
 
 
 def test_a_scan_takes_the_primary_key_the_overrides_give(source: Source, tmp_path: Path) -> None:
@@ -483,7 +483,7 @@ def test_a_scan_takes_the_primary_key_the_overrides_give(source: Source, tmp_pat
     (table,) = _scanned(source, "ord_itm", tmp_path, overrides=given).tables
     assert table.primary_key == PrimaryKey(("ord_id", "pos_no"), given=True)
     assert ("ord_itm_id",) in table.keys, "the key it would have chosen among the keys"
-    assert given.tables["ord_itm"].agrees_with(table)
+    assert given.tables["ord_itm"].agrees_with(table, ";")
 
 
 def test_a_primary_key_given_of_no_columns_is_refused_before_it_is_verified(
@@ -545,7 +545,7 @@ def test_the_separator_of_lists_given_of_a_column_comes_before_that_of_its_table
     assert cust.column("fav_prod_ids").list_separator is None, "its lists are of semicolons"
     assert cust.column("cust_typ_cd").list_separator == ";", "as given, though of no lists"
     assert "give cust.cust_typ_cd a separator of lists its sample holds no lists of" in caplog.text
-    assert given.agrees_with(cust)
+    assert given.agrees_with(cust, ";")
 
 
 def test_a_table_given_no_separator_of_lists_has_no_columns_of_lists(

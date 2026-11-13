@@ -355,24 +355,26 @@ class TableOverride:
             discriminator=self._named(table.discriminator),
         )
 
-    def agrees_with(self, table: Table) -> bool:
-        """Whether `table` agrees with what is given: marked, counted, determined and discriminated.
+    def agrees_with(self, table: Table, project: str | None) -> bool:
+        """Whether `table` is as given: marked, counted, listed, determined and discriminated.
 
-        The separator of lists of the columns given none is judged by `scan`, by
-        `lists.is_listed_with`, as it is that of the project where the table is given none, which an
-        override of a table does not know.
+        A table of no lists cannot tell which separator its columns given none were counted with,
+        and agrees with any.
 
         Args:
             table: The table.
+            project: The separator of lists of the project, or None where it gives none.
 
         Returns: True where `laid_over` would leave the table as it is, each column was counted with
-            the sentinels given of it, the table has the primary key given, or one chosen where none
-            is given, and was discriminated as given: its discriminator counted with the values
-            given of its entities, none where False is given, and one found or none where nothing is
-            given; False where it would mark its columns otherwise or give them other enumerations
-            or separators of lists, or the table holds a column dependency of a column given as
-            determining none, a column was counted with other sentinels, the table has another
-            primary key, was discriminated otherwise, or lacks a column that is named.
+            the sentinels given of it, each column of lists given no separator has that of the
+            table, as `separator` decides it of `project`, the table has the primary key given, or
+            one chosen where none is given, and was discriminated as given: its discriminator
+            counted with the values given of its entities, none where False is given, and one found
+            or none where nothing is given; False where it would mark its columns otherwise or give
+            them other enumerations or separators of lists, or the table holds a column dependency
+            of a column given as determining none, a column was counted with other sentinels, a
+            column given no separator is a list of another, the table has another primary key, was
+            discriminated otherwise, or lacks a column that is named.
 
         Raises:
             OverridesError: The primary key or the discriminator given is refused, as
@@ -384,6 +386,7 @@ class TableOverride:
             and _keyed_as_given(self.primary_key, table.primary_key)
             and self.laid_over(table) == table
             and not self._counted_otherwise(table)
+            and _listed_with(table, self.separator(project))
         )
 
     def refuse_uncounted(self, table: Table, dialect: Dialect) -> None:
@@ -802,6 +805,19 @@ class Overrides:
     def _with_concepts(self, profile: Profile) -> Profile:
         """`profile`, the concepts given in its glossary before its own."""
         return replace(profile, glossary=_laid_over(self.glossary, profile.glossary))
+
+
+def _listed_with(table: Table, separator: str | None) -> bool:
+    """Whether each column of lists of `table` given no separator is one of `separator`.
+
+    As `agrees_with` says; a column given a separator of lists, or none, `agrees_with` judges by
+    `laid_over`, which gives it the one given.
+    """
+    return all(
+        column.list_separator in (None, separator)
+        for column in table.columns
+        if column.list_separator_given is None
+    )
 
 
 def _keyed_as_given(given: tuple[str, ...] | None, primary: PrimaryKey | None) -> bool:

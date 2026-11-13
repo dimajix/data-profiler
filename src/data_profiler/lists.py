@@ -107,27 +107,6 @@ def _filled(dialect: Dialect, column: Column, sample: Sample) -> list[object]:
     ]
 
 
-def is_listed_with(table: Table, separator: str | None) -> bool:
-    """Whether `table` was counted with `separator`: none of its columns a list of another.
-
-    A column given a separator of lists, or none, is not judged: whether it was counted with the
-    one given, the overrides judge. A table counted without a separator, or of no list, cannot be
-    told from one counted with it.
-
-    Args:
-        table: The table, as a profile holds it.
-        separator: The separator of the values of a list it is to be counted with, or None.
-
-    Returns:
-        Whether each of its columns of lists given none has `separator`.
-    """
-    return all(
-        column.list_separator in (None, separator)
-        for column in table.columns
-        if column.list_separator_given is None
-    )
-
-
 def itemize(
     source: Source,
     table: Table,

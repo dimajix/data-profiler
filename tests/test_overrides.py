@@ -107,21 +107,25 @@ def test_a_mark_no_longer_given_is_taken_off() -> None:
 def test_a_table_agrees_with_the_overrides_where_its_columns_are_marked_as_given() -> None:
     given = _marked("frst_nm").tables["cntct"]
     (table,) = _PROFILE.tables
-    assert not given.agrees_with(table), "a column not marked as given"
-    assert given.agrees_with(given.laid_over(table))
-    assert not TableOverride().agrees_with(given.laid_over(table)), "a column marked otherwise"
-    assert not _marked("lst_nm").tables["cntct"].agrees_with(table), "a column it does not have"
+    assert not given.agrees_with(table, None), "a column not marked as given"
+    assert given.agrees_with(given.laid_over(table), None)
+    assert not TableOverride().agrees_with(given.laid_over(table), None), (
+        "a column marked otherwise"
+    )
+    assert not _marked("lst_nm").tables["cntct"].agrees_with(table, None), (
+        "a column it does not have"
+    )
 
 
 def test_a_table_agrees_with_the_overrides_where_counted_with_the_sentinels_given() -> None:
     given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("", "-"))})
     assert given.sentinels == {"frst_nm": ("", "-")}
     (table,) = _PROFILE.tables
-    assert not given.agrees_with(table), "counted with those of the tool"
+    assert not given.agrees_with(table, None), "counted with those of the tool"
     frst_nm, other = table.columns
     counted = replace(table, columns=(replace(frst_nm, sentinels=("", "-")), other))
-    assert given.agrees_with(counted)
-    assert not TableOverride().agrees_with(counted), "counted with others than of the tool"
+    assert given.agrees_with(counted, None)
+    assert not TableOverride().agrees_with(counted, None), "counted with others than of the tool"
 
 
 def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_enumerations_given() -> None:
@@ -130,9 +134,11 @@ def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_enumeratio
     (table,) = _PROFILE.tables
     laid = given.laid_over(table)
     assert [column.enumeration for column in laid.columns] == [False, None], "as given, only so"
-    assert not given.agrees_with(table), "counted with no enumeration given"
-    assert given.agrees_with(laid)
-    assert not TableOverride().agrees_with(laid), "counted with an enumeration no longer given"
+    assert not given.agrees_with(table, None), "counted with no enumeration given"
+    assert given.agrees_with(laid, None)
+    assert not TableOverride().agrees_with(laid, None), (
+        "counted with an enumeration no longer given"
+    )
 
 
 def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_separators_given() -> None:
@@ -141,11 +147,27 @@ def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_separators
     (table,) = _PROFILE.tables
     laid = given.laid_over(table)
     assert [column.list_separator_given for column in laid.columns] == [False, None], "only so"
-    assert not given.agrees_with(table), "counted with no separator given"
-    assert given.agrees_with(laid)
-    assert not TableOverride().agrees_with(laid), "counted with a separator no longer given"
+    assert not given.agrees_with(table, None), "counted with no separator given"
+    assert given.agrees_with(laid, None)
+    assert not TableOverride().agrees_with(laid, None), "counted with a separator no longer given"
     otherwise = TableOverride(columns={"frst_nm": ColumnOverride(list_separator=";")})
-    assert not otherwise.agrees_with(laid), "counted with another separator given"
+    assert not otherwise.agrees_with(laid, None), "counted with another separator given"
+
+
+def test_a_table_agrees_with_the_overrides_where_its_lists_given_none_are_of_its_separator() -> (
+    None
+):
+    (table,) = _PROFILE.tables
+    frst_nm, other = table.columns
+    listed = replace(table, columns=(replace(frst_nm, list_separator=";"), other))
+    assert TableOverride().agrees_with(listed, ";")
+    assert TableOverride().agrees_with(table, "|"), "a table of no lists cannot tell"
+    assert not TableOverride().agrees_with(listed, "|")
+    assert not TableOverride().agrees_with(listed, None)
+    assert TableOverride(list_separator=";").agrees_with(listed, "|"), "that of the table"
+    assert not TableOverride(list_separator=False).agrees_with(listed, ";"), "none of the table"
+    given = TableOverride(columns={"frst_nm": ColumnOverride(list_separator=";")})
+    assert given.agrees_with(given.laid_over(listed), "|"), "of the separator given of it"
 
 
 def test_the_separator_of_a_table_is_the_one_given_none_where_false_else_that_of_the_project() -> (
@@ -480,15 +502,17 @@ def test_no_names_are_laid_over_entities_of_a_discriminator_counted_otherwise_th
 def test_a_table_agrees_with_the_overrides_where_it_was_discriminated_as_given() -> None:
     found = _discriminated()
     counted = _discriminated((("TEL",), ("EML",)))
-    assert TableOverride().agrees_with(found), "none given, whatever is found"
-    assert not TableOverride().agrees_with(counted), "counted with entities no longer given"
-    assert not TableOverride(discriminator=False).agrees_with(found)
-    assert TableOverride(discriminator=False).agrees_with(replace(found, discriminator=None))
-    assert _entities(phone=("TEL",), mail=("EML",)).agrees_with(counted)
-    assert not _entities(mail=("EML",), phone=("TEL",)).agrees_with(counted), "in another order"
-    assert not _entities(phone=("TEL",), mail=("EML",)).agrees_with(found)
-    assert _entities().agrees_with(_discriminated(())), "of no entity given"
-    assert not _entities().agrees_with(replace(found, discriminator=None))
+    assert TableOverride().agrees_with(found, None), "none given, whatever is found"
+    assert not TableOverride().agrees_with(counted, None), "counted with entities no longer given"
+    assert not TableOverride(discriminator=False).agrees_with(found, None)
+    assert TableOverride(discriminator=False).agrees_with(replace(found, discriminator=None), None)
+    assert _entities(phone=("TEL",), mail=("EML",)).agrees_with(counted, None)
+    assert not _entities(mail=("EML",), phone=("TEL",)).agrees_with(counted, None), (
+        "in another order"
+    )
+    assert not _entities(phone=("TEL",), mail=("EML",)).agrees_with(found, None)
+    assert _entities().agrees_with(_discriminated(()), None), "of no entity given"
+    assert not _entities().agrees_with(replace(found, discriminator=None), None)
 
 
 def test_a_table_discriminated_as_given_is_refused_where_its_discriminator_cannot_be_one() -> None:
@@ -498,7 +522,7 @@ def test_a_table_discriminated_as_given_is_refused_where_its_discriminator_canno
     )
     counted = replace(table, discriminator=Discriminator("frst_nm", (), ()))
     with pytest.raises(OverridesError, match="as frst_nm, a column they mark of a sensitivity"):
-        given.agrees_with(counted)
+        given.agrees_with(counted, None)
 
 
 @pytest.mark.parametrize(
@@ -550,7 +574,7 @@ def test_a_table_counted_with_a_discriminator_given_of_no_values_held_agrees_unw
     given = _entities(pager=("PAGER",))
     (table,) = _PROFILE.tables
     counted = replace(table, discriminator=Discriminator("cntct_typ_cd", (), (("PAGER",),)))
-    assert given.agrees_with(counted), "counted with it, of an environment of no pagers"
+    assert given.agrees_with(counted, None), "counted with it, of an environment of no pagers"
     Overrides(tables={"cntct": given}).warn_unused(replace(_PROFILE, tables=(counted,)))
     assert caplog.messages == []
 
@@ -574,11 +598,11 @@ def test_a_table_agrees_with_the_overrides_where_it_has_the_primary_key_given() 
     chosen = replace(table, primary_key=PrimaryKey(("frst_nm",)))
     given = replace(table, primary_key=PrimaryKey(("cntct_typ_cd", "frst_nm"), given=True))
     keyed = TableOverride(primary_key=("frst_nm", "cntct_typ_cd"))
-    assert keyed.agrees_with(given), "of the same columns, in whatever order"
-    assert not keyed.agrees_with(chosen)
-    assert not keyed.agrees_with(table), "of none"
-    assert TableOverride().agrees_with(chosen), "none given, whatever is chosen"
-    assert not TableOverride().agrees_with(given), "given, and no longer"
+    assert keyed.agrees_with(given, None), "of the same columns, in whatever order"
+    assert not keyed.agrees_with(chosen, None)
+    assert not keyed.agrees_with(table, None), "of none"
+    assert TableOverride().agrees_with(chosen, None), "none given, whatever is chosen"
+    assert not TableOverride().agrees_with(given, None), "given, and no longer"
 
 
 def test_the_dependencies_of_a_column_given_as_determining_none_are_dropped_laid_over() -> None:
@@ -594,8 +618,8 @@ def test_the_dependencies_of_a_column_given_as_determining_none_are_dropped_laid
     assert given.determining_none == {"cntct_typ_cd"}
     laid = given.laid_over(dependent)
     assert laid.column_dependencies == (), "of the column as one of the determinants as well"
-    assert not given.agrees_with(dependent), "counted anew where a scan resumes"
-    assert given.agrees_with(laid)
+    assert not given.agrees_with(dependent, None), "counted anew where a scan resumes"
+    assert given.agrees_with(laid, None)
     kept = TableOverride(columns={"frst_nm": ColumnOverride(determines=False)}).laid_over(dependent)
     assert kept.column_dependencies == dependent.column_dependencies[1:], "of the column alone"
 

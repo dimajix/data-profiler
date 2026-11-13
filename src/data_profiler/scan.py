@@ -47,7 +47,7 @@ from data_profiler.entities import discriminate
 from data_profiler.enumerations import valued, values
 from data_profiler.grouping import group
 from data_profiler.keys import identify
-from data_profiler.lists import is_listed_with, itemize, listed
+from data_profiler.lists import itemize, listed
 from data_profiler.matching import recognise, verify
 from data_profiler.overrides import Overrides
 from data_profiler.profile import Profile
@@ -110,9 +110,8 @@ def scan(
     profile.write(directory)
     dialect = source.dialect
     for name in names:
-        separator = given[name].separator(list_separator)
         kept = profile.counted(name)
-        if kept is not None and given[name].agrees_with(kept) and is_listed_with(kept, separator):
+        if kept is not None and given[name].agrees_with(kept, list_separator):
             _logger.info("Skipping %s, counted by the run resumed", name)
             continue
         if kept is not None:
@@ -127,6 +126,7 @@ def scan(
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
         sample = take(source, table)
         workspace.write_sample(name, sample)
+        separator = given[name].separator(list_separator)
         listing = listed(dialect, table, sample, separator, given[name].list_separators)
         verified = verify(source, recognise(dialect, listing, sample, types))
         enumerations = values(source, verified, given[name].enumerations)
