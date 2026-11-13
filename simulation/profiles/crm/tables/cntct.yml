@@ -35,6 +35,10 @@ columns:
   type: varchar(500)
   statistics: {nulls: 1500, distinct: 2600, lengths: {shortest: 12, longest: 240}}
   matches: [{type: free-text, sample: 1.0, table: 1.0}]
+- name: cntct_prf
+  type: varchar(2000)
+  statistics: {nulls: 1400, distinct: 2700, lengths: {shortest: 3, longest: 1500}}
+  matches: [{type: json-like, sample: 1.0, table: 1.0}, {type: json, sample: 0.749, table: 0.749}]
 keys: [[cntct_id], [cntct_uuid]]
 primary_key: {columns: [cntct_id]}
 references:

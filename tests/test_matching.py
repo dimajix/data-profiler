@@ -11,6 +11,8 @@ from data_profiler.detect import (
     CURRENCY_NAME,
     DATE,
     FREE_TEXT,
+    JSON,
+    JSON_LIKE,
     POSTAL_CODE,
     Detector,
     SemanticType,
@@ -106,6 +108,15 @@ def test_a_match_is_verified_without_the_sentinels_of_the_table(source: Source) 
     assert _verified(source, "ord", "dlvr_dt", [DATE]) == [Match(DATE, 1.0, 1.0)], (
         "nor its last days, which the pattern of a date matches"
     )
+
+
+def test_a_match_of_a_check_the_dialect_writes_is_verified_by_the_values_that_pass_it(
+    source: Source,
+) -> None:
+    assert _verified(source, "cntct", "cntct_prf", [JSON, JSON_LIKE]) == [
+        Match(JSON, 1.0, 0.749),
+        Match(JSON_LIKE, 1.0, 1.0),
+    ], "of the documents of the simulation, about a quarter is broken"
 
 
 def test_the_pattern_of_every_type_is_read_by_the_database(source: Source) -> None:

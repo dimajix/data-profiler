@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from data_profiler.detect import IBAN, SENTINELS, Detector
+from data_profiler.detect import IBAN, JSON, SENTINELS, Detector
 from data_profiler.profile import Profile
 from data_profiler.source import (
     Location,
@@ -184,6 +184,51 @@ def test_a_check_the_dialect_does_not_write_leaves_a_value_to_the_pattern() -> N
     checked = trino.recognised('"v"', "varchar", IBAN.detector)
     unchecked = trino.recognised('"v"', "varchar", Detector(IBAN.detector.pattern))
     assert checked == unchecked, "Trino writes no check of an IBAN"
+
+
+def test_trino_parses_a_document_the_pattern_matches_to_check_it() -> None:
+    recognised = dialect("trino://h/c/s").recognised('"v"', "varchar", JSON.detector)
+    assert recognised.startswith("count_if(regexp_like(")
+    assert recognised.endswith(' AND try(json_parse(trim(CAST("v" AS varchar)))) IS NOT NULL)')
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"a": 1}',
+        '{\n  "a": [1.5, -2]\n}',
+        "[]",
+        '{"a": 1, "a": 2}',
+        "[123456789012345678901234567890]",
+        "[1" + "0" * 5000 + "]",
+        '{"a": 1 "b": 2}',
+        '{"a": 1,}',
+        "[01]",
+        "[.5]",
+        '["x\ny"]',
+        "[NaN]",
+        "[Infinity]",
+        "[1e400]",
+        '{"a": 1} {"b": 2}',
+        "[" * 1024 + "]" * 1024,
+    ],
+)
+def test_trino_checks_a_document_as_python_does(source: Source, text: str) -> None:
+    # The statement is the test's own: a document of each kind is had of no table of the simulation.
+    # The texts hold no single quote, which a literal of SQL would have to double.
+    recognised = source.dialect.recognised("v", "varchar", JSON.detector)
+    statement = f"SELECT {recognised} FROM (SELECT '{text}' AS v)"
+    [(counted,)] = source.query(statement, "checking a document")
+    assert counted == JSON.detector.recognises(text), text[:40]
+
+
+def test_trino_refuses_a_document_nested_deeper_than_python_takes(source: Source) -> None:
+    # The statement is the test's own: such a document is had of no table of the simulation.
+    text = "[" * 1025 + "]" * 1025
+    recognised = source.dialect.recognised("v", "varchar", JSON.detector)
+    statement = f"SELECT {recognised} FROM (SELECT '{text}' AS v)"
+    assert JSON.detector.recognises(text), "Python parses it"
+    assert source.query(statement, "checking a document") == [(0,)], "Trino parses 1024 levels"
 
 
 def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Source) -> None:

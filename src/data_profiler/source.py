@@ -41,7 +41,7 @@ from trino.exceptions import Error as TrinoError
 from trino.exceptions import HttpError
 
 from data_profiler.counts import counted
-from data_profiler.detect import Detector
+from data_profiler.detect import Check, Detector
 
 _logger = logging.getLogger(__name__)
 
@@ -928,11 +928,14 @@ class _TrinoDialect(Dialect):
     def recognised(self, values: str, kind: str, detector: Detector) -> str:
         """The expression counting those of `values`, of `kind`, that `detector` recognises.
 
-        Trino writes no check of a value: each is recognised by the pattern alone.
+        Trino writes the check of a JSON document, of no other check, after the pattern, so that it
+        parses only the values the pattern matches.
         """
         text = f"trim({_text(values, kind)})"
         pattern = detector.pattern.pattern
-        return f"count_if(regexp_like({text}, {_literal(f'^(?:{pattern})$')}))"
+        matched = f"regexp_like({text}, {_literal(f'^(?:{pattern})$')})"
+        checked = _checked(text, detector.check)
+        return f"count_if({matched})" if checked is None else f"count_if({matched} AND {checked})"
 
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind` holds texts: a `varchar` or a `char`."""
@@ -1060,6 +1063,21 @@ def _form(kind: str) -> str | None:
     if decimal is not None:
         return rf"-?[0-9]+\.[0-9]{{{decimal.group(1)}}}"
     return next((form for kinds, form in _FORMS if kind.startswith(kinds)), None)
+
+
+def _checked(text: str, check: Check | None) -> str | None:
+    """The expression of whether `text` passes `check`, in Trino; None where Trino writes none.
+
+    A document is one Trino parses as JSON; the pattern of its detector takes objects and arrays
+    alone. Trino refuses a number JSON does not write, and a fraction beyond a double, and takes a
+    whole number of any length, as the check of Python does; it refuses a document nested deeper
+    than 1024 levels, which Python takes.
+    """
+    match check:
+        case Check.JSON:
+            return f"try(json_parse({text})) IS NOT NULL"
+        case Check.PHONE | Check.IBAN | Check.CARD_NUMBER | Check.DATE | None:
+            return None
 
 
 def _text(values: str, kind: str) -> str:

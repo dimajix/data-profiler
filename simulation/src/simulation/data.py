@@ -60,6 +60,8 @@ from data_profiler.detect import (
     EMAIL,
     FREE_TEXT,
     IBAN,
+    JSON,
+    JSON_LIKE,
     PHONE,
     POSTAL_CODE,
     TRUE_FALSE,
@@ -106,6 +108,9 @@ _WORDS: Final = (
     *("später", "erhalten", "geändert", "geklärt", "offen", "gemäß", "telefonisch", "per"),
     *("Montag", "Freitag", "Adresse", "Ware", "Ersatz", "Mail"),
 )
+
+# The share of the objects that look like JSON that are broken.
+_BROKEN: Final = 0.25
 
 # The forms of a date as text, by their lengths, as `datetime.strftime` writes them.
 _DATES: Final = {
@@ -850,6 +855,30 @@ def _free_text(length: int, random: Random) -> str:
     return " ".join(words)[:length]
 
 
+def _json(length: int, random: Random) -> str:
+    """A JSON document of `length` characters: an object of a number and a text, else an array.
+
+    Where `length` holds no such object, the document is an array of a number, of 3 characters or
+    more, or the empty object, of 2.
+    """
+    head = f'{{"id": {random.randint(1, 9999)}, "text": "'
+    if length >= len(head) + 2:
+        return head + _letters(length - len(head) - 2, random) + '"}'
+    if length >= 3:
+        return f"[{random.randint(1, 9)}{_digits(length - 3, random)}]"
+    return "{}"
+
+
+def _json_like(length: int, random: Random) -> str:
+    """A text of `length` characters that looks like a JSON document, valid or broken.
+
+    An object is broken by a chance of `_BROKEN`, the comma between its names left out; an array
+    and the empty object are valid.
+    """
+    document = _json(length, random)
+    return document.replace(", ", "  ", 1) if random.random() < _BROKEN else document
+
+
 def _one_of(*spellings: str) -> Callable[[int, Random], str]:
     """How a text is made of fixed spellings: one of `spellings` of the length asked for, at random.
 
@@ -873,6 +902,8 @@ _TYPED: Final[dict[SemanticType, Callable[[int, Random], str]]] = {
     DATE: _date,
     UUID: _uuid,
     FREE_TEXT: _free_text,
+    JSON: _json,
+    JSON_LIKE: _json_like,
     TRUE_FALSE: _one_of(*cases("true", "false")),
     YES_NO: _one_of(*cases("yes", "no")),
     ZERO_ONE: _one_of("0", "1"),

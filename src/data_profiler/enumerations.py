@@ -1,12 +1,12 @@
 """The enumerations of a table, counted by one query built from the building blocks of the dialect.
 
-A column is an enumeration if the statistics counted at most `_LIMIT` distinct values in it, and
-not each of them in one row alone: the values of a key of a small table say nothing about what it
-is. A column of more values is never grouped by: grouped by a column of keys, a table of hundreds
-of millions of rows would fill the memory of the database with a group for each. Nor is a column
-whose values no closed list holds, however few they are, as the next load brings a new one: one of
-a type the dialect takes for none - UUIDs, times, floating numbers -, or of a match of a semantic
-type that is none - UUIDs and dates written as text -, so that the matches of the table are
+A column is an enumeration if the statistics counted at most `_LIMIT` distinct values in it, and not
+each of them in one row alone: the values of a key of a small table say nothing about what it is. A
+column of more values is never grouped by: grouped by a column of keys, a table of hundreds of
+millions of rows would fill the memory of the database with a group for each. Nor is a column whose
+values no closed list holds, however few they are, as the next load brings a new one: one of a type
+the dialect takes for none - UUIDs, times, floating numbers -, or of a match of a semantic type that
+is none - UUIDs, dates and JSON documents written as text -, so that the matches of the table are
 recognised first. A column of lists is none either, as its texts are lists; the values of its lists
 may be, counted by the module `lists` on a source of a row of each.
 

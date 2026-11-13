@@ -329,11 +329,11 @@ tables:
 A column of few distinct values, 500 at most, of which not each is in one row alone, is an
 enumeration: the profile holds its values with their rows, where it is of no sensitivity, and the
 data contract takes them as the values it takes. Not so a column whose values no closed list holds,
-however few they are: of UUIDs, times or floating numbers, or of a match of UUIDs or dates written
-as text. `enumeration: true` makes a column one, whatever its type and its matches, and though each
-of its values is in one row alone; `enumeration: false` makes it none. Of a column of lists, it says
-whether the values of its lists are one. A column of more than 500 values is none all the same, and
-warned of, as the database would group the table by each of its values.
+however few they are: of UUIDs, times or floating numbers, or of a match of UUIDs, dates or JSON
+documents written as text. `enumeration: true` makes a column one, whatever its type and its
+matches, and though each of its values is in one row alone; `enumeration: false` makes it none. Of a
+column of lists, it says whether the values of its lists are one. A column of more than 500 values
+is none all the same, and warned of, as the database would group the table by each of its values.
 
 ```yaml overrides.yml
 tables:

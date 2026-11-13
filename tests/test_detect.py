@@ -19,6 +19,8 @@ from data_profiler.detect import (
     EMAIL,
     FREE_TEXT,
     IBAN,
+    JSON,
+    JSON_LIKE,
     PHONE,
     POSTAL_CODE,
     SENTINELS,
@@ -107,6 +109,21 @@ _RECOGNISED = {
     ],
 }
 
+# Valid documents, of both types; broken ones, of what looks like JSON alone.
+_DOCUMENTS = [
+    '{"a": 1}',
+    "[1, 2]",
+    "{}",
+    "[ ]",
+    '{\n  "a": [1.5, -2],\n  "b": "x.y"\n}',
+    "[true, null]",
+    '{"a": 1, "a": 2}',
+    "[123456789012345678901234567890]",
+]
+_BROKEN = ['{"a": 1 "b": 2}', '{"a": 1,}', "[01]", '["a",]', '{"a": 1} {"b": 2}', "[1e400]"]
+_RECOGNISED[JSON] = _DOCUMENTS
+_RECOGNISED[JSON_LIKE] = [*_DOCUMENTS, *_BROKEN]
+
 _NOT_RECOGNISED = {
     EMAIL: ["anna.schmidt", "anna@localhost", "@example.de", "a b@example.de"],
     PHONE: ["2024-01-01", "05.03.2024", "0.453219", "12345", "030 12", "+49 30 abc"],
@@ -129,6 +146,8 @@ _NOT_RECOGNISED = {
         "123e4567-e89b-12d3a456-426614174000",
     ],
     FREE_TEXT: ["ok", "Hans Müller", "Deutsche Bank AG", "Hauptstr. 5", "2024-01-31 12:00 UTC"],
+    JSON: [*_BROKEN, "[NaN]", '{"a": Infinity}', "[-Infinity]", "123", '"abc"', "null"],
+    JSON_LIKE: ["[draft]", "{n/a}", "[n/a]", "[tbd]", "123", '"abc"', "true", "x{}", "{} x", "{"],
     TRUE_FALSE: ["t", "f", "tRUE", "truth", "yes"],
     YES_NO: ["y", "n", "ja", "nein", "yES", "nope"],
     ZERO_ONE: ["2", "01", "10", "0.0", "-1"],
@@ -179,6 +198,8 @@ def test_a_value_of_another_kind_is_not_recognised(kind: SemanticType, value: st
             (DATE, Sensitivity.NONE),
             (UUID, Sensitivity.NONE),
             (FREE_TEXT, Sensitivity.NONE),
+            (JSON, Sensitivity.NONE),
+            (JSON_LIKE, Sensitivity.NONE),
             (TRUE_FALSE, Sensitivity.NONE),
             (YES_NO, Sensitivity.NONE),
             (ZERO_ONE, Sensitivity.NONE),
@@ -339,6 +360,22 @@ def test_a_column_of_codes_or_numbers_is_one_of_nearly_every_value(
     assert detect([of_it] * 18 + [other] * 2, ()) == {}, "nine values of ten are not"
 
 
+def test_a_column_of_documents_some_broken_is_one_of_json_of_the_valid_and_like_it_of_all() -> None:
+    assert detect(['{"a": 1}', "[1]", "[2]", '{"a": 1 "b": 2}'], ()) == {
+        JSON: 0.75,
+        JSON_LIKE: 1.0,
+    }
+    assert detect(["[1", "[2", "[3", "[4]"], ()) == {}, "what is cut off at its end looks like none"
+
+
+def test_a_column_of_documents_mostly_broken_is_one_like_json_alone() -> None:
+    assert detect(['{"a": 1 "b": 2}', "[01]", "[1]"], ()) == {JSON_LIKE: 1.0}
+
+
+def test_a_document_nested_deeper_than_python_parses_is_no_json() -> None:
+    assert not JSON.detector.recognises("[" * 100_000 + "]" * 100_000)
+
+
 def test_a_column_of_values_of_countries_and_currencies_alike_is_a_match_of_both() -> None:
     assert detect(["276", "756", "040"], ()) == {
         COUNTRY_NUMBER: 1.0,
@@ -403,11 +440,13 @@ def test_a_type_of_a_project_is_recognised_by_its_pattern(account_number: Semant
     assert not account_number.detector.recognises("A012345678")
 
 
-def test_only_the_types_of_uuids_and_dates_are_of_no_enumeration(
+def test_only_the_types_of_uuids_dates_and_documents_are_of_no_enumeration(
     account_number: SemanticType,
 ) -> None:
     none = [kind.name for kind in all_types([account_number]) if not kind.enumerable]
-    assert none == [DATE.name, UUID.name], "a column of a type of a project may be one"
+    assert none == [DATE.name, UUID.name, JSON.name, JSON_LIKE.name], (
+        "a column of a type of a project may be one"
+    )
 
 
 @pytest.mark.parametrize(
