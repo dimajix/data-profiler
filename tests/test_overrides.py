@@ -189,10 +189,10 @@ def test_a_separator_of_lists_given_of_a_column_of_no_text_is_refused_naming_it(
     (table,) = _PROFILE.tables
     frst_nm, other = table.columns
     assert frst_nm.statistics.lengths is None, "as of a column of text of nulls alone"
-    given.refuse_uncounted(table, _DIALECT)
+    given.refuse_unfit(table, _DIALECT)
     numbers = replace(table, columns=(replace(frst_nm, type="bigint"), replace(other, type="date")))
     with pytest.raises(OverridesError, match=r"of cntct of no text: frst_nm \(bigint\)$"):
-        given.refuse_uncounted(numbers, _DIALECT)
+        given.refuse_unfit(numbers, _DIALECT)
 
 
 def test_sentinels_given_of_a_column_counted_without_them_are_refused_naming_them() -> None:
@@ -200,23 +200,21 @@ def test_sentinels_given_of_a_column_counted_without_them_are_refused_naming_the
     (table,) = _PROFILE.tables
     frst_nm, other = table.columns
     with pytest.raises(OverridesError, match="cannot hold") as refused:
-        given.refuse_uncounted(
+        given.refuse_unfit(
             replace(table, columns=(replace(frst_nm, sentinels=("",)), other)), _DIALECT
         )
     assert str(refused.value).endswith(f'otherwise: frst_nm ({frst_nm.type}): "-1"')
     with pytest.raises(OverridesError, match=r'frst_nm \(.*\): "", "-1"$'):
-        given.refuse_uncounted(
+        given.refuse_unfit(
             replace(table, columns=(replace(frst_nm, sentinels=()), other)), _DIALECT
         )
-    given.refuse_uncounted(
+    given.refuse_unfit(
         replace(table, columns=(replace(frst_nm, sentinels=("", "-1")), other)), _DIALECT
     )
     empty = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=())})
-    empty.refuse_uncounted(
-        replace(table, columns=(replace(frst_nm, sentinels=()), other)), _DIALECT
-    )
+    empty.refuse_unfit(replace(table, columns=(replace(frst_nm, sentinels=()), other)), _DIALECT)
     with pytest.raises(OverridesError, match="columns of cntct it does not have: lst_nm"):
-        _marked("lst_nm").tables["cntct"].refuse_uncounted(table, _DIALECT)
+        _marked("lst_nm").tables["cntct"].refuse_unfit(table, _DIALECT)
 
 
 def test_each_table_selected_has_what_is_given_of_it() -> None:

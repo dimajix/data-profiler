@@ -122,7 +122,7 @@ def scan(
             )
         _logger.info("Scanning %s", name)
         table = count(source, name, given[name].sentinels)
-        given[name].refuse_uncounted(table, dialect)
+        given[name].refuse_unfit(table, dialect)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
         sample = take(source, table)
         workspace.write_sample(name, sample)

@@ -1,6 +1,6 @@
 # 64 — `refuse_uncounted` refuses more than its name says
 
-**Status:** open
+**Status:** done
 **Type:** refactoring
 **Priority:** low
 **Area:** Scan
@@ -52,3 +52,8 @@ and the module docs of `overrides` say so, and nothing else changes.
 
 2026-11-13: Opened on the maintainer's request, from a finding of the work on
 [63](63-a-separator-of-lists-given-of-a-column.md), which added the fourth refusal.
+
+2026-11-13: Done as preferred, as the maintainer agreed: `refuse_uncounted` is renamed
+`refuse_unfit`, its summary line saying that it refuses what is given of the table that cannot be of
+it, once it is counted; its callers, the module docs of `overrides` and the doc comment of
+`statistics.count` name it so. No change of behaviour.
