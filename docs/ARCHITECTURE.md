@@ -209,9 +209,9 @@ from the profile.
 *   **Enumeration** - a column with few distinct values, at most a threshold, of which not each is
     in one row alone; its values with the rows of each, its nulls and sentinels aside. A column
     whose values no closed list holds is none, however few they are, as the next load brings a new
-    one: of UUIDs, times or floating numbers, by the type of the database, or of a match of UUIDs
-    or dates, by a semantic type. An override gives whether a column is one, whatever is found, of
-    no more values than the threshold all the same.
+    one: of UUIDs, times or floating numbers, by the type of the database, or of a match of UUIDs,
+    dates or JSON documents, by a semantic type. An override gives whether a column is one, whatever
+    is found, of no more values than the threshold all the same.
 *   **Sample** - rows taken from a table at random, kept in the workspace.
 *   **Semantic type** - what the values of a column are: a phone number, an IBAN, a date, a
     currency, a country. Each has a **sensitivity**: personal data (GDPR), payment card data (PCI),
@@ -220,9 +220,10 @@ from the profile.
     read without its project.
 *   **Detector** - recognises one semantic type: by a pattern every value of the type matches - in
     the values of a sample, and on the whole table in SQL -, by a check of a value where the
-    pattern does not say enough, such as a checksum, and by a condition of the column where no
-    value says enough alone, judged on the values of a sample together. Its type is a match of a
-    column where it recognises at least its threshold of the values of the sample.
+    pattern does not say enough, such as a checksum, one of a closed list, which the dialect may
+    write in SQL as well, and by a condition of the column where no value says enough alone, judged
+    on the values of a sample together. Its type is a match of a column where it recognises at
+    least its threshold of the values of the sample.
 *   **Match** - a semantic type found in a column, with the share of values that match it in the
     sample and, once verified, in the whole table. A column may be a match of several types - the
     numbers of countries and of their currencies, `276` -: each is reported, none preferred, and
@@ -318,7 +319,7 @@ from the profile.
     sample into the workspace. The columns of lists are found in the sample, and the values of their
     lists counted, enumerated and matched as those of a column are. The detectors check the values
     of the sample, its sentinels aside; the semantic types they find are verified on the whole table
-    by the patterns of the detectors in SQL. Then it counts the values of every column whose
+    by the detectors, as the dialect writes them. Then it counts the values of every column whose
     distinct count is at most the threshold of an enumeration, of no lists, and of no type and no
     match of values no closed list holds. Its keys are indicated by the statistics and the sample,
     and verified on the whole table, and the primary key chosen among them, unless the overrides

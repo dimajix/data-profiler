@@ -1,6 +1,6 @@
 # 66 — Detectors of JSON documents
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -205,3 +205,50 @@ of a pattern alone and an exact one, so that a column of broken documents is sti
 one of JSON and the share of broken documents can be told; and, as a step before them, the check of
 a value done in SQL as well, so that the share of the exact type on the table is exact. The file
 was renamed from `66-a-detector-of-json-documents.md` to its new title.
+
+2026-11-13: Step 1 begun. The maintainer decided its interface otherwise than the options above
+put it: `Dialect.matching` is renamed `Dialect.recognised` and given the detector, not its pattern
+and its check, so that the dialect counts what a detector recognises and writes the check of one
+inside, by no public method `Dialect.checking`; and a check is one of a closed list, `Check`, an
+enum of `detect` whose members name the checks of the tool and pass a value by their functions, so
+that a dialect tells the checks it writes by `match`, and no check of a test or a project is
+unknown to it. `source` imports `detect` for it.
+
+2026-11-13: Step 1 done, committed as a refactoring of its own: `Check`, `Dialect.recognised`.
+
+2026-11-13: Step 2 done: the types `json` and `json-like`, of one pattern, `json` checked by
+`json.loads` in the sample and by `try(json_parse(...))` after the pattern in Trino. Measured on the
+simulation, Trino 484 on one node, 200,000 documents of about 3 kilobytes over several lines, 600
+megabytes, of which reading the lengths takes 0.3 s:
+
+| Expression | valid | broken | prose |
+|---|---|---|---|
+| a pattern, its characters between an alternative, `([^.]\|[.])*` | 13.7 s | 14.1 s | 0.03 s |
+| a pattern, its characters between runs, `[^.]*([.][^.]*)*` | 6.1 s | 6.4 s | 0.02 s |
+| `try(json_parse(...))` alone | 1.0 s | 2.3 s | 1.2 s |
+| the pattern of runs `AND` the parse | 7.0 s | 8.7 s | 0.02 s |
+
+The regular expressions of Trino read about 100 megabytes a second on long texts, whatever the
+pattern - the pattern of free text as well -, `.*` twice as fast, which matches no line break; the
+parse is faster than any pattern, and Trino evaluates `AND` lazily, so that a value the pattern
+refuses is not parsed. In Python, 10,000 such documents take 0.03 s of the pattern of runs, 0.5 s of
+the alternative, and 0.03 s of `json.loads`. The maintainer decided: the pattern of runs, with the
+escapes `\t`, `\n` and `\r` taken as escapes of a character; the check in SQL written after the
+pattern, though the parse alone would give the same count of `json` at a sixth of the time, as the
+dialect would have to know the pattern of the type for it, and `json-like` reads the pattern anyway;
+and a column `cntct.cntct_prf` in the simulation, of a table read whole by its sample, so that its
+shares are the same in every run - a quarter of its objects broken, `json` of a share of 0.749,
+`json-like` of 1.0. A column of texts in brackets, which "Done when" asks for, is not made, as the
+generator makes no texts of a column without a match; the unit tests of `detect` take its place.
+Python and Trino were found to differ in `NaN`, `Infinity` and fractions beyond a double, which
+Python takes and Trino does not, and the check of Python now refuses; in whole numbers of more than
+4300 digits, which Trino takes and `int` refuses, and the check of Python now takes as their texts;
+and in documents nested deeper than 1024 levels, which Trino refuses and Python takes, a difference
+named in a test. The threshold of `json-like` stays the default, half of the values: its pattern
+refuses the texts in brackets of the unit tests, `[draft]`, `{n/a}`, `[n/a]` and `[tbd]`, and no
+column of the simulation or of the real database has yet shown that it needs a higher one.
+
+2026-11-13: As `json` and `json-like` share one pattern, the data contract writes the rule of a
+pattern once for a column, not once for each type of it, so that a column of valid documents gets
+one rule, not two. Left for later, as the maintainer decided: Trino could count `json` by the parse
+alone, which gives the same count without the pattern, at a sixth of the time.

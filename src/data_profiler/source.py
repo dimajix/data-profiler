@@ -41,6 +41,7 @@ from trino.exceptions import Error as TrinoError
 from trino.exceptions import HttpError
 
 from data_profiler.counts import counted
+from data_profiler.detect import Check, Detector
 
 _logger = logging.getLogger(__name__)
 
@@ -390,13 +391,15 @@ class Dialect(ABC):
         """The expression of the length of the longest of `values`."""
 
     @abstractmethod
-    def matching(self, values: str, kind: str, pattern: str) -> str:
-        """The expression counting those of `values`, of the type `kind`, `pattern` matches whole.
+    def recognised(self, values: str, kind: str, detector: Detector) -> str:
+        """The expression counting those of `values`, of the type `kind`, `detector` recognises.
 
-        Each value is matched as `text` reads it, its spaces at either end cut, so as a detector
-        sees the values of a sample; `kind` is a type the database casts to a text, not an array,
-        a map, a row or a binary, which fail the query. `pattern` is a regular expression of what
-        Python and the database share.
+        A value is recognised by the pattern of the detector, matched whole, and by its check where
+        the dialect writes that in SQL; where it does not, by the pattern alone, and the condition
+        of the column never, which is judged on a sample. Each value is read as `text` reads it,
+        its spaces at either end cut, so as a detector sees the values of a sample; `kind` is a
+        type the database casts to a text, not an array, a map, a row or a binary, which fail the
+        query.
         """
 
     @abstractmethod
@@ -922,10 +925,17 @@ class _TrinoDialect(Dialect):
         """The expression of the length of the longest of `values`."""
         return f"max(length({values}))"
 
-    def matching(self, values: str, kind: str, pattern: str) -> str:
-        """The expression counting those of `values`, of `kind`, that `pattern` matches whole."""
+    def recognised(self, values: str, kind: str, detector: Detector) -> str:
+        """The expression counting those of `values`, of `kind`, that `detector` recognises.
+
+        Trino writes the check of a JSON document, of no other check, after the pattern, so that it
+        parses only the values the pattern matches.
+        """
         text = f"trim({_text(values, kind)})"
-        return f"count_if(regexp_like({text}, {_literal(f'^(?:{pattern})$')}))"
+        pattern = detector.pattern.pattern
+        matched = f"regexp_like({text}, {_literal(f'^(?:{pattern})$')})"
+        checked = _checked(text, detector.check)
+        return f"count_if({matched})" if checked is None else f"count_if({matched} AND {checked})"
 
     def is_text(self, kind: str) -> bool:
         """Whether a column of the type `kind` holds texts: a `varchar` or a `char`."""
@@ -1053,6 +1063,21 @@ def _form(kind: str) -> str | None:
     if decimal is not None:
         return rf"-?[0-9]+\.[0-9]{{{decimal.group(1)}}}"
     return next((form for kinds, form in _FORMS if kind.startswith(kinds)), None)
+
+
+def _checked(text: str, check: Check | None) -> str | None:
+    """The expression of whether `text` passes `check`, in Trino; None where Trino writes none.
+
+    A document is one Trino parses as JSON; the pattern of its detector takes objects and arrays
+    alone. Trino refuses a number JSON does not write, and a fraction beyond a double, and takes a
+    whole number of any length, as the check of Python does; it refuses a document nested deeper
+    than 1024 levels, which Python takes.
+    """
+    match check:
+        case Check.JSON:
+            return f"try(json_parse({text})) IS NOT NULL"
+        case Check.PHONE | Check.IBAN | Check.CARD_NUMBER | Check.DATE | None:
+            return None
 
 
 def _text(values: str, kind: str) -> str:

@@ -2,20 +2,21 @@
 
 A detector recognises one semantic type by a pattern, a regular expression every value of the type
 matches whole - in a value, and on the whole table in SQL -, and, where the pattern does not say
-enough, by a check of the value that matches it: the checksum of an IBAN, the number of a phone.
-The pattern carries as much of the check as a pattern can, so that on the whole table, where the
-pattern alone is tried, it lets few values pass that the check would refuse. Where a value does not
-say enough even with its check, a condition of the column judges the values of a sample together.
-A detector names the share of the values of a sample it has to recognise for its type to be a match
-of their column, its threshold: half of them, unless it names another. A detector sees each
-value as text, its spaces at either end cut, whatever the type of its column, so that every column
-is checked. The patterns use what Python and the regular expressions of the databases share:
-classes, repetitions, groups and alternatives, and no other escapes than of a character.
+enough, by a check of the value that matches it: the checksum of an IBAN, the number of a phone. A
+check is one of a closed list, `Check`, by a name a dialect may write in SQL as well. The pattern
+carries as much of the check as a pattern can, so that on the whole table, where the dialect writes
+no check and the pattern alone is tried, it lets few values pass that the check would refuse. Where
+a value does not say enough even with its check, a condition of the column judges the values of a
+sample together. A detector names the share of the values of a sample it has to recognise for its
+type to be a match of their column, its threshold: half of them, unless it names another. A detector
+sees each value as text, its spaces at either end cut, whatever the type of its column, so that
+every column is checked. The patterns use what Python and the regular expressions of the databases
+share: classes, repetitions, groups and alternatives, and no other escapes than of a character.
 
 The types of the tool are the constants below; a project gives types of its own, each by its name,
 its sensitivity and a pattern alone, which a value is checked for beside those of the tool. A type
-says whether a column of it may be an enumeration: not one of UUIDs or dates, whose values no closed
-list holds; a column of a type of a project may.
+says whether a column of it may be an enumeration: not one of UUIDs, dates or JSON documents, whose
+values no closed list holds; a column of a type of a project may.
 
 A column of lists is no semantic type, as a type says what a value is, not what the values in it
 are: its texts are values of letters, digits, `-`, `+` and `_`, separated by a separator given -
@@ -30,6 +31,8 @@ compares them in the database: the values a detector sees are those that are nei
 sentinels.
 """
 
+import json
+import math
 import re
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
@@ -54,6 +57,30 @@ class Sensitivity(Enum):
     """Payment card data, under the PCI DSS."""
 
 
+class Check(Enum):
+    """A check of a value beyond the pattern of its detector, which a dialect may write in SQL."""
+
+    PHONE = "phone"
+    """A phone number that can be dialled, of Germany if it names no country."""
+    IBAN = "iban"
+    """An IBAN of a right checksum."""
+    CARD_NUMBER = "card-number"
+    """The number of a payment card of a right check digit."""
+    DATE = "date"
+    """A date whose day is in the calendar."""
+    JSON = "json"
+    """A JSON object or array: no NaN or Infinity in it, and no fraction beyond a double."""
+
+    def passes(self, value: str) -> bool:
+        """Whether `value` passes the check.
+
+        Each check is of a type of the tool, and takes only values the pattern of that type
+        matches: the check of a date reads the digits of its day where the pattern of a date puts
+        them.
+        """
+        return _CHECKS[self](value)
+
+
 @dataclass(frozen=True)
 class Detector:
     """Recognises one semantic type: by a pattern, a check of a value and a condition of its column.
@@ -63,8 +90,8 @@ class Detector:
     Attributes:
         pattern: A regular expression every value of the type matches whole, as Python and SQL
             read it; its text is what is sent to the database, of a type.
-        check: Whether a value the pattern matches is of the type, where the pattern does not
-            say enough; None where it does.
+        check: The check of a value the pattern matches, whether it is of the type, where the
+            pattern does not say enough; None where it does.
         column: Whether the texts of a column, together, are of the type, where no value says it
             alone; None where each value does. It is given all texts of the column, and those of
             them the detector recognises, one or more: it is asked only where there is one. It is
@@ -75,7 +102,7 @@ class Detector:
     """
 
     pattern: re.Pattern[str]
-    check: Callable[[str], bool] | None = None
+    check: Check | None = None
     column: Callable[[Sequence[str], Sequence[str]], bool] | None = None
     threshold: float = 0.5
 
@@ -83,7 +110,7 @@ class Detector:
         """Whether `value` is of the type of the detector."""
         if not self.pattern.fullmatch(value):
             return False
-        return self.check is None or self.check(value)
+        return self.check is None or self.check.passes(value)
 
     def share(self, texts: Sequence[str]) -> float:
         """The share of `texts` of the type, from 0 to 1; 0 where the texts together are not."""
@@ -123,6 +150,45 @@ def _date(value: str) -> bool:
     return True
 
 
+def _refused(text: str) -> float:
+    """Refuses a number `text` JSON does not write: `NaN` and `Infinity`, or a fraction too large.
+
+    Raises:
+        ValueError: Always where `text` is `NaN`, `Infinity` or `-Infinity`; where it is a number
+            of a fraction or an exponent, if a double cannot hold it.
+    """
+    number = float(text)
+    if not math.isfinite(number):
+        raise ValueError(f"{text} is no number of JSON")
+    return number
+
+
+def _document(value: str) -> bool:
+    """Whether `value` is a JSON object or array, of fractions a double holds.
+
+    `json.loads` takes `NaN` and `Infinity`, which JSON does not, and fractions beyond a double,
+    which the databases refuse: both are refused, as the parse of a database refuses them. A whole
+    number is taken as its text, of any length, as a database takes it, which `int` refuses beyond
+    4300 digits. A document nested too deep for Python to parse is refused as well; one nested
+    deeper than a database parses, but not as deep, is taken.
+    """
+    try:
+        document = json.loads(value, parse_constant=_refused, parse_float=_refused, parse_int=str)
+    except (ValueError, RecursionError):
+        return False
+    return isinstance(document, dict | list)
+
+
+# The function of each check, by the check.
+_CHECKS: Final[dict[Check, Callable[[str], bool]]] = {
+    Check.PHONE: _phone,
+    Check.IBAN: iban.is_valid,
+    Check.CARD_NUMBER: _card_number,
+    Check.DATE: _date,
+    Check.JSON: _document,
+}
+
+
 # A value of words: two words or more, one of them after the first beginning in lower case, as free
 # text has many of; the classes other than of a space let a word hold a line break, which `.` does
 # not match.
@@ -158,6 +224,21 @@ def _free_text(texts: Sequence[str], of_words: Sequence[str]) -> bool:
         and letters >= _LETTERS * len(characters)
         and len(set(of_words)) >= _DISTINCT * len(of_words)
     )
+
+
+# What a JSON document looks like: an object, whose `{` is followed by a name or its end, or an
+# array, whose `[` is followed by a value or its end, spaces and line breaks between, and which ends
+# in `}` or `]`, so that a text in brackets, `[draft]` or `{n/a}`, is none. Its characters between
+# are any, line breaks included, which `.` does not match: runs of all but a dot, each dot between,
+# as an alternative of a character in a repetition is twice as slow in the regular expressions of
+# Trino. Every valid JSON object or array matches it, and a broken one that still begins and ends as
+# one; not one cut off, nor one written with single quotes.
+_SPACES: Final = r"[ \t\n\r]*"
+_ANY: Final = r"[^.]*([.][^.]*)*"
+_DOCUMENT: Final = re.compile(
+    rf'[{{]{_SPACES}([}}]|"{_ANY}[}}])'
+    rf'|\[{_SPACES}(\]|([-0-9"{{\[]|true|false|null){_ANY}\])'
+)
 
 
 # The threshold of a flag, of a pair of values: every value of its column that is neither null nor
@@ -228,7 +309,7 @@ EMAIL: Final = SemanticType(
 # A phone number begins with its country, or with the zero of a call within the country; a dot is
 # no separator of it, so that dates and decimals, which phonenumbers takes for numbers, are none.
 PHONE: Final = SemanticType(
-    "phone", Sensitivity.PERSONAL, Detector(re.compile(r"(\+|\(?0)[0-9 ()/-]{5,24}"), _phone)
+    "phone", Sensitivity.PERSONAL, Detector(re.compile(r"(\+|\(?0)[0-9 ()/-]{5,24}"), Check.PHONE)
 )
 POSTAL_CODE: Final = SemanticType(
     "postal-code", Sensitivity.NONE, Detector(re.compile(r"(0[1-9]|[1-9][0-9])[0-9]{3}"))
@@ -238,14 +319,14 @@ POSTAL_CODE: Final = SemanticType(
 IBAN: Final = SemanticType(
     "iban",
     Sensitivity.PERSONAL,
-    Detector(re.compile(r"[A-Z]{2}[0-9]{2}[A-Z0-9 ]{11,38}"), iban.is_valid),
+    Detector(re.compile(r"[A-Z]{2}[0-9]{2}[A-Z0-9 ]{11,38}"), Check.IBAN),
 )
 # A card number begins with the digit of an issuer, 2 to 6, as its check digit alone would let a
 # tenth of all numbers of its length pass.
 CARD_NUMBER: Final = SemanticType(
     "card-number",
     Sensitivity.PAYMENT_CARD,
-    Detector(re.compile(r"[2-6][0-9 -]{11,21}[0-9]"), _card_number),
+    Detector(re.compile(r"[2-6][0-9 -]{11,21}[0-9]"), Check.CARD_NUMBER),
 )
 DATE: Final = SemanticType(
     "date",
@@ -257,7 +338,7 @@ DATE: Final = SemanticType(
             r"([ T]([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9](\.[0-9]+)?)?"
             r"( ?(Z|[+-][0-9]{2}:?[0-9]{2}|[A-Za-z][A-Za-z_/+-]*))?)?"
         ),
-        _date,
+        Check.DATE,
     ),
     enumerable=False,
 )
@@ -277,6 +358,18 @@ FREE_TEXT: Final = SemanticType(
     "free-text", Sensitivity.NONE, Detector(_OF_WORDS, column=_free_text, threshold=0.2)
 )
 """Free text, such as a comment, a note or a description, of words and sentences."""
+JSON: Final = SemanticType(
+    "json", Sensitivity.NONE, Detector(_DOCUMENT, Check.JSON), enumerable=False
+)
+"""A JSON document: an object or an array, valid."""
+JSON_LIKE: Final = SemanticType(
+    "json-like", Sensitivity.NONE, Detector(_DOCUMENT), enumerable=False
+)
+"""What looks like a JSON document, valid or broken.
+
+Of a column of documents, its share is that of `JSON` and the share of the broken documents that
+look like one together: the difference of the two is the share of those broken documents.
+"""
 TRUE_FALSE: Final = SemanticType(
     "true-false", Sensitivity.NONE, Detector(re.compile(_cases("true", "false")), threshold=_EVERY)
 )
@@ -337,6 +430,8 @@ BUILT_IN: Final = (
     DATE,
     UUID,
     FREE_TEXT,
+    JSON,
+    JSON_LIKE,
     TRUE_FALSE,
     YES_NO,
     ZERO_ONE,

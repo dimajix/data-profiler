@@ -18,6 +18,8 @@ from data_profiler.detect import (
     COUNTRY_NUMBER,
     CURRENCY_NUMBER,
     IBAN,
+    JSON,
+    JSON_LIKE,
     POSTAL_CODE,
     SENTINELS,
     TRUE_FALSE,
@@ -283,6 +285,13 @@ def test_a_semantic_type_every_value_of_the_table_is_of_gives_a_rule_of_its_patt
     assert invalid["arguments"]["pattern"] == rf"^\s*(?:{IBAN.detector.pattern.pattern})\s*$"
     assert invalid["mustBe"] == 0
     assert "quality" not in _property(contract, "b")
+
+
+def test_types_of_one_pattern_give_one_rule_of_it() -> None:
+    matches = (Match(JSON, 1.0, 1.0), Match(JSON_LIKE, 1.0, 1.0))
+    documents = _column("doc", statistics=Statistics(1, 99), matches=matches)
+    (invalid,) = _property(_contract(_profile(documents)), "doc")["quality"]
+    assert invalid["arguments"]["pattern"] == rf"^\s*(?:{JSON.detector.pattern.pattern})\s*$"
 
 
 def test_a_column_of_another_type_than_texts_has_no_rule_of_a_pattern() -> None:

@@ -235,26 +235,27 @@ class Contract(Template):
         return [{"metric": "missingValues", "arguments": {"missingValues": missing}, "mustBe": 0}]
 
     def _invalid(self, column: Column) -> list[_Document]:
-        """The rule of each semantic type every value of `column` of texts is of: none invalid.
+        """The rule of each pattern every value of `column` of texts matches: none invalid.
 
-        Its pattern is that of the detector of the type, which every value matches whole, spaces
-        at either end aside, as the database matched it, or one of the sentinels found, which the
-        type is counted without; a column of another type, whose values the pattern says nothing
-        of beyond their type, has none.
+        A pattern is that of the detector of a semantic type every value is of, which every value
+        matches whole, spaces at either end aside, as the database matched it, or one of the
+        sentinels found, which the type is counted without; each once, as types may share one, the
+        JSON documents and what looks like them. A column of another type, whose values the pattern
+        says nothing of beyond their type, has none.
         """
         if not self._dialect.is_text(column.type):
             return []
         found = "".join(f"|{_escaped(value.value)}" for value in column.statistics.sentinels)
+        patterns = dict.fromkeys(
+            m.type.detector.pattern.pattern for m in column.matches if m.table == 1
+        )
         return [
             {
                 "metric": "invalidValues",
-                "arguments": {
-                    "pattern": rf"^\s*(?:{match.type.detector.pattern.pattern}{found})\s*$"
-                },
+                "arguments": {"pattern": rf"^\s*(?:{pattern}{found})\s*$"},
                 "mustBe": 0,
             }
-            for match in column.matches
-            if match.table == 1
+            for pattern in patterns
         ]
 
 

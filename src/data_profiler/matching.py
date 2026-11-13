@@ -4,11 +4,12 @@ The types of each column are recognised in the values of the sample that are nei
 sentinels, as the dialect tells them, by the module `detect`, which makes a type a match of the
 column where the share of those values it is recognised in reaches the threshold of its detector.
 The matches are verified on the whole table by one query, built from the building blocks of the
-dialect, which counts the values of each column that are neither null nor sentinels and those the
-pattern of each detector matches. The sentinels of a column are left aside where its statistics
-counted any. What a detector checks of a value beyond its pattern, SQL does not, so that the share
-on the table is at least the one the check would give, and a condition of the column is judged on
-the sample alone. A share is written with as many digits as a sample says.
+dialect, which counts the values of each column that are neither null nor sentinels and those each
+detector recognises, by its pattern, and by its check where the dialect writes that in SQL. The
+sentinels of a column are left aside where its statistics counted any. Where the dialect writes no
+check of a detector, the share on the table is at least the one the check would give; a condition
+of the column is judged on the sample alone. A share is written with as many digits as a sample
+says.
 """
 
 import logging
@@ -54,7 +55,7 @@ def recognise(
 
 
 def verify(source: Source, table: Table) -> Table:
-    """`table`, each match of its columns with the share of the whole table its pattern matches.
+    """`table`, each match of its columns with the share of the whole table its detector recognises.
 
     Args:
         source: The schema the table is in.
@@ -65,10 +66,10 @@ def verify(source: Source, table: Table) -> Table:
         where it has no match of a column of text.
 
     Raises:
-        SourceError: The database fails to count the values the patterns match.
+        SourceError: The database fails to count the values the detectors recognise.
     """
     dialect = source.dialect
-    # A pattern is tried on no values of a column of no text: its matches stay unverified.
+    # A detector is tried on no values of a column of no text: its matches stay unverified.
     asked = [c for c in table.columns if c.matches and dialect.has_text(c.type)]
     if not asked:
         return table
@@ -79,8 +80,7 @@ def verify(source: Source, table: Table) -> Table:
         values = dialect.without(column.name, column.type, column.left_aside)
         expressions.append(dialect.nulls(values))
         expressions += [
-            dialect.matching(values, column.type, match.type.detector.pattern.pattern)
-            for match in column.matches
+            dialect.recognised(values, column.type, match.type.detector) for match in column.matches
         ]
     statement = dialect.select(expressions, table.name)
     (row,) = source.query(statement, f"verifying the matches of {source.name(table.name)}")

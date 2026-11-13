@@ -6,7 +6,7 @@ from datetime import date
 
 import pytest
 
-from data_profiler.detect import SENTINELS
+from data_profiler.detect import IBAN, JSON, SENTINELS, Detector
 from data_profiler.profile import Profile
 from data_profiler.source import (
     Location,
@@ -146,7 +146,7 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         select = source.dialect.select([source.dialect.longest(values)], 't"x')
         sampled = source.dialect.sampled([values], 't"x', 1.5, 10)
         grouped = source.dialect.grouped([source.dialect.grouping('c"y')], 't"x', ['c"y'])
-        matching = source.dialect.matching(values, "varchar(3)", "it's")
+        recognised = source.dialect.recognised(values, "varchar(3)", Detector(re.compile("it's")))
         ranged = [source.dialect.smallest(values), source.dialect.largest(values)]
         without = source.dialect.without('c"y', "varchar(3)", {"it's"})
         moments = source.dialect.sentinels('c"y', "timestamp(3)", {"9999-12-31", ""})
@@ -166,8 +166,8 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
     assert sampled.startswith('SELECT "c""y" FROM "t""x" TABLESAMPLE')
     assert grouped.startswith('SELECT grouping("c""y") FROM "t""x" GROUP BY')
     assert grouped.endswith('(("c""y"))')
-    assert 'CAST("c""y" AS varchar)' in matching
-    assert "'^(?:it''s)$'" in matching
+    assert 'CAST("c""y" AS varchar)' in recognised
+    assert "'^(?:it''s)$'" in recognised
     assert ranged == ['min("c""y")', 'max("c""y")']
     assert without.endswith('ELSE "c""y" END')
     assert "IN ('it''s')" in without
@@ -177,6 +177,58 @@ def test_names_are_quoted_in_the_statements_of_the_dialect() -> None:
         'count(DISTINCT "c""y")',
         'count(DISTINCT CASE WHEN "c""y" IS NOT NULL THEN ROW("c""y", "z") END)',
     ]
+
+
+def test_a_check_the_dialect_does_not_write_leaves_a_value_to_the_pattern() -> None:
+    trino = dialect("trino://h/c/s")
+    checked = trino.recognised('"v"', "varchar", IBAN.detector)
+    unchecked = trino.recognised('"v"', "varchar", Detector(IBAN.detector.pattern))
+    assert checked == unchecked, "Trino writes no check of an IBAN"
+
+
+def test_trino_parses_a_document_the_pattern_matches_to_check_it() -> None:
+    recognised = dialect("trino://h/c/s").recognised('"v"', "varchar", JSON.detector)
+    assert recognised.startswith("count_if(regexp_like(")
+    assert recognised.endswith(' AND try(json_parse(trim(CAST("v" AS varchar)))) IS NOT NULL)')
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"a": 1}',
+        '{\n  "a": [1.5, -2]\n}',
+        "[]",
+        '{"a": 1, "a": 2}',
+        "[123456789012345678901234567890]",
+        "[1" + "0" * 5000 + "]",
+        '{"a": 1 "b": 2}',
+        '{"a": 1,}',
+        "[01]",
+        "[.5]",
+        '["x\ny"]',
+        "[NaN]",
+        "[Infinity]",
+        "[1e400]",
+        '{"a": 1} {"b": 2}',
+        "[" * 1024 + "]" * 1024,
+    ],
+)
+def test_trino_checks_a_document_as_python_does(source: Source, text: str) -> None:
+    # The statement is the test's own: a document of each kind is had of no table of the simulation.
+    # The texts hold no single quote, which a literal of SQL would have to double.
+    recognised = source.dialect.recognised("v", "varchar", JSON.detector)
+    statement = f"SELECT {recognised} FROM (SELECT '{text}' AS v)"
+    [(counted,)] = source.query(statement, "checking a document")
+    assert counted == JSON.detector.recognises(text), text[:40]
+
+
+def test_trino_refuses_a_document_nested_deeper_than_python_takes(source: Source) -> None:
+    # The statement is the test's own: such a document is had of no table of the simulation.
+    text = "[" * 1025 + "]" * 1025
+    recognised = source.dialect.recognised("v", "varchar", JSON.detector)
+    statement = f"SELECT {recognised} FROM (SELECT '{text}' AS v)"
+    assert JSON.detector.recognises(text), "Python parses it"
+    assert source.query(statement, "checking a document") == [(0,)], "Trino parses 1024 levels"
 
 
 def test_the_distinct_values_of_columns_together_are_counted_exactly(source: Source) -> None:
@@ -493,8 +545,8 @@ def test_a_value_read_is_a_sentinel_where_the_database_counts_it_as_one(
 )
 def test_a_pattern_matches_a_value_as_it_is_read(source: Source, value: str, pattern: str) -> None:
     # The statement is the test's own: a value of JSON is had of no table of the simulation.
-    matching = source.dialect.matching('"v"', "json", pattern)
-    statement = f'SELECT {matching} FROM (SELECT {value} AS "v")'
+    recognised = source.dialect.recognised('"v"', "json", Detector(re.compile(pattern)))
+    statement = f'SELECT {recognised} FROM (SELECT {value} AS "v")'
     assert source.query(statement, "matching JSON") == [(1,)]
 
 
