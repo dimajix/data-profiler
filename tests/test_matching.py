@@ -134,8 +134,8 @@ def test_the_pattern_of_names_takes_their_characters_as_written(
     source: Source, kind: SemanticType, names: list[str], unescaped: str
 ) -> None:
     values = ", ".join(f"""('{name.replace("'", "''")}')""" for name in [*names, unescaped])
-    matching = source.dialect.matching("name", "varchar", kind.detector.pattern.pattern)
-    statement = f"SELECT {matching} FROM (VALUES {values}) AS names (name)"
+    recognised = source.dialect.recognised("name", "varchar", kind.detector)
+    statement = f"SELECT {recognised} FROM (VALUES {values}) AS names (name)"
     assert source.query(statement, "matching names") == [(len(names),)], (
         f"each name, but not {unescaped}, which the characters of a name read as a pattern match"
     )

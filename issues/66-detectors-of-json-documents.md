@@ -1,6 +1,6 @@
 # 66 — Detectors of JSON documents
 
-**Status:** open
+**Status:** in progress
 **Type:** feature
 **Priority:** medium
 **Area:** Detection
@@ -205,3 +205,11 @@ of a pattern alone and an exact one, so that a column of broken documents is sti
 one of JSON and the share of broken documents can be told; and, as a step before them, the check of
 a value done in SQL as well, so that the share of the exact type on the table is exact. The file
 was renamed from `66-a-detector-of-json-documents.md` to its new title.
+
+2026-11-13: Step 1 begun. The maintainer decided its interface otherwise than the options above
+put it: `Dialect.matching` is renamed `Dialect.recognised` and given the detector, not its pattern
+and its check, so that the dialect counts what a detector recognises and writes the check of one
+inside, by no public method `Dialect.checking`; and a check is one of a closed list, `Check`, an
+enum of `detect` whose members name the checks of the tool and pass a value by their functions, so
+that a dialect tells the checks it writes by `match`, and no check of a test or a project is
+unknown to it. `source` imports `detect` for it.

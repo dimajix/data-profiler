@@ -14,7 +14,7 @@ issue files by `issues/generate.sh`, like [INDEX.md](INDEX.md) - never edit it b
 
 | No. | Status | Priority | Type | Issue |
 |---|---|---|---|---|
-| [66](66-detectors-of-json-documents.md) | open | medium | feature | Nothing recognises a column of text whose values are JSON documents - objects or arrays, such as payloads, settings or attributes of a row -, nor the broken documents among them, so that such a column is told to the language model as nothing but a text, and is checked for codes, enumerations and free text like any other. |
+| [66](66-detectors-of-json-documents.md) | in progress | medium | feature | Nothing recognises a column of text whose values are JSON documents - objects or arrays, such as payloads, settings or attributes of a row -, nor the broken documents among them, so that such a column is told to the language model as nothing but a text, and is checked for codes, enumerations and free text like any other. |
 
 ## Architecture
 

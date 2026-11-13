@@ -26,6 +26,7 @@ from data_profiler.detect import (
     UUID,
     YES_NO,
     ZERO_ONE,
+    Check,
     Detector,
     SemanticType,
     SemanticTypeError,
@@ -252,9 +253,11 @@ def test_a_condition_of_the_column_is_given_the_texts_its_detector_recognises() 
         given.append((list(texts), list(recognised)))
         return True
 
-    detector = Detector(re.compile("[0-9]"), check=lambda value: value != "0", column=condition)
-    assert detector.share(["0", "1", "a"]) == 1 / 3
-    assert given == [(["0", "1", "a"], ["1"])], "the check refuses the 0, the pattern the a"
+    detector = Detector(DATE.detector.pattern, check=Check.DATE, column=condition)
+    assert detector.share(["2024-02-30", "2024-02-29", "a"]) == 1 / 3
+    assert given == [(["2024-02-30", "2024-02-29", "a"], ["2024-02-29"])], (
+        "the check refuses the 30th of February, the pattern the a"
+    )
 
 
 def test_a_type_whose_condition_of_the_column_fails_is_not_detected() -> None:

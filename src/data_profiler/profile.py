@@ -268,10 +268,10 @@ class Match:
         sample: The share of the values of the sample, nulls and sentinels aside, that are of the
             type, from 0 to 1.
         table: The share of the values of the whole table, nulls and sentinels aside, that the
-            pattern of the detector of the type matches, from 0 to 1, or None where it was not
-            verified. Where the detector checks a value by more than its pattern, it is at least
-            the share the check would give; a condition of the column is judged on the sample
-            alone.
+            detector of the type recognises, from 0 to 1, or None where it was not verified: by
+            its pattern, and by its check where the dialect of the database writes it in SQL;
+            where it does not, the share is at least the one the check would give. A condition of
+            the column is judged on the sample alone.
     """
 
     type: _Named
