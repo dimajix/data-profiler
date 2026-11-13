@@ -87,7 +87,8 @@ given whole in one file.
 | the sensitivity of a column | `scan`, and every stage that reads the profile | at once: a column marked sensitive shows no values without a scan again; a mark taken out gives back values once `scan` counts the column again |
 | the sentinels of a column | `scan`, which counts the column with them | once `scan` counts the table again |
 | whether a column is an enumeration | `scan`, which counts its values by it - of a column of lists, the values of its lists - and warns where it is given as one of more values than one has | once `scan` counts the table again |
-| the separator of the lists of a table, in place of that of the project | `scan`, which finds the columns of lists by it | once `scan` counts the table again |
+| the separator of the lists of a table, in place of that of the project, or none | `scan`, which finds the columns of lists by it | once `scan` counts the table again |
+| the separator of the lists of a column, or none | `scan`, which takes the column for one of lists of it, whatever is found, and warns where its sample holds no lists of it; a separator of a column of no text it refuses | once `scan` counts the table again |
 | the primary key of a table | `scan`, which takes it whether or not its values are unique, and warns where they are not | once `scan` counts the table again |
 | a column that determines none, `determines: false` | `scan`, which looks for no dependency of it; the stages that read the profile drop those found of it | at once; the dependencies of the columns equivalent to it once `scan` counts the table again |
 | the discriminator of a table, or none | `scan`, which counts the entities by it | once `scan` counts the table again |
@@ -100,14 +101,14 @@ given whole in one file.
 
 A scan resumed counts again the tables the overrides now give otherwise: the marks, the sentinels or
 the enumerations of their columns, a column that determines none, their primary keys or their
-discriminators, and those whose columns of lists are of another separator than now given; a table of
-no lists cannot tell, and is counted with a separator given anew in the next run. A column has the
-marks the overrides give it and no others. What the stages that read the profile lay over it -
-concepts, readings, names, descriptions, the names and descriptions of entities - is never written
-to it, so that the profile holds a reading only as `describe` read it; what `scan` and `relate`
-take - marks, sentinels, enumerations, primary keys, discriminators and the values of their
-entities, separators of lists, at the columns of lists, references - the profile holds as given, so
-that the stages can tell where it was counted or related otherwise.
+discriminators, the separators of lists of their columns, and those whose columns of lists given
+none are of another separator than now given; a table of no lists cannot tell, and is counted with a
+separator given anew in the next run. A column has the marks the overrides give it and no others.
+What the stages that read the profile lay over it - concepts, readings, names, descriptions, the
+names and descriptions of entities - is never written to it, so that the profile holds a reading
+only as `describe` read it; what `scan` and `relate` take - marks, sentinels, enumerations, primary
+keys, discriminators and the values of their entities, separators of lists, references - the profile
+holds as given, so that the stages can tell where it was counted or related otherwise.
 
 **A concept given comes before those proposed.** It takes the place of the concept proposed of its
 word, keeping only the abbreviations proposed beside those given; the terms it is written as - its
@@ -123,11 +124,11 @@ be what it gives, is refused, naming it:
 
 *   `scan` refuses a table the project does not select before it counts anything; once it has
     counted a table, a column the table does not have, sentinels of a column that its type cannot
-    hold, a primary key of no columns or of one twice, and a discriminator of a column the
-    overrides mark of a sensitivity or give as no enumeration, of entities of no values, or of a
-    value twice.
-    The tables before it stay in the profile, as after any failure of a scan. It does not check the
-    concepts, readings and names, which it does not use.
+    hold, a separator of lists of a column of a type that holds no texts, a primary key of no
+    columns or of one twice, and a discriminator of a column the overrides mark of a sensitivity or
+    give as no enumeration, of entities of no values, or of a value twice. The tables before it stay
+    in the profile, as after any failure of a scan. It does not check the concepts, readings and
+    names, which it does not use.
 *   `relate` refuses a table or column the profile does not have, and a reference to one or of a
     column to itself, before it queries anything.
 *   The stages that read the profile refuse a table or column it does not have, a reading that is
@@ -139,9 +140,10 @@ be what it gives, is refused, naming it:
 As the overrides are the same for all environments, whose tables may differ, the stages warn of
 some of what is given, and go on:
 
-*   `scan` warns of a discriminator given of a column of no values the profile holds, of values of
-    a discriminator the table does not hold, which it leaves out, of a primary key whose values are
-    not unique, and of a column given as an enumeration of more distinct values than one has.
+*   `scan` warns of a discriminator given of a column of no values the profile holds, of values of a
+    discriminator the table does not hold, which it leaves out, of a primary key whose values are
+    not unique, of a column given as an enumeration of more distinct values than one has, and of a
+    column given a separator of lists its sample holds no lists of.
 *   `relate` warns of a reference given whose coverage, or the share probed of unmistakable values,
     is below what a reference is found at, or that refers to a column that is no key of one column.
 *   The stages that read the profile warn of an abbreviation no name of the profile has - once, so
@@ -238,12 +240,23 @@ environments:
 list_separator: ";"
 ```
 
-A table of another system, of other lists, is given its own:
+A table of another system, of other lists, is given its own, and a table of no lists none, so that
+no column of it is taken for one; a column of lists of a separator of its own is given it, and a
+column taken wrongly for one of lists none:
 
 ```yaml overrides.yml
 tables:
   prod:
     list_separator: "|"
+    columns:
+      sale_curr_cds:
+        list_separator: ";"
+  ord:
+    list_separator: false
+  cust:
+    columns:
+      ntnlty_cd:
+        list_separator: false
 ```
 
 ### Give the data contract of the project
@@ -711,7 +724,7 @@ What a project gives of its data contract, which the database does not tell.
 <!-- begin reference: overrides.yml -->
 ### `overrides.yml`
 
-The document begins with `format: "7.7"`, its version.
+The document begins with `format: "7.8"`, its version.
 
 What is given by hand of a profile: concepts, names, descriptions, columns, discriminators.
 
@@ -745,7 +758,7 @@ What is given by hand of a table and its columns.
 | `description` | text | absent | What the table holds, or None where it is not given. |
 | `discriminator` | [DiscriminatorOverride](#discriminatoroverride) or `false` | absent | The discriminator of its entities, or False where it has none, whatever is found; None where it is not given. |
 | `primary_key` | list of text | absent | The columns of its primary key, in place of the one chosen among its keys, one at least and each once, or None where it is not given. |
-| `list_separator` | text | absent | The separator of the values of the lists in its texts, in place of that of the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it is not given. |
+| `list_separator` | text or `false` | absent | The separator its columns of lists are found by, in place of that of the project - one character, no letter, digit, `-`, `+` or `_` -, or False where it has none, whatever the project gives; None where it is not given. |
 
 #### ColumnOverride
 
@@ -756,6 +769,7 @@ What is given by hand of a column.
 | `sensitivity` | `none`, `personal` or `payment-card` | absent | The sensitivity of the column, or None where it is not given. |
 | `sentinels` | list of text | absent | The values that stand for no value in the column, in place of those of the tool, none where empty; None where they are not given. |
 | `enumeration` | boolean | absent | True where the column is an enumeration - of the values of its lists, of a column of lists -, of at most as many values as the tool counts of one, whatever its type and its semantic types, False where it is none, whatever is found; None where it is not given. |
+| `list_separator` | text or `false` | absent | The separator of the values of the lists its texts are, in place of that of its table, whatever is found - one character, no letter, digit, `-`, `+` or `_`, of a column of text -, or False where its texts are no lists, whatever is found; None where it is not given. |
 | `reading` | list of text | absent | The word of the concept each term of its name stands for, in their order, or None where it is not given. |
 | `name` | text | absent | Its harmonized name, in snake_case, in place of the one composed from its reading, or None where it is not given. |
 | `description` | text | absent | What it holds, in place of the description proposed, or None where it is not given. |

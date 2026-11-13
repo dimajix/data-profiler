@@ -10,12 +10,13 @@ stages take it.
 `scan` takes what is given of each table it selects, a `TableOverride`, by `Overrides.selected`:
 `agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels` go
 to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
-have, a primary key that cannot be one, and sentinels the table was not counted with; its
-`list_separator`, in place of that of the project, to the columns of lists, `enumerations` to the
-enumerations of its columns and of the values of their lists, `primary_key` to the keys,
-`determining_none` to the column dependencies, and `discriminator` to the entities; and
-`TableOverride.laid_over` marks its columns, gives them the enumerations given, so that the profile
-holds them as `scan` counted them, and drops the dependencies of a column determining none, refusing
+have, a primary key that cannot be one, sentinels the table was not counted with, and a separator
+of lists of a column of no text; its `separator`, in place of that of the project, and its
+`list_separators`, of its columns, to the columns of lists, `enumerations` to the enumerations of
+its columns and of the values of their lists, `primary_key` to the keys, `determining_none` to the
+column dependencies, and `discriminator` to the entities; and `TableOverride.laid_over` marks its
+columns, gives them the enumerations and the separators of lists given, so that the profile holds
+them as `scan` counted them, and drops the dependencies of a column determining none, refusing
 a primary key or a discriminator that cannot be one, before the module `disclosure` decides
 what of its values the profile holds, so that the profile holds no values of a column marked
 sensitive. `relate` takes the references given, by `Overrides.references`, refused before it queries
@@ -52,11 +53,12 @@ from data_profiler.glossary import (
 from data_profiler.profile import (
     Concept,
     Discriminator,
-    ListSeparator,
+    GivenSeparator,
     PrimaryKey,
     Profile,
     Table,
 )
+from data_profiler.source import Dialect
 
 _logger = logging.getLogger(__name__)
 
@@ -85,6 +87,10 @@ type GivenReference = ReferenceOverride | Literal[False] | None
 # The references the overrides give of the columns of a table, by their names: the key, or False.
 type GivenReferences = Mapping[str, ReferenceOverride | Literal[False]]
 
+# The separators of lists the overrides give of the columns of a table, by their names: the
+# separator, or False.
+type GivenSeparators = Mapping[str, str | Literal[False]]
+
 
 @dataclass(frozen=True)
 class ColumnOverride:
@@ -98,6 +104,10 @@ class ColumnOverride:
             column of lists -, of at most as many values as the tool counts of one, whatever its
             type and its semantic types, False where it is none, whatever is found; None where it
             is not given.
+        list_separator: The separator of the values of the lists its texts are, in place of that
+            of its table, whatever is found - one character, no letter, digit, `-`, `+` or `_`, of
+            a column of text -, or False where its texts are no lists, whatever is found; None
+            where it is not given.
         reading: The word of the concept each term of its name stands for, in their order, or
             None where it is not given.
         name: Its harmonized name, in snake_case, in place of the one composed from its reading,
@@ -113,6 +123,7 @@ class ColumnOverride:
     sensitivity: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
     enumeration: bool | None = None
+    list_separator: GivenSeparator = None
     reading: tuple[str, ...] | None = None
     name: str | None = None
     description: str | None = None
@@ -174,9 +185,9 @@ class TableOverride:
             found; None where it is not given.
         primary_key: The columns of its primary key, in place of the one chosen among its keys,
             one at least and each once, or None where it is not given.
-        list_separator: The separator of the values of the lists in its texts, in place of that of
-            the project - one character, no letter, digit, `-`, `+` or `_` -, or None where it is
-            not given.
+        list_separator: The separator its columns of lists are found by, in place of that of the
+            project - one character, no letter, digit, `-`, `+` or `_` -, or False where it has
+            none, whatever the project gives; None where it is not given.
     """
 
     columns: Mapping[str, ColumnOverride] = field(default_factory=dict)
@@ -185,7 +196,7 @@ class TableOverride:
     description: str | None = None
     discriminator: GivenDiscriminator = None
     primary_key: tuple[str, ...] | None = None
-    list_separator: ListSeparator | None = None
+    list_separator: GivenSeparator = None
 
     @property
     def sentinels(self) -> dict[str, tuple[str, ...]]:
@@ -206,6 +217,15 @@ class TableOverride:
         }
 
     @property
+    def list_separators(self) -> GivenSeparators:
+        """The separator of lists given of each column, or False, by its name, of those given."""
+        return {
+            name: column.list_separator
+            for name, column in self.columns.items()
+            if column.list_separator is not None
+        }
+
+    @property
     def determining_none(self) -> frozenset[str]:
         """The columns given as determining no other column, by their names."""
         return frozenset(
@@ -217,8 +237,21 @@ class TableOverride:
         """The discriminator given, or None where none is, or False."""
         return self.discriminator if isinstance(self.discriminator, DiscriminatorOverride) else None
 
+    def separator(self, project: str | None) -> str | None:
+        """The separator the columns of lists of the table are found by, of those given none.
+
+        Args:
+            project: The separator of lists of the project, or None where it gives none.
+
+        Returns:
+            The separator given of the table, none where False is given, else `project`.
+        """
+        if self.list_separator is None:
+            return project
+        return self.list_separator or None
+
     def laid_over(self, table: Table) -> Table:
-        """`table` with its columns marked, enumerated and determining as given.
+        """`table` with its columns marked, enumerated, listed and determining as given.
 
         Args:
             table: The table.
@@ -226,8 +259,8 @@ class TableOverride:
         Returns:
             The table, its columns marked with the sensitivity given of each, and only so, their
             values as they are, for the module `disclosure` to decide on, and with the enumeration
-            given of each, and only so; without the column dependencies of which a determinant is
-            given as determining no other column.
+            and the separator of lists given of each, and only so; without the column dependencies
+            of which a determinant is given as determining no other column.
 
         Raises:
             OverridesError: A column is named that the table does not have, or a primary key is
@@ -242,6 +275,7 @@ class TableOverride:
                 column,
                 marked=self._given(column.name).sensitivity,
                 enumeration=self._given(column.name).enumeration,
+                list_separator_given=self._given(column.name).list_separator,
             )
             for column in table.columns
         )
@@ -324,8 +358,9 @@ class TableOverride:
     def agrees_with(self, table: Table) -> bool:
         """Whether `table` agrees with what is given: marked, counted, determined and discriminated.
 
-        The separator of lists is judged by `scan`, by `lists.is_listed_with`, as it is that of the
-        project where none is given, which an override of a table does not know.
+        The separator of lists of the columns given none is judged by `scan`, by
+        `lists.is_listed_with`, as it is that of the project where the table is given none, which an
+        override of a table does not know.
 
         Args:
             table: The table.
@@ -334,10 +369,10 @@ class TableOverride:
             the sentinels given of it, the table has the primary key given, or one chosen where none
             is given, and was discriminated as given: its discriminator counted with the values
             given of its entities, none where False is given, and one found or none where nothing is
-            given; False where it would mark its columns otherwise or give them other enumerations,
-            or the table holds a column dependency of a column given as determining none, a column
-            was counted with other sentinels, the table has another primary key, was discriminated
-            otherwise, or lacks a column that is named.
+            given; False where it would mark its columns otherwise or give them other enumerations
+            or separators of lists, or the table holds a column dependency of a column given as
+            determining none, a column was counted with other sentinels, the table has another
+            primary key, was discriminated otherwise, or lacks a column that is named.
 
         Raises:
             OverridesError: The primary key or the discriminator given is refused, as
@@ -351,25 +386,29 @@ class TableOverride:
             and not self._counted_otherwise(table)
         )
 
-    def refuse_uncounted(self, table: Table) -> None:
+    def refuse_uncounted(self, table: Table, dialect: Dialect) -> None:
         """Refuses what is given of `table` that it was not counted with, once it is counted.
 
         Of the sentinels given of a column, `statistics.count` counts those its type can hold, in
         the form the database writes its values - none, where it writes them as no text -, so
         that right after it a column is counted otherwise than given only where a sentinel is
-        given that it cannot hold: such as `-1` of a `double`, which Trino writes `-1.0E0`.
+        given that it cannot hold: such as `-1` of a `double`, which Trino writes `-1.0E0`. The
+        values of the lists of a column are counted of its texts alone, so that a separator of lists
+        given of a column of a type that holds no texts cannot be counted with.
 
         Args:
             table: The table, as `statistics.count` counted it.
+            dialect: The dialect of the database, which tells the types that hold texts.
 
         Raises:
             OverridesError: A column is named that the table does not have, a primary key is given
-                of no columns or of a column twice, or sentinels are given of a column that its
-                type cannot hold.
+                of no columns or of a column twice, sentinels are given of a column that its type
+                cannot hold, or a separator of lists of a column of a type that holds no texts.
         """
         self._refuse_missing(table)
         self._refuse_primary_key(table)
         self._refuse_uncounted_sentinels(table)
+        self._refuse_unlisted(table, dialect)
 
     def references(self, table: Table, profile: Profile) -> GivenReferences:
         """The references given of the columns of `table`, of `profile`, of those given.
@@ -453,6 +492,25 @@ class TableOverride:
             raise OverridesError(
                 f"the overrides give sentinels of columns of {table.name} that their types cannot"
                 f" hold, as the database writes their values otherwise: {'; '.join(refused)}"
+            )
+
+    def _refuse_unlisted(self, table: Table, dialect: Dialect) -> None:
+        """Refuses the separators of lists given of the columns of `table` of no text.
+
+        Raises:
+            OverridesError: A separator of lists is given of a column of a type that holds no
+                texts, as `dialect` tells.
+        """
+        given = self.list_separators
+        refused = [
+            f"{column.name} ({column.type})"
+            for column in sorted(table.columns, key=lambda column: column.name)
+            if given.get(column.name) and not dialect.is_text(column.type)
+        ]
+        if refused:
+            raise OverridesError(
+                f"the overrides give separators of lists of columns of {table.name} of no text: "
+                + ", ".join(refused)
             )
 
     def _refuse_primary_key(self, table: Table) -> None:
@@ -808,5 +866,5 @@ def _laid_over(given: Mapping[str, Concept], proposed: Mapping[str, Concept]) ->
     return concepts
 
 
-FORMAT: Final = Format(Overrides, Version(7, 7))
+FORMAT: Final = Format(Overrides, Version(7, 8))
 """The format of the overrides, its version raised as `documents` says."""

@@ -1,5 +1,11 @@
 """Tests of columns of lists: found in the sample of a table made by hand, by a separator given."""
 
+import logging
+from dataclasses import replace
+from typing import Literal
+
+import pytest
+
 from data_profiler.lists import is_listed_with, listed
 from data_profiler.profile import Column, Lengths, Statistics, Table, Value
 from data_profiler.source import dialect
@@ -29,30 +35,49 @@ def _separators(table: Table) -> list[str | None]:
 
 
 def test_a_column_of_lists_has_the_separator_and_another_has_none() -> None:
-    assert _separators(listed(_DIALECT, _table(), _SAMPLE, ";")) == [";", None]
+    assert _separators(listed(_DIALECT, _table(), _SAMPLE, ";", {})) == [";", None]
 
 
 def test_no_column_is_one_of_lists_without_a_separator() -> None:
-    assert _separators(listed(_DIALECT, _table(), _SAMPLE, None)) == [None, None]
+    assert _separators(listed(_DIALECT, _table(), _SAMPLE, None, {})) == [None, None]
 
 
 def test_a_column_of_lists_of_another_separator_than_given_is_none() -> None:
-    assert _separators(listed(_DIALECT, _table("|"), _SAMPLE, "|")) == [None, None], (
+    assert _separators(listed(_DIALECT, _table("|"), _SAMPLE, "|", {})) == [None, None], (
         "the separator it held is replaced by what the sample shows"
     )
+
+
+def test_a_column_given_a_separator_or_none_has_it_whatever_its_sample_holds(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    given: dict[str, str | Literal[False]] = {"ids": False, "name": "|"}
+    with caplog.at_level(logging.WARNING):
+        assert _separators(listed(_DIALECT, _table(), _SAMPLE, ";", given)) == [None, "|"]
+    assert [record.getMessage() for record in caplog.records] == [
+        "The overrides give t.name a separator of lists its sample holds no lists of"
+    ]
+
+
+def test_a_column_given_a_separator_without_one_of_the_table_has_it_unwarned(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING):
+        assert _separators(listed(_DIALECT, _table(), _SAMPLE, None, {"ids": ";"})) == [";", None]
+    assert not caplog.records, "its sample holds lists of it"
 
 
 def test_the_nulls_and_the_sentinels_found_of_a_column_are_no_lists() -> None:
     found = Statistics(0, 3, Lengths(0, 7), sentinels=(Value("", 1), Value("N/A", 1)))
     table = Table(name="t", rows=6, columns=(Column("ids", "varchar(40)", found),))
     sample = Sample({"ids": ["12;47;3", None, "", "N/A", "4", "7;12"]})
-    (ids,) = listed(_DIALECT, table, sample, ";").columns
+    (ids,) = listed(_DIALECT, table, sample, ";", {}).columns
     assert ids.list_separator == ";"
 
 
 def test_a_column_of_no_text_is_no_column_of_lists() -> None:
     table = Table(name="t", rows=2, columns=(Column("price", "decimal(6,2)", Statistics(0, 2)),))
-    (price,) = listed(_DIALECT, table, Sample({"price": ["12.50", "3"]}), ".").columns
+    (price,) = listed(_DIALECT, table, Sample({"price": ["12.50", "3"]}), ".", {}).columns
     assert price.list_separator is None, "a decimal, though its text would be a list of a dot"
 
 
@@ -61,3 +86,6 @@ def test_a_table_is_listed_with_a_separator_where_no_column_is_a_list_of_another
     assert is_listed_with(_table(), "|"), "a table of no lists cannot tell"
     assert not is_listed_with(_table(";"), "|")
     assert not is_listed_with(_table(";"), None)
+    ids, name = _table(";").columns
+    given = replace(ids, list_separator_given=";")
+    assert is_listed_with(replace(_table(), columns=(given, name)), "|"), "the overrides judge"

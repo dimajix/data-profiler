@@ -1,13 +1,14 @@
 """Columns of lists: the columns of a table whose texts are lists of values, and their values.
 
 The separator of the values of a list is configured, not guessed: the project gives one, the same in
-all its tables, and an override of a table one in its place. A column of text is one of lists where
-the module `detect` takes the values of the sample, its nulls and sentinels aside, as the dialect
-tells them, for lists of values separated by it; a column of texts of one value each is none, though
-each is a list of one, and a column of no text is none, though a decimal written as text, `12.50`,
-would be a list of a dot. No query is needed. The texts of a column of lists are no enumeration, as
-the module `enumerations` says, and no values of a discriminator; the values of its lists are, as
-the module `entities` says.
+all its tables, and an override of a table one in its place, or none. A column of text is one of
+lists where the module `detect` takes the values of the sample, its nulls and sentinels aside, as
+the dialect tells them, for lists of values separated by it; a column of texts of one value each is
+none, though each is a list of one, and a column of no text is none, though a decimal written as
+text, `12.50`, would be a list of a dot. No query is needed. An override of a column gives its
+separator, or none, whatever is found, warned of where its sample holds no lists of it. The texts
+of a column of lists are no enumeration, as the module `enumerations` says, and no values of a
+discriminator; the values of its lists are, as the module `entities` says.
 
 The values of the lists of a column are counted as the values of a column are, by the modules that
 count those, of a source that reads the table as a row of each value, `Source.unnested`: their
@@ -25,6 +26,7 @@ from dataclasses import replace
 from data_profiler.detect import SemanticType, is_list
 from data_profiler.enumerations import valued, values
 from data_profiler.matching import recognise, verify
+from data_profiler.overrides import GivenSeparators
 from data_profiler.profile import Column, Table
 from data_profiler.source import Dialect, Source
 from data_profiler.statistics import count
@@ -33,35 +35,35 @@ from data_profiler.workspace import Sample
 _logger = logging.getLogger(__name__)
 
 
-def listed(dialect: Dialect, table: Table, sample: Sample, separator: str | None) -> Table:
-    """`table`, each column whose sample holds lists of values separated by `separator` with it.
+def listed(
+    dialect: Dialect,
+    table: Table,
+    sample: Sample,
+    separator: str | None,
+    given: GivenSeparators,
+) -> Table:
+    """`table`, each column given a separator of lists, or of lists of `separator`, with it.
 
     Args:
-        dialect: The dialect of the database, which tells the sentinels of a sample.
+        dialect: The dialect of the database, which tells the sentinels of a sample and the types
+            that hold texts.
         table: The table, with its columns and their statistics.
         sample: The sample of the table, with the values of each of its columns.
         separator: The separator of the values of a list, or None where none is given, so that no
-            column is one of lists.
+            column is one of lists but those given one.
+        given: The separator of lists of each column, given by hand, or False where it is none,
+            by the name of the column, of those it is given of; a column of a type that holds no
+            texts is given none.
 
     Returns:
-        The table, each column of text of lists with its separator, every other without one.
+        The table, each column of text given none whose sample holds lists of `separator` with
+        it, each column given a separator with it, whatever its sample holds, every other without
+        one.
     """
     columns = tuple(
         replace(
             column,
-            list_separator=separator
-            if separator is not None
-            # Only a column of text has lengths.
-            and column.statistics.lengths is not None
-            and is_list(
-                [
-                    value
-                    for value in sample.columns[column.name]
-                    if dialect.is_filled(column.type, value, column.left_aside)
-                ],
-                separator,
-            )
-            else None,
+            list_separator=_separator(dialect, table.name, column, sample, separator, given),
         )
         for column in table.columns
     )
@@ -71,19 +73,59 @@ def listed(dialect: Dialect, table: Table, sample: Sample, separator: str | None
     return replace(table, columns=columns)
 
 
+def _separator(
+    dialect: Dialect,
+    table: str,
+    column: Column,
+    sample: Sample,
+    separator: str | None,
+    given: GivenSeparators,
+) -> str | None:
+    """The separator of the lists of `column`, of `table`, as `listed` finds or is given it."""
+    of_column = given.get(column.name)
+    if of_column is None:
+        if separator is None or not dialect.is_text(column.type):
+            return None
+        return separator if is_list(_filled(dialect, column, sample), separator) else None
+    if of_column is False:
+        return None
+    if not is_list(_filled(dialect, column, sample), of_column):
+        _logger.warning(
+            "The overrides give %s.%s a separator of lists its sample holds no lists of",
+            table,
+            column.name,
+        )
+    return of_column
+
+
+def _filled(dialect: Dialect, column: Column, sample: Sample) -> list[object]:
+    """The values of `column` in `sample` but its nulls and sentinels, as `dialect` tells them."""
+    return [
+        value
+        for value in sample.columns[column.name]
+        if dialect.is_filled(column.type, value, column.left_aside)
+    ]
+
+
 def is_listed_with(table: Table, separator: str | None) -> bool:
     """Whether `table` was counted with `separator`: none of its columns a list of another.
 
-    A table counted without a separator, or of no list, cannot be told from one counted with it.
+    A column given a separator of lists, or none, is not judged: whether it was counted with the
+    one given, the overrides judge. A table counted without a separator, or of no list, cannot be
+    told from one counted with it.
 
     Args:
         table: The table, as a profile holds it.
         separator: The separator of the values of a list it is to be counted with, or None.
 
     Returns:
-        Whether each of its columns of lists has `separator`.
+        Whether each of its columns of lists given none has `separator`.
     """
-    return all(column.list_separator in (None, separator) for column in table.columns)
+    return all(
+        column.list_separator in (None, separator)
+        for column in table.columns
+        if column.list_separator_given is None
+    )
 
 
 def itemize(

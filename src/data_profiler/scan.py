@@ -10,13 +10,13 @@ the sample, and verified on the whole table, by the module `keys`; the columns f
 found in the sample, by the module `grouping`, and the columns whose values follow from another are
 found in the sample and verified on the whole table, by the module `dependencies`, of no determinant
 the overrides give as determining none. Its columns of lists are found in the sample, by the module
-`lists`, of the separator the overrides give of the table, else that of the project, which counts
-the values of their lists as well. The overrides of the project mark its columns as they give, and
-which values of the database go into the profile - the ranges and enumerations of the columns of no
-sensitivity -, the module `disclosure` decides, by the same types and those marks. Of the
-enumerations the profile holds, of the values of columns and of the lists of a column, the module
-`entities` finds the discriminator whose values tell the entities of the rows apart, by queries of
-its own, or takes the one the overrides give.
+`lists`, of the separator the overrides give of each column, else of the table, else that of the
+project, which counts the values of their lists as well. The overrides of the project mark its
+columns as they give, and which values of the database go into the profile - the ranges and
+enumerations of the columns of no sensitivity -, the module `disclosure` decides, by the same types
+and those marks. Of the enumerations the profile holds, of the values of columns and of the lists of
+a column, the module `entities` finds the discriminator whose values tell the entities of the rows
+apart, by queries of its own, or takes the one the overrides give.
 
 The profile is written after every table, so that a scan that fails at one table keeps those before
 it, each table with the run that counted it. A run that did not finish is resumed by the next scan,
@@ -96,8 +96,9 @@ def scan(
             column dependencies, or to count the rows of its entities.
         WorkspaceError: The enumerations or the sample of a table cannot be written.
         OverridesError: The overrides name a table that is not selected, or a column its table
-            does not have, or give sentinels of a column that its type cannot hold, or a primary
-            key or a discriminator that cannot be one, as `TableOverride.laid_over` says.
+            does not have, or give sentinels of a column that its type cannot hold, a separator of
+            lists of a column of a type that holds no texts, or a primary key or a discriminator
+            that cannot be one, as `TableOverride.laid_over` says.
         ProfileError: The profile there is cannot be read, is of another schema, or the profile
             cannot be written.
     """
@@ -109,7 +110,7 @@ def scan(
     profile.write(directory)
     dialect = source.dialect
     for name in names:
-        separator = given[name].list_separator or list_separator
+        separator = given[name].separator(list_separator)
         kept = profile.counted(name)
         if kept is not None and given[name].agrees_with(kept) and is_listed_with(kept, separator):
             _logger.info("Skipping %s, counted by the run resumed", name)
@@ -122,11 +123,11 @@ def scan(
             )
         _logger.info("Scanning %s", name)
         table = count(source, name, given[name].sentinels)
-        given[name].refuse_uncounted(table)
+        given[name].refuse_uncounted(table, dialect)
         _logger.info("Scanned %s: %d rows, %d columns", name, table.rows, len(table.columns))
         sample = take(source, table)
         workspace.write_sample(name, sample)
-        listing = listed(dialect, table, sample, separator)
+        listing = listed(dialect, table, sample, separator, given[name].list_separators)
         verified = verify(source, recognise(dialect, listing, sample, types))
         enumerations = values(source, verified, given[name].enumerations)
         workspace.write_enumerations(name, enumerations)
