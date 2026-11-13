@@ -59,7 +59,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [22](22-a-condition-of-a-column.md) | done | A detector judges each value on its own, against one threshold of all types, so that a type that shows only in the values of a column together - a pair of flags, free text - cannot be recognised. |
 | [41](41-detectors-of-currencies.md) | done | Nothing recognises a column of currencies - written as the alphabetic code of ISO 4217, `EUR`, as its number, `978`, or by its English name, `Euro` -, so that a currency is told to the language model as nothing but a text or a number. |
 | [42](42-detectors-of-countries.md) | done | Nothing recognises a column of countries - written as a code of ISO 3166-1 of two letters, `DE`, or of three, `DEU`, as its number, `276`, or by its name, `Germany` -, so that a country is told to the language model as nothing but a text or a number. |
-| [66](66-a-detector-of-json-documents.md) | open | Nothing recognises a column of text whose values are JSON documents - objects or arrays, such as payloads, settings or attributes of a row -, so that such a column is told to the language model as nothing but a text, and is checked for codes, enumerations and free text like any other. |
+| [66](66-detectors-of-json-documents.md) | open | Nothing recognises a column of text whose values are JSON documents - objects or arrays, such as payloads, settings or attributes of a row -, nor the broken documents among them, so that such a column is told to the language model as nothing but a text, and is checked for codes, enumerations and free text like any other. |
 
 ## Describe
 
