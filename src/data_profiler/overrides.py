@@ -9,7 +9,7 @@ stages take it.
 
 `scan` takes what is given of each table it selects, a `TableOverride`, by `Overrides.selected`:
 `agrees_with` tells whether a table a run resumed counted is to be counted again; its `sentinels` go
-to the counting of the table, after which `refuse_uncounted` refuses a column the table does not
+to the counting of the table, after which `refuse_unfit` refuses a column the table does not
 have, a primary key that cannot be one, sentinels the table was not counted with, and a separator
 of lists of a column of no text; its `separator`, in place of that of the project, and its
 `list_separators`, of its columns, to the columns of lists, `enumerations` to the enumerations of
@@ -389,8 +389,8 @@ class TableOverride:
             and _listed_with(table, self.separator(project))
         )
 
-    def refuse_uncounted(self, table: Table, dialect: Dialect) -> None:
-        """Refuses what is given of `table` that it was not counted with, once it is counted.
+    def refuse_unfit(self, table: Table, dialect: Dialect) -> None:
+        """Refuses what is given of `table` that cannot be of it, once it is counted.
 
         Of the sentinels given of a column, `statistics.count` counts those its type can hold, in
         the form the database writes its values - none, where it writes them as no text -, so

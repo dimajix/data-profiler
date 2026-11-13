@@ -39,7 +39,7 @@ def count(
 
     Returns:
         The table, its rows counted, its columns in their order, each with those of the sentinels
-        given of it that its type can hold, for `refuse_uncounted` to refuse the others.
+        given of it that its type can hold, for `refuse_unfit` to refuse the others.
 
     Raises:
         SourceError: The schema has no such table, or the database fails to count it.
