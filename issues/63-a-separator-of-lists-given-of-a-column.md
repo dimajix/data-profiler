@@ -1,6 +1,6 @@
 # 63 — A separator of lists given of a column
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Scan
@@ -77,3 +77,22 @@ were counted with; and PROJECT.md and the doc comments say so.
 
 2026-11-13: Opened on the maintainer's request: a separator of lists given of a column, as so far
 only the project and a table give one.
+
+2026-11-13: Decided with the maintainer, in one step: a separator given of a column is taken
+whatever is found, warned of where its sample holds no lists of it, and refused of a column of no
+text; `list_separator: false` of a table and of a column. Against what the description says, the
+profile has to hold the separator given: a column given one whose texts are no lists, or given
+`false`, cannot be told from one found so once the override is taken out, and a run resumed would
+skip its table. So the profile holds it at the column, `list_separator_given`, as it holds the
+enumeration given, set by `TableOverride.laid_over`, so that `agrees_with` tells a table counted
+otherwise; `lists.is_listed_with` judges the columns given none alone.
+
+2026-11-13: Done as decided. `GivenSeparator` of the profile, a separator or False, read by one
+validator so that a separator refused is refused as before; `ColumnOverride.list_separator`,
+`TableOverride.list_separator` of that form, `TableOverride.list_separators` and
+`TableOverride.separator`, the latter deciding between the table and the project; `lists.listed`
+takes the separators given of the columns, `GivenSeparators`; `TableOverride.refuse_uncounted`
+refuses a separator of a column of a type that holds no texts, as the dialect tells - not of a
+column without lengths, which a column of text of nulls alone is as well, in an environment that
+holds none -, and `lists` finds the columns of lists by the type alike. The formats of the profile
+and of the overrides are raised to 14.7 and 7.8.

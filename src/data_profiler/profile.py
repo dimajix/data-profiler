@@ -5,7 +5,8 @@ the overrides of the project, laid over it: it holds no values of the columns fo
 match names its semantic type by its name, of a type of the tool or of the project, whose types the
 profile holds in the form `project.yml` gives them, so that it is read without its project. The
 separator of lists a column of lists holds is of the form `ListSeparator`, which `project.yml` and
-the overrides give it in as well.
+the overrides give it in as well, and the one the overrides give of a column of the form
+`GivenSeparator`.
 
 A profile is a directory of documents, written as YAML in the formats below, of one version, and
 read back by the same classes: `profile.yml` holds the profile but its tables, and `tables/` a file
@@ -31,7 +32,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Final, Self
+from typing import Annotated, Final, Literal, Self
 
 from pydantic import AfterValidator, PlainSerializer, PlainValidator, TypeAdapter, ValidationInfo
 from pydantic_core import PydanticCustomError
@@ -50,7 +51,7 @@ from data_profiler.files import is_file_name
 
 _logger = logging.getLogger(__name__)
 
-VERSION: Final = Version(14, 6)
+VERSION: Final = Version(14, 7)
 """The version of the formats of both files of a profile, raised as `documents` says.
 
 A change to the files the classes below are written to is incompatible as well. A profile of
@@ -143,6 +144,32 @@ def _list_separator(text: str) -> str:
 
 type ListSeparator = Annotated[str, AfterValidator(_list_separator)]
 """The separator of the values of a list in a document, refused where it cannot be one."""
+
+
+def _given_separator(value: object) -> str | Literal[False]:
+    """`value`, where it is False, or may separate the values of a list, as `ListSeparator` says."""
+    if value is False:
+        return False
+    if not isinstance(value, str):
+        raise PydanticCustomError(
+            "list_separator",
+            "{value} is neither a separator of lists nor false",
+            {"value": repr(value)},
+        )
+    return _list_separator(value)
+
+
+type GivenSeparator = (
+    Annotated[
+        str | Literal[False],
+        PlainValidator(_given_separator, json_schema_input_type=str | Literal[False]),
+    ]
+    | None
+)
+"""A separator of lists given by hand, or False for none, whatever is found; None if not given.
+
+One validator reads both, so that a separator refused is refused as `ListSeparator` refuses it.
+"""
 
 
 def _semantic_type(name: object, info: ValidationInfo) -> SemanticType:
@@ -327,6 +354,9 @@ class Column:
             values of its lists, of a column of lists -, in a profile written as `scan` counted
             it: True where it is one, of at most as many values as the tool counts of one,
             whatever is found, False where it is none; None where it is not given.
+        list_separator_given: The separator of lists given by hand, by an override, in a profile
+            written as `scan` counted it: the separator its texts are lists of, whatever is
+            found, or False where they are none; None where it is not given.
         terms: The terms of its name, in their order, or None where it is not split yet.
         reading: The reading of its name: the word of the concept each of its terms stands for,
             at its place, the digits of a term of digits; None where it is not read.
@@ -346,6 +376,7 @@ class Column:
     marked: Sensitivity | None = None
     sentinels: tuple[str, ...] | None = None
     enumeration: bool | None = None
+    list_separator_given: GivenSeparator = None
     terms: tuple[Term, ...] | None = None
     reading: tuple[str, ...] | None = None
     description: str | None = None

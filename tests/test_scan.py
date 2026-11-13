@@ -1,5 +1,6 @@
 """Tests of the stage scan, against the simulation environment, which has to run."""
 
+import logging
 import re
 from dataclasses import replace
 from pathlib import Path
@@ -525,3 +526,57 @@ def test_the_separator_of_lists_given_of_a_table_comes_before_that_of_the_projec
     given = Overrides(tables={"cust": TableOverride(list_separator="|")})
     (cust,) = _scanned(source, "cust", tmp_path, overrides=given).tables
     assert cust.column("grp_ids").list_separator is None, "its lists are of semicolons"
+
+
+def test_the_separator_of_lists_given_of_a_column_comes_before_that_of_its_table(
+    source: Source, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    columns = {
+        "grp_ids": ColumnOverride(list_separator=";"),
+        "cust_typ_cd": ColumnOverride(list_separator=";"),
+    }
+    given = TableOverride(columns, list_separator="|")
+    with caplog.at_level(logging.WARNING):
+        (cust,) = _scanned(
+            source, "cust", tmp_path, overrides=Overrides(tables={"cust": given})
+        ).tables
+    assert cust.column("grp_ids").list_separator == ";"
+    assert cust.column("grp_ids").items is not None, "the values of its lists counted"
+    assert cust.column("fav_prod_ids").list_separator is None, "its lists are of semicolons"
+    assert cust.column("cust_typ_cd").list_separator == ";", "as given, though of no lists"
+    assert "give cust.cust_typ_cd a separator of lists its sample holds no lists of" in caplog.text
+    assert given.agrees_with(cust)
+
+
+def test_a_table_given_no_separator_of_lists_has_no_columns_of_lists(
+    source: Source, tmp_path: Path
+) -> None:
+    given = Overrides(tables={"cust": TableOverride(list_separator=False)})
+    (cust,) = _scanned(source, "cust", tmp_path, overrides=given).tables
+    assert all(column.list_separator is None for column in cust.columns), "though the project's"
+
+
+def test_a_separator_of_lists_given_of_a_column_of_no_text_is_refused_before_it_is_listed(
+    source: Source, tmp_path: Path
+) -> None:
+    columns = {"cust_id": ColumnOverride(list_separator=";")}
+    given = Overrides(tables={"cust": TableOverride(columns)})
+    with pytest.raises(OverridesError, match=r"of cust of no text: cust_id \(bigint\)"):
+        _scanned(source, "cust", tmp_path, overrides=given)
+
+
+def test_a_run_resumed_counts_a_table_anew_whose_column_is_given_a_separator_no_longer(
+    source: Source, tmp_path: Path
+) -> None:
+    columns = {"grp_ids": ColumnOverride(list_separator=False)}
+    given = Overrides(tables={"cust": TableOverride(columns)})
+    scanned = _scanned(source, "cust", tmp_path, overrides=given)
+    assert scanned.run is not None
+    (cust,) = scanned.tables
+    assert cust.column("grp_ids").list_separator is None, "none, as given"
+    # A run that did not finish, its table told apart from those a scan counts.
+    unfinished = replace(scanned, run=replace(scanned.run, finished=None))
+    unfinished.updated(replace(cust, rows=-1)).write(tmp_path / "profile")
+    (table,) = _scanned(source, "cust", tmp_path).tables
+    assert table.rows != -1, "counted anew"
+    assert table.column("grp_ids").list_separator == ";", "found by that of the project"

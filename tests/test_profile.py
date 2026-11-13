@@ -169,6 +169,18 @@ def test_a_column_of_lists_is_written_and_read_with_its_separator(tmp_path: Path
     assert Profile.read(tmp_path) == profile
 
 
+def test_a_column_is_written_and_read_with_the_separator_of_lists_given_or_none(
+    tmp_path: Path,
+) -> None:
+    (table,) = _PROFILE.tables
+    first, second, *others = table.columns
+    given = replace(first, list_separator=";", list_separator_given=";")
+    none = replace(second, list_separator_given=False)
+    profile = replace(_PROFILE, tables=(replace(table, columns=(given, none, *others)),))
+    profile.write(tmp_path)
+    assert Profile.read(tmp_path) == profile
+
+
 def test_a_column_of_lists_of_a_separator_that_cannot_be_one_is_refused(tmp_path: Path) -> None:
     with pytest.raises(ProfileError, match=r"list_separator: 'x' is no separator of lists"):
         Profile.read(_written(tmp_path, {"list_separator": "x"}))

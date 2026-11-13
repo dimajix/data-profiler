@@ -33,6 +33,10 @@ from data_profiler.profile import (
     Table,
     Value,
 )
+from data_profiler.source import dialect
+
+# The dialect of the tables of these tests, which tells the types that hold texts.
+_DIALECT = dialect("trino://h/c/s")
 
 _EXAMPLE = Path(__file__).parents[1] / "examples" / "crm" / "overrides.yml"
 
@@ -131,20 +135,66 @@ def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_enumeratio
     assert not TableOverride().agrees_with(laid), "counted with an enumeration no longer given"
 
 
+def test_a_table_agrees_with_the_overrides_where_its_columns_have_the_separators_given() -> None:
+    given = TableOverride(columns={"frst_nm": ColumnOverride(list_separator=False)})
+    assert given.list_separators == {"frst_nm": False}
+    (table,) = _PROFILE.tables
+    laid = given.laid_over(table)
+    assert [column.list_separator_given for column in laid.columns] == [False, None], "only so"
+    assert not given.agrees_with(table), "counted with no separator given"
+    assert given.agrees_with(laid)
+    assert not TableOverride().agrees_with(laid), "counted with a separator no longer given"
+    otherwise = TableOverride(columns={"frst_nm": ColumnOverride(list_separator=";")})
+    assert not otherwise.agrees_with(laid), "counted with another separator given"
+
+
+def test_the_separator_of_a_table_is_the_one_given_none_where_false_else_that_of_the_project() -> (
+    None
+):
+    assert TableOverride(list_separator="|").separator(";") == "|"
+    assert TableOverride(list_separator=False).separator(";") is None
+    assert TableOverride().separator(";") == ";"
+    assert TableOverride().separator(None) is None
+
+
+def test_a_separator_of_lists_given_of_a_column_of_no_text_is_refused_naming_it() -> None:
+    given = TableOverride(
+        columns={
+            "frst_nm": ColumnOverride(list_separator=";"),
+            "cntct_typ_cd": ColumnOverride(list_separator=False),
+        }
+    )
+    (table,) = _PROFILE.tables
+    frst_nm, other = table.columns
+    assert frst_nm.statistics.lengths is None, "as of a column of text of nulls alone"
+    given.refuse_uncounted(table, _DIALECT)
+    numbers = replace(table, columns=(replace(frst_nm, type="bigint"), replace(other, type="date")))
+    with pytest.raises(OverridesError, match=r"of cntct of no text: frst_nm \(bigint\)$"):
+        given.refuse_uncounted(numbers, _DIALECT)
+
+
 def test_sentinels_given_of_a_column_counted_without_them_are_refused_naming_them() -> None:
     given = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=("", "-1"))})
     (table,) = _PROFILE.tables
     frst_nm, other = table.columns
     with pytest.raises(OverridesError, match="cannot hold") as refused:
-        given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("",)), other)))
+        given.refuse_uncounted(
+            replace(table, columns=(replace(frst_nm, sentinels=("",)), other)), _DIALECT
+        )
     assert str(refused.value).endswith(f'otherwise: frst_nm ({frst_nm.type}): "-1"')
     with pytest.raises(OverridesError, match=r'frst_nm \(.*\): "", "-1"$'):
-        given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=()), other)))
-    given.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=("", "-1")), other)))
+        given.refuse_uncounted(
+            replace(table, columns=(replace(frst_nm, sentinels=()), other)), _DIALECT
+        )
+    given.refuse_uncounted(
+        replace(table, columns=(replace(frst_nm, sentinels=("", "-1")), other)), _DIALECT
+    )
     empty = TableOverride(columns={"frst_nm": ColumnOverride(sentinels=())})
-    empty.refuse_uncounted(replace(table, columns=(replace(frst_nm, sentinels=()), other)))
+    empty.refuse_uncounted(
+        replace(table, columns=(replace(frst_nm, sentinels=()), other)), _DIALECT
+    )
     with pytest.raises(OverridesError, match="columns of cntct it does not have: lst_nm"):
-        _marked("lst_nm").tables["cntct"].refuse_uncounted(table)
+        _marked("lst_nm").tables["cntct"].refuse_uncounted(table, _DIALECT)
 
 
 def test_each_table_selected_has_what_is_given_of_it() -> None:
@@ -782,6 +832,31 @@ def test_a_table_is_given_a_separator_of_lists_and_refused_one_that_cannot_be(
     assert Overrides.read([path]).tables["cntct"] == TableOverride(list_separator="|")
     path.write_text("format: '7.5'\ntables:\n  cntct: {list_separator: ab}\n", encoding="utf-8")
     with pytest.raises(OverridesError, match=r"cntct\.list_separator: 'ab' is no separator"):
+        Overrides.read([path])
+
+
+def test_a_table_is_given_no_separator_of_lists_and_a_column_one_or_none(tmp_path: Path) -> None:
+    path = tmp_path / "overrides.yml"
+    path.write_text(
+        "format: '7.8'\n"
+        "tables:\n"
+        "  cntct:\n"
+        "    list_separator: false\n"
+        "    columns:\n"
+        "      frst_nm: {list_separator: '|'}\n"
+        "      cntct_typ_cd: {list_separator: false}\n",
+        encoding="utf-8",
+    )
+    columns = {
+        "frst_nm": ColumnOverride(list_separator="|"),
+        "cntct_typ_cd": ColumnOverride(list_separator=False),
+    }
+    assert Overrides.read([path]).tables["cntct"] == TableOverride(columns, list_separator=False)
+    path.write_text(
+        "format: '7.8'\ntables:\n  cntct:\n    columns:\n      frst_nm: {list_separator: true}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(OverridesError, match=r"cntct\.columns\.frst_nm\.list_separator"):
         Overrides.read([path])
 
 
