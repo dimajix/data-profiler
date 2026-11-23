@@ -91,6 +91,7 @@ issues are kept is described in [README.md](README.md); those open or in progres
 | [56](56-a-column-of-one-value-in-the-report.md) | done | A column that holds the same value in every row of its table looks in the report like any other column, so that a person reading a table has to work out from its distinct count and its shares of nulls and sentinels which of its columns tell no row from another. |
 | [57](57-export-as-open-data-contract.md) | done | The profile can only be exported as an HTML report, a document for people, so that what the tool found - the tables, columns, keys, references, sensitivity, descriptions - cannot be handed to the catalogs and tools that read an Open Data Contract Standard (ODCS) contract. |
 | [60](60-the-range-of-times-in-the-contract-is-not-widened-to-their-sentinels.md) | done | The data contract widens the range of a column to the sentinels found in it, which the range is counted without, but not that of a column of the logical type `time`, so that its rule of minimum and maximum fails on rows it was observed of. |
+| [67](67-the-sentinels-of-the-tool-in-the-contract.md) | open | The data contract writes, of every column of no nulls and no sentinels found, a rule against all the sentinels of the tool its type can hold - `''`, `NULL`, `null`, `N/A`, `n/a`, `-` of every column of text, the six forms of the first and the last day of every date -, although neither the overrides nor the data name them, so that the contract is full of sentinels nobody gave and nothing holds. |
 
 ## Command line
 
