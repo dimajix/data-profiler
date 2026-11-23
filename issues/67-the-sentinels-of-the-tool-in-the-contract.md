@@ -1,6 +1,6 @@
 # 67 — The sentinels of the tool in the contract
 
-**Status:** open
+**Status:** done
 **Type:** feature
 **Priority:** medium
 **Area:** Export
@@ -86,3 +86,15 @@ tool a column can hold, as the type of the column decides; it is to list only th
 override, or found in the data. The analysis found that the sentinels found are written as values
 already, and that those of the tool reach the contract by the rule `missingValues` alone, decided
 in 57.
+
+2026-11-23: Done, as decided with the maintainer: the sentinels found are named as such, and the
+sentinels given that were not found get their rule where others given were found. The contract
+writes no sentinel of the tool that was neither given nor found: `Contract._missing` writes its rule
+`missingValues` of the sentinels given of a column of no nulls that were not found in it, and none
+where none were given or all were found. It no longer asks the dialect which of them its type can
+hold: the profile holds no others of a column, as `scan` refuses them since
+[59](59-sentinels-given-that-a-type-cannot-hold.md), and a filter of the contract repeated it. The
+sentinels found of a column are named in its custom property `sentinels`, with a description for
+the experts who read the contract, as texts, as the profile holds them and the rule writes them; an
+enumeration writes them as values of the logical type. `docs/PROJECT.md` says in the recipe of the
+sentinels what the contract writes of them.

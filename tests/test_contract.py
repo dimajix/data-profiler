@@ -21,7 +21,6 @@ from data_profiler.detect import (
     JSON,
     JSON_LIKE,
     POSTAL_CODE,
-    SENTINELS,
     TRUE_FALSE,
     UUID,
     Sensitivity,
@@ -157,59 +156,54 @@ def test_a_table_and_a_column_are_named_by_their_original_names_and_their_harmon
     }
 
 
-def test_a_column_of_no_nulls_and_no_sentinels_is_required_and_holds_none_of_the_sentinels() -> (
-    None
-):
+def test_a_column_of_no_nulls_and_no_sentinels_given_is_required_and_has_no_rule_of_them() -> None:
     found = _property(_contract(_profile(_column())), "ord_no")
     assert found["required"] is True
-    (missing,) = found["quality"]
-    assert missing["metric"] == "missingValues"
-    assert missing["mustBe"] == 0
-    assert {"", "N/A", "-"} <= set(missing["arguments"]["missingValues"])
+    assert "quality" not in found, "the sentinels of the tool, neither given nor found, have none"
 
 
 def test_the_sentinels_given_of_a_column_are_the_missing_values_of_its_rule() -> None:
     column = _column(sentinels=("00000",))
     (missing,) = _property(_contract(_profile(column)), "ord_no")["quality"]
-    assert missing["arguments"] == {"missingValues": ["00000"]}
+    assert missing == {
+        "metric": "missingValues",
+        "arguments": {"missingValues": ["00000"]},
+        "mustBe": 0,
+    }
 
 
-def test_a_column_of_nulls_or_of_sentinels_found_is_neither_required_nor_without_sentinels() -> (
-    None
-):
-    nulls = _column("a", statistics=Statistics(3, 97))
-    found = _column("b", statistics=Statistics(0, 97, sentinels=(Value("-", 3),)))
-    contract = _contract(_profile(nulls, found))
-    assert "required" not in _property(contract, "a")
-    assert "quality" not in _property(contract, "a")
-    assert _property(contract, "b")["required"] is True
-    assert "quality" not in _property(contract, "b")
+def test_the_rule_of_the_sentinels_given_holds_those_not_found() -> None:
+    given = ("00000", "99999")
+    some = _column(
+        "a", sentinels=given, statistics=Statistics(0, 97, sentinels=(Value("00000", 3),))
+    )
+    every = _column(
+        "b",
+        sentinels=given,
+        statistics=Statistics(0, 96, sentinels=(Value("00000", 3), Value("99999", 1))),
+    )
+    contract = _contract(_profile(some, every))
+    (missing,) = _property(contract, "a")["quality"]
+    assert missing["arguments"] == {"missingValues": ["99999"]}
+    assert "quality" not in _property(contract, "b"), "every sentinel given was found"
 
 
-def test_a_rule_of_sentinels_holds_those_that_are_values_of_the_type_of_its_column() -> None:
-    nil = "00000000-0000-0000-0000-000000000000"
-    number = _column("nr", "bigint")
-    key = _column("ref", "uuid")
-    day = _column("dt", "date")
-    moment = _column("at", "timestamp(3)")
-    nothing = _column("no", "uuid", sentinels=(nil, "N/A"))
-    document = _column("doc", "json")
-    contract = _contract(_profile(number, key, day, moment, nothing, document))
-    assert "quality" not in _property(contract, "nr"), "a number holds none of the tool's"
-    assert "quality" not in _property(contract, "ref"), "nor does a UUID"
-    for name in ("dt", "at"):
-        (missing,) = _property(contract, name)["quality"]
-        assert missing["arguments"]["missingValues"] == ["0001-01-01", "1900-01-01", "9999-12-31"]
-    (missing,) = _property(contract, "no")["quality"]
-    assert missing["arguments"]["missingValues"] == [nil], "a UUID given that it can hold"
-    (missing,) = _property(contract, "doc")["quality"]
-    assert missing["arguments"]["missingValues"] == sorted(SENTINELS), "JSON, all as texts"
-
-
-def test_a_column_the_database_writes_as_no_text_has_no_rule_of_sentinels() -> None:
-    found = _property(_contract(_profile(_column("tags", "array(varchar)"))), "tags")
-    assert found["logicalType"] == "array"
+def test_a_column_of_nulls_is_not_required_and_has_no_rule_of_sentinels() -> None:
+    column = _column(statistics=Statistics(3, 97), sentinels=("00000",))
+    found = _property(_contract(_profile(column)), "ord_no")
+    assert "required" not in found
     assert "quality" not in found
+
+
+def test_the_sentinels_found_of_a_column_are_named_as_such() -> None:
+    found = (Value("", 40), Value("01.01.1900", 2))
+    code = _column("cd", statistics=Statistics(0, 2, sentinels=found), sentinels=("", "01.01.1900"))
+    contract = _contract(_profile(code, _column("nr")))
+    (sentinels,) = _property(contract, "cd")["customProperties"]
+    assert sentinels["property"] == "sentinels"
+    assert sentinels["value"] == ["", "01.01.1900"], "as the profile holds them, most first"
+    assert sentinels["description"]
+    assert "customProperties" not in _property(contract, "nr"), "none found"
 
 
 def test_the_keys_of_a_table_are_unique_and_its_primary_key_named_by_its_positions() -> None:

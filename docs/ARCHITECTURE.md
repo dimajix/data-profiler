@@ -398,11 +398,12 @@ from the profile.
     the description of the database given as its purpose, and the server of the environment: an
     inventory of what was observed, which experts are to make binding, each table and column under
     its original name, its harmonized name as its business name, with its types, and what holds of
-    every row of the profile as a rule - a column of no nulls is required, and of no sentinels where
-    none were found, a key is unique, the values of an enumeration and the lengths and the range of
-    the values are their bounds, a semantic type every value matches gives its pattern, each taking
-    the sentinels found as values -, the references as relationships; nothing counted, no number of
-    rows, no share, no coverage.
+    every row of the profile as a rule - a column of no nulls is required, and of none of the
+    sentinels given of it that were not found, a key is unique, the values of an enumeration and
+    the lengths and the range of the values are their bounds, a semantic type every value matches
+    gives its pattern, each taking the sentinels found as values -, the sentinels found named as
+    such, the references as relationships; nothing counted, no number of rows, no share, no
+    coverage, and no sentinel of the tool that was neither given nor found.
 
 ## Principles
 
