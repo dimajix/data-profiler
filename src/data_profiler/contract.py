@@ -8,19 +8,21 @@ column, under their original names, their harmonized names as their business nam
 
 The contract is an inventory of what was observed, which experts are to extend and rework into what
 is binding: what holds of every row of the profile is written as a rule - a column of no nulls is
-required, and has none of the sentinels its type can hold where none were found, a key of one column
-is unique, a key of two has no duplicates, the values of an enumeration are those it takes, a
-semantic type every value of a column of texts matches gives the pattern of its detector, of which
-none is invalid, spaces at either end aside as the database matched it, and the lengths and the
-range of the values are their bounds -, each taking the sentinels found as values, which they are
-counted without, so that the contract holds of the rows it was observed of, and the experts see the
-sentinels to forbid; but nothing counted is: no number of rows, no share of nulls, no coverage of a
-reference. The references are relationships of the columns to their keys, but those of a column of
-lists, which refers by the values of its lists; the reference candidates, of which none is
-preferred, the column groups, the column dependencies and the entities are left out. A column of
-lists is written as one of its texts. What the profile withholds of a column of a sensitivity - its
-range and its values - the contract does not hold either: it holds what the profile holds, and
-nothing of the workspace.
+required, and has none of the sentinels given of it that were not found, a key of one column is
+unique, a key of two has no duplicates, the values of an enumeration are those it takes, a semantic
+type every value of a column of texts matches gives the pattern of its detector, of which none is
+invalid, spaces at either end aside as the database matched it, and the lengths and the range of the
+values are their bounds -, each taking the sentinels found as values, which they are counted
+without, so that the contract holds of the rows it was observed of; but nothing counted is: no
+number of rows, no share of nulls, no coverage of a reference. The sentinels found of a column are
+named as such, in its custom property `sentinels`, so that the experts see which of its values to
+forbid; the sentinels of the tool, neither given nor found, are in the contract nowhere, as they are
+what the tool looks for, and say nothing of a column. The references are relationships of the
+columns to their keys, but those of a column of lists, which refers by the values of its lists; the
+reference candidates, of which none is preferred, the column groups, the column dependencies and the
+entities are left out. A column of lists is written as one of its texts. What the profile withholds
+of a column of a sensitivity - its range and its values - the contract does not hold either: it
+holds what the profile holds, and nothing of the workspace.
 """
 
 import math
@@ -31,7 +33,7 @@ from typing import Final
 
 from yaml import safe_dump
 
-from data_profiler.detect import UUID, Sensitivity, sentinels
+from data_profiler.detect import UUID, Sensitivity
 from data_profiler.export import Template
 from data_profiler.glossary import Glossary
 from data_profiler.overrides import Overrides
@@ -50,6 +52,9 @@ _STATUS: Final = "draft"
 # The logical types whose values are numbers, and those whose ranges ODCS takes as bounds.
 _NUMBERS: Final = ("integer", "number")
 _RANGED: Final = (*_NUMBERS, "date", "timestamp", "time")
+
+# What the custom property `sentinels` of a column is, for the experts who read the contract.
+_SENTINELS: Final = "Values found that stand for no value, taken as values by the rules."
 
 # A whole number, as a value of the profile writes it.
 _WHOLE: Final = re.compile(r"[+-]?[0-9]+")
@@ -142,7 +147,13 @@ class Contract(Template):
         return document
 
     def _property(self, table: Table, column: Column, glossary: Glossary) -> _Document:
-        """The property of `column` of `table`, with the rules of what holds of every row."""
+        """The property of `column` of `table`, with the rules of what holds of every row.
+
+        The sentinels found of it, which the rules take as values, are named as such, in its
+        custom property `sentinels`, as the profile holds them: as texts, as they are compared and
+        as the rule of the sentinels given writes them - a sentinel of a moment is its day -, not
+        as values of the logical type, as an enumeration writes them.
+        """
         logical = self._dialect.logical_type(column.type)
         document: _Document = {
             "name": column.name,
@@ -168,6 +179,11 @@ class Contract(Template):
         quality = [*self._missing(column), *self._invalid(column)]
         if quality:
             document["quality"] = quality
+        if column.statistics.sentinels:
+            found = [value.value for value in column.statistics.sentinels]
+            document["customProperties"] = [
+                {"property": "sentinels", "value": found, "description": _SENTINELS}
+            ]
         return document
 
     def _options(self, column: Column, logical: str | None) -> _Document:
@@ -220,16 +236,15 @@ class Contract(Template):
         return bounds
 
     def _missing(self, column: Column) -> list[_Document]:
-        """The rule that `column` holds no sentinels, where it holds no nulls and none were found.
+        """The rule that `column` holds none of the sentinels given of it not found, of no nulls.
 
-        Its sentinels are those given of it, else those of the tool, of them those its type can
-        hold, as the dialect tells - a rule of a number or a UUID against `N/A`, which it cannot
-        hold, would say nothing.
+        Of the sentinels given, those not found, which its rows would break; each one its type can
+        hold, as `scan` refuses the others. The sentinels of the tool, which no person gave, have
+        no rule: they are what the tool looks for, and say nothing of the column.
         """
-        statistics = column.statistics
-        if statistics.nulls or statistics.sentinels:
+        if column.statistics.nulls or column.sentinels is None:
             return []
-        missing = sorted(self._dialect.held(column.type, sentinels(column.sentinels)))
+        missing = sorted(set(column.sentinels) - column.left_aside)
         if not missing:
             return []
         return [{"metric": "missingValues", "arguments": {"missingValues": missing}, "mustBe": 0}]

@@ -314,7 +314,8 @@ tool brings sentinels of its own, of the columns whose values the database write
 given take their place, and `sentinels: []` gives none. A sentinel given is in the form the
 database writes the values of the column: `-1.0E0` in a `double`, `0.50` in a `decimal(12,2)`, a
 UUID in lower case; one its type cannot hold - `-1` in a `double`, any of a column of no text - is
-refused.
+refused. The data contract writes a rule that a column of no nulls holds none of the sentinels
+given of it that were not found; of those of the tool, it writes none.
 
 ```yaml overrides.yml
 tables:
